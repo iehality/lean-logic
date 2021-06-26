@@ -1,5 +1,7 @@
 import tactic
 
+/- 焼き直し -/
+
 universe u
 
 structure language : Type (u+1) :=
@@ -9,13 +11,13 @@ structure language : Type (u+1) :=
 namespace language
 variables (L : language.{u})
 
-inductive vecterm : ℕ → Type u
+inductive vecterm (L : language.{u}) : ℕ → Type u
 | nil {} : vecterm 0
 | cons   : ∀ {n : ℕ}, vecterm 1 → vecterm n → vecterm (n+1)
 | var {} : ℕ → vecterm 1
 | app    : ∀ {n : ℕ}, L.fn n → vecterm n → vecterm 1
 
-prefix `#`:max := language.vecterm.var
+prefix `#`:max := vecterm.var
 
 @[reducible] def term : Type u := L.vecterm 1
 
@@ -30,22 +32,25 @@ instance : has_emptyc (L.vecterm 0) := ⟨vecterm.nil⟩
 infix ` =̇ `:90 := form.equal
 infixr ` →̇ `:78 := form.imply
 prefix `¬̇`:94 := form.neg
-prefix `Ȧ`:94 := form.fal
+prefix `Ȧ`:70 := form.fal
 
 variables {L}
 
-def form.and (p : L.form) (q : L.form) : L.form  := ¬̇(p →̇ ¬̇q)
+def vecterm.neq (t : L.term) (u : L.term) : L.form := ¬̇(t =̇ u)
+infix ` ≠̇ `:90 := vecterm.neq
+
+def form.and (p : L.form) (q : L.form) : L.form := ¬̇(p →̇ ¬̇q)
 infix ` ⩑ `:86 := form.and
 
-def form.or (p : L.form) (q : L.form) : L.form  := ¬̇p →̇ q
+def form.or (p : L.form) (q : L.form) : L.form := ¬̇p →̇ q
 infix ` ⩒ `:82 := form.or
 
-def form.iff (p : L.form) (q : L.form) : L.form  := (p →̇ q) ⩑ (q →̇ p)
+def form.iff (p : L.form) (q : L.form) : L.form := (p →̇ q) ⩑ (q →̇ p)
 infix ` ↔̇ `:74 := form.iff
 
 def form.ex (p : L.form) : L.form := ¬̇Ȧ¬̇p
 
-prefix `Ė`:94 := form.ex
+prefix `Ė`:70 := form.ex
 
 def slide {α : Type*} (n : α) (s : ℕ → α) : ℕ → α := λ x0,
   match x0 with
@@ -57,11 +62,28 @@ infixr ` ^ˢ `:max := slide
 
 @[simp, reducible] def idvar : ℕ → L.term := λ x, #x
 
+def symbolf₀ (L : language) (b : L.fn 0) : L.term := vecterm.app b vecterm.nil
+
+def symbolf₁ (L : language) (b : L.fn 1) : L.term → L.term := (λ x, vecterm.app b x)
+
+def symbolf₂ (L : language) (b : L.fn 2) : L.term → L.term → L.term :=
+(λ x y, vecterm.app b (vecterm.cons x y))
+
+def symbolp₀ (L : language) (b : L.pr 0) : L.form := form.app b vecterm.nil
+
+def symbolp₁ (L : language) (b : L.pr 1) : L.term → L.form := (λ x, form.app b x)
+
+def symbolp₂ (L : language) (b : L.pr 2) : L.term → L.term → L.form :=
+(λ x y, form.app b (vecterm.cons x y))
+
 namespace vecterm
+
+
+
 
 def rew (s : ℕ → L.term) : ∀ {n}, L.vecterm n → L.vecterm n
 | _ nil        := nil
-| _ (cons a v) := (cons a.rew v.rew)
+| _ (cons a v) := cons a.rew v.rew
 | _ (#x)       := s x
 | _ (app f v)  := app f v.rew
 
@@ -126,7 +148,7 @@ def sf (p : L.form) : L.form := p.rew (λ x, #(x+1))
 | (t =̇ u)   _ _ := by simp[rew]
 | (p →̇ q)  _ _ := by simp[rew]; refine ⟨nested_rew p _ _, nested_rew q _ _⟩
 | (¬̇p)      _ _ := by simp[rew]; refine nested_rew p _ _
-| (Ȧp)      s₀ s₁ := by { simp[rew, nested_rew p], congr,
+| (Ȧp)      _ _ := by { simp[rew, nested_rew p], congr,
     funext n, cases n; simp[slide, vecterm.rew, vecterm.sf] }
 
 @[simp] lemma rew_idvar (p : L.form) : p.rew idvar = p :=
@@ -134,7 +156,7 @@ by { induction p; simp[rew]; try {simp*},
      have : (#0 ^ˢ λ x, #(x+1) : ℕ → L.term) = idvar,
      { funext n, cases n; simp[slide] }, simp* }
 
-lemma rew_rew  : ∀ (p : L.form) {s₀ s₁ : ℕ → L.term},
+lemma rew_rew : ∀ (p : L.form) {s₀ s₁ : ℕ → L.term},
   (∀ m, m < p.arity → s₀ m = s₁ m) → p.rew s₀ = p.rew s₁
 | (app p v) _ _ h := by simp[rew, arity] at h ⊢; refine vecterm.rew_rew _ h
 | (t =̇ u)   _ _ h := by simp[rew, arity] at h ⊢;
@@ -142,7 +164,7 @@ lemma rew_rew  : ∀ (p : L.form) {s₀ s₁ : ℕ → L.term},
 | (p →̇ q)  _ _ h := by simp[rew, arity] at h ⊢;
     refine ⟨rew_rew _ (λ _ e, h _ (or.inl e)), rew_rew _ (λ _ e, h _ (or.inr e))⟩
 | (¬̇p)      _ _ h := by simp[rew, arity] at h ⊢; refine rew_rew _ h
-| (Ȧp)      s₀ s₁ h := by { simp[rew, arity] at h ⊢,
+| (Ȧp)      _ _ h := by { simp[rew, arity] at h ⊢,
     refine rew_rew _ (λ m e, _), cases m; simp[slide],
     cases p.arity, { exfalso, simp* at* },
     { simp at h, simp[h _ (nat.succ_lt_succ_iff.mp e)] } }
@@ -153,16 +175,7 @@ by { suffices : rew s p = rew idvar p, { simp* },
 
 end form
 
-
-
 notation p `.(` x `)` := p.rew (x ^ˢ idvar) 
 notation p `.(` x `, ` y `)` := p.rew (x ^ˢ y ^ˢ idvar) 
-
-
-
-
-
-
-
 
 end language
