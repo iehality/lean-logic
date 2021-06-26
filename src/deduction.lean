@@ -89,7 +89,7 @@ begin
   { have IH : (⇑T).delete q.sf ⊢̇ q.sf →̇ p := IH q.sf,
     have lmm₁ : T.delete q ⊢̇ q →̇ Ȧ q.sf, { simp },
     have lmm₂ : T.delete q ⊢̇ Ȧ q.sf →̇ Ȧ p,
-    { suffices : T.delete q ⊢̇ Ȧ (q.sf →̇ p),
+    { suffices : T.delete q ⊢̇ Ȧ(q.sf →̇ p),
       { have lmm : T.delete q ⊢̇ Ȧ(q.sf →̇ p) →̇ Ȧ q.sf →̇ Ȧ p, simp,
         exact lmm.mp this },
       refine gen (inclusion IH (λ x h, _)), 

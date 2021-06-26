@@ -32,7 +32,7 @@ instance : has_emptyc (L.vecterm 0) := ⟨vecterm.nil⟩
 infix ` =̇ `:90 := form.equal
 infixr ` →̇ `:78 := form.imply
 prefix `¬̇`:94 := form.neg
-prefix `Ȧ`:70 := form.fal
+prefix `Ȧ`:90 := form.fal
 
 variables {L}
 
@@ -50,15 +50,24 @@ infix ` ↔̇ `:74 := form.iff
 
 def form.ex (p : L.form) : L.form := ¬̇Ȧ¬̇p
 
-prefix `Ė`:70 := form.ex
+prefix `Ė`:90 := form.ex
 
-def slide {α : Type*} (n : α) (s : ℕ → α) : ℕ → α := λ x0,
-  match x0 with
-  | 0   := n
+def slide {α : Type*} (a : α) (s : ℕ → α) : ℕ → α := λ n,
+  match n with
+  | 0   := a
   | m+1 := s m
   end
 
+def embed {α : Type*} (a : α) (s : ℕ → α) : ℕ → α := λ n,
+  match n with
+  | 0   := a
+  | m+1 := s n
+  end
+  
+
 infixr ` ^ˢ `:max := slide
+
+infixr ` ^ᵉ `:max := embed
 
 @[simp, reducible] def idvar : ℕ → L.term := λ x, #x
 
@@ -176,6 +185,11 @@ by { suffices : rew s p = rew idvar p, { simp* },
 end form
 
 notation p `.(` x `)` := p.rew (x ^ˢ idvar) 
+
+notation p `ˢ(` x `)` := p.rew (x ^ˢ idvar) 
+
+notation p `ᵉ(` x `)` := p.rew (x ^ᵉ idvar) 
+
 notation p `.(` x `, ` y `)` := p.rew (x ^ˢ y ^ˢ idvar) 
 
 end language

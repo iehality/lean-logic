@@ -15,33 +15,35 @@ def AL : language := ⟨langf, langp⟩
 
 notation `Ż` := AL.symbolf₀ langf.zero
 
-prefix `Ṡ`:max := AL.symbolf₁ langf.succ
+prefix `Ṡ `:max := AL.symbolf₁ langf.succ
 
 infixl ` +̇ `:92 := AL.symbolf₂ langf.add
 
-infixl ` ×̇ `:92 := AL.symbolf₂ langf.mult
+infixl ` ×̇ `:94 := AL.symbolf₂ langf.mult
 
 infixl ` ≤̇ `:90 := (AL.symbolp₂ langp.le)
 
 def numeral : ℕ → AL.term
 | 0     := Ż
-| (n+1) := Ṡ(numeral n)
+| (n+1) := Ṡ (numeral n)
 
 local prefix `˙`:max := numeral
 
-inductive Q : AL.theory
-| ax1 : Q Ȧ(˙0 ≠̇ #0)
-| ax2 : Q ȦȦ(Ṡ #0 =̇ Ṡ #1 →̇ #0 =̇ #1)
-| ax3 : Q Ȧ(#0 ≠̇ ˙0 →̇ Ė(#1 =̇ Ṡ #0))
-| ax4 : Q Ȧ(˙0 +̇ #0 =̇ #0)
-| ax5 : Q ȦȦ((Ṡ #0) +̇ #1 =̇ Ṡ(#0 +̇ #1))
-| ax6 : Q Ȧ(˙0 ×̇ #0 =̇ ˙0)
-| ax7 : Q ȦȦ((Ṡ #0) ×̇ #1 =̇ (#0 +̇ #1) +̇ #1)
-| ax8 : Q ȦȦ(#0 ≤̇ #1 →̇ Ė(#1 +̇ #0 =̇ #2))
+inductive robinson : AL.theory
+| q1 : robinson Ȧ(Ż ≠̇ Ṡ #0)
+| q2 : robinson ȦȦ(Ṡ #0 =̇ Ṡ #1 →̇ #0 =̇ #1)
+| q3 : robinson Ȧ(#0 ≠̇ Ż →̇ Ė(#1 =̇ Ṡ #0))
+| q4 : robinson Ȧ(Ż +̇ #0 =̇ #0)
+| q5 : robinson ȦȦ(Ṡ #0 +̇ #1 =̇ Ṡ(#0 +̇ #1))
+| q6 : robinson Ȧ(Ż ×̇ #0 =̇ Ż)
+| q7 : robinson ȦȦ(Ṡ #0 ×̇ #1 =̇ #0 ×̇ #1 +̇ #1)
+| q8 : robinson ȦȦ(#0 ≤̇ #1 ↔̇ Ė(#1 +̇ #0 =̇ #2))
 
+notation `𝐐` := robinson
+  
+inductive peano : AL.theory
+| q   : ∀ {p}, 𝐐 p → peano p
+| ind : ∀ (p : AL.form), peano (pˢ(Ż) →̇ Ȧ(p →̇ pᵉ(Ṡ #0)) →̇ Ȧ p)
 
-#reduce ˙2 +̇ ˙3
+notation `𝐏𝐀` := peano
 
-#check AL.symbolp₂ langp.le
-
-#check (AL.symbolp₂ langp.le)
