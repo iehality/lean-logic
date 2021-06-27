@@ -1,4 +1,4 @@
-import tactic
+import tactic lib
 
 /- 焼き直し -/
 
@@ -8,7 +8,7 @@ structure language : Type (u+1) :=
 (fn : ℕ → Type u)
 (pr : ℕ → Type u)
 
-namespace language
+namespace fopl
 variables (L : language.{u})
 
 inductive vecterm (L : language.{u}) : ℕ → Type u
@@ -19,16 +19,16 @@ inductive vecterm (L : language.{u}) : ℕ → Type u
 
 prefix `#`:max := vecterm.var
 
-@[reducible] def term : Type u := L.vecterm 1
+@[reducible] def term : Type u := vecterm L 1
 
 inductive form : Type u
-| app   : ∀ {n : ℕ}, L.pr n → L.vecterm n → form
-| equal : L.term → L.term → form
+| app   : ∀ {n : ℕ}, L.pr n → vecterm L n → form
+| equal : term L → term L → form
 | imply : form → form → form
 | neg : form → form
 | fal : form → form
 
-instance : has_emptyc (L.vecterm 0) := ⟨vecterm.nil⟩
+instance : has_emptyc (vecterm L 0) := ⟨vecterm.nil⟩
 infix ` =̇ `:90 := form.equal
 infixr ` →̇ `:78 := form.imply
 prefix `¬̇`:94 := form.neg
@@ -36,92 +36,72 @@ prefix `Ȧ`:90 := form.fal
 
 variables {L}
 
-def vecterm.neq (t : L.term) (u : L.term) : L.form := ¬̇(t =̇ u)
+def vecterm.neq (t : term L) (u : term L) : form L := ¬̇(t =̇ u)
 infix ` ≠̇ `:90 := vecterm.neq
 
-def form.and (p : L.form) (q : L.form) : L.form := ¬̇(p →̇ ¬̇q)
+def form.and (p : form L) (q : form L) : form L := ¬̇(p →̇ ¬̇q)
 infix ` ⩑ `:86 := form.and
 
-def form.or (p : L.form) (q : L.form) : L.form := ¬̇p →̇ q
+def form.or (p : form L) (q : form L) : form L := ¬̇p →̇ q
 infix ` ⩒ `:82 := form.or
 
-def form.iff (p : L.form) (q : L.form) : L.form := (p →̇ q) ⩑ (q →̇ p)
+def form.iff (p : form L) (q : form L) : form L := (p →̇ q) ⩑ (q →̇ p)
 infix ` ↔̇ `:74 := form.iff
 
-def form.ex (p : L.form) : L.form := ¬̇Ȧ¬̇p
+def form.ex (p : form L) : form L := ¬̇Ȧ¬̇p
 
 prefix `Ė`:90 := form.ex
 
-def slide {α : Type*} (a : α) (s : ℕ → α) : ℕ → α := λ n,
-  match n with
-  | 0   := a
-  | m+1 := s m
-  end
+def slide {α : Type*} (a : α) (s : ℕ → α) : ℕ → α
+| 0     := a
+| (m+1) := s m
 
-def embed {α : Type*} (a : α) (s : ℕ → α) : ℕ → α := λ n,
-  match n with
-  | 0   := a
-  | m+1 := s n
-  end
-  
+def embed {α : Type*} (a : α) (s : ℕ → α) : ℕ → α
+| 0     := a
+| (m+1) := s (m+1)
 
 infixr ` ^ˢ `:max := slide
 
 infixr ` ^ᵉ `:max := embed
 
-@[simp, reducible] def idvar : ℕ → L.term := λ x, #x
-
-def symbolf₀ (L : language) (b : L.fn 0) : L.term := vecterm.app b vecterm.nil
-
-def symbolf₁ (L : language) (b : L.fn 1) : L.term → L.term := (λ x, vecterm.app b x)
-
-def symbolf₂ (L : language) (b : L.fn 2) : L.term → L.term → L.term :=
-(λ x y, vecterm.app b (vecterm.cons x y))
-
-def symbolp₀ (L : language) (b : L.pr 0) : L.form := form.app b vecterm.nil
-
-def symbolp₁ (L : language) (b : L.pr 1) : L.term → L.form := (λ x, form.app b x)
-
-def symbolp₂ (L : language) (b : L.pr 2) : L.term → L.term → L.form :=
-(λ x y, form.app b (vecterm.cons x y))
+@[simp, reducible] def idvar : ℕ → term L := λ x, #x
 
 namespace vecterm
 
-
-
-
-def rew (s : ℕ → L.term) : ∀ {n}, L.vecterm n → L.vecterm n
+def rew (s : ℕ → term L) : ∀ {n}, vecterm L n → vecterm L n
 | _ nil        := nil
 | _ (cons a v) := cons a.rew v.rew
 | _ (#x)       := s x
 | _ (app f v)  := app f v.rew
 
-def sf {n} (t : L.vecterm n) : L.vecterm n := t.rew (λ x, #(x+1))
+def sf {n} (t : vecterm L n) : vecterm L n := t.rew (λ x, #(x+1))
 
-@[simp] lemma nil_sf {n : ℕ} : (nil : L.vecterm 0).sf = nil := rfl
-@[simp] lemma var_sf {n : ℕ} : (#n : L.term).sf = #(n + 1) := rfl
+@[simp] lemma nil_sf : (nil : vecterm L 0).sf = nil := rfl
+@[simp] lemma cons_sf (a : vecterm L 1) {n} (v : vecterm L n) : (cons a v).sf = cons a.sf v.sf := rfl
+@[simp] lemma var_sf (n) : (#n : term L).sf = #(n + 1) := rfl
+@[simp] lemma app_sf {n} (f : L.fn n) (v : vecterm L n) : (app f v).sf = app f v.sf := rfl
 
-def arity : ∀ {n}, L.vecterm n → ℕ
+def arity : ∀ {n}, vecterm L n → ℕ
 | _ nil        := 0
 | _ (cons a v) := max a.arity v.arity
 | _ (#n)       := n + 1
 | _ (app f v)  := v.arity
 
-@[simp] lemma nested_rew (s₀ s₁) : ∀ {n} (t : L.vecterm n),
+@[simp] lemma nested_rew (s₀ s₁) : ∀ {n} (t : vecterm L n),
   (t.rew s₀).rew s₁ = t.rew (λ x, (s₀ x).rew s₁)
 | _ nil := rfl
 | _ (cons a v) := by simp[rew, nested_rew]
 | _ (#x)       := by simp[rew]
 | _ (app f v)  := by simp[rew, nested_rew]
 
-@[simp] lemma sf_rew_eq {n} (t : L.vecterm n) (t₀ : L.term) (s : ℕ → L.term) :
+@[simp] lemma sf_rew_eq {n} (t : vecterm L n) (t₀ : term L) (s : ℕ → term L) :
   t.sf.rew (t₀ ^ˢ s) = t.rew s :=
 by cases t; by simp[rew, sf, slide]
 
-@[simp] lemma rew_idvar {n} (t : L.vecterm n) : t.rew idvar = t :=
+@[simp] lemma rew_idvar {n} (t : vecterm L n) : t.rew idvar = t :=
 by induction t; simp[rew]; simp*
 
-lemma rew_rew {s₀ s₁ : ℕ → L.term} : ∀ {n} (t : L.vecterm n),
+lemma rew_rew {s₀ s₁ : ℕ → term L} : ∀ {n} (t : vecterm L n),
   (∀ m, m < t.arity → s₀ m = s₁ m) → t.rew s₀ = t.rew s₁
 | _ nil        _ := rfl
 | _ (cons a v) h := by simp[rew, arity] at h ⊢;
@@ -131,27 +111,46 @@ lemma rew_rew {s₀ s₁ : ℕ → L.term} : ∀ {n} (t : L.vecterm n),
 
 end vecterm
 
-def form.arity : L.form → ℕ
+def form.arity : form L → ℕ
 | (form.app p v) := v.arity
 | (t =̇ u)        := max t.arity u.arity
 | (p →̇ q)       := max p.arity q.arity
 | (¬̇p)           := p.arity
 | (Ȧp)           := p.arity - 1
 
-def sentence : set L.form := {p | p.arity = 0}
+def sentence : set (form L) := {p | p.arity = 0}
 
 namespace form
 
-def rew : (ℕ → L.term) → L.form → L.form
+def rew : (ℕ → term L) → form L → form L
 | s (app p v) := app p (v.rew s)
 | s (t =̇ u)   := (t.rew s) =̇ (u.rew s)
 | s (p →̇ q)  := p.rew s →̇ q.rew s
 | s (¬̇p)      := ¬̇(p.rew s)
 | s (Ȧp)      := Ȧ(p.rew $ #0 ^ˢ (λ x, (s x).sf))
 
-def sf (p : L.form) : L.form := p.rew (λ x, #(x+1))
+def sf (p : form L) : form L := p.rew (λ x, #(x+1))
 
-@[simp] lemma nested_rew : ∀ (p : L.form) (s₀ s₁),
+@[simp] lemma app_sf {n} (p : L.pr n) (v : vecterm L n) : (app p v).sf = app p v.sf := rfl
+@[simp] lemma eq_sf (t u : vecterm L 1) : (t =̇ u).sf = t.sf =̇ u.sf := rfl
+@[simp] lemma imply_sf (p q : form L) : (p →̇ q).sf = p.sf →̇ q.sf := rfl
+@[simp] lemma neg_sf (p : form L) : (¬̇p).sf = ¬̇p.sf := rfl
+@[simp] lemma and_sf (p q : form L) : (p ⩑ q).sf = p.sf ⩑ q.sf := rfl
+@[simp] lemma or_sf (p q : form L) : (p ⩒ q).sf = p.sf ⩒ q.sf := rfl
+
+def subst₁ (p : form L) (x : term L) := p.rew (x ^ˢ idvar) 
+
+notation p`.(`x`)` := p.subst₁ x
+
+def subst₂ (p : form L) (x y : term L) := p.rew (x ^ˢ y^ˢ idvar) 
+
+notation p`.(`x`, `y`)` := p.subst₂ x y
+
+def subst₁_e (p : form L) (x : term L) := p.rew (x ^ᵉ idvar) 
+
+notation p`.ᵉ(`x`)` := p.subst₁_e x
+
+@[simp] lemma nested_rew : ∀ (p : form L) (s₀ s₁),
   (p.rew s₀).rew s₁ = p.rew (λ x, (s₀ x).rew s₁)
 | (app p v) _ _ := by simp[rew]
 | (t =̇ u)   _ _ := by simp[rew]
@@ -160,12 +159,12 @@ def sf (p : L.form) : L.form := p.rew (λ x, #(x+1))
 | (Ȧp)      _ _ := by { simp[rew, nested_rew p], congr,
     funext n, cases n; simp[slide, vecterm.rew, vecterm.sf] }
 
-@[simp] lemma rew_idvar (p : L.form) : p.rew idvar = p :=
+@[simp] lemma rew_idvar (p : form L) : p.rew idvar = p :=
 by { induction p; simp[rew]; try {simp*},
-     have : (#0 ^ˢ λ x, #(x+1) : ℕ → L.term) = idvar,
+     have : (#0 ^ˢ λ x, #(x+1) : ℕ → term L) = idvar,
      { funext n, cases n; simp[slide] }, simp* }
 
-lemma rew_rew : ∀ (p : L.form) {s₀ s₁ : ℕ → L.term},
+lemma rew_rew : ∀ (p : form L) {s₀ s₁ : ℕ → term L},
   (∀ m, m < p.arity → s₀ m = s₁ m) → p.rew s₀ = p.rew s₁
 | (app p v) _ _ h := by simp[rew, arity] at h ⊢; refine vecterm.rew_rew _ h
 | (t =̇ u)   _ _ h := by simp[rew, arity] at h ⊢;
@@ -178,18 +177,21 @@ lemma rew_rew : ∀ (p : L.form) {s₀ s₁ : ℕ → L.term},
     cases p.arity, { exfalso, simp* at* },
     { simp at h, simp[h _ (nat.succ_lt_succ_iff.mp e)] } }
 
-lemma sentence_rew {p : L.form} (h : sentence p) (s : ℕ → L.term) : p.rew s = p :=
+lemma sentence_rew {p : form L} (h : sentence p) (s : ℕ → term L) : p.rew s = p :=
 by { suffices : rew s p = rew idvar p, { simp* },
      refine rew_rew _ _, simp[show p.arity = 0, from h] }
 
+@[simp] def op : form L → bool
+| (app p v) := tt
+| (t =̇ u)   := tt
+| (p →̇ q)  := p.op && q.op
+| (¬̇p)      := p.op
+| (Ȧp)      := ff
+
+@[simp] lemma op.and (p q : form L) : (p ⩑ q).op = p.op && q.op := rfl
+
+@[simp] lemma op.or (p q : form L) : (p ⩒ q).op = p.op && q.op := rfl
+
 end form
 
-notation p `.(` x `)` := p.rew (x ^ˢ idvar) 
-
-notation p `ˢ(` x `)` := p.rew (x ^ˢ idvar) 
-
-notation p `ᵉ(` x `)` := p.rew (x ^ᵉ idvar) 
-
-notation p `.(` x `, ` y `)` := p.rew (x ^ˢ y ^ˢ idvar) 
-
-end language
+end fopl
