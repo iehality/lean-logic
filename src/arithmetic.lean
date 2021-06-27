@@ -58,18 +58,17 @@ inductive robinson : theory AL
 | q6 : robinson Ȧ(Ż ×̇ #0 =̇ Ż)
 | q7 : robinson ȦȦ(Ṡ #0 ×̇ #1 =̇ #0 ×̇ #1 +̇ #1)
 | q8 : robinson ȦȦ(#0 ≤̇ #1 ↔̇ Ė(#1 +̇ #0 =̇ #2))
-
 notation `𝐐` := robinson
   
 inductive peano : theory AL
 | q   : ∀ {p}, 𝐐 p → peano p
 | ind : ∀ (p : form AL), peano (p.(Ż) →̇ Ȧ(p →̇ (p.ᵉ(Ṡ #0))) →̇ Ȧ p)
-
 notation `𝐏𝐀` := peano
 
-inductive bounded_peano (C : set (form AL)) : theory AL
+inductive bounded_peano (C : form AL → Prop) : theory AL
 | q   : ∀ {p}, 𝐐 p → bounded_peano p
-| ind : ∀ {p : form AL}, p ∈ C → bounded_peano (p.(Ż) →̇ Ȧ(p →̇ (p.ᵉ(Ṡ #0))) →̇ Ȧ p)
+| ind : ∀ {p : form AL}, C p → bounded_peano (p.(Ż) →̇ Ȧ(p →̇ (p.ᵉ(Ṡ #0))) →̇ Ȧ p)
+prefix `𝐈`:max := bounded_peano
 
 mutual inductive sigma, pie
 with sigma : ℕ → form AL → Prop
@@ -101,7 +100,7 @@ notation `𝒩` := Num
 
 @[simp] lemma nat_pr_eq : Num.pr = nat_pr := rfl
 
-lemma NQ : 𝒩 ⊧ₜₕ 𝐐 := λ e p hyp_p,
+lemma N_models_Q : 𝒩 ⊧ₜₕ 𝐐 := λ e p hyp_p,
 begin
   cases hyp_p; simp[slide],
   { exact λ _, of_to_bool_ff rfl},
@@ -113,5 +112,46 @@ begin
     refine ⟨(n - m : ℕ), nat.add_sub_of_le h⟩,
     rcases h with ⟨_, h⟩, exact nat.le.intro h }
 end
+
+theorem Q_consistent : theory.consistent 𝐐 := model_consistent N_models_Q
+
+lemma N_models_PA : 𝒩 ⊧ₜₕ 𝐏𝐀 := λ e p hyp_p,
+begin
+  cases hyp_p with _ hyp_p p,
+  exact N_models_Q e p hyp_p,
+  simp[form.subst₁, form.subst₁_e, rew_val_iff],
+  intros h0 hIH n,
+  induction n with n IH,
+  { have : (λ n, (vecterm.val e (Ż ^ˢ vecterm.var $ n)).extract) = ((0 : ℕ) ^ˢ e),
+    { funext n, cases n; simp[slide] },
+    simp[this] at h0, exact h0 },
+  { have hIH' := hIH n IH,
+    have : (λ m, (vecterm.val (n ^ˢ e : ℕ → Num.dom) (Ṡ #0 ^ᵉ vecterm.var $ m)).extract) = (n+1 : ℕ) ^ˢ e,
+    { funext n, cases n; simp[slide, embed] },
+    simp[this] at hIH', exact hIH' }
+end
+
+lemma N_models_bd_PA (C : form AL → Prop) : 𝒩 ⊧ₜₕ 𝐈C := λ e p hyp_p,
+by { cases hyp_p with _ hyp_p p,
+     exact N_models_Q e p hyp_p,
+       simp[form.subst₁, form.subst₁_e, rew_val_iff],
+  intros h0 hIH n,
+  induction n with n IH,
+  { have : (λ n, (vecterm.val e (Ż ^ˢ vecterm.var $ n)).extract) = ((0 : ℕ) ^ˢ e),
+    { funext n, cases n; simp[slide] },
+    simp[this] at h0, exact h0 },
+  { have hIH' := hIH n IH,
+    have : (λ m, (vecterm.val (n ^ˢ e : ℕ → Num.dom) (Ṡ #0 ^ᵉ vecterm.var $ m)).extract) = (n+1 : ℕ) ^ˢ e,
+    { funext n, cases n; simp[slide, embed] },
+    simp[this] at hIH', exact hIH' } }
+
+theorem PA_consistent : theory.consistent 𝐏𝐀 := model_consistent N_models_PA
+
+def true_arithmetic : theory AL := {p | 𝒩 ⊧ p}
+notation `𝐓𝐀` := true_arithmetic
+
+lemma N_models_TA : 𝒩 ⊧ₜₕ 𝐓𝐀 := λ e p hyp_p, hyp_p e
+
+theorem TA_consistent : theory.consistent 𝐓𝐀 := model_consistent N_models_TA
 
 end fopl
