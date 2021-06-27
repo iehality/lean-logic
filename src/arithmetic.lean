@@ -1,4 +1,4 @@
-import deduction
+import deduction semantics
 
 namespace fopl
 
@@ -13,23 +13,23 @@ inductive langp : ℕ → Type
 
 def AL : language := ⟨langf, langp⟩
 
-def symbol.zero : term AL := vecterm.app langf.zero vecterm.nil
+@[reducible] def symbol.zero : term AL := vecterm.app langf.zero vecterm.nil
 
 notation `Ż` := symbol.zero
 
-def symbol.succ : term AL → term AL := λ x, vecterm.app langf.succ x
+@[reducible] def symbol.succ : term AL → term AL := λ x, vecterm.app langf.succ x
 
 prefix `Ṡ `:max := symbol.succ
 
-def symbol.add : term AL → term AL → term AL := λ x y, vecterm.app langf.add (vecterm.cons x y)
+@[reducible] def symbol.add : term AL → term AL → term AL := λ x y, vecterm.app langf.add (vecterm.cons x y)
 
 infixl ` +̇ `:92 := symbol.add 
 
-def symbol.mult : term AL → term AL → term AL := λ x y, vecterm.app langf.mult (vecterm.cons x y)
+@[reducible] def symbol.mult : term AL → term AL → term AL := λ x y, vecterm.app langf.mult (vecterm.cons x y)
 
 infixl ` ×̇ `:94 := symbol.mult
 
-def symbol.le : term AL → term AL → form AL := λ x y, form.app langp.le (vecterm.cons x y)
+@[reducible] def symbol.le : term AL → term AL → form AL := λ x y, form.app langp.le (vecterm.cons x y)
 
 infixl ` ≤̇ `:90 := symbol.le
 
@@ -83,6 +83,35 @@ with pie : ℕ → form AL → Prop
 | bd_ext : ∀ {p} {n t}, pie n p → pie n [Ė ≤ t]p
 | qt : ∀ {p} {n}, sigma n p → pie (n+1) Ȧp 
 
+@[simp] def nat_fn : ∀ n, AL.fn n → dvector ℕ n → ℕ
+| 0 langf.zero _               := 0
+| 1 langf.succ (n :: nil)      := n + 1
+| 2 langf.add  (n :: m :: nil) := n + m
+| 2 langf.mult (n :: m :: nil) := n * m
 
+@[simp] def nat_pr : ∀ n, AL.pr n → dvector ℕ n → Prop
+| 2 langp.le  (n :: m :: nil) := n ≤ m
+
+def Num : model AL := ⟨ℕ, 0, nat_fn, nat_pr⟩
+notation `𝒩` := Num
+
+@[reducible, simp] lemma nat_dom_eq : Num.dom = ℕ := rfl
+
+@[simp] lemma nat_fn_eq : Num.fn = nat_fn := rfl
+
+@[simp] lemma nat_pr_eq : Num.pr = nat_pr := rfl
+
+lemma NQ : 𝒩 ⊧ₜₕ 𝐐 := λ e p hyp_p,
+begin
+  cases hyp_p; simp[slide],
+  { exact λ _, of_to_bool_ff rfl},
+  { exact λ _ _, nat.succ.inj },
+  { exact λ _, nat.exists_eq_succ_of_ne_zero },
+  { exact λ n m, nat.succ_add m n },
+  { exact λ n m, nat.succ_mul m n },
+  { intros n m, split; intros h,
+    refine ⟨(n - m : ℕ), nat.add_sub_of_le h⟩,
+    rcases h with ⟨_, h⟩, exact nat.le.intro h }
+end
 
 end fopl

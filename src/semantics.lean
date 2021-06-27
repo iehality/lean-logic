@@ -7,20 +7,21 @@ open dvector
 
 structure model (L : language.{u}) :=
 (dom : Type v)
+(one : dom)
 (fn : ∀ {n}, L.fn n → dvector dom n → dom)
 (pr : ∀ {n}, L.pr n → dvector dom n → Prop)
 
 variables {L : language.{u}} {M : model L}
 
-def vecterm.val (e : ℕ → M.dom) : ∀ {n} (t : vecterm L n), dvector M.dom n
+@[simp] def vecterm.val (e : ℕ → M.dom) : ∀ {n} (t : vecterm L n), dvector M.dom n
 | _ vecterm.nil        := nil
 | _ (vecterm.cons a v) := a.val.append v.val
 | _ (#x)               := unary (e x)
 | _ (vecterm.app f v)  := unary (M.fn f v.val)
 
-def term.val (e : ℕ → M.dom) (t : term L) : M.dom := (t.val e).extract
+@[simp] def term.val (e : ℕ → M.dom) (t : term L) : M.dom := (t.val e).extract
 
-def form.val : (ℕ → M.dom) → form L → Prop
+@[simp] def form.val : (ℕ → M.dom) → form L → Prop
 | e (form.app p v) := M.pr p (v.val e)
 | e (t =̇ u)        := t.val e = u.val e
 | e (p →̇ q)       := p.val e → q.val e
@@ -36,30 +37,30 @@ infix ` ⊧ₜₕ `:50 := modelsth
 lemma rew_val_eq : ∀ (s : ℕ → term L) {n} (t : vecterm L n) (e : ℕ → M.dom),
   (t.rew s).val e = t.val (λ n, (s n).val e)
 | _ _ vecterm.nil        _ := rfl
-| _ _ (vecterm.cons a v) _ := by simp[vecterm.val, vecterm.rew, rew_val_eq _ a, rew_val_eq _ v]
-| _ _ (#x)               _ := by simp[vecterm.val, vecterm.rew, term.val]
-| _ _ (vecterm.app f v)  _ := by simp[vecterm.val, vecterm.rew, rew_val_eq _ v]
+| _ _ (vecterm.cons a v) _ := by simp[vecterm.rew, rew_val_eq _ a, rew_val_eq _ v]
+| _ _ (#x)               _ := by simp[vecterm.rew, term.val]
+| _ _ (vecterm.app f v)  _ := by simp[vecterm.rew, rew_val_eq _ v]
 
 @[simp] lemma sf_slide_val {n} (t : vecterm L n) : ∀ (e : ℕ → M.dom) d, t.sf.val (d ^ˢ e) = t.val e :=
-by induction t; simp[vecterm.val, slide]; simp*
+by induction t; simp[slide]; simp*
 
 lemma rew_val_iff : ∀ (s : ℕ → term L) (p : form L) (e : ℕ → M.dom),
   (p.rew s).val e ↔ p.val (λ n, (s n).val e)
-| _ (form.app p v) _ := by simp[form.val, form.rew, rew_val_eq]
-| _ (t =̇ u)        _ := by simp[form.val, form.rew, term.val, rew_val_eq]
-| _ (p →̇ q)       _ := by simp[form.val, form.rew, rew_val_iff _ p, rew_val_iff _ q]
-| _ (¬̇p)           _ := by simp[form.val, form.rew, rew_val_iff _ p]
-| s (Ȧp)           e := by { simp[form.val, form.rew, rew_val_iff _ p], refine forall_congr (λ d, _),
-    have : (λ n, ((#0 ^ˢ λ x, (s x).sf) n : term L).val (d ^ˢ e)) = (d ^ˢ λ n, (s n).val e),
+| _ (form.app p v) _ := by simp[form.rew, rew_val_eq]
+| _ (t =̇ u)        _ := by simp[form.rew, term.val, rew_val_eq]
+| _ (p →̇ q)       _ := by simp[form.rew, rew_val_iff _ p, rew_val_iff _ q]
+| _ (¬̇p)           _ := by simp[form.rew, rew_val_iff _ p]
+| s (Ȧp)           e := by { simp[form.rew, rew_val_iff _ p], refine forall_congr (λ d, _),
+    have : (λ n, (((#0 ^ˢ λ x, (s x).sf) n).val (d ^ˢ e)).extract) = (d ^ˢ λ (n : ℕ), ((s n).val e)),
     { funext n,cases n; simp[slide, term.val, vecterm.val] },
     simp[this] }
 
 @[simp] lemma sf_slide_val_iff : ∀ (p : form L) (e : ℕ → M.dom) d, p.sf.val (d ^ˢ e) = p.val e
-| (form.app p v) _ _ := by simp[form.val]
-| (t =̇ u)        _ _ := by simp[form.val, term.val]
-| (p →̇ q)       _ _ := by simp[form.val, sf_slide_val_iff p, sf_slide_val_iff q]
-| (¬̇p)           _ _ := by simp[form.val, sf_slide_val_iff p]
-| (Ȧp)           e d := by simp[form.val, term.val, vecterm.val, form.sf, rew_val_iff, slide]
+| (form.app p v) _ _ := by simp
+| (t =̇ u)        _ _ := by simp[term.val]
+| (p →̇ q)       _ _ := by simp[sf_slide_val_iff p, sf_slide_val_iff q]
+| (¬̇p)           _ _ := by simp[sf_slide_val_iff p]
+| (Ȧp)           e d := by simp[term.val, form.sf, rew_val_iff, slide]
 
 private lemma modelsth_sf {T} : M ⊧ₜₕ T → M ⊧ₜₕ ⇑T := λ h e p hyp_p,
 by { cases hyp_p with p hyp_p', simp[rew_val_iff],
@@ -81,8 +82,8 @@ begin
   case fopl.provable.p3 : T p q
   { intros M hyp_T e h₁, simp[form.val], contrapose, exact h₁ },
   case fopl.provable.q1 : T p t
-  { intros M hyp_T e h, simp[form.val, form.subst₁, rew_val_iff] at h ⊢,
-    have : (λ n, ((t ^ˢ vecterm.var) n).val e) = (t.val e) ^ˢ e,
+  { intros M hyp_T e h, simp[form.subst₁, rew_val_iff] at h ⊢,
+    have : (λ n, (vecterm.val e (t ^ˢ vecterm.var $ n)).extract) = (t.val e) ^ˢ e,
     { funext n, cases n; simp[slide, term.val, vecterm.val] },
     rw this, exact h _ },
   case fopl.provable.q2 : T p q
@@ -92,11 +93,24 @@ begin
   case fopl.provable.e1 : T t
   { intros M hyp_T e, simp[form.val] },
   case fopl.provable.e2 : T p t u
-  { intros M hyp_T e, simp[form.val, form.subst₁, rew_val_iff],
+  { intros M hyp_T e, simp[form.subst₁, rew_val_iff],
     intros eqn h,
-    have : (λ n, ((u ^ˢ vecterm.var) n).val e) = (λ n, ((t ^ˢ vecterm.var) n).val e),
+    have : (λ n, (vecterm.val e (u ^ˢ vecterm.var $ n)).extract) = (λ n, ((t ^ˢ vecterm.var) n).val e),
     { funext n, cases n; simp[slide, term.val, eqn] },
-    simp[this, h] }
+    simp[this, h], }
 end
+
+theorem model_consistent {T : theory L} : M ⊧ₜₕ T → T.consistent :=
+by { contrapose, simp[theory.consistent], intros p hp₁ hp₂ hyp,
+     exact soundness hp₂ hyp (λ _, M.one) (soundness hp₁ hyp (λ _, M.one)) }
+
+@[simp] lemma models_exists {p} {e : ℕ → M.dom} : (Ėp).val e ↔ ∃ d, p.val (d ^ˢ e) :=
+by simp[form.ex, models, form.subst₁, rew_val_iff]
+
+@[simp] lemma models_and {p q} {e : ℕ → M.dom} : (p ⩑ q).val e ↔ (p.val e ∧ q.val e) :=
+by simp[form.and, models, form.subst₁, rew_val_iff]
+
+@[simp] lemma models_iff {p q} {e : ℕ → M.dom} : (p ↔̇ q).val e ↔ (p.val e ↔ q.val e) :=
+by simp[form.iff, models, form.subst₁, rew_val_iff]; exact iff_def.symm
 
 end fopl

@@ -36,8 +36,8 @@ prefix `Ȧ`:90 := form.fal
 
 variables {L}
 
-def vecterm.neq (t : term L) (u : term L) : form L := ¬̇(t =̇ u)
-infix ` ≠̇ `:90 := vecterm.neq
+@[reducible] def form.neq (t : term L) (u : term L) : form L := ¬̇(t =̇ u)
+infix ` ≠̇ `:90 := form.neq
 
 def form.and (p : form L) (q : form L) : form L := ¬̇(p →̇ ¬̇q)
 infix ` ⩑ `:86 := form.and
