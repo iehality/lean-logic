@@ -109,6 +109,9 @@ lemma rew_rew {s₀ s₁ : ℕ → term L} : ∀ {n} (t : vecterm L n),
 | _ (#x)       h := by simp[rew, arity] at h ⊢; simp*
 | _ (app f v)  h := by simp[rew, arity] at h ⊢; refine rew_rew _ h
 
+@[simp] lemma sf_rew {n} (t : vecterm L n) (u) (s) : t.sf.rew (u ^ˢ s) = t.rew s :=
+by simp[vecterm.sf, vecterm.rew, slide]
+
 end vecterm
 
 def form.arity : form L → ℕ
@@ -181,6 +184,9 @@ lemma sentence_rew {p : form L} (h : sentence p) (s : ℕ → term L) : p.rew s 
 by { suffices : rew s p = rew idvar p, { simp* },
      refine rew_rew _ _, simp[show p.arity = 0, from h] }
 
+@[simp] lemma sf_subst (p : form L) (t) : p.sf.(t) = p :=
+by simp[form.sf, form.subst₁, vecterm.rew, slide]
+
 @[simp] def op : form L → bool
 | (app p v) := tt
 | (t =̇ u)   := tt
@@ -193,5 +199,7 @@ by { suffices : rew s p = rew idvar p, { simp* },
 @[simp] lemma op.or (p q : form L) : (p ⩒ q).op = p.op && q.op := rfl
 
 end form
+
+def openform (p : form L) : Prop := p.op = tt
 
 end fopl

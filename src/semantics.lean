@@ -51,7 +51,7 @@ lemma rew_val_iff : ∀ (s : ℕ → term L) (p : form L) (e : ℕ → M.dom),
 | _ (p →̇ q)       _ := by simp[form.rew, rew_val_iff _ p, rew_val_iff _ q]
 | _ (¬̇p)           _ := by simp[form.rew, rew_val_iff _ p]
 | s (Ȧp)           e := by { simp[form.rew, rew_val_iff _ p], refine forall_congr (λ d, _),
-    have : (λ n, (((#0 ^ˢ λ x, (s x).sf) n).val (d ^ˢ e)).extract) = (d ^ˢ λ (n : ℕ), ((s n).val e)),
+    have : (λ n, (((#0 ^ˢ λ x, (s x).sf) n).val (d ^ˢ e)).extract) = (d ^ˢ λ n, ((s n).val e)),
     { funext n,cases n; simp[slide, term.val, vecterm.val] },
     simp[this] }
 
@@ -60,7 +60,7 @@ lemma rew_val_iff : ∀ (s : ℕ → term L) (p : form L) (e : ℕ → M.dom),
 | (t =̇ u)        _ _ := by simp[term.val]
 | (p →̇ q)       _ _ := by simp[sf_slide_val_iff p, sf_slide_val_iff q]
 | (¬̇p)           _ _ := by simp[sf_slide_val_iff p]
-| (Ȧp)           e d := by simp[term.val, form.sf, rew_val_iff, slide]
+| (Ȧp)           _ _ := by simp[term.val, form.sf, rew_val_iff, slide]
 
 private lemma modelsth_sf {T} : M ⊧ₜₕ T → M ⊧ₜₕ ⇑T := λ h e p hyp_p,
 by { cases hyp_p with p hyp_p', simp[rew_val_iff],
@@ -104,13 +104,13 @@ theorem model_consistent {T : theory L} : M ⊧ₜₕ T → T.consistent :=
 by { contrapose, simp[theory.consistent], intros p hp₁ hp₂ hyp,
      exact soundness hp₂ hyp (λ _, M.one) (soundness hp₁ hyp (λ _, M.one)) }
 
-@[simp] lemma models_exists {p} {e : ℕ → M.dom} : (Ėp).val e ↔ ∃ d, p.val (d ^ˢ e) :=
+@[simp] lemma models_ex {p} {e : ℕ → M.dom} : (Ėp).val e ↔ ∃ d, p.val (d ^ˢ e) :=
 by simp[form.ex, models, form.subst₁, rew_val_iff]
 
 @[simp] lemma models_and {p q} {e : ℕ → M.dom} : (p ⩑ q).val e ↔ (p.val e ∧ q.val e) :=
-by simp[form.and, models, form.subst₁, rew_val_iff]
+by simp[form.and]
 
 @[simp] lemma models_iff {p q} {e : ℕ → M.dom} : (p ↔̇ q).val e ↔ (p.val e ↔ q.val e) :=
-by simp[form.iff, models, form.subst₁, rew_val_iff]; exact iff_def.symm
+by simp[form.iff]; exact iff_def.symm
 
 end fopl

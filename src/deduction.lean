@@ -16,14 +16,14 @@ inductive provable : theory L → form L → Prop
 | GE : ∀ {T : theory L} {p}, provable ⇑T p → provable T (Ȧp)
 | MP : ∀ {T : theory L} {p q}, provable T (p →̇ q) → provable T p → provable T q
 | AX : ∀ {T : theory L} {p}, T p → provable T p
-| p1 : ∀ (T : theory L) (p q), provable T (p →̇ q →̇ p)
-| p2 : ∀ (T : theory L) (p q r), provable T ((p →̇ q →̇ r) →̇ (p →̇ q) →̇ p →̇ r)
-| p3 : ∀ (T : theory L) (p q), provable T ((¬̇ p →̇ ¬̇ q) →̇ q →̇ p)
-| q1 : ∀ (T : theory L) (p t), provable T (Ȧ p →̇ p.(t))
-| q2 : ∀ (T : theory L) (p q), provable T (Ȧ (p →̇ q) →̇ Ȧ p →̇ Ȧ q)
-| q3 : ∀ (T : theory L) (p), provable T (p →̇ Ȧ p.sf)
-| e1 : ∀ (T : theory L) (t), provable T (t =̇ t)
-| e2 : ∀ (T : theory L) (p : form L) (t u), provable T (t =̇ u →̇ p.(t) →̇ p.(u))
+| p1 : ∀ {T : theory L} {p q}, provable T (p →̇ q →̇ p)
+| p2 : ∀ {T : theory L} {p q r}, provable T ((p →̇ q →̇ r) →̇ (p →̇ q) →̇ p →̇ r)
+| p3 : ∀ {T : theory L} {p q}, provable T ((¬̇ p →̇ ¬̇ q) →̇ q →̇ p)
+| q1 : ∀ {T : theory L} {p t}, provable T (Ȧ p →̇ p.(t))
+| q2 : ∀ {T : theory L} {p q}, provable T (Ȧ (p →̇ q) →̇ Ȧ p →̇ Ȧ q)
+| q3 : ∀ {T : theory L} {p}, provable T (p →̇ Ȧ p.sf)
+| e1 : ∀ {T : theory L} {t}, provable T (t =̇ t)
+| e2 : ∀ {T : theory L} {p : form L} {t u}, provable T (t =̇ u →̇ p.(t) →̇ p.(u))
 
 infix ` ⊢̇ `:60 := provable
 
@@ -41,8 +41,10 @@ infixl ` ¦ `:60 := theory.add
 def theory.delete (T : theory L) (p : form L) : theory L := λ q, T q ∧ q ≠ p
 
 def theory.include (T U : theory L) : Prop := ∀ p, T p → U p
-
 instance : has_subset (theory L) := ⟨theory.include⟩
+
+def theory.le (T U : theory L) : Prop := ∀ p, T ⊢̇ p → U ⊢̇ p
+instance : has_le (theory L) := ⟨theory.le⟩
 
 namespace provable
 variables (T : theory L)
@@ -81,6 +83,8 @@ begin
   { intros U hyp, exact (IH₁ hyp).MP (IH₂ hyp) },
   { intros U hyp, exact AX (hyp _ hyp_p) }
 end
+
+
 
 @[simp] lemma weakening {q} (h : T ⊢̇ q) (p) : T ¦ p ⊢̇ q :=
 inclusion h (λ x h, theory.add.old h)
@@ -133,8 +137,14 @@ end
 by { have : T ⊢̇ (¬̇¬̇¬̇p →̇ ¬̇p) →̇ p →̇ ¬̇¬̇p, simp,
      exact this.MP (by simp) }
 
-lemma dn_iff {p} : T ⊢̇ ¬̇¬̇p ↔ T ⊢̇ p :=
+@[simp] lemma dn_iff {p} : T ⊢̇ ¬̇¬̇p ↔ T ⊢̇ p :=
 ⟨λ h, (show T ⊢̇ ¬̇¬̇p →̇ p, by simp).MP h, λ h,(show T ⊢̇ p →̇ ¬̇¬̇p, by simp).MP h⟩
+
+@[simp] lemma dn1_iff {p q} : (T ⊢̇ ¬̇¬̇p →̇ q) ↔ (T ⊢̇ p →̇ q) :=
+⟨(dni _).imp_trans, (dne _).imp_trans⟩
+
+@[simp] lemma dn2_iff {p q} : (T ⊢̇ p →̇ ¬̇¬̇q) ↔ (T ⊢̇ p →̇ q) :=
+⟨λ h, h.imp_trans (dne _), λ h, h.imp_trans (dni _)⟩
 
 lemma explosion {p} (h₁ : T ⊢̇ p) (h₂ : T ⊢̇ ¬̇p) {q} : T ⊢̇ q :=
 begin
@@ -181,7 +191,7 @@ neg_hyp (deduction.mp (explosion h₁ h₂))
    have : T ⊢̇ q →̇ ¬̇(p →̇ ¬̇q), from (dni _).imp_trans (contra.mpr this),
    exact this.MP h₂ }⟩
 
-lemma iff {p q} : (T ⊢̇ p ↔̇ q) ↔ (T ⊢̇ p →̇ q ∧ T ⊢̇ q →̇ p) :=
+@[simp] lemma iff {p q} : (T ⊢̇ p ↔̇ q) ↔ (T ⊢̇ p →̇ q ∧ T ⊢̇ q →̇ p) :=
 by simp[form.iff]
 
 lemma subst₁ {p} (h : T ⊢̇ Ȧp) (t) : T ⊢̇ p.(t) :=
@@ -233,6 +243,17 @@ begin
   exact (this.MP h₂).MP h₁
 end
 
+lemma dummy_fal_quantifir (p) : T ⊢̇ p ↔̇ Ȧ(p.sf) :=
+by { have : T ⊢̇ Ȧp.sf →̇ p.sf.(#0), from provable.q1, simp* at * }
+
+lemma dummy_ex_quantifir (p) : T ⊢̇ p ↔̇ Ė(p.sf) :=
+by { simp[form.ex], split,
+     { refine contra.mp _, simp, exact (provable.iff.mp (dummy_fal_quantifir ¬̇p)).2 },
+     { refine contra.mp _, simp, exact (provable.iff.mp (dummy_fal_quantifir ¬̇p)).1 } }
+
 end provable
+
+lemma inclusion_le {T U : theory L} : T ⊆ U → T ≤ U := λ hyp p h,
+h.inclusion hyp
 
 end fopl

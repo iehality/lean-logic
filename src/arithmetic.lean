@@ -70,6 +70,19 @@ inductive bounded_peano (C : form AL → Prop) : theory AL
 | ind : ∀ {p : form AL}, C p → bounded_peano (p.(Ż) →̇ Ȧ(p →̇ (p.ᵉ(Ṡ #0))) →̇ Ȧ p)
 prefix `𝐈`:max := bounded_peano
 
+lemma peano_bd_peano : 𝐏𝐀 = 𝐈(λ x, true) :=
+by { ext p, split; intros h; induction h with h h h h,
+     { exact bounded_peano.q h }, { exact bounded_peano.ind trivial },
+     { exact peano.q h }, { exact peano.ind _ } }
+
+lemma Q_bd_peano (C) : 𝐐 ⊆ 𝐈C := λ p h, bounded_peano.q h
+
+lemma bd_peano_subset {C D : set (form AL)} : C ⊆ D → 𝐈C ⊆ 𝐈D := λ h p hyp_p,
+by { cases hyp_p with _ hyp_p p hyp_p2,
+     exact bounded_peano.q hyp_p, refine bounded_peano.ind (h hyp_p2) }
+
+namespace hierarchy
+
 mutual inductive sigma, pie
 with sigma : ℕ → form AL → Prop
 | op : ∀ {p : form AL}, p.op → sigma 0 p
@@ -82,8 +95,10 @@ with pie : ℕ → form AL → Prop
 | bd_ext : ∀ {p} {n t}, pie n p → pie n [Ė ≤ t]p
 | qt : ∀ {p} {n}, sigma n p → pie (n+1) Ȧp 
 
+end hierarchy
+
 @[simp] def nat_fn : ∀ n, AL.fn n → dvector ℕ n → ℕ
-| 0 langf.zero _               := 0
+| 0 langf.zero nil             := 0
 | 1 langf.succ (n :: nil)      := n + 1
 | 2 langf.add  (n :: m :: nil) := n + m
 | 2 langf.mult (n :: m :: nil) := n * m
@@ -115,22 +130,6 @@ end
 
 theorem Q_consistent : theory.consistent 𝐐 := model_consistent N_models_Q
 
-lemma N_models_PA : 𝒩 ⊧ₜₕ 𝐏𝐀 := λ e p hyp_p,
-begin
-  cases hyp_p with _ hyp_p p,
-  exact N_models_Q e p hyp_p,
-  simp[form.subst₁, form.subst₁_e, rew_val_iff],
-  intros h0 hIH n,
-  induction n with n IH,
-  { have : (λ n, (vecterm.val e (Ż ^ˢ vecterm.var $ n)).extract) = ((0 : ℕ) ^ˢ e),
-    { funext n, cases n; simp[slide] },
-    simp[this] at h0, exact h0 },
-  { have hIH' := hIH n IH,
-    have : (λ m, (vecterm.val (n ^ˢ e : ℕ → Num.dom) (Ṡ #0 ^ᵉ vecterm.var $ m)).extract) = (n+1 : ℕ) ^ˢ e,
-    { funext n, cases n; simp[slide, embed] },
-    simp[this] at hIH', exact hIH' }
-end
-
 lemma N_models_bd_PA (C : form AL → Prop) : 𝒩 ⊧ₜₕ 𝐈C := λ e p hyp_p,
 by { cases hyp_p with _ hyp_p p,
      exact N_models_Q e p hyp_p,
@@ -144,6 +143,11 @@ by { cases hyp_p with _ hyp_p p,
     have : (λ m, (vecterm.val (n ^ˢ e : ℕ → Num.dom) (Ṡ #0 ^ᵉ vecterm.var $ m)).extract) = (n+1 : ℕ) ^ˢ e,
     { funext n, cases n; simp[slide, embed] },
     simp[this] at hIH', exact hIH' } }
+
+theorem bd_PA_consistent (C) : theory.consistent 𝐈C := model_consistent (N_models_bd_PA C)
+
+lemma N_models_PA : 𝒩 ⊧ₜₕ 𝐏𝐀 :=
+by {rw peano_bd_peano, exact N_models_bd_PA _}
 
 theorem PA_consistent : theory.consistent 𝐏𝐀 := model_consistent N_models_PA
 
