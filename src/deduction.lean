@@ -5,6 +5,8 @@ universe u
 namespace fopl
 variables {L : language.{u}}
 
+local attribute [instance, priority 0] classical.prop_decidable
+
 def theory (L : language) := form L → Prop
 
 inductive theory.sf (T : theory L) : theory L
@@ -46,6 +48,20 @@ instance : has_subset (theory L) := ⟨theory.include⟩
 def theory.le (T U : theory L) : Prop := ∀ p, T ⊢̇ p → U ⊢̇ p
 instance : has_le (theory L) := ⟨theory.le⟩
 
+lemma sf_dsb (T : theory L) (p : form L) : ⇑T ¦ p.sf = ⇑(T ¦ p) :=
+begin
+  ext x, split; intros h,
+  { cases h with h hx, refine theory.sf.intro theory.add.new,
+    cases hx with p hp, refine theory.sf.intro (theory.add.old hp) },
+  { cases h with q hq, cases hq with _ hq, refine theory.add.new,
+    refine theory.add.old (theory.sf.intro hq) }
+end
+
+def form.equiv (T : theory L) (p₁ p₂ : form L) : Prop := T ⊢̇ p₁ ↔̇ p₂
+
+def term.equiv (T : theory L) (t₁ t₂ : term L) : Prop := T ⊢̇ t₁ =̇ t₂
+
+
 namespace provable
 variables (T : theory L)
 
@@ -57,6 +73,8 @@ begin
   have l₃ : T ⊢̇ p →̇ p →̇ p, simp,
   refine l₂.MP l₃
 end
+
+@[simp] lemma prT : T ⊢̇ ⊤̇ := GE (by simp)
 
 @[simp] lemma add (p) : T ¦ p ⊢̇ p :=
 AX (theory.add.new)
@@ -83,8 +101,6 @@ begin
   { intros U hyp, exact (IH₁ hyp).MP (IH₂ hyp) },
   { intros U hyp, exact AX (hyp _ hyp_p) }
 end
-
-
 
 @[simp] lemma weakening {q} (h : T ⊢̇ q) (p) : T ¦ p ⊢̇ q :=
 inclusion h (λ x h, theory.add.old h)
@@ -154,7 +170,7 @@ begin
   exact this.MP h₁
 end
 
-lemma contra {p q} : (T ⊢̇ ¬̇p →̇ ¬̇q) ↔ (T ⊢̇ q →̇ p) :=
+lemma contrapose {p q} : (T ⊢̇ ¬̇p →̇ ¬̇q) ↔ (T ⊢̇ q →̇ p) :=
 ⟨λ h, (show T ⊢̇ (¬̇p →̇ ¬̇q) →̇ q →̇ p, by simp).MP h, λ h,
   by { refine (show T ⊢̇ (¬̇¬̇q →̇ ¬̇¬̇p) →̇ ¬̇p →̇ ¬̇q, by simp).MP _,
        have : T ⊢̇ ¬̇¬̇q →̇ p, from (show T ⊢̇ ¬̇¬̇q →̇ q, by simp).imp_trans h,
@@ -167,7 +183,7 @@ begin
     have lmm₂ : T ¦ p ⊢̇ ¬̇p, from (weakening h _).MP lmm₁,
     exact explosion lmm₁ lmm₂ },
   have : T ⊢̇ p →̇ ¬̇(p →̇ ¬̇p), from deduction.mp this,
-  have : T ⊢̇ (p →̇ ¬̇p) →̇ ¬̇p, from (dni _).imp_trans (contra.mpr this),
+  have : T ⊢̇ (p →̇ ¬̇p) →̇ ¬̇p, from (dni _).imp_trans (contrapose.mpr this),
   exact this.MP h
 end
 
@@ -179,20 +195,29 @@ neg_hyp (deduction.mp (explosion h₁ h₂))
    { have : T ¦ ¬̇p ¦ p ⊢̇ ¬̇q, 
      from explosion (show T ¦ ¬̇p ¦ p ⊢̇ p, by simp) (show T ¦ ¬̇p ¦ p ⊢̇ ¬̇p, by simp),
      have : T ⊢̇ ¬̇p →̇ p →̇ ¬̇q, from (deduction.mp (deduction.mp this)),
-     have : T ⊢̇ ¬̇(p →̇ ¬̇q) →̇ p := (contra.mpr this).imp_trans (by simp),
+     have : T ⊢̇ ¬̇(p →̇ ¬̇q) →̇ p := (contrapose.mpr this).imp_trans (by simp),
      exact this.MP h },
    { have : T ⊢̇ ¬̇q →̇ p →̇ ¬̇q, simp,
-     have : T ⊢̇ ¬̇(p →̇ ¬̇q) →̇ q, from (contra.mpr this).imp_trans (by simp),
+     have : T ⊢̇ ¬̇(p →̇ ¬̇q) →̇ q, from (contrapose.mpr this).imp_trans (by simp),
      exact this.MP h } },
  λ h, by {simp[form.and], rcases h with ⟨h₁, h₂⟩,
    show T ⊢̇ ¬̇(p →̇ ¬̇q),
    have : T ¦ p →̇ ¬̇q ⊢̇ ¬̇q, from (add _ _).MP (by simp[h₁]),
    have : T ⊢̇ (p →̇ ¬̇q) →̇ ¬̇q, from deduction.mp this,
-   have : T ⊢̇ q →̇ ¬̇(p →̇ ¬̇q), from (dni _).imp_trans (contra.mpr this),
+   have : T ⊢̇ q →̇ ¬̇(p →̇ ¬̇q), from (dni _).imp_trans (contrapose.mpr this),
    exact this.MP h₂ }⟩
 
 @[simp] lemma iff {p q} : (T ⊢̇ p ↔̇ q) ↔ (T ⊢̇ p →̇ q ∧ T ⊢̇ q →̇ p) :=
 by simp[form.iff]
+
+@[simp] lemma neg_imp {p q} : (T ⊢̇ ¬̇(p →̇ q)) ↔ (T ⊢̇ p ⩑ ¬̇q) :=
+begin
+  simp only [form.and], split; intros h,
+  { apply raa (p →̇ q),
+    { have : T ¦ p →̇ ¬̇¬̇q ⊢̇ p →̇ ¬̇¬̇q, from add _ _, simp* at * },
+    { simp[h] } },
+  { apply raa (p →̇ ¬̇¬̇q); simp[h] }
+end
 
 lemma subst₁ {p} (h : T ⊢̇ Ȧp) (t) : T ⊢̇ p.(t) :=
 (show T ⊢̇ Ȧp →̇ p.(t), by simp).MP h
@@ -207,14 +232,21 @@ begin
   sorry
 end
 
-@[simp] lemma sf_dsb {p : form L} : ⇑T ¦ p.sf = ⇑(T ¦ p) :=
+lemma add_sf (p) : ⇑(T ¦ Ȧp) ⊢̇ p :=
+by { have : ⇑(T ¦ Ȧp) ⊢̇ (Ȧp).sf, rw ← sf_dsb, simp,simp[form.sf] at this,
+     have := subst₁ this #0, simp[form.subst₁] at this,
+     have eqn : (λ n, (#0 ^ˢ (λ x, #(x + 1 + 1)) $ n).rew (#0 ^ˢ vecterm.var)) = (idvar : ℕ → vecterm L 1),
+      { funext n, cases n; simp[vecterm.rew] }, simp [eqn] at this, exact this }
+
+
+lemma sf_sf {p} (h : T ⊢̇ p) : ⇑T ⊢̇ p.sf :=
 begin
-  ext x, split; intros h,
-  { cases h with h hx, refine theory.sf.intro theory.add.new,
-    cases hx with p hp, refine theory.sf.intro (theory.add.old hp) },
-  { cases h with q hq, cases hq with _ hq, refine theory.add.new,
-    refine theory.add.old (theory.sf.intro hq) }
+  induction h,
+  case fopl.provable.GE : T p h IH
+  { simp[form.sf, form.rew], 
+    have := GE IH, }
 end
+
 
 lemma use {p : form L} (t) (h : T ⊢̇ p.(t)) : T ⊢̇ Ėp :=
 begin
@@ -246,10 +278,48 @@ end
 lemma dummy_fal_quantifir (p) : T ⊢̇ p ↔̇ Ȧ(p.sf) :=
 by { have : T ⊢̇ Ȧp.sf →̇ p.sf.(#0), from provable.q1, simp* at * }
 
+@[simp] lemma dummy_fal_quantifir_iff {p : form L} : T ⊢̇ Ȧ(p.sf) ↔ T ⊢̇ p :=
+by { have := provable.iff.mp (@dummy_fal_quantifir _ T p), split,
+     { refine λ h, (this.2.MP h) },
+     { refine λ h, (this.1.MP h) } }
+
 lemma dummy_ex_quantifir (p) : T ⊢̇ p ↔̇ Ė(p.sf) :=
 by { simp[form.ex], split,
-     { refine contra.mp _, simp, exact (provable.iff.mp (dummy_fal_quantifir ¬̇p)).2 },
-     { refine contra.mp _, simp, exact (provable.iff.mp (dummy_fal_quantifir ¬̇p)).1 } }
+     { refine contrapose.mp _, simp, exact (provable.iff.mp (dummy_fal_quantifir ¬̇p)).2 },
+     { refine contrapose.mp _, simp, exact (provable.iff.mp (dummy_fal_quantifir ¬̇p)).1 } }
+
+lemma prenex_fal_quantifir_imp1 (p q) : T ⊢̇ (Ȧp →̇ q) ↔̇ Ė(p →̇ q.sf) :=
+begin
+  simp[form.ex], split,
+  { apply contrapose.mp, simp, apply deduction.mp,
+    have : ⇑(T ¦ Ȧ¬̇(p →̇ q.sf)) ⊢̇ ¬̇(p →̇ q.sf), from add_sf _,
+    have lmm₂ : T ¦ Ȧ¬̇(p →̇ q.sf) ⊢̇ Ȧp, { simp at this, refine GE this.1 },
+    have lmm₃ : T ¦ Ȧ¬̇(p →̇ q.sf) ⊢̇ ¬̇q,
+    { simp at this, rw ← dummy_fal_quantifir_iff, refine GE this.2 },
+    simp, refine ⟨lmm₂, lmm₃⟩ },
+  { apply contrapose.mp, simp, refine deduction.mp (GE _), simp,
+    have : ⇑(T ¦ ¬̇(Ȧp →̇ q)) ⊢̇ (¬̇(Ȧp →̇ q)).sf,
+    { rw ← sf_dsb, from add _ _ },
+    simp[form.sf, form.rew] at this,
+    have lmm₁ : ⇑(T ¦ ¬̇(Ȧp →̇ q)) ⊢̇ p,
+    { have := this.1.subst₁ #0, simp[form.subst₁, form.rew] at this,
+      have eqn : (λ n, (#0 ^ˢ (λ x, #(x + 1 + 1)) $ n).rew (#0 ^ˢ vecterm.var)) = (idvar : ℕ → vecterm L 1),
+      { funext n, cases n; simp[vecterm.rew] }, simp[eqn] at this, exact this },
+    have lmm₂ : ⇑(T ¦ ¬̇(Ȧp →̇ q)) ⊢̇ ¬̇q.sf,
+    { exact this.2 },
+    refine ⟨lmm₁, lmm₂⟩ }
+end
+
+lemma prenex_ex_quantifir_imp2 (p q) : T ⊢̇ (p →̇ Ėq) ↔̇ Ė(p.sf →̇ q) :=
+begin
+  have := @prenex_fal_quantifir_imp1 _ T ¬̇q ¬̇p, simp at*, split,
+  {  }
+
+
+
+
+end
+
 
 end provable
 

@@ -49,14 +49,19 @@ def form.iff (p : form L) (q : form L) : form L := (p →̇ q) ⩑ (q →̇ p)
 infix ` ↔̇ `:74 := form.iff
 
 def form.ex (p : form L) : form L := ¬̇Ȧ¬̇p
-
 prefix `Ė`:90 := form.ex
 
-def slide {α : Type*} (a : α) (s : ℕ → α) : ℕ → α
+def form.T : form L := Ȧ(#0 =̇ #0)
+notation `⊤̇` := form.T
+
+def form.F : form L := ¬̇⊤̇
+notation `⊥̇` := form.F
+
+@[simp] def slide {α : Type*} (a : α) (s : ℕ → α) : ℕ → α
 | 0     := a
 | (m+1) := s m
 
-def embed {α : Type*} (a : α) (s : ℕ → α) : ℕ → α
+@[simp] def embed {α : Type*} (a : α) (s : ℕ → α) : ℕ → α
 | 0     := a
 | (m+1) := s (m+1)
 
@@ -96,7 +101,7 @@ def arity : ∀ {n}, vecterm L n → ℕ
 
 @[simp] lemma sf_rew_eq {n} (t : vecterm L n) (t₀ : term L) (s : ℕ → term L) :
   t.sf.rew (t₀ ^ˢ s) = t.rew s :=
-by cases t; by simp[rew, sf, slide]
+by cases t; by simp[rew, sf]
 
 @[simp] lemma rew_idvar {n} (t : vecterm L n) : t.rew idvar = t :=
 by induction t; simp[rew]; simp*
@@ -110,7 +115,7 @@ lemma rew_rew {s₀ s₁ : ℕ → term L} : ∀ {n} (t : vecterm L n),
 | _ (app f v)  h := by simp[rew, arity] at h ⊢; refine rew_rew _ h
 
 @[simp] lemma sf_rew {n} (t : vecterm L n) (u) (s) : t.sf.rew (u ^ˢ s) = t.rew s :=
-by simp[vecterm.sf, vecterm.rew, slide]
+by simp[vecterm.sf, vecterm.rew]
 
 end vecterm
 
@@ -145,6 +150,15 @@ def subst₁ (p : form L) (x : term L) := p.rew (x ^ˢ idvar)
 
 notation p`.(`x`)` := p.subst₁ x
 
+/-
+@[simp] lemma app_subst₁ {n} (p : L.pr n) (v : vecterm L n) (t) : (app p v).(t) = app p v.(t) := rfl
+@[simp] lemma eq_subst₁ (t u : vecterm L 1) (v) : (t =̇ u).(v) = t.rew (v ^ˢ idvar) =̇ u.rew (v ^ˢ idvar) := rfl
+@[simp] lemma imply_subst₁ (p q : form L) (t) : (p →̇ q).(t) = p.(t) →̇ q.(t) := rfl
+@[simp] lemma neg_subst₁ (p : form L) (t) : (¬̇p).(t) = ¬̇p.(t) := rfl
+@[simp] lemma and_subst₁ (p q : form L) (t) : (p ⩑ q).(t) = p.(t) ⩑ q.(t) := rfl
+@[simp] lemma or_subst₁ (p q : form L) (t) : (p ⩒ q).(t) = p.(t) ⩒ q.(t) := rfl
+-/
+
 def subst₂ (p : form L) (x y : term L) := p.rew (x ^ˢ y^ˢ idvar) 
 
 notation p`.(`x`, `y`)` := p.subst₂ x y
@@ -160,12 +174,12 @@ notation p`.ᵉ(`x`)` := p.subst₁_e x
 | (p →̇ q)  _ _ := by simp[rew]; refine ⟨nested_rew p _ _, nested_rew q _ _⟩
 | (¬̇p)      _ _ := by simp[rew]; refine nested_rew p _ _
 | (Ȧp)      _ _ := by { simp[rew, nested_rew p], congr,
-    funext n, cases n; simp[slide, vecterm.rew, vecterm.sf] }
+    funext n, cases n; simp[vecterm.rew, vecterm.sf] }
 
 @[simp] lemma rew_idvar (p : form L) : p.rew idvar = p :=
 by { induction p; simp[rew]; try {simp*},
      have : (#0 ^ˢ λ x, #(x+1) : ℕ → term L) = idvar,
-     { funext n, cases n; simp[slide] }, simp* }
+     { funext n, cases n; simp }, simp* }
 
 lemma rew_rew : ∀ (p : form L) {s₀ s₁ : ℕ → term L},
   (∀ m, m < p.arity → s₀ m = s₁ m) → p.rew s₀ = p.rew s₁
@@ -176,7 +190,7 @@ lemma rew_rew : ∀ (p : form L) {s₀ s₁ : ℕ → term L},
     refine ⟨rew_rew _ (λ _ e, h _ (or.inl e)), rew_rew _ (λ _ e, h _ (or.inr e))⟩
 | (¬̇p)      _ _ h := by simp[rew, arity] at h ⊢; refine rew_rew _ h
 | (Ȧp)      _ _ h := by { simp[rew, arity] at h ⊢,
-    refine rew_rew _ (λ m e, _), cases m; simp[slide],
+    refine rew_rew _ (λ m e, _), cases m; simp,
     cases p.arity, { exfalso, simp* at* },
     { simp at h, simp[h _ (nat.succ_lt_succ_iff.mp e)] } }
 
@@ -185,7 +199,10 @@ by { suffices : rew s p = rew idvar p, { simp* },
      refine rew_rew _ _, simp[show p.arity = 0, from h] }
 
 @[simp] lemma sf_subst (p : form L) (t) : p.sf.(t) = p :=
-by simp[form.sf, form.subst₁, vecterm.rew, slide]
+by simp[form.sf, form.subst₁, vecterm.rew]
+
+@[simp] lemma sf_rew (p : form L) (t s) : p.sf.rew (t ^ˢ s) = p.rew s :=
+by simp[form.sf, vecterm.rew]
 
 @[simp] def op : form L → bool
 | (app p v) := tt
