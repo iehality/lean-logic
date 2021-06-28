@@ -13,7 +13,7 @@ inductive langp : ℕ → Type
 
 def AL : language := ⟨langf, langp⟩
 
-@[reducible] def symbol.zero : term AL := vecterm.app langf.zero vecterm.nil
+@[reducible] def symbol.zero : term AL := vecterm.const langf.zero
 
 notation `Ż` := symbol.zero
 

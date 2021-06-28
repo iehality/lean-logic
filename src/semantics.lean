@@ -13,15 +13,16 @@ structure model (L : language.{u}) :=
 
 variables {L : language.{u}} {M : model L}
 
-@[simp] def vecterm.val (e : ℕ → M.dom) : ∀ {n} (t : vecterm L n), dvector M.dom n
-| _ vecterm.nil        := nil
+@[simp] def vecterm.val (e : ℕ → M.dom) : ∀ {n} (t : vecterm L n), dvector M.dom (n+1)
 | _ (vecterm.cons a v) := a.val.append v.val
 | _ (#x)               := unary (e x)
+| _ (vecterm.const c)  := unary (M.fn c dvector.nil)
 | _ (vecterm.app f v)  := unary (M.fn f v.val)
 
 @[simp] def term.val (e : ℕ → M.dom) (t : term L) : M.dom := (t.val e).extract
 
 @[simp] def form.val : (ℕ → M.dom) → form L → Prop
+| _ (form.const c) := M.pr c dvector.nil
 | e (form.app p v) := M.pr p (v.val e)
 | e (t =̇ u)        := t.val e = u.val e
 | e (p →̇ q)       := p.val e → q.val e
@@ -36,9 +37,9 @@ infix ` ⊧ₜₕ `:50 := modelsth
 
 lemma rew_val_eq : ∀ (s : ℕ → term L) {n} (t : vecterm L n) (e : ℕ → M.dom),
   (t.rew s).val e = t.val (λ n, (s n).val e)
-| _ _ vecterm.nil        _ := rfl
 | _ _ (vecterm.cons a v) _ := by simp[vecterm.rew, rew_val_eq _ a, rew_val_eq _ v]
 | _ _ (#x)               _ := by simp[vecterm.rew, term.val]
+| _ _ (vecterm.const c)  _ := rfl 
 | _ _ (vecterm.app f v)  _ := by simp[vecterm.rew, rew_val_eq _ v]
 
 @[simp] lemma sf_slide_val {n} (t : vecterm L n) : ∀ (e : ℕ → M.dom) d, t.sf.val (d ^ˢ e) = t.val e :=
@@ -46,6 +47,7 @@ by induction t; simp[slide]; simp*
 
 lemma rew_val_iff : ∀ (s : ℕ → term L) (p : form L) (e : ℕ → M.dom),
   (p.rew s).val e ↔ p.val (λ n, (s n).val e)
+| _ (form.const c) _ := by simp[form.rew]
 | _ (form.app p v) _ := by simp[form.rew, rew_val_eq]
 | _ (t =̇ u)        _ := by simp[form.rew, term.val, rew_val_eq]
 | _ (p →̇ q)       _ := by simp[form.rew, rew_val_iff _ p, rew_val_iff _ q]
@@ -56,6 +58,7 @@ lemma rew_val_iff : ∀ (s : ℕ → term L) (p : form L) (e : ℕ → M.dom),
     simp[this] }
 
 @[simp] lemma sf_slide_val_iff : ∀ (p : form L) (e : ℕ → M.dom) d, p.sf.val (d ^ˢ e) = p.val e
+| (form.const c) _ _ := rfl
 | (form.app p v) _ _ := by simp
 | (t =̇ u)        _ _ := by simp[term.val]
 | (p →̇ q)       _ _ := by simp[sf_slide_val_iff p, sf_slide_val_iff q]

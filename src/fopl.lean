@@ -12,23 +12,23 @@ namespace fopl
 variables (L : language.{u})
 
 inductive vecterm (L : language.{u}) : ℕ → Type u
-| nil {} : vecterm 0
-| cons   : ∀ {n : ℕ}, vecterm 1 → vecterm n → vecterm (n+1)
-| var {} : ℕ → vecterm 1
-| app    : ∀ {n : ℕ}, L.fn n → vecterm n → vecterm 1
+| cons   : ∀ {n : ℕ}, vecterm 0 → vecterm n → vecterm (n+1)
+| var {} : ℕ → vecterm 0
+| const  : L.fn 0 → vecterm 0
+| app    : ∀ {n : ℕ}, L.fn (n+1) → vecterm n → vecterm 0
 
 prefix `#`:max := vecterm.var
 
-@[reducible] def term : Type u := vecterm L 1
+@[reducible] def term : Type u := vecterm L 0
 
 inductive form : Type u
-| app   : ∀ {n : ℕ}, L.pr n → vecterm L n → form
+| const : L.pr 0 → form
+| app   : ∀ {n : ℕ}, L.pr (n+1) → vecterm L n → form
 | equal : term L → term L → form
 | imply : form → form → form
 | neg : form → form
 | fal : form → form
 
-instance : has_emptyc (vecterm L 0) := ⟨vecterm.nil⟩
 infix ` =̇ `:90 := form.equal
 infixr ` →̇ `:78 := form.imply
 prefix `¬̇`:94 := form.neg
@@ -74,29 +74,29 @@ infixr ` ^ᵉ `:max := embed
 namespace vecterm
 
 def rew (s : ℕ → term L) : ∀ {n}, vecterm L n → vecterm L n
-| _ nil        := nil
 | _ (cons a v) := cons a.rew v.rew
 | _ (#x)       := s x
+| _ (const c)  := const c
 | _ (app f v)  := app f v.rew
 
 def sf {n} (t : vecterm L n) : vecterm L n := t.rew (λ x, #(x+1))
 
-@[simp] lemma nil_sf : (nil : vecterm L 0).sf = nil := rfl
-@[simp] lemma cons_sf (a : vecterm L 1) {n} (v : vecterm L n) : (cons a v).sf = cons a.sf v.sf := rfl
+@[simp] lemma cons_sf (a : term L) {n} (v : vecterm L n) : (cons a v).sf = cons a.sf v.sf := rfl
 @[simp] lemma var_sf (n) : (#n : term L).sf = #(n + 1) := rfl
-@[simp] lemma app_sf {n} (f : L.fn n) (v : vecterm L n) : (app f v).sf = app f v.sf := rfl
+@[simp] lemma const_sf (c : L.fn 0) : (const c).sf = const c := rfl
+@[simp] lemma app_sf {n} (f : L.fn (n+1)) (v : vecterm L n) : (app f v).sf = app f v.sf := rfl
 
 def arity : ∀ {n}, vecterm L n → ℕ
-| _ nil        := 0
 | _ (cons a v) := max a.arity v.arity
 | _ (#n)       := n + 1
+| _ (const c)  := 0
 | _ (app f v)  := v.arity
 
 @[simp] lemma nested_rew (s₀ s₁) : ∀ {n} (t : vecterm L n),
   (t.rew s₀).rew s₁ = t.rew (λ x, (s₀ x).rew s₁)
-| _ nil := rfl
 | _ (cons a v) := by simp[rew, nested_rew]
 | _ (#x)       := by simp[rew]
+| _ (const c)  := by simp[rew]
 | _ (app f v)  := by simp[rew, nested_rew]
 
 @[simp] lemma sf_rew_eq {n} (t : vecterm L n) (t₀ : term L) (s : ℕ → term L) :
@@ -108,10 +108,10 @@ by induction t; simp[rew]; simp*
 
 lemma rew_rew {s₀ s₁ : ℕ → term L} : ∀ {n} (t : vecterm L n),
   (∀ m, m < t.arity → s₀ m = s₁ m) → t.rew s₀ = t.rew s₁
-| _ nil        _ := rfl
 | _ (cons a v) h := by simp[rew, arity] at h ⊢;
     refine ⟨rew_rew _ (λ _ e, h _ (or.inl e)), rew_rew _ (λ _ e, h _ (or.inr e))⟩
 | _ (#x)       h := by simp[rew, arity] at h ⊢; simp*
+| _ (const c)  _ := rfl
 | _ (app f v)  h := by simp[rew, arity] at h ⊢; refine rew_rew _ h
 
 @[simp] lemma sf_rew {n} (t : vecterm L n) (u) (s) : t.sf.rew (u ^ˢ s) = t.rew s :=
@@ -120,6 +120,7 @@ by simp[vecterm.sf, vecterm.rew]
 end vecterm
 
 def form.arity : form L → ℕ
+| (form.const c) := 0
 | (form.app p v) := v.arity
 | (t =̇ u)        := max t.arity u.arity
 | (p →̇ q)       := max p.arity q.arity
@@ -131,6 +132,7 @@ def sentence : set (form L) := {p | p.arity = 0}
 namespace form
 
 def rew : (ℕ → term L) → form L → form L
+| _ (const c) := const c 
 | s (app p v) := app p (v.rew s)
 | s (t =̇ u)   := (t.rew s) =̇ (u.rew s)
 | s (p →̇ q)  := p.rew s →̇ q.rew s
@@ -139,8 +141,10 @@ def rew : (ℕ → term L) → form L → form L
 
 def sf (p : form L) : form L := p.rew (λ x, #(x+1))
 
-@[simp] lemma app_sf {n} (p : L.pr n) (v : vecterm L n) : (app p v).sf = app p v.sf := rfl
-@[simp] lemma eq_sf (t u : vecterm L 1) : (t =̇ u).sf = t.sf =̇ u.sf := rfl
+
+@[simp] lemma const_sf (c : L.pr 0) : (const c).sf = const c := rfl
+@[simp] lemma app_sf {n} (p : L.pr (n+1)) (v : vecterm L n) : (app p v).sf = app p v.sf := rfl
+@[simp] lemma eq_sf (t u : term L) : (t =̇ u).sf = t.sf =̇ u.sf := rfl
 @[simp] lemma imply_sf (p q : form L) : (p →̇ q).sf = p.sf →̇ q.sf := rfl
 @[simp] lemma neg_sf (p : form L) : (¬̇p).sf = ¬̇p.sf := rfl
 @[simp] lemma and_sf (p q : form L) : (p ⩑ q).sf = p.sf ⩑ q.sf := rfl
@@ -169,6 +173,7 @@ notation p`.ᵉ(`x`)` := p.subst₁_e x
 
 @[simp] lemma nested_rew : ∀ (p : form L) (s₀ s₁),
   (p.rew s₀).rew s₁ = p.rew (λ x, (s₀ x).rew s₁)
+| (const c) _ _ := rfl
 | (app p v) _ _ := by simp[rew]
 | (t =̇ u)   _ _ := by simp[rew]
 | (p →̇ q)  _ _ := by simp[rew]; refine ⟨nested_rew p _ _, nested_rew q _ _⟩
@@ -183,6 +188,7 @@ by { induction p; simp[rew]; try {simp*},
 
 lemma rew_rew : ∀ (p : form L) {s₀ s₁ : ℕ → term L},
   (∀ m, m < p.arity → s₀ m = s₁ m) → p.rew s₀ = p.rew s₁
+| (const c) _ _ _ := rfl
 | (app p v) _ _ h := by simp[rew, arity] at h ⊢; refine vecterm.rew_rew _ h
 | (t =̇ u)   _ _ h := by simp[rew, arity] at h ⊢;
     refine ⟨vecterm.rew_rew _ (λ _ e, h _ (or.inl e)), vecterm.rew_rew _ (λ _ e, h _ (or.inr e))⟩
@@ -205,6 +211,7 @@ by simp[form.sf, form.subst₁, vecterm.rew]
 by simp[form.sf, vecterm.rew]
 
 @[simp] def op : form L → bool
+| (const c) := tt
 | (app p v) := tt
 | (t =̇ u)   := tt
 | (p →̇ q)  := p.op && q.op

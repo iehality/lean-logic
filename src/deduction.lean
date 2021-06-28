@@ -235,7 +235,7 @@ end
 lemma add_sf (p) : ⇑(T ¦ Ȧp) ⊢̇ p :=
 by { have : ⇑(T ¦ Ȧp) ⊢̇ (Ȧp).sf, rw ← sf_dsb, simp,simp[form.sf] at this,
      have := subst₁ this #0, simp[form.subst₁] at this,
-     have eqn : (λ n, (#0 ^ˢ (λ x, #(x + 1 + 1)) $ n).rew (#0 ^ˢ vecterm.var)) = (idvar : ℕ → vecterm L 1),
+     have eqn : (λ n, (#0 ^ˢ (λ x, #(x + 1 + 1)) $ n).rew (#0 ^ˢ vecterm.var)) = (idvar : ℕ → vecterm L 0),
       { funext n, cases n; simp[vecterm.rew] }, simp [eqn] at this, exact this }
 
 
@@ -303,7 +303,7 @@ begin
     simp[form.sf, form.rew] at this,
     have lmm₁ : ⇑(T ¦ ¬̇(Ȧp →̇ q)) ⊢̇ p,
     { have := this.1.subst₁ #0, simp[form.subst₁, form.rew] at this,
-      have eqn : (λ n, (#0 ^ˢ (λ x, #(x + 1 + 1)) $ n).rew (#0 ^ˢ vecterm.var)) = (idvar : ℕ → vecterm L 1),
+      have eqn : (λ n, (#0 ^ˢ (λ x, #(x + 1 + 1)) $ n).rew (#0 ^ˢ vecterm.var)) = (idvar : ℕ → vecterm L 0),
       { funext n, cases n; simp[vecterm.rew] }, simp[eqn] at this, exact this },
     have lmm₂ : ⇑(T ¦ ¬̇(Ȧp →̇ q)) ⊢̇ ¬̇q.sf,
     { exact this.2 },
