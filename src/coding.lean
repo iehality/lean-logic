@@ -129,6 +129,24 @@ mk' ⟨vecterm.encode, (λ e, of_nat_vecterm L e n),
      of_nat_vecterm_encode,
      (λ e, encode_of_nat_vecterm e n)⟩
 
+def form.encode : form L → ℕ
+| (form.const c)      := (bit0 $ bit0 (encode c))
+| (@form.app _ n p v) := (bit0 $ bit1 n.mkpair ((encode p).mkpair v.encode))
+| (t =̇ u)             := (bit1 $ bit0 $ bit0 (t.encode.mkpair u.encode))
+| (p →̇ q)            := (bit1 $ bit0 $ bit1 (p.encode.mkpair q.encode))
+| (¬̇p)                := (bit1 $ bit1 $ bit0 p.encode)
+| (Ȧp)                := (bit1 $ bit1 $ bit1 p.encode)
 
+def of_nat_form (L : language.{u}) [∀ n, denumerable (L.fn n)] [∀ n, denumerable (L.pr n)] : ℕ → form L
+| e :=
+  match e.bodd, e.div2.bodd, e.div2.div2.bodd with
+  | ff, ff, _  := form.const (of_nat _ e.div2.div2)
+  | ff, tt, _  := form.app (of_nat (L.pr $ e.div2.div2.unpair.1 + 1) e.div2.div2.unpair.2.unpair.1)
+      (of_nat (vecterm L _) e.div2.div2.unpair.2.unpair.2)
+  | tt, ff, ff := (of_nat (vecterm L 1) e.div2.div2.div2.unpair.1) =̇ (of_nat (vecterm L 1) e.div2.div2.div2.unpair.2)
+  | tt, ff, tt := (of_nat_form e.div2.div2.div2.unpair.1) →̇ (of_nat_form e.div2.div2.div2.unpair.2)
+  | tt, tt, ff := ¬̇(of_nat_form e.div2.div2.div2)
+  | tt, tt, tt := Ȧ(of_nat_form e.div2.div2.div2)
+  end
 
 end fopl
