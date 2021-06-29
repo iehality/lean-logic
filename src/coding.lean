@@ -29,7 +29,7 @@ end nat
 
 
 namespace fopl
-variables {L : language.{u}} [∀ n, denumerable (L.fn n)]
+variables {L : language.{u}} [∀ n, denumerable (L.fn n)] [∀ n, denumerable (L.pr n)]
 /- inductive vecterm (L : language.{u}) : ℕ → Type u
 | nil {} : vecterm 0
 | cons   : ∀ {n : ℕ}, vecterm 1 → vecterm n → vecterm (n+1)
@@ -44,96 +44,91 @@ variables {L : language.{u}} [∀ n, denumerable (L.fn n)]
 
 def vecterm.encode : ∀ {n}, vecterm L n → ℕ
 | _ (vecterm.cons a v)     := (a.encode.mkpair v.encode)
-| _ #(n)                   := (bit0 n)
-| _ (vecterm.const c)      := (bit1 $ bit0 (encode c))
-| _ (@vecterm.app _ n f v) := (bit1 $ bit1 $ n.mkpair ((encode f).mkpair v.encode))
+| _ #0                     := 0
+| _ #1                     := 1
+| _ #(n+2)                   := (bit0 n) + 2
+| _ (vecterm.const c)      := (bit1 $ bit0 (encode c)) + 2
+| _ (@vecterm.app _ n f v) := (bit1 $ bit1 $ n.mkpair ((encode f).mkpair v.encode)) + 2
 
 def iterate0  (L) : ∀ n, vecterm L n
 | 0     := #0
 | (n+1) := vecterm.cons #0 (iterate0 n)
 
-
+def iterate01  (L) : ∀ n, vecterm L n
+| 0     := #1
+| (n+1) := vecterm.cons #0 (iterate01 n)
 
 def of_nat_vecterm (L : language.{u}) [∀ n, denumerable (L.fn n)] : ℕ → ∀ n, vecterm L n
 | 0     n     := iterate0 L n
-| (e+1) 0     :=
-  have (cond e.bodd e.div2.succ e.div2).div2.unpair.2.unpair.2 < e + 1 := 
-  by { suffices : (e+1).div2.div2.unpair.2.unpair.2 < e + 1, { simp* at* },
-       refine lt_of_le_of_lt (le_trans (nat.unpair_right_le _) $ le_trans (nat.unpair_right_le _) _) (nat.div2_lt e),
-       simp[nat.div2_val], refine nat.div_le_self _ _ },
-  match e.bodd, (e + 1).div2.bodd with
-  | tt, _  := #((e+1).div2)
-  | ff, ff := vecterm.const (of_nat (L.fn 0) ((e + 1).div2.div2))
-  | ff, tt := vecterm.app (of_nat (L.fn ((e + 1).div2.div2.unpair.1 + 1)) (e+ 1).div2.div2.unpair.2.unpair.1)
-    (of_nat_vecterm ((e + 1).div2.div2.unpair.2.unpair.2) (e + 1).div2.div2.unpair.1)
-  end
-| 1     (n+1) := vecterm.cons #0 
-| (e+1) (n+1) := 
-  have e.unpair.1 < e + 1 := nat.lt_succ_iff.mpr (nat.unpair_left_le _),
-  have e.unpair.2 < e + 1 := nat.lt_succ_iff.mpr (nat.unpair_right_le _),
-    vecterm.cons (of_nat_vecterm (e.unpair.1) 0) (of_nat_vecterm (e.unpair.2) n) 
+| 1     n     := iterate01 L n
+| (e+2) 0     :=
+    have div2222 : e.div2.div2.unpair.2.unpair.2 ≤ e :=
+    by { simp[nat.div2_val], 
+         refine (le_trans _ (le_trans (nat.div_le_self (e/2) 2) (nat.div_le_self e 2))), 
+         refine le_trans (nat.unpair_right_le _) (nat.unpair_right_le _) },
+    have e.div2.div2.unpair.2.unpair.2 < e + 2 :=  nat.lt_succ_iff.mpr (le_add_right div2222),
+    match e.bodd, e.div2.bodd with
+    | ff, _  := #(e.div2+2)
+    | tt, ff := vecterm.const (of_nat (L.fn 0) (e.div2.div2))
+    | tt, tt := vecterm.app (of_nat (L.fn (e.div2.div2.unpair.1 + 1)) e.div2.div2.unpair.2.unpair.1)
+      (of_nat_vecterm (e.div2.div2.unpair.2.unpair.2) e.div2.div2.unpair.1)
+    end
+| (e+2) (n+1) := 
+  have (e+2).unpair.1 < e + 2 := nat.unpair_lt (sup_eq_left.mp rfl),
+  have (e+2).unpair.2 < e + 2 := nat.unpair_lt2 ((cmp_eq_lt_iff 1 (e + 2)).mp rfl),
+    vecterm.cons (of_nat_vecterm ((e+2).unpair.1) 0) (of_nat_vecterm ((e+2).unpair.2) n) 
 using_well_founded { rel_tac := λ _ _, `[exact ⟨_, measure_wf psigma.fst⟩]  }
 
-private lemma iterate0_encode : ∀ n, vecterm.encode (iterate0 L n) = 0
+
+@[simp] private lemma iterate0_encode : ∀ n, vecterm.encode (iterate0 L n) = 0
 | 0     := rfl
 | (n+1) := by {simp[iterate0, vecterm.encode, iterate0_encode n], refl }
 
+@[simp] private lemma iterate01_encode : ∀ n, vecterm.encode (iterate01 L n) = 1
+| 0     := rfl
+| (n+1) := by {simp[iterate01, vecterm.encode, iterate01_encode n], refl }
+
 private lemma encode_of_nat_vecterm : ∀ e n : ℕ, vecterm.encode (of_nat_vecterm L e n) = e
 | 0     n     := by simp[of_nat_vecterm, vecterm.encode, iterate0_encode]
-| (e+1) 0     := 
-  have (cond e.bodd e.div2.succ e.div2).div2.unpair.2.unpair.2 < e + 1 := 
-  by { suffices : (e+1).div2.div2.unpair.2.unpair.2 < e + 1, { simp* at* },
-       refine lt_of_le_of_lt (le_trans (nat.unpair_right_le _) $ le_trans (nat.unpair_right_le _) _) (nat.div2_lt e),
-       simp[nat.div2_val], refine nat.div_le_self _ _ },
-    have IH : _ := encode_of_nat_vecterm (e + 1).div2.div2.unpair.2.unpair.2,
-    by { suffices : (of_nat_vecterm L (e + 1) 0).encode = nat.bit e.bodd e.div2 + 1,
+| 1     n     := by simp[of_nat_vecterm, vecterm.encode, iterate01_encode]
+| (e+2) 0     := 
+    have div2222 : e.div2.div2.unpair.2.unpair.2 ≤ e :=
+    by { simp[nat.div2_val], 
+         refine (le_trans _ (le_trans (nat.div_le_self (e/2) 2) (nat.div_le_self e 2))), 
+         refine le_trans (nat.unpair_right_le _) (nat.unpair_right_le _) },
+    have e.div2.div2.unpair.2.unpair.2 < e + 2 :=  nat.lt_succ_iff.mpr (le_add_right div2222),
+    have IH : _ := encode_of_nat_vecterm e.div2.div2.unpair.2.unpair.2,
+    by { suffices : (of_nat_vecterm L (e + 2) 0).encode = nat.bit e.bodd e.div2 + 2,
          { simp[nat.bit_decomp, this] },
          cases C₁ : e.bodd,
-         suffices : (of_nat_vecterm L (e + 1) 0).encode = nat.bit ff (nat.bit e.div2.bodd e.div2.div2) + 1,
+         { simp [of_nat_vecterm, vecterm.encode, nat.bit, C₁] },
+         suffices : (of_nat_vecterm L (e + 2) 0).encode = nat.bit tt (nat.bit e.div2.bodd e.div2.div2) + 2,
          { simp[nat.bit_decomp, this] },
-         cases C₂ : e.div2.bodd; simp[C₁, C₂] at IH; simp [of_nat_vecterm, vecterm.encode, nat.bit, C₁, C₂, IH, bit1],
-         simp [of_nat_vecterm, vecterm.encode, nat.bit, C₁], sorry }
-| (e+1) (n+1) :=
-    have e.unpair.1 < e + 1 := nat.lt_succ_iff.mpr (nat.unpair_left_le _),
-    have e.unpair.2 < e + 1 := nat.lt_succ_iff.mpr (nat.unpair_right_le _),
-    have IH₁ : _ := encode_of_nat_vecterm e.unpair.1,
-    have IH₂ : _ := encode_of_nat_vecterm e.unpair.2,
-  by { simp [of_nat_vecterm, vecterm.encode, IH₁, IH₂], }
+         cases C₂ : e.div2.bodd; simp [of_nat_vecterm, vecterm.encode, nat.bit, C₁, C₂, IH, bit1] }
+| (e+2) (n+1) :=
+    have (e+2).unpair.1 < e + 2 := nat.unpair_lt (sup_eq_left.mp rfl),
+    have (e+2).unpair.2 < e + 2 := nat.unpair_lt2 ((cmp_eq_lt_iff 1 (e + 2)).mp rfl),
+    have IH₁ : _ := encode_of_nat_vecterm (e+2).unpair.1,
+    have IH₂ : _ := encode_of_nat_vecterm (e+2).unpair.2,
+  by { simp [of_nat_vecterm, vecterm.encode, IH₁, IH₂] }
 
-private lemma encode_of_nat_vecterm : ∀ e n : ℕ, vecterm.encode (of_nat_vecterm L e n) = e
-| 0     0     := by simp[of_nat_vecterm, vecterm.encode]
-| (e+1) 0     := 
-    have div8 : e.div2.div2 ≤ e :=
-      by { simp[nat.div2_val], exact le_trans (nat.div_le_self (e/2) 2) (nat.div_le_self e 2) },
-    have e.div2.div2.unpair.2.unpair.2 < e + 1 := nat.lt_succ_iff.mpr
-      (le_trans (by { refine le_trans (nat.unpair_right_le _) (le_trans (nat.unpair_right_le _) div8) }) (by refl)),
-    have IH : _ := encode_of_nat_vecterm e.div2.div2.unpair.2.unpair.2,
-    by { suffices : (of_nat_vecterm L (e + 1) 0).encode = nat.bit e.bodd e.div2 + 1,
-         { simp[nat.bit_decomp, this] },
-         cases C₁ : e.bodd, { simp[of_nat_vecterm, vecterm.encode, nat.bit, C₁] },
-         suffices : (of_nat_vecterm L (e + 1) 0).encode = nat.bit tt (nat.bit e.div2.bodd e.div2.div2) + 1,
-         { simp[nat.bit_decomp, this] },
-         cases C₂ : e.div2.bodd; simp [of_nat_vecterm, vecterm.encode, nat.bit, C₁, C₂, IH] }
-| 0     (n+1) := by { simp [of_nat_vecterm, vecterm.encode, encode_of_nat_vecterm 0 n], refl }
-| (e+1) (n+1) :=
-    have e.unpair.1 < e + 1 := nat.lt_succ_iff.mpr (nat.unpair_left_le _),
-    have e.unpair.2 < e + 1 := nat.lt_succ_iff.mpr (nat.unpair_right_le _),
-    have IH₁ : _ := encode_of_nat_vecterm e.unpair.1,
-    have IH₂ : _ := encode_of_nat_vecterm e.unpair.2,
-  by { simp [of_nat_vecterm, vecterm.encode, IH₁, IH₂], }
+private lemma of_nat_vecterm_encode : ∀ {n} (t : vecterm L n), of_nat_vecterm L (vecterm.encode t) n = t
+| (n+1) (vecterm.cons a v)     := by {
+    simp[of_nat_vecterm, vecterm.encode],
+    cases C₁ : a.encode.mkpair v.encode, simp[of_nat_vecterm, iterate0], simp at C₁,
+    have := of_nat_vecterm_encode v, }
+| _ #0                     := by simp[of_nat_vecterm, vecterm.encode, iterate0]
+| _ #1                     := by simp[of_nat_vecterm, vecterm.encode, iterate01]
+| _ #(n+2)                 := by simp[of_nat_vecterm, vecterm.encode]
+| _ (vecterm.const c)      := by simp[of_nat_vecterm, vecterm.encode]
+| _ (@vecterm.app _ n f v) := by { simp[of_nat_vecterm, vecterm.encode, of_nat_vecterm_encode v],
+      rw [nat.div2_bit1, nat.div2_bit1, nat.unpair_mkpair], simp* }
 
+instance (n) : denumerable (vecterm L n) :=
+mk' ⟨vecterm.encode, (λ e, of_nat_vecterm L e n),
+     of_nat_vecterm_encode,
+     (λ e, encode_of_nat_vecterm e n)⟩
 
-private lemma encode_of_nat_code [∀ n, denumerable (L.fn n)] : ∀ e : ℕ, vecterm.encode (of_nat_vecterm L e 0) = e
-| 0     := by simp[of_nat_vecterm, vecterm.encode]
-| (e+1) := by {
-    suffices : (of_nat_vecterm L (e + 1) 0).encode = nat.bit e.bodd e.div2 + 1,
-    { simp[nat.bit_decomp, this] },
-    cases C₁ : e.bodd, { simp[of_nat_vecterm, vecterm.encode, nat.bit, C₁] },
-    suffices : (of_nat_vecterm L (e + 1) 0).encode = nat.bit tt (nat.bit e.div2.bodd e.div2.div2) + 1,
-    { simp[nat.bit_decomp, this] },
-    cases C₂ : e.div2.bodd; simp [of_nat_vecterm, vecterm.encode, nat.bit, C₁, C₂],
-    {  }
-     }
 
 
 end fopl
