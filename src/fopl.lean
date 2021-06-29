@@ -51,11 +51,11 @@ infix ` ↔̇ `:74 := form.iff
 def form.ex (p : form L) : form L := ¬̇Ȧ¬̇p
 prefix `Ė`:90 := form.ex
 
-def form.T : form L := Ȧ(#0 =̇ #0)
-notation `⊤̇` := form.T
+def form.top : form L := Ȧ(#0 =̇ #0)
+notation `⊤̇` := form.top
 
-def form.F : form L := ¬̇⊤̇
-notation `⊥̇` := form.F
+def form.bot : form L := ¬̇⊤̇
+notation `⊥̇` := form.bot
 
 @[simp] def slide {α : Type*} (a : α) (s : ℕ → α) : ℕ → α
 | 0     := a

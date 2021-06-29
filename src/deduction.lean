@@ -74,7 +74,7 @@ begin
   refine l₂.MP l₃
 end
 
-@[simp] lemma prT : T ⊢̇ ⊤̇ := GE (by simp)
+@[simp] lemma top : T ⊢̇ ⊤̇ := GE (by simp)
 
 @[simp] lemma add (p) : T ¦ p ⊢̇ p :=
 AX (theory.add.new)
@@ -190,6 +190,9 @@ end
 lemma raa {p} (q) (h₁ : T ¦ p ⊢̇ q) (h₂ : T ¦ p ⊢̇ ¬̇q) : T ⊢̇ ¬̇p :=
 neg_hyp (deduction.mp (explosion h₁ h₂))
 
+@[simp] lemma hyp_bot (p) : T ⊢̇ ⊥̇ →̇ p :=
+by { apply deduction.mp, refine explosion (show T ¦ ⊥̇ ⊢̇ ⊤̇, by simp) (add _ _) }
+
 @[simp] lemma and {p q} : (T ⊢̇ p ⩑ q) ↔ (T ⊢̇ p ∧ T ⊢̇ q) :=
 ⟨λ h, by { simp[form.and] at h, split,
    { have : T ¦ ¬̇p ¦ p ⊢̇ ¬̇q, 
@@ -217,6 +220,18 @@ begin
     { have : T ¦ p →̇ ¬̇¬̇q ⊢̇ p →̇ ¬̇¬̇q, from add _ _, simp* at * },
     { simp[h] } },
   { apply raa (p →̇ ¬̇¬̇q); simp[h] }
+end
+
+lemma or_l (p q) : T ⊢̇ p →̇ p ⩒ q :=
+by simp[form.or]; refine deduction.mp (deduction.mp (explosion (show T ¦ p ¦ ¬̇p ⊢̇ p, by simp) (by simp)))
+
+lemma or_r (p q) : T ⊢̇ q →̇ p ⩒ q :=
+by simp[form.or]; refine deduction.mp (weakening h _)
+
+lemma hyp_or {p₁ p₂ q} : (T ⊢̇ p₁ →̇ q) → (T ⊢̇ p₂ →̇ q) → (T ⊢̇ p₁ ⩒ p₂ →̇ q) := λ h₁ h₂,
+begin
+  simp[form.or], apply contrapose.mp, refine deduction.mp _, simp,
+  refine ⟨deduction.mpr (contrapose.mpr h₁), deduction.mpr (contrapose.mpr h₂)⟩, 
 end
 
 lemma subst₁ {p} (h : T ⊢̇ Ȧp) (t) : T ⊢̇ p.(t) :=

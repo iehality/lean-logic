@@ -50,6 +50,11 @@ protected lemma lift_on₂_eq {φ} (p q : form L) (f : form L → form L → φ)
 @[simp] lemma of_eq_of {p q : form L} : ⟦p⟧.T = ⟦q⟧.T ↔ T ⊢̇ p ↔̇ q :=
 by simp[form.quo, form.equiv, quotient.eq']
 
+instance : has_le (Lindenbaum T) :=
+⟨λ p₁ p₂, Lindenbaum.lift_on₂ p₁ p₂ (λ p₁ p₂, T ⊢̇ p₁ →̇ p₂) $
+ λ p₁ p₂ q₁ q₂ hp hq, by { simp at*,
+   exact ⟨λ h, (hp.2.imp_trans h).imp_trans hq.1, λ h, (hp.1.imp_trans h).imp_trans hq.2⟩ }⟩
+
 def imply : Lindenbaum T → Lindenbaum T → Lindenbaum T :=
 λ p₁ p₂, Lindenbaum.lift_on₂ p₁ p₂ (λ p₁ p₂, ⟦p₁ →̇ p₂⟧.T) $
  λ p₁ p₂ q₁ q₂ hp hq, by { simp at*, split,
@@ -78,22 +83,18 @@ instance : has_mul (Lindenbaum T) :=
 instance : has_add (Lindenbaum T) :=
 ⟨λ p₁ p₂, Lindenbaum.lift_on₂ p₁ p₂ (λ p₁ p₂, ⟦p₁ ⩒ p₂⟧.T) $
  λ p₁ p₂ q₁ q₂ hp hq, by { simp at*, split,
-   { apply provable.deduction.mp,
-     have : T ¦ p₁ ⩑ p₂ ⊢̇ p₁ ⩑ p₂, from provable.add _ _, simp at *,
-     refine ⟨(show T ¦ p₁ ⩑ p₂ ⊢̇ p₁ →̇ q₁, by simp[hp]).MP this.1,
-       (show T ¦ p₁ ⩑ p₂ ⊢̇ p₂ →̇ q₂, by simp[hq]).MP this.2⟩ },
-   { apply provable.deduction.mp,
-     have : T ¦ q₁ ⩑ q₂ ⊢̇ q₁ ⩑ q₂, from provable.add _ _, simp at *,
-     refine ⟨(show T ¦ q₁ ⩑ q₂ ⊢̇ q₁ →̇ p₁, by simp[hp]).MP this.1,
-       (show T ¦ q₁ ⩑ q₂ ⊢̇ q₂ →̇ p₂, by simp[hq]).MP this.2⟩ } }⟩
+   { refine (provable.deduction.mp (provable.or_l _ (provable.deduction.mpr hp.1))).hyp_or
+       (provable.deduction.mp (provable.or_r _ (provable.deduction.mpr hq.1))) },
+   { refine (provable.deduction.mp (provable.or_l _ (provable.deduction.mpr hp.2))).hyp_or
+       (provable.deduction.mp (provable.or_r _ (provable.deduction.mpr hq.2))) }  }⟩
 
 instance : has_inv (Lindenbaum T) :=
 ⟨λ p, Lindenbaum.lift_on p (λ p, ⟦¬̇p⟧.T) $
  λ p₁ p₂ hyp, by { simp[provable.contrapose] at*, refine ⟨hyp.2, hyp.1⟩ }⟩
 
-instance : has_top (Lindenbaum T) := ⟨⟦⊤̇⟧.T⟩
+instance : has_one (Lindenbaum T) := ⟨⟦⊤̇⟧.T⟩
 
-instance : has_bot (Lindenbaum T) := ⟨⟦⊥̇⟧.T⟩
+instance : has_zero (Lindenbaum T) := ⟨⟦⊥̇⟧.T⟩
 
 def fal : Lindenbaum ⇑T → Lindenbaum T := λ p, Lindenbaum.lift_on p (λ p, ⟦Ȧp⟧.T) $
 λ p₁ p₂ hyp, by { simp at*, 
@@ -126,6 +127,16 @@ prefix `□`:80 := provable
 def refutable : Lindenbaum T → Prop := λ p, ¬□p⁻¹
 prefix `◇`:80 := refutable
 
+lemma le_antisymm {l k : Lindenbaum T} : l ≤ k → k ≤ l → l = k :=
+begin
+  induction l using fopl.Lindenbaum.ind_on,
+  induction k using fopl.Lindenbaum.ind_on,
+  simp[has_le.le], refine λ h₁ h₂, ⟨h₁, h₂⟩
+end
+
+lemma provable_GE {l : Lindenbaum ⇑T} : □l → □⨅l :=
+by { induction l using fopl.Lindenbaum.ind_on, simp[fal, provable], exact provable.GE }
+
 lemma provable_K {l k : Lindenbaum T} : □(l ⊐ k) → □l → □k :=
 begin
   induction l using fopl.Lindenbaum.ind_on,
@@ -133,13 +144,47 @@ begin
   simp[imply, provable], refine λ h₁ h₂, h₁.MP h₂
 end
 
-lemma provable_top  : □(⊤ : Lindenbaum T) :=
-by simp[has_top.top, provable]
+lemma double_inv (l : Lindenbaum T) : l⁻¹⁻¹ = l :=
+by induction l using fopl.Lindenbaum.ind_on; simp[has_inv.inv]
+
+#check provable.prenex_fal_quantifir_imp1 _ _
+
+lemma prenex_fal_quantifir_imp1  {l : Lindenbaum ⇑T} {k : Lindenbaum T} : ⨅l ⊐ k = ⨆(l ⊐ k.sf) := by sorry
+
+lemma prenex_fal_quantifir_neg  {l : Lindenbaum ⇑T} : (⨅l)⁻¹ = ⨆l⁻¹  := by sorry
+
+@[simp] lemma provable_one : □(1 : Lindenbaum T) :=
+by simp[has_one.one, provable]
+
+@[simp] lemma one_maximum {l : Lindenbaum T} : l ≤ 1 :=
+by induction l using fopl.Lindenbaum.ind_on; simp[has_one.one, has_le.le]
+
+@[simp] lemma zero_minimum {l : Lindenbaum T} : 0 ≤ l :=
+by induction l using fopl.Lindenbaum.ind_on; simp[has_zero.zero, has_le.le]
+
+lemma Box_iff {l : Lindenbaum T} : □l ↔ l = 1 :=
+by { split, 
+     { induction l using fopl.Lindenbaum.ind_on, simp[has_one.one, provable], intros hyp_l,
+       refine provable.deduction.mp (provable.weakening hyp_l _) },
+     { intros h, simp[h] } }
+
+lemma mul_le_l {l k : Lindenbaum T} : l * k ≤ l :=
+by { induction l using fopl.Lindenbaum.ind_on, induction k using fopl.Lindenbaum.ind_on,
+     simp[has_mul.mul, has_le.le], refine provable.deduction.mp _, have := provable.add T (l ⩑ k), simp* at * }
+
+lemma mul_le_r {l k : Lindenbaum T} : l * k ≤ k :=
+by { induction l using fopl.Lindenbaum.ind_on, induction k using fopl.Lindenbaum.ind_on,
+     simp[has_mul.mul, has_le.le], refine provable.deduction.mp _, have := provable.add T (l ⩑ k), simp* at * }
+
+lemma add_le_l {l k : Lindenbaum T} : l ≤ l + k :=
+by { induction l using fopl.Lindenbaum.ind_on, induction k using fopl.Lindenbaum.ind_on,
+     simp[has_add.add, has_le.le, provable.or_l] }
+
+lemma add_le_r {l k : Lindenbaum T} : k ≤ l + k :=
+by { induction l using fopl.Lindenbaum.ind_on, induction k using fopl.Lindenbaum.ind_on,
+     simp[has_add.add, has_le.le, provable.or_r] }
 
 
-instance : has_le (Lindenbaum T) :=
-⟨λ p₁ p₂, Lindenbaum.lift_on₂ p₁ p₂ (λ p₁ p₂, T ⊢̇ p₁ → T ⊢̇ p₂) $
- λ p₁ p₂ q₁ q₂ hp hq, by { simp at*, split, }⟩
 
 end Lindenbaum
 
