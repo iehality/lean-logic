@@ -52,10 +52,10 @@ infix ` ↔̇ `:74 := form.iff
 def form.ex (p : form L) : form L := ¬̇Ȧ¬̇p
 prefix `Ė`:90 := form.ex
 
-def form.top : form L := Ȧ(#0 =̇ #0)
+@[irreducible] def form.top : form L := Ȧ(#0 =̇ #0)
 notation `⊤̇` := form.top
 
-def form.bot : form L := ¬̇⊤̇
+@[irreducible] def form.bot : form L := ¬̇⊤̇
 notation `⊥̇` := form.bot
 
 instance : inhabited (form L) := ⟨⊥̇⟩
@@ -152,6 +152,8 @@ def sf (p : form L) : form L := p.rew (λ x, #(x+1))
 @[simp] lemma neg_sf (p : form L) : (¬̇p).sf = ¬̇p.sf := rfl
 @[simp] lemma and_sf (p q : form L) : (p ⩑ q).sf = p.sf ⩑ q.sf := rfl
 @[simp] lemma or_sf (p q : form L) : (p ⩒ q).sf = p.sf ⩒ q.sf := rfl
+@[simp] lemma top_sf : (⊤̇ : form L).sf = ⊤̇ := by simp[top]; refl
+@[simp] lemma bot_sf : (⊥̇ : form L).sf = ⊥̇ := by simp[bot]; refl
 
 def subst₁ (p : form L) (x : term L) := p.rew (x ^ˢ idvar) 
 
