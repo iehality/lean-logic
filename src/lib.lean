@@ -1,6 +1,8 @@
-import tactic
+import tactic data.equiv.encodable.basic
 
 universe u
+
+attribute [instance, priority 0] classical.prop_decidable
 
 inductive dvector (α : Type u) : ℕ → Type u
 | nil {} : dvector 0
@@ -23,5 +25,16 @@ variables {α : Type u}
 | _ nil      _ l := l
 | _ (a :: l) _ k := a :: (append l k)
 
-
 end dvector
+
+namespace encodable
+variables {α : Type u} [encodable α] [inhabited α] 
+
+def idecode (α : Type u) [encodable α] [inhabited α] : ℕ → α := λ n, (decode α n).iget 
+
+lemma idecode_surj : function.surjective (idecode α) := surjective_decode_iget _
+
+@[simp] lemma idecode_encodek : ∀ (a : α), idecode α (encode a) = a :=
+by simp[idecode, encodek]
+
+end encodable

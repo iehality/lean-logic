@@ -11,7 +11,10 @@ structure model (L : language.{u}) :=
 (fn : ∀ {n}, L.fn n → dvector dom n → dom)
 (pr : ∀ {n}, L.pr n → dvector dom n → Prop)
 
+
 variables {L : language.{u}} {M : model L}
+
+instance (M : model L) : inhabited M.dom := ⟨M.one⟩
 
 @[simp] def vecterm.val (e : ℕ → M.dom) : ∀ {n} (t : vecterm L n), dvector M.dom (n+1)
 | _ (vecterm.cons a v) := a.val.append v.val
@@ -105,7 +108,7 @@ end
 
 theorem model_consistent {T : theory L} : M ⊧ₜₕ T → T.consistent :=
 by { contrapose, simp[theory.consistent], intros p hp₁ hp₂ hyp,
-     exact soundness hp₂ hyp (λ _, M.one) (soundness hp₁ hyp (λ _, M.one)) }
+     exact soundness hp₂ hyp (λ _, (default M.dom)) (soundness hp₁ hyp (λ _, (default M.dom))) }
 
 @[simp] lemma models_ex {p} {e : ℕ → M.dom} : (Ėp).val e ↔ ∃ d, p.val (d ^ˢ e) :=
 by simp[form.ex, models, form.subst₁, rew_val_iff]

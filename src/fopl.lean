@@ -4,11 +4,12 @@ import tactic lib
 
 universe u
 
+namespace fopl
+
 structure language : Type (u+1) :=
 (fn : ℕ → Type u)
 (pr : ℕ → Type u)
 
-namespace fopl
 variables (L : language.{u})
 
 inductive vecterm (L : language.{u}) : ℕ → Type u
@@ -56,6 +57,8 @@ notation `⊤̇` := form.top
 
 def form.bot : form L := ¬̇⊤̇
 notation `⊥̇` := form.bot
+
+instance : inhabited (form L) := ⟨⊥̇⟩
 
 @[simp] def slide {α : Type*} (a : α) (s : ℕ → α) : ℕ → α
 | 0     := a
