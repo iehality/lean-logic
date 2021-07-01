@@ -14,13 +14,11 @@ instance : has_emptyc (theory L) := ⟨λ p, false⟩
 
 prefix `⇑`:max := theory.sf
 
-def form.equals : ∀ {n}, vecterm L n → vecterm L n → form L
+@[simp] def form.equals : ∀ {n}, vecterm L n → vecterm L n → form L
 | 0     t₁                   t₂                   := t₁ =̇ t₂
 | (n+1) (vecterm.cons t₁ v₁) (vecterm.cons t₂ v₂) := t₁ =̇ t₂ ⩑ form.equals v₁ v₂
 
 infix ` ≡̇ `:90 := form.equals
-
-notation v` ≃[`T :80`] `u:60 := vecterm.equiv T _ v u
 
 inductive provable : theory L → form L → Prop
 | GE : ∀ {T : theory L} {p}, provable ⇑T p → provable T (Ȧp)
@@ -160,6 +158,7 @@ theorem deduction {p q} : (T+{p} ⊢̇ q) ↔ (T ⊢̇ p →̇ q) :=
            cases h; simp* at* },
  λ h, by { have : T+{p} ⊢̇ p →̇ q, from weakening h p,
            exact this.MP (by simp) }⟩
+
 
 theorem proof_compact : ∀ {T : ℕ → theory L}, (∀ s, T s ⊆ T (s+1)) →
   ∀ {p}, {p | ∃ s, T s p} ⊢̇ p → ∃ s, T s ⊢̇ p :=
@@ -301,6 +300,36 @@ begin
   refine ⟨deduction.mpr (contrapose.mpr h₁), deduction.mpr (contrapose.mpr h₂)⟩, 
 end
 
+lemma hyp_and1 {p₁ p₂ q} : (T ⊢̇ p₁ →̇ q) → (T ⊢̇ p₁ ⩑ p₂ →̇ q) := λ h,
+begin
+  have : T+{p₁ ⩑ p₂} ⊢̇ p₁, { have : T+{p₁ ⩑ p₂} ⊢̇ p₁ ⩑ p₂, from add _ _, simp* at * },
+  refine deduction.mp ((show T+{p₁ ⩑ p₂} ⊢̇ p₁ →̇ q, by simp[h]).MP this)
+end
+
+lemma hyp_and2 {p₁ p₂ q} : (T ⊢̇ p₂ →̇ q) → (T ⊢̇ p₁ ⩑ p₂ →̇ q) := λ h,
+begin
+  have : T+{p₁ ⩑ p₂} ⊢̇ p₂, { have : T+{p₁ ⩑ p₂} ⊢̇ p₁ ⩑ p₂, from add _ _, simp* at * },
+  refine deduction.mp ((show T+{p₁ ⩑ p₂} ⊢̇ p₂ →̇ q, by simp[h]).MP this)
+end
+
+lemma conjunction_mem {P : list (form L)} : ∀ {p}, p ∈ P → ∅ ⊢̇ conjunction P →̇ p :=
+begin
+  induction P with p P IH; simp[conjunction],
+  have lmm₁ : ∅ ⊢̇ p ⩑ conjunction P →̇ p, from hyp_and1 (by simp),
+  have lmm₂ : ∀ q, q ∈ P → ∅ ⊢̇ p ⩑ conjunction P →̇ q, from λ q hq, hyp_and2 (IH hq),
+  refine ⟨lmm₁, lmm₂⟩
+end
+
+lemma conjunction_inclusion {P Q : list (form L)} : 
+  Q ⊆ P → ∅ ⊢̇ conjunction P →̇ conjunction Q :=
+begin
+  induction Q with q Q IH; simp[conjunction],
+  intros hyp_q hyp_Q,
+  have lmm₁ : ∅+{conjunction P} ⊢̇ q, from deduction.mpr (conjunction_mem hyp_q),  
+  have lmm₂ : ∅+{conjunction P} ⊢̇ conjunction Q, from deduction.mpr (IH hyp_Q),
+  refine deduction.mp (and.mpr ⟨lmm₁, lmm₂⟩)
+end
+
 private lemma conjunction_sf (P₀ : list (form L)) : (∀ p, p ∈ P₀ → ⇑T p) →
   ∃ P, (conjunction P).sf = conjunction P₀ ∧ (∀ p, p ∈ P → T p) :=
 begin
@@ -331,10 +360,15 @@ begin
       rw [←sf_dsb, eqn], refine deduction.mpr (inclusion prov (λ x hx, _)), cases hx },
     refine ⟨P, hyp_P, this⟩ },
   case fopl.provable.MP : T p q hyp_pq hyp_p IH₁ IH₂
-  { rcases IH₁ with ⟨P₁, IH₁⟩, rcases IH₂ with ⟨P₂, IH₂⟩,
+  { rcases IH₁ with ⟨P₁, IH₁, prov₁⟩, rcases IH₂ with ⟨P₂, IH₂, prov₂⟩,
     refine ⟨P₁ ++ P₂, _, _⟩,
-    { simp, intros p h, cases h, refine IH₁.1 _ h, refine IH₂.1 _ h },
-    { sorry } },
+    { simp, intros p h, cases h, refine IH₁ _ h, refine IH₂ _ h },
+    { have : ∅+{conjunction (P₁ ++ P₂)} ⊢̇ conjunction P₂, from deduction.mpr (conjunction_inclusion (by simp)),
+      have lmm₁ : ∅+{conjunction (P₁ ++ P₂)} ⊢̇ p, from (show _ ⊢̇ conjunction P₂ →̇ p, by simp[prov₂]).MP this,
+      have : ∅+{conjunction (P₁ ++ P₂)} ⊢̇ conjunction P₁, from deduction.mpr (conjunction_inclusion (by simp)),
+      have lmm₂ : ∅+{conjunction (P₁ ++ P₂)} ⊢̇ p →̇ q,
+      from (show _ ⊢̇ conjunction P₁ →̇ p →̇ q, by simp[prov₁]).MP this,
+      refine deduction.mp (lmm₂.MP lmm₁) } },
   case fopl.provable.AX : T p hyp_p
   { refine ⟨[p], _⟩, simp[conjunction],
     have : ∅ ⊢̇ p ⩑ ⊤̇ →̇ p,
@@ -356,29 +390,31 @@ end
 lemma subst₁ {p} (h : T ⊢̇ Ȧp) (t) : T ⊢̇ p.(t) :=
 (show T ⊢̇ Ȧp →̇ p.(t), by simp).MP h
 
-lemma subst₂ {p} (h : T ⊢̇ ȦȦp) (t u) : T ⊢̇ p.(t, u) :=
-begin
-  have : p.(t, u) = (p.rew (#0 ^ˢ u.sf ^ᵉ idvar)).(t),
-  { simp [form.subst₂, form.subst₁, form.nested_rew],
-    congr, funext n,
-    cases n; simp[slide, vecterm.rew],
-    cases n; simp[slide, embed, vecterm.rew] },
-  sorry
-end
-
 lemma add_sf (p) : ⇑(T +{Ȧp}) ⊢̇ p :=
 by { have : ⇑(T +{Ȧp}) ⊢̇ (Ȧp).sf, rw ← sf_dsb, simp,simp[form.sf] at this,
      have := subst₁ this #0, simp[form.subst₁] at this,
      have eqn : (λ n, (#0 ^ˢ (λ x, #(x + 1 + 1)) $ n).rew (#0 ^ˢ vecterm.var)) = (idvar : ℕ → vecterm L 0),
       { funext n, cases n; simp[vecterm.rew] }, simp [eqn] at this, exact this }
 
+private lemma rgerg {P : list (form L)} : (∀ p, p ∈ P → T p) → T ⊢̇ conjunction P :=
+begin
+  induction P with p P IH; simp[conjunction],
+  refine λ hyp_p hyp, ⟨AX hyp_p, IH hyp⟩,
+end
+
+private lemma prove_emp_sf : ∀ {p : form L}, ∅ ⊢̇ p → ∅ ⊢̇ p.sf :=
+begin
+  suffices : ∀ {p : form L} {T}, T ⊢̇ p → T = ∅ → ∅ ⊢̇ p.sf,
+  { refine λ p hp, this hp rfl },
+  intros p T h,
+  induction h with T p hyp_p IH T p q hyp_pq hyp_p IH₁ IH₂ T p hyp; try {simp[form.sf, form.rew] },
+
+end
 
 lemma sf_sf {p} (h : T ⊢̇ p) : ⇑T ⊢̇ p.sf :=
 begin
-  induction h,
-  case fopl.provable.GE : T p h IH
-  { simp[form.sf, form.rew], 
-    have := GE IH, }
+  have : ∃ P, (∀ p, p ∈ P → T p) ∧ ∅ ⊢̇ conjunction P →̇ p, from proof_conjunction h, rcases this with ⟨P, hyp, prov⟩,
+
 end
 
 

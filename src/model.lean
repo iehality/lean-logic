@@ -5,30 +5,28 @@ universes u
 namespace fopl
 variables {L : language.{u}} (T : theory L)
 
-def vecterm.equiv (T : theory L) : ∀ n, vecterm L n → vecterm L n → Prop
-| 0     t₁                   t₂                   := T ⊢̇ t₁ =̇ t₂
-| (n+1) (vecterm.cons t₁ v₁) (vecterm.cons t₂ v₂) := T ⊢̇ t₁ =̇ t₂ ∧ vecterm.equiv n v₁ v₂
+@[simp] def vecterm.equiv (T : theory L) : ∀ n, vecterm L n → vecterm L n → Prop := λ _ v₁ v₂, T ⊢̇ v₁ ≡̇ v₂
 
 notation v` ≃[`T :80`] `u:60 := vecterm.equiv T _ v u
 
-@[simp] lemma vecterm_term_eq (t u : vecterm L 0) : t ≃[T] u ↔ T ⊢̇ t =̇ u := by simp[vecterm.equiv]
+@[simp] lemma veq_eq (t u : vecterm L 0) : t ≡̇ u = t =̇ u := rfl
 
 def vecsubst (p : form L) : ∀ {n}, vecterm L n → form L
 | 0     t                  := p.(t)
 | (n+1) (vecterm.cons t v) := (vecsubst v.sf).(t)
 
-@[simp] lemma vecterm.equiv_refl (T : theory L) : ∀ {n} (v : vecterm L n), vecterm.equiv T n v v
+@[simp] lemma vecterm.equiv_refl (T : theory L) : ∀ {n} (v : vecterm L n), T ⊢̇ v ≡̇ v
 | 0     _                  := by simp[vecterm.equiv]
-| (n+1) (vecterm.cons t v) := by simp[vecterm.equiv, vecterm.equiv_refl v]
+| (n+1) (vecterm.cons t v) := by { simp[vecterm.equiv], exact vecterm.equiv_refl v}
 
 private lemma vecterm.equiv_symm (T : theory L) : ∀ {n} {v₁ v₂ : vecterm L n},
-  vecterm.equiv T n v₁ v₂ → vecterm.equiv T n v₂ v₁
+  T ⊢̇ v₁ ≡̇ v₂ → T ⊢̇ v₂ ≡̇ v₁
 | 0     _                    _                    := by simp[vecterm.equiv, provable.eq_symm]
 | (n+1) (vecterm.cons t₁ v₁) (vecterm.cons t₂ v₂) :=
-    by {simp[vecterm.equiv, provable.eq_symm], refine λ h₁ h₂, ⟨h₁, vecterm.equiv_symm h₂⟩ }
+    by { simp[vecterm.equiv, provable.eq_symm], refine λ h₁ h₂, ⟨h₁, vecterm.equiv_symm h₂⟩ }
 
 private lemma vecterm.equiv_trans (T : theory L) : ∀ {n} {v₁ v₂ v₃ : vecterm L n},
-  vecterm.equiv T n v₁ v₂ → vecterm.equiv T n v₂ v₃ → vecterm.equiv T n v₁ v₃
+  T ⊢̇ v₁ ≡̇ v₂ → T ⊢̇ v₂ ≡̇ v₃ → T ⊢̇ v₁ ≡̇ v₃
 | 0     _                 _ _ := by simp[vecterm.equiv]; exact provable.eq_trans
 | (n+1) (vecterm.cons t₁ v₁) (vecterm.cons t₂ v₂) (vecterm.cons t₃ v₃) := 
     by {simp[vecterm.equiv], refine λ e₁ h₁ e₂ h₂, ⟨provable.eq_trans e₁ e₂, vecterm.equiv_trans h₁ h₂⟩ }
@@ -79,12 +77,12 @@ by simp[vecterm.quo, vecterm.equiv, quotient.eq']
 
 def dvector.cons'_aux (T : theory L) (t : term L) : ∀ n, Herbrand T n → Herbrand T (n+1) :=
 λ n p, Herbrand.lift_on p (λ v, ⟦vecterm.cons t v⟧ᵗ.T) $
-  λ p₁ p₂ hyp, by simp[vecterm.equiv, hyp]
+  λ p₁ p₂ hyp, by simp* at*
 
 def dvector.cons' : ∀ {n}, Herbrand T 0 → Herbrand T n → Herbrand T (n+1) :=
 λ n t, Herbrand.lift_on t (λ t, dvector.cons'_aux T t n) $
   λ t₁ t₂ hyp, by { simp, funext e, induction e using fopl.Herbrand.ind_on,
-  simp[dvector.cons'_aux, vecterm.equiv], refine hyp }
+  simp[dvector.cons'_aux], refine hyp }
 
 def dvector_to_herbrand : ∀ {n}, dvector (Herbrand T 0) (n+1) → Herbrand T n
 | 0     c        := c.extract
@@ -94,7 +92,8 @@ def symbol.pconstant (c : L.pr 0) : Prop := T ⊢̇ form.const c
 
 def symbol.fn' {n} (f : L.fn (n+1)) : Herbrand T n → Herbrand T 0 :=
 λ e, Herbrand.lift_on e (λ v, ⟦vecterm.app f v⟧ᵗ.T) $
-  λ t₁ t₂ hyp, by { simp, }
+  λ t₁ t₂ hyp, by { simp* at*,
+  refine (show T ⊢̇ t₁ ≡̇ t₂ →̇ vecterm.app f t₁ =̇ vecterm.app f t₂, by simp).MP hyp }
 
 def symbol.fn : ∀ {n} (f : L.fn n), dvector (Herbrand T 0) n → Herbrand T 0
 | 0     c _ := ⟦vecterm.const c⟧ᵗ.T
@@ -102,7 +101,7 @@ def symbol.fn : ∀ {n} (f : L.fn n), dvector (Herbrand T 0) n → Herbrand T 0
 
 def symbol.pr' {n} (p : L.pr (n+1)) : Herbrand T n → Prop :=
 λ e, Herbrand.lift_on e (λ v, T ⊢̇ form.app p v) $
-  λ t₁ t₂ hyp, by { simp,  }
+  λ t₁ t₂ hyp, by { simp[-provable.iff],  }
 
 def symbol.pr : ∀ {n} (f : L.pr n), dvector (Herbrand T 0) n → Prop
 | 0     c _ := T ⊢̇ form.const c
