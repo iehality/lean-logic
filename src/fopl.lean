@@ -130,7 +130,7 @@ def form.arity : form L → ℕ
 | (¬̇p)           := p.arity
 | (Ȧp)           := p.arity - 1
 
-def sentence : set (form L) := {p | p.arity = 0}
+def sentence : form L → Prop := λ p, p.arity = 0
 
 namespace form
 

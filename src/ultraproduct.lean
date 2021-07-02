@@ -213,10 +213,11 @@ theorem fundamental : ∀ (p : form L) (e : ∀ i, ℕ → |𝔄 i|),
                show ∃ (u : Π i, |𝔄 i|), {i | ¬p.val ((u i) ^ˢ e i)} ∈ F, from model_exists (¬̇p) h },
              { refine λ h u, F.sets_of_superset h (λ _ _ , by simp* at*) } } }
 
-
 theorem fundamental1 {p : form L} (h : sentence p) :
   ℿ 𝔄 ⫽ F ⊧ p ↔ {i | 𝔄 i ⊧ p} ∈ F :=
-by {  }
+by { have : ℿ 𝔄 ⫽ F ⊧[λ n, ⟦(λ i, default (|𝔄 i|))⟧*] p ↔ {i | 𝔄 i ⊧[λ n, default (|𝔄 i|)] p} ∈ F,
+     from fundamental p (λ i n, default (|𝔄 i|)),
+     simp[eval_sentence_iff h] at this, exact this }
 
 end Ult
 

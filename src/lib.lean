@@ -4,6 +4,14 @@ universes u v
 
 attribute [instance, priority 0] classical.prop_decidable
 
+@[simp] lemma nat.max_zero_left {n m} : max n m = 0 ↔ n = 0 ∧ m = 0 :=
+⟨λ h, ⟨nat.le_zero_iff.mp (le_of_max_le_left (eq.symm h).ge),
+       nat.le_zero_iff.mp (le_of_max_le_right (eq.symm h).ge)⟩,
+ λ ⟨e₁, e₂⟩, by simp[e₁, e₂]⟩
+
+lemma nat.max_zero_right {n : ℕ} : n - 1 = 0 ↔ n = 0 :=
+by { cases n, simp, simp, }
+
 inductive dvector (α : Type u) : ℕ → Type u
 | nil {} : dvector 0
 | cons   : ∀ {n}, α → dvector n → dvector (n+1)

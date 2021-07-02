@@ -33,7 +33,7 @@ instance (M : model L) : inhabited M.dom := ⟨M.one⟩
 | e (¬̇p)           := ¬(p.val e)
 | e (Ȧp)           := ∀ d : M.dom, (p.val (d ^ˢ e))
 
-notation M` ⊧[`e`] `p :50 := @form.val _ M e p
+notation M` ⊧[`:80 e`] `p :50 := @form.val _ M e p
 
 def models (M : model L) (p : form L) : Prop := ∀ (e : ℕ → |M|), M ⊧[e] p
 infix ` ⊧ `:50 := models
@@ -128,5 +128,35 @@ end
 theorem model_consistent {T : theory L} : M ⊧ₜₕ T → T.consistent :=
 by { contrapose, simp[theory.consistent], intros p hp₁ hp₂ hyp,
      exact soundness hp₂ hyp (λ _, (default M.dom)) (soundness hp₁ hyp (λ _, (default M.dom))) }
+
+lemma eval_eq : ∀ {n} {v : vecterm L n} {e₁ e₂ : ℕ → |M|},
+  (∀ n, n < v.arity → e₁ n = e₂ n) → v.val e₁ = v.val e₂
+| (n+1) (vecterm.cons t v) e₁ e₂ a := by { simp[vecterm.arity] at *,
+    refine ⟨eval_eq (λ n h, a _ (or.inl h)), eval_eq (λ n h, a _ (or.inr h))⟩ }
+| _     (#n)               _  _  a := by { simp[vecterm.arity] at *, refine a _ _, simp }
+| _     (vecterm.const c)  _  _  a := by simp
+| _     (vecterm.app f v)  e₁ e₂ a := by { simp[vecterm.arity] at *, 
+    simp[eval_eq a] } 
+
+lemma eval_iff : ∀ {p : form L} {e₁ e₂ : ℕ → |M|},
+  (∀ n, n < p.arity → e₁ n = e₂ n) → (M ⊧[e₁] p ↔ M ⊧[e₂] p)
+| (form.const _) _  _  _ := by simp* at *
+| (form.app p v) e₁ e₂ a := by { simp[sentence, form.arity] at*, simp[eval_eq a] }
+| (t =̇ u)        e₁ e₂ a := by { simp[sentence, form.arity] at*,
+  simp[eval_eq (λ n h, a _ (or.inl h)), eval_eq (λ n h, a _ (or.inr h))] }
+| (p →̇ q)       e₁ e₂ a := by { simp[sentence, form.arity] at*,
+    simp[eval_iff (λ n h, a _ (or.inl h)), eval_iff (λ n h, a _ (or.inr h))] }
+| (¬̇p)           e₁ e₂ a := by { simp[sentence, form.arity] at*,
+    simp[eval_iff a] }
+| (Ȧp)           e₁ e₂ a := by { simp[sentence, form.arity] at*,
+    have : ∀ (d : |M|), p.val (d ^ˢ e₁) ↔ p.val (d ^ˢ e₂),
+    { intros d, refine eval_iff (λ n eqn, _),
+      cases n, { simp }, simp, refine a _ (nat.lt_sub_right_of_add_lt eqn) },
+    exact forall_congr this }
+
+lemma eval_sentence_iff {p : form L} {e : ℕ → |M|} (a : sentence p) : M ⊧[e] p ↔ M ⊧ p :=
+⟨λ h e, by { refine (eval_iff $ λ n h, _).1 h, exfalso,
+ simp[sentence] at*, rw[a] at h, exact nat.not_lt_zero n h},
+ λ h, h e⟩
 
 end fopl
