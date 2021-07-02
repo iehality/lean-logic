@@ -18,12 +18,12 @@ variables {L : language.{u}} {M : model L}
 instance (M : model L) : inhabited M.dom := ⟨M.one⟩
 
 @[simp] def vecterm.val (e : ℕ → |M|) : ∀ {n} (t : vecterm L n), dvector M.dom (n+1)
-| _ (vecterm.cons a v) := a.val.append v.val
+| _ (vecterm.cons a v) := a.val.head :: v.val
 | _ (#x)               := unary (e x)
 | _ (vecterm.const c)  := unary (M.fn c dvector.nil)
 | _ (vecterm.app f v)  := unary (M.fn f v.val)
 
-@[simp] def term.val (e : ℕ → |M|) (t : term L) : M.dom := (t.val e).extract
+@[simp] def term.val (e : ℕ → |M|) (t : term L) : M.dom := (t.val e).head
 
 @[simp] def form.val : (ℕ → |M|) → form L → Prop
 | _ (form.const c) := M.pr c dvector.nil
@@ -33,7 +33,9 @@ instance (M : model L) : inhabited M.dom := ⟨M.one⟩
 | e (¬̇p)           := ¬(p.val e)
 | e (Ȧp)           := ∀ d : M.dom, (p.val (d ^ˢ e))
 
-def models (M : model L) (p : form L) : Prop := ∀ (e : ℕ → |M|), p.val e
+notation M` ⊧[`e`] `p :50 := @form.val _ M e p
+
+def models (M : model L) (p : form L) : Prop := ∀ (e : ℕ → |M|), M ⊧[e] p
 infix ` ⊧ `:50 := models
 
 def modelsth (M : model L) (T : form L → Prop) : Prop := ∀ (e : ℕ → |M|) p, T p → p.val e
@@ -42,7 +44,7 @@ infix ` ⊧ₜₕ `:50 := modelsth
 lemma rew_val_eq : ∀ (s : ℕ → term L) {n} (t : vecterm L n) (e : ℕ → |M|),
   (t.rew s).val e = t.val (λ n, (s n).val e)
 | _ _ (vecterm.cons a v) _ := by simp[vecterm.rew, rew_val_eq _ a, rew_val_eq _ v]
-| _ _ (#x)               _ := by simp[vecterm.rew, term.val]
+| _ _ (#x)               _ := by {simp[vecterm.rew, term.val] }
 | _ _ (vecterm.const c)  _ := rfl 
 | _ _ (vecterm.app f v)  _ := by simp[vecterm.rew, rew_val_eq _ v]
 
@@ -57,7 +59,7 @@ lemma rew_val_iff : ∀ (s : ℕ → term L) (p : form L) (e : ℕ → |M|),
 | _ (p →̇ q)       _ := by simp[form.rew, rew_val_iff _ p, rew_val_iff _ q]
 | _ (¬̇p)           _ := by simp[form.rew, rew_val_iff _ p]
 | s (Ȧp)           e := by { simp[form.rew, rew_val_iff _ p], refine forall_congr (λ d, _),
-    have : (λ n, (((#0 ^ˢ λ x, (s x).sf) n).val (d ^ˢ e)).extract) = (d ^ˢ λ n, ((s n).val e)),
+    have : (λ n, (((#0 ^ˢ λ x, (s x).sf) n).val (d ^ˢ e)).head) = (d ^ˢ λ n, ((s n).val e)),
     { funext n,cases n; simp[slide, term.val, vecterm.val] },
     simp[this] }
 
@@ -84,10 +86,8 @@ by simp[form.iff]; exact iff_def.symm
 
 @[simp] lemma models_equals : ∀ {n} (v₁ v₂ : vecterm L n) (e : ℕ → |M|),
   (v₁ ≡̇ v₂).val e ↔ v₁.val e = v₂.val e
-| 0     t₁ t₂ e := by { simp[form.val], cases t₁.val e with _ t n, cases n,
-    cases t₂.val e with _ t n, cases n, simp }
-| (n+1) (vecterm.cons t₁ v₁) (vecterm.cons t₂ v₂) e := by { simp[form.val, models_equals v₁ v₂],
-    cases t₁.val e with _ t₁ n, cases n, cases t₂.val e with _ t₂ n, cases n, simp } 
+| 0     t₁ t₂ e := by simp[form.val]
+| (n+1) (vecterm.cons t₁ v₁) (vecterm.cons t₂ v₂) e := by simp[form.val, models_equals v₁ v₂]
 
 theorem soundness {T : theory L} : ∀ {p}, T ⊢̇ p → ∀ {M}, M ⊧ₜₕ T → M ⊧ p := λ p hyp,
 begin
@@ -106,7 +106,7 @@ begin
   { intros M hyp_T e h₁, simp[form.val], contrapose, exact h₁ },
   case fopl.provable.q1 : T p t
   { intros M hyp_T e h, simp[form.subst₁, rew_val_iff] at h ⊢,
-    have : (λ n, (vecterm.val e (t ^ˢ vecterm.var $ n)).extract) = (t.val e) ^ˢ e,
+    have : (λ n, (vecterm.val e (t ^ˢ vecterm.var $ n)).head) = (t.val e) ^ˢ e,
     { funext n, cases n; simp[slide, term.val, vecterm.val] },
     rw this, exact h _ },
   case fopl.provable.q2 : T p q
