@@ -1,6 +1,6 @@
 import deduction semantics
 
-universes u
+universes u v
 
 namespace fopl
 variables {L : language.{u}} (T : theory L)
@@ -85,7 +85,7 @@ def dvector.cons' : ∀ {n}, Herbrand T 0 → Herbrand T n → Herbrand T (n+1) 
   simp[dvector.cons'_aux], refine hyp }
 
 def dvector_to_herbrand : ∀ {n}, dvector (Herbrand T 0) (n+1) → Herbrand T n
-| 0     c        := c.extract
+| 0     c        := c.head
 | (n+1) (a :: v) := dvector.cons' a (dvector_to_herbrand v)
 
 def symbol.pconstant (c : L.pr 0) : Prop := T ⊢̇ form.const c
@@ -110,8 +110,13 @@ def symbol.pr : ∀ {n} (f : L.pr n), dvector (Herbrand T 0) n → Prop
 def model (T : theory L) : model L := ⟨Herbrand T 0, ⟦#0⟧ᵗ.T, @symbol.fn _ T, @symbol.pr _ T⟩
 notation `𝔗[`T`]` := model T
 
-
 end Herbrand
+
+lemma empty_has_model : ∃ 𝔄 : model L, 𝔄 ⊧ₜₕ (∅ : theory L) :=
+⟨𝔗[∅], λ p h, by { exfalso, refine set.not_mem_empty p h }⟩
+
+theorem empty_consistent : theory.consistent (∅ : theory L) := @model_consistent L 𝔗[∅] ∅
+(λ p h, by { exfalso, refine set.not_mem_empty p h })
 
 theorem form_equiv_equivalence : equivalence (form.equiv T) :=
 ⟨λ _, by simp[form.equiv], λ _ _, by simp[form.equiv]; exact λ h₁ h₂, ⟨h₂, h₁⟩,

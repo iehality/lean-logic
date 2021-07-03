@@ -6,7 +6,7 @@ namespace fopl
 open dvector
 
 structure model (L : language.{u}) :=
-(dom : Type v)
+(dom : Type u)
 (one : dom)
 (fn : ∀ {n}, L.fn n → dvector dom n → dom)
 (pr : ∀ {n}, L.pr n → dvector dom n → Prop)
@@ -38,7 +38,7 @@ notation M` ⊧[`:80 e`] `p :50 := @form.val _ M e p
 def models (M : model L) (p : form L) : Prop := ∀ (e : ℕ → |M|), M ⊧[e] p
 infix ` ⊧ `:50 := models
 
-def modelsth (M : model L) (T : form L → Prop) : Prop := ∀ (e : ℕ → |M|) p, T p → p.val e
+def modelsth (M : model L) (T : theory L) : Prop := ∀ p, p ∈ T → M ⊧ p
 infix ` ⊧ₜₕ `:50 := modelsth
 
 lemma rew_val_eq : ∀ (s : ℕ → term L) {n} (t : vecterm L n) (e : ℕ → |M|),
@@ -71,9 +71,9 @@ lemma rew_val_iff : ∀ (s : ℕ → term L) (p : form L) (e : ℕ → |M|),
 | (¬̇p)           _ _ := by simp[sf_slide_val_iff p]
 | (Ȧp)           _ _ := by simp[term.val, form.sf, rew_val_iff, slide]
 
-private lemma modelsth_sf {T} : M ⊧ₜₕ T → M ⊧ₜₕ ⇑T := λ h e p hyp_p,
+private lemma modelsth_sf {T} : M ⊧ₜₕ T → M ⊧ₜₕ ⇑T := λ h p hyp_p e,
 by { cases hyp_p with p hyp_p', simp[rew_val_iff],
-     refine h _ _ hyp_p' }
+     refine h _ hyp_p' _ }
 
 @[simp] lemma models_ex {p} {e : ℕ → |M|} : (Ėp).val e ↔ ∃ d, p.val (d ^ˢ e) :=
 by simp[form.ex, models, form.subst₁, rew_val_iff]
@@ -97,7 +97,7 @@ begin
   case fopl.provable.MP : T p q hyp_pq hyp_p IH_pq IH_p
   { intros M hyp_T e, exact IH_pq hyp_T e (IH_p hyp_T e) },
   case fopl.provable.AX : T p hyp_p
-  { intros M hyp_T e, exact hyp_T e _ hyp_p },
+  { intros M hyp_T e, exact hyp_T _ hyp_p _ },
   case fopl.provable.p1 : T p q
   { intros M hyp_T e h₁ h₂, exact h₁ },
   case fopl.provable.p2 : T p q r
@@ -125,7 +125,7 @@ begin
   { intros M hyp_T e, simp[form.val], refine λ eqn, (by simp[eqn]) },
 end
 
-theorem model_consistent {T : theory L} : M ⊧ₜₕ T → T.consistent :=
+theorem model_consistent {T : theory L} : M ⊧ₜₕ T → theory.consistent T :=
 by { contrapose, simp[theory.consistent], intros p hp₁ hp₂ hyp,
      exact soundness hp₂ hyp (λ _, (default M.dom)) (soundness hp₁ hyp (λ _, (default M.dom))) }
 
@@ -158,5 +158,11 @@ lemma eval_sentence_iff {p : form L} {e : ℕ → |M|} (a : sentence p) : M ⊧[
 ⟨λ h e, by { refine (eval_iff $ λ n h, _).1 h, exfalso,
  simp[sentence] at*, rw[a] at h, exact nat.not_lt_zero n h},
  λ h, h e⟩
+
+lemma nfal_models_iff : ∀ {n} {p : form L}, M ⊧ p ↔ M ⊧ nfal p n
+| 0     _ := iff.rfl
+| (n+1) p := by { simp[@nfal_models_iff n p], refine ⟨λ h e d, h _, λ h e, _⟩,
+  have : (e 0) ^ˢ (λ x, e (x + 1)) = e, { ext x, cases x; simp },
+  have := h (λ x, e (x + 1)) (e 0), simp* at * }
 
 end fopl

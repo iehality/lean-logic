@@ -60,6 +60,10 @@ notation `⊥̇` := form.bot
 
 instance : inhabited (form L) := ⟨⊥̇⟩
 
+@[simp] def nfal (p : form L) : ℕ → form L
+| 0     := p
+| (n+1) := Ȧ(nfal n)
+
 @[simp] def slide {α : Type*} (a : α) (s : ℕ → α) : ℕ → α
 | 0     := a
 | (m+1) := s m
@@ -159,15 +163,6 @@ def subst₁ (p : form L) (x : term L) := p.rew (x ^ˢ idvar)
 
 notation p`.(`x`)` := p.subst₁ x
 
-/-
-@[simp] lemma app_subst₁ {n} (p : L.pr n) (v : vecterm L n) (t) : (app p v).(t) = app p v.(t) := rfl
-@[simp] lemma eq_subst₁ (t u : vecterm L 1) (v) : (t =̇ u).(v) = t.rew (v ^ˢ idvar) =̇ u.rew (v ^ˢ idvar) := rfl
-@[simp] lemma imply_subst₁ (p q : form L) (t) : (p →̇ q).(t) = p.(t) →̇ q.(t) := rfl
-@[simp] lemma neg_subst₁ (p : form L) (t) : (¬̇p).(t) = ¬̇p.(t) := rfl
-@[simp] lemma and_subst₁ (p q : form L) (t) : (p ⩑ q).(t) = p.(t) ⩑ q.(t) := rfl
-@[simp] lemma or_subst₁ (p q : form L) (t) : (p ⩒ q).(t) = p.(t) ⩒ q.(t) := rfl
--/
-
 def subst₂ (p : form L) (x y : term L) := p.rew (x ^ˢ y^ˢ idvar) 
 
 notation p`.(`x`, `y`)` := p.subst₂ x y
@@ -226,6 +221,13 @@ by simp[form.sf, vecterm.rew]
 @[simp] lemma op.and (p q : form L) : (p ⩑ q).op = p.op && q.op := rfl
 
 @[simp] lemma op.or (p q : form L) : (p ⩒ q).op = p.op && q.op := rfl
+
+lemma nfal_arity : ∀ (n) (p : form L), (nfal p n).arity = p.arity - n
+| 0     p := by simp[form.arity]
+| (n+1) p := by {simp[form.arity, nfal_arity n], exact (arity p).sub_sub _ _ }
+
+lemma nfal_sentence (p : form L) : sentence (nfal p p.arity) :=
+by { have := nfal_arity p.arity p, simp at*, refine this }
 
 end form
 

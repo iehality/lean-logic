@@ -115,9 +115,9 @@ notation `𝒩` := Num
 
 @[simp] lemma nat_pr_eq : Num.pr = nat_pr := rfl
 
-lemma N_models_Q : 𝒩 ⊧ₜₕ 𝐐 := λ e p hyp_p,
+lemma N_models_Q : 𝒩 ⊧ₜₕ 𝐐 := λ p hyp_p e,
 begin
-  cases hyp_p; simp[slide],
+  cases hyp_p; simp,
   { exact λ _, of_to_bool_ff rfl},
   { exact λ _ _, nat.succ.inj },
   { exact λ _, nat.exists_eq_succ_of_ne_zero },
@@ -130,17 +130,17 @@ end
 
 theorem Q_consistent : theory.consistent 𝐐 := model_consistent N_models_Q
 
-lemma N_models_bd_PA (C : form AL → Prop) : 𝒩 ⊧ₜₕ 𝐈C := λ e p hyp_p,
+lemma N_models_bd_PA (C : form AL → Prop) : 𝒩 ⊧ₜₕ 𝐈C := λ p hyp_p e,
 by { cases hyp_p with _ hyp_p p,
-     exact N_models_Q e p hyp_p,
+     exact N_models_Q p hyp_p e,
        simp[form.subst₁, form.subst₁_e, rew_val_iff],
   intros h0 hIH n,
   induction n with n IH,
-  { have : (λ n, (vecterm.val e (Ż ^ˢ vecterm.var $ n)).extract) = ((0 : ℕ) ^ˢ e),
+  { have : (λ n, (vecterm.val e (Ż ^ˢ vecterm.var $ n)).head) = ((0 : ℕ) ^ˢ e),
     { funext n, cases n; simp[slide] },
     simp[this] at h0, exact h0 },
   { have hIH' := hIH n IH,
-    have : (λ m, (vecterm.val (n ^ˢ e : ℕ → Num.dom) (Ṡ #0 ^ᵉ vecterm.var $ m)).extract) = (n+1 : ℕ) ^ˢ e,
+    have : (λ m, (vecterm.val (n ^ˢ e : ℕ → Num.dom) (Ṡ #0 ^ᵉ vecterm.var $ m)).head) = (n+1 : ℕ) ^ˢ e,
     { funext n, cases n; simp[slide, embed] },
     simp[this] at hIH', exact hIH' } }
 
@@ -154,7 +154,7 @@ theorem PA_consistent : theory.consistent 𝐏𝐀 := model_consistent N_models_
 def true_arithmetic : theory AL := {p | 𝒩 ⊧ p}
 notation `𝐓𝐀` := true_arithmetic
 
-lemma N_models_TA : 𝒩 ⊧ₜₕ 𝐓𝐀 := λ e p hyp_p, hyp_p e
+lemma N_models_TA : 𝒩 ⊧ₜₕ 𝐓𝐀 := λ p hyp_p e, hyp_p e
 
 theorem TA_consistent : theory.consistent 𝐓𝐀 := model_consistent N_models_TA
 

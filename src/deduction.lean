@@ -5,7 +5,9 @@ universe u
 namespace fopl
 variables {L : language.{u}}
 
-def theory (L : language) := form L → Prop
+def theory (L : language) := set (form L)
+
+notation `theory `L:max := set (form L)
 
 inductive theory.sf (T : theory L) : theory L
 | intro : ∀ {p : form L}, T p → theory.sf p.sf
@@ -23,7 +25,7 @@ infix ` ≡̇ `:90 := form.equals
 inductive provable : theory L → form L → Prop
 | GE : ∀ {T : theory L} {p}, provable ⇑T p → provable T (Ȧp)
 | MP : ∀ {T : theory L} {p q}, provable T (p →̇ q) → provable T p → provable T q
-| AX : ∀ {T : theory L} {p}, T p → provable T p
+| AX : ∀ {T : theory L} {p}, p ∈ T → provable T p
 | p1 : ∀ {T : theory L} {p q}, provable T (p →̇ q →̇ p)
 | p2 : ∀ {T : theory L} {p q r}, provable T ((p →̇ q →̇ r) →̇ (p →̇ q) →̇ p →̇ r)
 | p3 : ∀ {T : theory L} {p q}, provable T ((¬̇ p →̇ ¬̇ q) →̇ q →̇ p)
@@ -48,14 +50,9 @@ def theory.consistent (T : theory L) : Prop := ¬∃p, (T ⊢̇ p) ∧ (T ⊢̇ 
 
 inductive theory.add (T : theory L) (p : form L) : theory L 
 | new : theory.add p
-| old : ∀ {q}, T q → theory.add q
+| old : ∀ {q}, q ∈ T → theory.add q
 
 notation T`+{`:max p`}` := theory.add T p
-
-def theory.delete (T : theory L) (p : form L) : theory L := λ q, T q ∧ q ≠ p
-
-def theory.include (T U : theory L) : Prop := ∀ p, T p → U p
-instance : has_subset (theory L) := ⟨theory.include⟩
 
 def theory.le (T U : theory L) : Prop := ∀ p, T ⊢̇ p → U ⊢̇ p
 instance : has_le (theory L) := ⟨theory.le⟩
@@ -79,7 +76,7 @@ lemma ss_le {U : ℕ → theory L} (hyp : ∀ s, U s ⊆ U (s+1)) : ∀ {s₁ s�
 by { intros s₁, suffices : ∀ t, U s₁ ⊆ U (s₁ + t),
       { intros s₂ eqn, have := this (s₂ - s₁),
         rw (show s₁ + (s₂ - s₁) = s₂, from nat.add_sub_of_le eqn) at this, exact this },
-      intros t, induction t with t IH, simp, rw[nat.add_succ],  refine λ x hx, hyp _ _ (IH _ hx) }
+      intros t, induction t with t IH, simp, rw[nat.add_succ],  refine λ x hx, hyp _ (IH hx) }
 
 def form.equiv (T : theory L) (p₁ p₂ : form L) : Prop := T ⊢̇ p₁ ↔̇ p₂
 
@@ -120,42 +117,42 @@ lemma inclusion {p} (h : T ⊢̇ p) : ∀ {U}, T ⊆ U → U ⊢̇ p :=
 begin
   induction h with T p hyp_p IH T p q hyp_pq hyp_p IH₁ IH₂ T p hyp_p; try { simp },
   { intros U hyp, refine GE (IH (λ x h, _)), cases h with p hp,
-    refine theory.sf.intro _, exact hyp _ hp },
+    refine theory.sf.intro _, exact hyp hp },
   { intros U hyp, exact (IH₁ hyp).MP (IH₂ hyp) },
-  { intros U hyp, exact AX (hyp _ hyp_p) }
+  { intros U hyp, exact AX (hyp hyp_p) }
 end
 
 @[simp] lemma weakening {q} (h : T ⊢̇ q) (p) : T+{p} ⊢̇ q :=
 inclusion h (λ x h, theory.add.old h)
 
-private lemma delete_imply {p} (h : T ⊢̇ p) : ∀ q, (T.delete q) ⊢̇ q →̇ p :=
+private lemma delete_imply {p} (h : T ⊢̇ p) : ∀ q, T \ {q} ⊢̇ q →̇ p :=
 begin
   induction h with T p hyp_p IH T p₁ p₂ hyp_p₁₂ hyp_p₁ IH₁ IH₂ T p hyp_p;
     try { intros q, apply imp_r, simp }; intros q,
-  { have IH : (⇑T).delete q.sf ⊢̇ q.sf →̇ p := IH q.sf,
-    have lmm₁ : T.delete q ⊢̇ q →̇ Ȧ q.sf, { simp },
-    have lmm₂ : T.delete q ⊢̇ Ȧ q.sf →̇ Ȧ p,
-    { suffices : T.delete q ⊢̇ Ȧ(q.sf →̇ p),
-      { have lmm : T.delete q ⊢̇ Ȧ(q.sf →̇ p) →̇ Ȧ q.sf →̇ Ȧ p, simp,
+  { have IH : ⇑T \ {q.sf} ⊢̇ q.sf →̇ p := IH q.sf,
+    have lmm₁ : T \ {q} ⊢̇ q →̇ Ȧ q.sf, { simp },
+    have lmm₂ : T \ {q} ⊢̇ Ȧ q.sf →̇ Ȧ p,
+    { suffices : T \ {q} ⊢̇ Ȧ(q.sf →̇ p),
+      { have lmm : T \ {q} ⊢̇ Ȧ(q.sf →̇ p) →̇ Ȧ q.sf →̇ Ȧ p, simp,
         exact lmm.MP this },
       refine GE (inclusion IH (λ x h, _)), 
       rcases h with ⟨h, neq⟩, rcases h with ⟨p', h'⟩,
-      refine theory.sf.intro ⟨h', λ c, _⟩,
+      refine theory.sf.intro ⟨h', λ c, _⟩, simp at c,
       rw c at neq, exact neq rfl },
     exact lmm₁.imp_trans lmm₂ },
-  { have : T.delete q ⊢̇ (q →̇ p₁ →̇ p₂) →̇ (q →̇ p₁) →̇ (q →̇ p₂), simp, 
-    have : T.delete q ⊢̇ (q →̇ p₁) →̇ q →̇ p₂, from this.MP (IH₁ _),
+  { have : T \ {q} ⊢̇ (q →̇ p₁ →̇ p₂) →̇ (q →̇ p₁) →̇ (q →̇ p₂), simp, 
+    have : T \ {q} ⊢̇ (q →̇ p₁) →̇ q →̇ p₂, from this.MP (IH₁ _),
     exact this.MP (IH₂ _) },
   { by_cases eqn : p = q,
     { simp[eqn] },
-    { have : T.delete q ⊢̇ p, from AX ⟨hyp_p, eqn⟩,
+    { have : T \ {q} ⊢̇ p, from AX ⟨hyp_p, eqn⟩,
       simp[this] } }
 end
 
 theorem deduction {p q} : (T+{p} ⊢̇ q) ↔ (T ⊢̇ p →̇ q) :=
-⟨λ h, by { have : (T+{p}).delete p ⊢̇ p →̇ q, from delete_imply h p,
+⟨λ h, by { have : (T+{p}) \ {p} ⊢̇ p →̇ q, from delete_imply h p,
            refine inclusion this (λ x h, _), rcases h with ⟨h, neq⟩,
-           cases h; simp* at* },
+           cases h; simp* at*, },
  λ h, by { have : T+{p} ⊢̇ p →̇ q, from weakening h p,
            exact this.MP (by simp) }⟩
 
@@ -172,9 +169,9 @@ begin
   { intros U hyp ss,
     let U' := λ s, ⇑(U s),
     have hyp' : ∀ s, U' s ⊆ U' (s + 1),
-    { simp[U'], intros s p hyp_p, cases hyp_p with p' hyp_q', refine theory.sf.intro (hyp _ _ hyp_q') },
+    { simp[U'], intros s p hyp_p, cases hyp_p with p' hyp_q', refine theory.sf.intro (hyp _ hyp_q') },
     have ss' : ⇑T ⊆ {p : form L | ∃ s, U' s p},
-    { intros q hyp_q, cases hyp_q with q' hyp_q', rcases (ss _ hyp_q') with ⟨s, hyp_s⟩,
+    { intros q hyp_q, cases hyp_q with q' hyp_q', rcases (ss hyp_q') with ⟨s, hyp_s⟩,
       refine ⟨s, theory.sf.intro hyp_s⟩ },
     have : ∃ s, U' s ⊢̇ p, from IH hyp' ss', rcases this with ⟨s, h⟩,
     refine ⟨s, provable.GE h⟩ },
@@ -187,7 +184,7 @@ begin
     have lmm₂ : U (max s₁ s₂) ⊢̇ p, from provable.inclusion lmm₂ (ss_le hyp (by simp)),
     exact lmm₁.MP lmm₂ },
   case fopl.provable.AX : T p hyp_p
-  { intros U hyp ss, rcases (ss _ hyp_p) with ⟨s, hyp_s⟩,
+  { intros U hyp ss, rcases (ss hyp_p) with ⟨s, hyp_s⟩,
     refine ⟨s, provable.AX hyp_s⟩ },
   { refine λ _ _ _, ⟨0, by simp⟩ },
   { refine λ _ _ _, ⟨0, by simp⟩ },
