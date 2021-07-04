@@ -50,11 +50,11 @@ def vecterm.encode : ∀ {n}, vecterm L n → ℕ
 | _ (vecterm.const c)      := (bit1 $ bit0 (encode c)) + 2
 | _ (@vecterm.app _ n f v) := (bit1 $ bit1 $ n.mkpair ((encode f).mkpair v.encode)) + 2
 
-def iterate0  (L) : ∀ n, vecterm L n
+@[simp] def iterate0  (L) : ∀ n, vecterm L n
 | 0     := #0
 | (n+1) := vecterm.cons #0 (iterate0 n)
 
-def iterate01  (L) : ∀ n, vecterm L n
+@[simp] def iterate01  (L) : ∀ n, vecterm L n
 | 0     := #1
 | (n+1) := vecterm.cons #0 (iterate01 n)
 
@@ -90,17 +90,39 @@ def vecterm.decode (L : language.{u}) [∀ n, encodable (L.fn n)] : ℕ → ∀ 
 | 0     := rfl
 | (n+1) := by {simp[iterate01, vecterm.encode, iterate01_encode n], refl }
 
+private lemma encode0_eq : ∀ {n} {v : vecterm L n}, v.encode = 0 → v = iterate0 L n
+| _ (vecterm.cons a v) e :=
+  by { simp[vecterm.encode, nat.mkpair_eq_iff] at e ⊢, simp[encode0_eq e.1, encode0_eq e.2] }
+| _ #0     _ := by simp
+| _ #1     e := by { simp[vecterm.encode] at e ⊢, exact e } 
+| _ #(n+2) e := by { simp[vecterm.encode] at e ⊢, exact e } 
+| _ (vecterm.const c) e := by { simp[vecterm.encode] at e ⊢, exact e }
+| _ (@vecterm.app _ n f v) e := by { simp[vecterm.encode] at e ⊢, exact e }
+
+private lemma encode1_eq : ∀ {n} {v : vecterm L n}, v.encode = 1 → v = iterate01 L n
+| _ (vecterm.cons a v) e :=
+  by { simp[vecterm.encode, nat.mkpair_eq_iff] at e ⊢, simp[encode0_eq e.1, encode1_eq e.2] }
+| _ #0     e := by { simp[vecterm.encode] at e ⊢, exact e  }
+| _ #1     e := by simp 
+| _ #(n+2) e := by { simp[vecterm.encode] at e ⊢, exact e } 
+| _ (vecterm.const c) e := by { simp[vecterm.encode] at e ⊢, exact e }
+| _ (@vecterm.app _ n f v) e := by { simp[vecterm.encode] at e ⊢, exact e }
+
 private lemma vecterm.decode_encode : ∀ {n} (t : vecterm L n), vecterm.decode L (vecterm.encode t) n = some t
 | (n+1) (vecterm.cons a v) := by {
-    simp[vecterm.decode, vecterm.encode],
-    cases C₁ : a.encode.mkpair v.encode, simp[vecterm.decode, iterate0], simp at C₁,
-    have := vecterm.decode_encode v, }
-| _ #0                     := by {simp[vecterm.decode, vecterm.encode, iterate0], refl}
-| _ #1                     := by {simp[vecterm.decode, vecterm.encode, iterate01], refl}
+  simp[vecterm.decode, vecterm.encode],
+  cases C₁ : a.encode.mkpair v.encode with m,
+  { simp[vecterm.decode, iterate0, nat.mkpair_eq_iff] at C₁ ⊢, simp[encode0_eq C₁.1, encode0_eq C₁.2], refl },
+  cases m,
+  { simp[vecterm.decode, iterate01, nat.mkpair_eq_iff] at C₁ ⊢, simp[encode0_eq C₁.1, encode1_eq C₁.2], refl },
+  { simp[vecterm.decode, iterate01, nat.mkpair_eq_iff, show m + 2 = a.encode.mkpair v.encode, by simp[C₁]],
+    refine ⟨a, _, v, _⟩; simp[vecterm.decode_encode a, vecterm.decode_encode v], refl } }
+| _ #0                     := by simp[vecterm.decode, vecterm.encode, iterate0]; refl
+| _ #1                     := by simp[vecterm.decode, vecterm.encode, iterate01]; refl
 | _ #(n+2)                 := by simp[vecterm.decode, vecterm.encode]
 | _ (vecterm.const c)      := by simp[vecterm.decode, vecterm.encode]
 | _ (@vecterm.app _ n f v) := by { simp[vecterm.decode, vecterm.encode, vecterm.decode_encode v],
-      rw [nat.div2_bit1, nat.div2_bit1, nat.unpair_mkpair], simp*, refl }
+  rw [nat.div2_bit1, nat.div2_bit1, nat.unpair_mkpair], simp*, refl }
 
 instance (n) : encodable (vecterm L n) :=
 ⟨vecterm.encode, (λ e, vecterm.decode L e n), vecterm.decode_encode⟩
@@ -115,14 +137,14 @@ def form.encode : form L → ℕ
 | (¬̇p)                := (bit1 $ bit1 $ bit0 p.encode)
 | (Ȧp)                := (bit1 $ bit1 $ bit1 p.encode)
 
-def of_nat_form (L : language.{u}) [∀ n, denumerable (L.fn n)] [∀ n, denumerable (L.pr n)] : ℕ → form L
+def of_nat_form (L : language.{u}) [∀ n, encodable (L.fn n)] [∀ n, encodable (L.pr n)] : ℕ → option (form L)
 | e :=
   match e.bodd, e.div2.bodd, e.div2.div2.bodd with
-  | ff, ff, _  := form.const (of_nat _ e.div2.div2)
-  | ff, tt, _  := form.app (of_nat (L.pr $ e.div2.div2.unpair.1 + 1) e.div2.div2.unpair.2.unpair.1)
-      (of_nat (vecterm L _) e.div2.div2.unpair.2.unpair.2)
-  | tt, ff, ff := (of_nat (vecterm L 1) e.div2.div2.div2.unpair.1) =̇ (of_nat (vecterm L 1) e.div2.div2.div2.unpair.2)
-  | tt, ff, tt := (of_nat_form e.div2.div2.div2.unpair.1) →̇ (of_nat_form e.div2.div2.div2.unpair.2)
+  | ff, ff, _  := (decode _ e.div2.div2).map form.const
+  | ff, tt, _  := form.app <$> (decode (L.pr $ e.div2.div2.unpair.1 + 1) e.div2.div2.unpair.2.unpair.1) <*>
+      (decode (vecterm L _) e.div2.div2.unpair.2.unpair.2)
+  | tt, ff, ff := (=̇) <$> (decode (vecterm L 0) e.div2.div2.div2.unpair.1) <*> (decode (vecterm L 0) e.div2.div2.div2.unpair.2)
+  | tt, ff, tt := (→̇) <$> (of_nat_form e.div2.div2.div2.unpair.1) <*> (of_nat_form e.div2.div2.div2.unpair.2)
   | tt, tt, ff := ¬̇(of_nat_form e.div2.div2.div2)
   | tt, tt, tt := Ȧ(of_nat_form e.div2.div2.div2)
   end

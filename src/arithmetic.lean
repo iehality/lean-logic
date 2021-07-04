@@ -1,4 +1,4 @@
-import deduction semantics
+import deduction semantics model
 
 namespace fopl
 
@@ -33,7 +33,7 @@ infixl ` ×̇ `:94 := symbol.mult
 
 infixl ` ≤̇ `:90 := symbol.le
 
-def numeral : ℕ → term AL
+@[simp] def numeral : ℕ → term AL
 | 0     := Ż
 | (n+1) := Ṡ (numeral n)
 
@@ -86,13 +86,13 @@ namespace hierarchy
 mutual inductive sigma, pie
 with sigma : ℕ → form AL → Prop
 | op : ∀ {p : form AL}, p.op → sigma 0 p
-| bd_fal : ∀ {p} {n t}, sigma n p → sigma n [Ȧ ≤ t]p
-| bd_ext : ∀ {p} {n t}, sigma n p → sigma n [Ė ≤ t]p
+| bd_fal : ∀ {p} {n m}, sigma n p → sigma n [Ȧ ≤ #m]p
+| bd_ext : ∀ {p} {n m}, sigma n p → sigma n [Ė ≤ #m]p
 | qt : ∀ {p} {n}, pie n p → sigma (n+1) Ėp 
 with pie : ℕ → form AL → Prop
 | op : ∀ {p : form AL}, p.op → pie 0 p
-| bd_fal : ∀ {p} {n t}, pie n p → pie n [Ȧ ≤ t]p
-| bd_ext : ∀ {p} {n t}, pie n p → pie n [Ė ≤ t]p
+| bd_fal : ∀ {p} {n m}, pie n p → pie n [Ȧ ≤ #m]p
+| bd_ext : ∀ {p} {n m}, pie n p → pie n [Ė ≤ #m]p
 | qt : ∀ {p} {n}, sigma n p → pie (n+1) Ȧp 
 
 end hierarchy
@@ -157,5 +157,17 @@ notation `𝐓𝐀` := true_arithmetic
 lemma N_models_TA : 𝒩 ⊧ₜₕ 𝐓𝐀 := λ p hyp_p e, hyp_p e
 
 theorem TA_consistent : theory.consistent 𝐓𝐀 := model_consistent N_models_TA
+
+namespace robinson
+open provable
+
+lemma add_eq : ∀ {n m : ℕ}, n˙ +̇ m˙ ≃[𝐐] (n + m)˙
+| 0     m :=
+  by { have := (AX robinson.q4).subst₁ (m˙), simp[form.subst₁, form.rew, vecterm.rew] at this ⊢, refine this }
+| (n+1) m := by { simp, have := ((AX robinson.q5).subst₁ (n˙)).subst₁ (m˙),
+  simp[form.subst₁, form.rew, vecterm.rew] at this ⊢,
+   }
+
+end robinson
 
 end fopl

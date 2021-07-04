@@ -10,7 +10,7 @@ def theory (L : language) := set (form L)
 notation `theory `L:max := set (form L)
 
 inductive theory.sf (T : theory L) : theory L
-| intro : ∀ {p : form L}, T p → theory.sf p.sf
+| intro : ∀ {p : form L}, p ∈ T → theory.sf p.sf
 
 instance : has_emptyc (theory L) := ⟨λ p, false⟩
 
@@ -39,7 +39,6 @@ inductive provable : theory L → form L → Prop
     provable T (v₁ ≡̇ v₂ →̇ vecterm.app f v₁ =̇ vecterm.app f v₂)
 | e5 : ∀ {T : theory L} {n} {v₁ v₂ : vecterm L n} {r : L.pr (n+1)},
     provable T (v₁ ≡̇ v₂ →̇ form.app r v₁ →̇ form.app r v₂)
---| e4 : ∀ {T : theory L} {p : form L} {t u}, provable T (t =̇ u →̇ p.(t) →̇ p.(u))
 
 infix ` ⊢̇ `:60 := provable
 
@@ -56,6 +55,12 @@ notation T`+{`:max p`}` := theory.add T p
 
 def theory.le (T U : theory L) : Prop := ∀ p, T ⊢̇ p → U ⊢̇ p
 instance : has_le (theory L) := ⟨theory.le⟩
+
+def theory.sentence (T : theory L) : Prop := ∀ {p}, p ∈ T → sentence p
+
+lemma theory_sentence_eq {T : theory L} (h : theory.sentence T) : ⇑T = T :=
+by { ext p, refine ⟨λ hyp, _, λ hyp, _⟩, cases hyp with p hyp_p, simp[form.sentence_rew (h hyp_p), hyp_p],
+     rw ← (form.sentence_sf (h hyp)), refine theory.sf.intro hyp }
 
 lemma sf_dsb (T : theory L) (p : form L) : ⇑T+{p.sf} = ⇑(T+{p}) :=
 begin
@@ -297,23 +302,33 @@ begin
   refine ⟨deduction.mpr (contrapose.mpr h₁), deduction.mpr (contrapose.mpr h₂)⟩, 
 end
 
-lemma hyp_and1 {p₁ p₂ q} : (T ⊢̇ p₁ →̇ q) → (T ⊢̇ p₁ ⩑ p₂ →̇ q) := λ h,
+lemma hyp_and_left {p₁ p₂ q} : (T ⊢̇ p₁ →̇ q) → (T ⊢̇ p₁ ⩑ p₂ →̇ q) := λ h,
 begin
   have : T+{p₁ ⩑ p₂} ⊢̇ p₁, { have : T+{p₁ ⩑ p₂} ⊢̇ p₁ ⩑ p₂, from add _ _, simp* at * },
   refine deduction.mp ((show T+{p₁ ⩑ p₂} ⊢̇ p₁ →̇ q, by simp[h]).MP this)
 end
 
-lemma hyp_and2 {p₁ p₂ q} : (T ⊢̇ p₂ →̇ q) → (T ⊢̇ p₁ ⩑ p₂ →̇ q) := λ h,
+lemma hyp_and_right {p₁ p₂ q} : (T ⊢̇ p₂ →̇ q) → (T ⊢̇ p₁ ⩑ p₂ →̇ q) := λ h,
 begin
   have : T+{p₁ ⩑ p₂} ⊢̇ p₂, { have : T+{p₁ ⩑ p₂} ⊢̇ p₁ ⩑ p₂, from add _ _, simp* at * },
   refine deduction.mp ((show T+{p₁ ⩑ p₂} ⊢̇ p₂ →̇ q, by simp[h]).MP this)
 end
 
+lemma axiom_and {p₁ p₂ q} : T+{p₁ ⩑ p₂} ⊢̇ q ↔ T+{p₁}+{p₂} ⊢̇ q :=
+⟨λ h,
+ by { have lmm₁ : T+{p₁}+{p₂} ⊢̇ p₁ ⩑ p₂, by simp,
+      have lmm₂ : T+{p₁}+{p₂} ⊢̇ p₁ ⩑ p₂ →̇ q, simp[deduction.mp h],
+      exact lmm₂.MP lmm₁ },
+ λ h,
+ by { have lmm₁ : T+{p₁ ⩑ p₂} ⊢̇ p₁ →̇ p₂ →̇ q, simp[deduction.mp (deduction.mp h)],
+      have lmm₂ : T+{p₁ ⩑ p₂} ⊢̇ p₁ ⩑ p₂, from add _ _, simp at lmm₂,
+      exact (lmm₁.MP lmm₂.1).MP lmm₂.2 }  ⟩
+
 lemma conjunction_mem {P : list (form L)} : ∀ {p}, p ∈ P → ∅ ⊢̇ conjunction P →̇ p :=
 begin
   induction P with p P IH; simp[conjunction],
-  have lmm₁ : ∅ ⊢̇ p ⩑ conjunction P →̇ p, from hyp_and1 (by simp),
-  have lmm₂ : ∀ q, q ∈ P → ∅ ⊢̇ p ⩑ conjunction P →̇ q, from λ q hq, hyp_and2 (IH hq),
+  have lmm₁ : ∅ ⊢̇ p ⩑ conjunction P →̇ p, from hyp_and_left (by simp),
+  have lmm₂ : ∀ q, q ∈ P → ∅ ⊢̇ p ⩑ conjunction P →̇ q, from λ q hq, hyp_and_right (IH hq),
   refine ⟨lmm₁, lmm₂⟩
 end
 

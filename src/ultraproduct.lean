@@ -314,8 +314,4 @@ theorem compact (T : theory L) :
 
 end compactness
 
-theorem completeness_consistent (T : theory L) : theory.consistent T ↔ ∃ 𝔄, 𝔄 ⊧ₜₕ T :=
-begin
-end
-
 end fopl
