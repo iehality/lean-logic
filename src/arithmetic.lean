@@ -7,29 +7,34 @@ inductive langf : ℕ → Type
 | succ : langf 1
 | add  : langf 2
 | mult : langf 2
+notation `*Z` := langf.zero
+notation `*S` := langf.succ
+notation `*+` := langf.add
+notation `*×` := langf.mult
 
 inductive langp : ℕ → Type
 | le : langp 2
+notation `*≤` := langp.le
 
 def AL : language := ⟨langf, langp⟩
 
-@[reducible] def symbol.zero : term AL := vecterm.const langf.zero
+@[reducible] def symbol.zero : term AL := vecterm.const *Z
 
 notation `Ż` := symbol.zero
 
-@[reducible] def symbol.succ : term AL → term AL := λ x, vecterm.app langf.succ x
+@[reducible] def symbol.succ : term AL → term AL := λ x, vecterm.app *S x
 
 prefix `Ṡ `:max := symbol.succ
 
-@[reducible] def symbol.add : term AL → term AL → term AL := λ x y, vecterm.app langf.add (vecterm.cons x y)
+@[reducible] def symbol.add : term AL → term AL → term AL := λ x y, vecterm.app *+ (vecterm.cons x y)
 
 infixl ` +̇ `:92 := symbol.add 
 
-@[reducible] def symbol.mult : term AL → term AL → term AL := λ x y, vecterm.app langf.mult (vecterm.cons x y)
+@[reducible] def symbol.mult : term AL → term AL → term AL := λ x y, vecterm.app *× (vecterm.cons x y)
 
 infixl ` ×̇ `:94 := symbol.mult
 
-@[reducible] def symbol.le : term AL → term AL → form AL := λ x y, form.app langp.le (vecterm.cons x y)
+@[reducible] def symbol.le : term AL → term AL → form AL := λ x y, form.app *≤ (vecterm.cons x y)
 
 infixl ` ≤̇ `:90 := symbol.le
 
@@ -38,6 +43,11 @@ infixl ` ≤̇ `:90 := symbol.le
 | (n+1) := Ṡ (numeral n)
 
 local notation n`˙`:max := numeral n
+
+lemma numeral_arity0 : ∀ n, (n˙).arity = 0
+| 0     := rfl
+| (n+1) := by simp[vecterm.arity, @numeral_arity0 n]
+
 
 def bounded_fal (t : term AL) (p : form AL) : form AL := Ȧ(#0 ≤̇ t.sf →̇ p)
 
@@ -159,14 +169,57 @@ lemma N_models_TA : 𝒩 ⊧ₜₕ 𝐓𝐀 := λ p hyp_p e, hyp_p e
 theorem TA_consistent : theory.consistent 𝐓𝐀 := model_consistent N_models_TA
 
 namespace robinson
-open provable
+open Herbrand Lindenbaum
 
-lemma add_eq : ∀ {n m : ℕ}, n˙ +̇ m˙ ≃[𝐐] (n + m)˙
+open provable
+#check @Herbrand.function₁ AL _ *S
+
+lemma add_eq : ∀ {n m : ℕ}, (function₂ 𝐐 *+) ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ = ⟦(n + m)˙⟧ᴴ
 | 0     m :=
-  by { have := (AX robinson.q4).subst₁ (m˙), simp[form.subst₁, form.rew, vecterm.rew] at this ⊢, refine this }
-| (n+1) m := by { simp, have := ((AX robinson.q5).subst₁ (n˙)).subst₁ (m˙),
-  simp[form.subst₁, form.rew, vecterm.rew] at this ⊢,
-   }
+  by { have := Herbrand.provable_iff.mp ((AX robinson.q4).subst₁ (m˙)),
+    simp[form.subst₁, form.rew, vecterm.rew, Herbrand.of_eq_of] at this ⊢, refine this }
+| (n+1) m := by { simp,
+  have q5 := Herbrand.provable_iff.mp (((AX robinson.q5).subst₁ (m˙)).subst₁ (n˙)),
+  have IH := @add_eq n m,  
+  simp[form.subst₁, form.rew, vecterm.rew] at q5 IH ⊢,
+  rw (show n + 1 + m = (n + m) + 1, from nat.succ_add n m), simp,
+  rw ← IH, exact q5 }
+
+lemma mul_eq : ∀ {n m : ℕ}, (function₂ 𝐐 *×) ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ = ⟦(n * m)˙⟧ᴴ
+| 0     m :=
+  by { have := Herbrand.provable_iff.mp ((AX robinson.q6).subst₁ (m˙)),
+    simp[form.subst₁, form.rew, vecterm.rew, Herbrand.of_eq_of] at this ⊢, refine this }
+| (n+1) m := by { simp,
+  have q7 := Herbrand.provable_iff.mp (((AX robinson.q7).subst₁ (m˙)).subst₁ (n˙)),
+  have IH := @mul_eq n m,  
+  simp[form.subst₁, form.rew, vecterm.rew] at q7 IH ⊢,
+  rw (show (n + 1) * m = n * m + m, from nat.succ_mul n m), simp[←add_eq],
+  rw ← IH, exact q7 }
+
+lemma le_prove {n m : ℕ} (eqn : n ≤ m) : 𝐐 ⊢̇ n˙ ≤̇ m˙ :=
+begin
+  refine Lindenbaum.provable_top_iff.mpr _,
+  have q8 : predicate₂ 𝐐 *≤ ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ = ∐(function₂ ⇑𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ⋈ ⟦m˙⟧ᴴ),
+  { have := Lindenbaum.provable_iff.mp (((AX robinson.q8).subst₁ (m˙)).subst₁ (n˙)),
+    simp[form.rew, vecterm.rew, numeral_arity0] at this ⊢, exact this },
+  simp[form.rew, vecterm.rew, numeral_arity0],
+  have exist : ⟦(m - n)˙⟧ᴴ ⊳ (function₂ ⇑𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ⋈ ⟦m˙⟧ᴴ) = ⊤,
+  { have : (function₂ ⇑𝐐 *+) ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ⋈ ⟦m˙⟧ᴴ = ⟦n˙ +̇ #0 =̇ m˙⟧ᴸ := rfl,
+    rw this, simp[fopl.Lindenbaum.subst₁, fopl.Lindenbaum.subst₁_aux, -provable_equal_eq,
+      form.subst₁, form.rew, vecterm.rew, numeral_arity0], simp,
+      rw[to_Herbrand], simp[add_eq],
+      have : ⟦(n + (m - n))˙⟧ᴴ = ⟦m˙⟧ᴴ, simp[(show n + (m - n) = m, from nat.add_sub_of_le eqn)],
+      refine this },
+  have : subst₁ ⟦(m - n)˙⟧ᴴ (function₂ ⇑𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ⋈ ⟦m˙⟧ᴴ) ≤ ∐(function₂ ⇑𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ⋈ ⟦m˙⟧ᴴ),
+  from subst₁_le_ex _ _,
+  simp[exist] at this, simp[q8], exact this,
+end
+
+lemma neq_prove {n m : ℕ} (eqn : n ≠ m) : 𝐐 ⊢̇ n˙ ≠̇ m˙ :=
+begin
+
+end
+
 
 end robinson
 
