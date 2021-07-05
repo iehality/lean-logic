@@ -28,10 +28,10 @@ inductive provable : theory L → form L → Prop
 | AX : ∀ {T : theory L} {p}, p ∈ T → provable T p
 | p1 : ∀ {T : theory L} {p q}, provable T (p →̇ q →̇ p)
 | p2 : ∀ {T : theory L} {p q r}, provable T ((p →̇ q →̇ r) →̇ (p →̇ q) →̇ p →̇ r)
-| p3 : ∀ {T : theory L} {p q}, provable T ((¬̇ p →̇ ¬̇ q) →̇ q →̇ p)
-| q1 : ∀ {T : theory L} {p t}, provable T (Ȧ p →̇ p.(t))
-| q2 : ∀ {T : theory L} {p q}, provable T (Ȧ (p →̇ q) →̇ Ȧ p →̇ Ȧ q)
-| q3 : ∀ {T : theory L} {p}, provable T (p →̇ Ȧ p.sf)
+| p3 : ∀ {T : theory L} {p q}, provable T ((¬̇p →̇ ¬̇q) →̇ q →̇ p)
+| q1 : ∀ {T : theory L} {p t}, provable T (Ȧp →̇ p.(t))
+| q2 : ∀ {T : theory L} {p q}, provable T (Ȧ(p →̇ q) →̇ Ȧp →̇Ȧ q)
+| q3 : ∀ {T : theory L} {p}, provable T (p →̇ Ȧp.sf)
 | e1 : ∀ {T : theory L} {t}, provable T (t =̇ t)
 | e2 : ∀ {T : theory L} {t₁ t₂}, provable T (t₁ =̇ t₂ →̇ t₂ =̇ t₁)
 | e3 : ∀ {T : theory L} {t₁ t₂ t₃}, provable T (t₁ =̇ t₂ →̇ t₂ =̇ t₃ →̇ t₁ =̇ t₃)
@@ -484,6 +484,9 @@ begin
     { exact this.2 },
     refine ⟨lmm₁, lmm₂⟩ }
 end
+
+@[simp] lemma T_hyp_eliminate {p} : T ⊢̇ ⊤̇ →̇ p ↔ T ⊢̇ p :=
+⟨λ h, by { have : T ⊢̇ ⊤̇, simp, exact h.MP this }, λ h, by simp[h]⟩
 
 lemma prenex_ex_quantifir_imp2 (p q) : T ⊢̇ (p →̇ Ėq) ↔̇ Ė(p.sf →̇ q) :=
 begin

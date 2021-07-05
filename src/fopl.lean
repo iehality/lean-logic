@@ -99,6 +99,12 @@ def arity : ∀ {n}, vecterm L n → ℕ
 | _ (const c)  := 0
 | _ (app f v)  := v.arity
 
+@[simp] def complexity : ∀ {n}, vecterm L n → ℕ
+| _ (cons a v) := (max a.complexity v.complexity)
+| _ (#n)       := 0
+| _ (const c)  := 0
+| _ (app f v)  := v.complexity + 1
+
 @[simp] lemma nested_rew (s₀ s₁) : ∀ {n} (t : vecterm L n),
   (t.rew s₀).rew s₁ = t.rew (λ x, (s₀ x).rew s₁)
 | _ (cons a v) := by simp[rew, nested_rew]
@@ -124,7 +130,11 @@ lemma rew_rew {s₀ s₁ : ℕ → term L} : ∀ {n} (t : vecterm L n),
 @[simp] lemma sf_rew {n} (t : vecterm L n) (u) (s) : t.sf.rew (u ^ˢ s) = t.rew s :=
 by simp[vecterm.sf, vecterm.rew]
 
+@[simp] lemma arity0_rew {n} {v : vecterm L n} (h : v.arity = 0) (s : ℕ → term L) : v.rew s = v :=
+by { suffices : rew s v = rew idvar v, { simp* },
+     refine rew_rew _ _, simp[h] }
 
+@[simp] lemma arity0_sf {n} {v : vecterm L n} (h : v.arity = 0) : v.sf = v := by simp[vecterm.sf, arity0_rew h]
 
 end vecterm
 
@@ -149,7 +159,6 @@ def rew : (ℕ → term L) → form L → form L
 | s (Ȧp)      := Ȧ(p.rew $ #0 ^ˢ (λ x, (s x).sf))
 
 def sf (p : form L) : form L := p.rew (λ x, #(x+1))
-
 
 @[simp] lemma const_sf (c : L.pr 0) : (const c).sf = const c := rfl
 @[simp] lemma app_sf {n} (p : L.pr (n+1)) (v : vecterm L n) : (app p v).sf = app p v.sf := rfl
@@ -202,11 +211,11 @@ lemma rew_rew : ∀ (p : form L) {s₀ s₁ : ℕ → term L},
     cases p.arity, { exfalso, simp* at* },
     { simp at h, simp[h _ (nat.succ_lt_succ_iff.mp e)] } }
 
-lemma sentence_rew {p : form L} (h : sentence p) (s : ℕ → term L) : p.rew s = p :=
+@[simp] lemma sentence_rew {p : form L} (h : sentence p) (s : ℕ → term L) : p.rew s = p :=
 by { suffices : rew s p = rew idvar p, { simp* },
      refine rew_rew _ _, simp[show p.arity = 0, from h] }
 
-lemma sentence_sf {p : form L} (h : sentence p) : p.sf = p := by simp[form.sf, sentence_rew h]
+@[simp] lemma sentence_sf {p : form L} (h : sentence p) : p.sf = p := by simp[form.sf, sentence_rew h]
 
 @[simp] lemma sf_subst (p : form L) (t) : p.sf.(t) = p :=
 by simp[form.sf, form.subst₁, vecterm.rew]
@@ -214,17 +223,27 @@ by simp[form.sf, form.subst₁, vecterm.rew]
 @[simp] lemma sf_rew (p : form L) (t s) : p.sf.rew (t ^ˢ s) = p.rew s :=
 by simp[form.sf, vecterm.rew]
 
-@[simp] def op : form L → bool
+@[simp] lemma imp_subst₁ (p q : form L) (t) : (p →̇ q).(t) = p.(t) →̇ q.(t) :=by simp[subst₁, form.rew]
+@[simp] lemma neg_subst₁ (p : form L) (t) : (¬̇p).(t) = ¬̇p.(t) :=by simp[subst₁, form.rew]
+@[simp] lemma and_rew (p q : form L) (s) : (p ⩑ q).rew s = p.rew s ⩑ q.rew s :=by simp[and, form.rew]
+@[simp] lemma and_subst₁ (p q : form L) (t) : (p ⩑ q).(t) = p.(t) ⩑ q.(t) :=by simp[subst₁, form.rew]
+@[simp] lemma or_rew (p q : form L) (s) : (p ⩒ q).rew s = p.rew s ⩒ q.rew s :=by simp[or, form.rew]
+@[simp] lemma or_subst₁ (p q : form L) (t) : (p ⩒ q).(t) = p.(t) ⩒ q.(t) :=by simp[subst₁, form.rew]
+@[simp] lemma iff_rew (p q : form L) (s) : (p ↔̇ q).rew s = p.rew s ↔̇ q.rew s :=by simp[iff, form.rew]
+@[simp] lemma iff_subst₁ (p q : form L) (t) : (p ↔̇ q).(t) = p.(t) ↔̇ q.(t) :=by simp[subst₁, form.rew]
+@[simp] lemma ex_rew (p : form L) (s) : (Ėp).rew s = Ėp.rew (#0 ^ˢ λ x, (s x).sf) :=by simp[ex, form.rew]
+
+@[simp] def Open : form L → bool
 | (const c) := tt
 | (app p v) := tt
 | (t =̇ u)   := tt
-| (p →̇ q)  := p.op && q.op
-| (¬̇p)      := p.op
+| (p →̇ q)  := p.Open && q.Open
+| (¬̇p)      := p.Open
 | (Ȧp)      := ff
 
-@[simp] lemma op.and (p q : form L) : (p ⩑ q).op = p.op && q.op := rfl
+@[simp] lemma op.and (p q : form L) : (p ⩑ q).Open = p.Open && q.Open := rfl
 
-@[simp] lemma op.or (p q : form L) : (p ⩒ q).op = p.op && q.op := rfl
+@[simp] lemma op.or (p q : form L) : (p ⩒ q).Open = p.Open && q.Open := rfl
 
 lemma nfal_arity : ∀ (n) (p : form L), (nfal p n).arity = p.arity - n
 | 0     p := by simp[form.arity]
@@ -235,7 +254,7 @@ by { have := nfal_arity p.arity p, simp at*, refine this }
 
 end form
 
-def openform (p : form L) : Prop := p.op = tt
+def openform (p : form L) : Prop := p.Open = tt
 
 end fopl
 
