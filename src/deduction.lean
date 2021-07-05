@@ -58,7 +58,7 @@ instance : has_le (theory L) := ⟨theory.le⟩
 
 def theory.sentence (T : theory L) : Prop := ∀ {p}, p ∈ T → sentence p
 
-lemma theory_sentence_eq {T : theory L} (h : theory.sentence T) : ⇑T = T :=
+@[simp] lemma theory_sentence_eq {T : theory L} (h : theory.sentence T) : ⇑T = T :=
 by { ext p, refine ⟨λ hyp, _, λ hyp, _⟩, cases hyp with p hyp_p, simp[form.sentence_rew (h hyp_p), hyp_p],
      rw ← (form.sentence_sf (h hyp)), refine theory.sf.intro hyp }
 
@@ -435,7 +435,7 @@ begin
   simp[form.ex],
   refine raa (p.(t)) (by simp[h]) (deduction.mpr _),
   have : ¬̇p.(t) = (¬̇p).(t) := rfl,
-  simp[this],
+  rw[this], refine provable.q1
 end
 
 lemma eq_symm : ∀ {t u}, (T ⊢̇ t =̇ u) ↔ (T ⊢̇ u =̇ t) :=
@@ -449,6 +449,8 @@ end
 
 lemma eq_trans {t₁ t₂ t₃} : (T ⊢̇ t₁ =̇ t₂) → (T ⊢̇ t₂ =̇ t₃) → (T ⊢̇ t₁ =̇ t₃) := λ h₁ h₂,
 by { have : T ⊢̇ t₁ =̇ t₂ →̇ t₂ =̇ t₃ →̇ t₁ =̇ t₃, simp, exact (this.MP h₁).MP h₂ }
+
+
 
 lemma dummy_fal_quantifir (p) : T ⊢̇ p ↔̇ Ȧ(p.sf) :=
 by { have : T ⊢̇ Ȧp.sf →̇ p.sf.(#0), from provable.q1, simp* at * }

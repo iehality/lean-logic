@@ -40,7 +40,13 @@ variables {α : Type u} {β : Type v}
 @[simp] def tail : ∀ {n}, dvector α (n+1) → dvector α n
 | _ (_ :: as) := as
 
-@[simp] lemma head_tail : ∀ {n} (v : dvector α (n+1)), v.head :: v.tail = v
+lemma dvector1_tail : ∀ (a : dvector α 1), a.tail = dvector.nil
+| (a :: dvector.nil) := rfl
+
+@[simp] lemma dvector0 : ∀ (a : dvector α 0), a = dvector.nil := λ a,
+by cases a; refl
+
+lemma head_tail : ∀ {n} (v : dvector α (n+1)), v.head :: v.tail = v
 | _ (_ :: _) := rfl
 
 @[simp] lemma head_inj : ∀ (v₁ v₂ : dvector α 1), v₁.head = v₂.head ↔ v₁ = v₂
