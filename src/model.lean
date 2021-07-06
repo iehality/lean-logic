@@ -11,7 +11,7 @@ notation v` ≃[`T :80`] `u:60 := vecterm.equiv T _ v u
 
 @[simp] lemma veq_eq (t u : vecterm L 0) : t ≡̇ u = t =̇ u := rfl
 
-def vecsubst (p : form L) : ∀ {n}, vecterm L n → form L
+def vecsubst (p : formula L) : ∀ {n}, vecterm L n → formula L
 | 0     t                  := p.(t)
 | (n+1) (vecterm.cons t v) := (vecsubst v.sf).(t)
 
@@ -105,8 +105,8 @@ def function₁ (T : theory L) (f : L.fn 1) (h : Herbrand T) : Herbrand T := sym
 def function₂ (T : theory L) (f : L.fn 2) (h₁ h₂ : Herbrand T) : Herbrand T := symbol.fn f (h₁ :: h₂ :: dvector.nil)
 
 def symbol.pr : ∀ {n} (f : L.pr n), dvector (Herbrand T) n → Prop
-| 0     c _ := T ⊢̇ form.const c
-| (n+1) p v := fopl.Herbrand.lift_on_vec v (λ u : dvector (term L) (n+1), T ⊢̇ form.app p (u.to_vecterm))
+| 0     c _ := T ⊢̇ formula.const c
+| (n+1) p v := fopl.Herbrand.lift_on_vec v (λ u : dvector (term L) (n+1), T ⊢̇ formula.app p (u.to_vecterm))
   $ λ v₁ v₂ eqn, by { simp at*, refine ⟨(provable.e5.MP eqn).MP, (provable.e5.MP (vecterm.equiv_symm _ eqn)).MP⟩  }
 
 def model (T : theory L) : model L := ⟨Herbrand T, ⟦#0⟧ᴴ.T, @symbol.fn _ T, @symbol.pr _ T⟩
@@ -160,17 +160,17 @@ lemma empty_has_model : ∃ 𝔄 : model L, 𝔄 ⊧ₜₕ (∅ : theory L) :=
 theorem empty_consistent : theory.consistent (∅ : theory L) := @model_consistent L 𝔗[∅] ∅
 (λ p h, by { exfalso, refine set.not_mem_empty p h })
 
-theorem form_equiv_equivalence : equivalence (form.equiv T) :=
-⟨λ _, by simp[form.equiv], λ _ _, by simp[form.equiv]; exact λ h₁ h₂, ⟨h₂, h₁⟩,
- λ _ _ _, by { simp[form.equiv], intros h₁ h₂ h₃ h₄, refine ⟨h₁.imp_trans h₃, h₄.imp_trans h₂⟩ }⟩
+theorem formula_equiv_equivalence : equivalence (formula.equiv T) :=
+⟨λ _, by simp[formula.equiv], λ _ _, by simp[formula.equiv]; exact λ h₁ h₂, ⟨h₂, h₁⟩,
+ λ _ _ _, by { simp[formula.equiv], intros h₁ h₂ h₃ h₄, refine ⟨h₁.imp_trans h₃, h₄.imp_trans h₂⟩ }⟩
 
 def Lindenbaum : Type u :=
-quotient (⟨form.equiv T, form_equiv_equivalence T⟩ : setoid (form L))
+quotient (⟨formula.equiv T, formula_equiv_equivalence T⟩ : setoid (formula L))
 
-def form.quo (T : theory L) (p : form L) : Lindenbaum T := quotient.mk' p
+def formula.quo (T : theory L) (p : formula L) : Lindenbaum T := quotient.mk' p
 
-notation `⟦`p`⟧ᴸ.`T :max := form.quo T p
-notation `⟦`p`⟧ᴸ` :max := form.quo _ p
+notation `⟦`p`⟧ᴸ.`T :max := formula.quo T p
+notation `⟦`p`⟧ᴸ` :max := formula.quo _ p
 
 namespace Lindenbaum
 open provable Herbrand
@@ -178,30 +178,30 @@ variables {T}
 
 @[elab_as_eliminator]
 protected lemma ind_on {C : Lindenbaum T → Prop} (d : Lindenbaum T)
-  (h : ∀ p : form L, C ⟦p⟧ᴸ.T) : C d :=
+  (h : ∀ p : formula L, C ⟦p⟧ᴸ.T) : C d :=
 quotient.induction_on' d h
 
 @[elab_as_eliminator, reducible]
-protected def lift_on {φ} (d : Lindenbaum T) (f : form L → φ)
-  (h : ∀ p q : form L, T ⊢̇ p ↔̇ q → f p = f q) : φ :=
+protected def lift_on {φ} (d : Lindenbaum T) (f : formula L → φ)
+  (h : ∀ p q : formula L, T ⊢̇ p ↔̇ q → f p = f q) : φ :=
 quotient.lift_on' d f h
 
 @[simp]
-protected lemma lift_on_eq {φ} (p : form L) (f : form L → φ)
+protected lemma lift_on_eq {φ} (p : formula L) (f : formula L → φ)
   (h : ∀ p q, T ⊢̇ p ↔̇ q → f p = f q) : fopl.Lindenbaum.lift_on ⟦p⟧ᴸ.T f h = f p := rfl
 
 @[elab_as_eliminator, reducible, simp]
-protected def lift_on₂ {φ} (d₁ d₂ : Lindenbaum T) (f : form L → form L → φ)
+protected def lift_on₂ {φ} (d₁ d₂ : Lindenbaum T) (f : formula L → formula L → φ)
   (h : ∀ p₁ p₂ q₁ q₂, T ⊢̇ p₁ ↔̇ q₁ → T ⊢̇ p₂ ↔̇ q₂ → f p₁ p₂ = f q₁ q₂) : φ :=
 quotient.lift_on₂' d₁ d₂ f h
 
 @[simp]
-protected lemma lift_on₂_eq {φ} (p q : form L) (f : form L → form L → φ)
+protected lemma lift_on₂_eq {φ} (p q : formula L) (f : formula L → formula L → φ)
   (h : ∀ p₁ p₂ q₁ q₂, T ⊢̇ p₁ ↔̇ q₁ → T ⊢̇ p₂ ↔̇ q₂ → f p₁ p₂ = f q₁ q₂) :
   fopl.Lindenbaum.lift_on₂ ⟦p⟧ᴸ.T ⟦q⟧ᴸ.T f h = f p q := rfl
 
-protected lemma of_eq_of {p q : form L} : ⟦p⟧ᴸ.T = ⟦q⟧ᴸ.T ↔ T ⊢̇ p ↔̇ q :=
-by simp[form.quo, form.equiv, quotient.eq']
+protected lemma of_eq_of {p q : formula L} : ⟦p⟧ᴸ.T = ⟦q⟧ᴸ.T ↔ T ⊢̇ p ↔̇ q :=
+by simp[formula.quo, formula.equiv, quotient.eq']
 
 instance : has_le (Lindenbaum T) :=
 ⟨λ p₁ p₂, Lindenbaum.lift_on₂ p₁ p₂ (λ p₁ p₂, T ⊢̇ p₁ →̇ p₂) $
@@ -262,7 +262,7 @@ def fal : Lindenbaum ⇑T → Lindenbaum T := λ p, Lindenbaum.lift_on p (λ p, 
 prefix `∏`:90 := fal
 
 def ex : Lindenbaum ⇑T → Lindenbaum T := λ p, Lindenbaum.lift_on p (λ p, ⟦Ėp⟧ᴸ.T) $
-λ p₁ p₂ hyp, by { simp[form.ex, provable.contrapose, Lindenbaum.of_eq_of] at*, 
+λ p₁ p₂ hyp, by { simp[formula.ex, provable.contrapose, Lindenbaum.of_eq_of] at*, 
   suffices : ∀ {q₁ q₂}, ⇑T ⊢̇ q₁ →̇ q₂ → T ⊢̇ Ȧ¬̇q₂ →̇ Ȧ¬̇q₁, { refine ⟨this hyp.1, this hyp.2⟩ },
   intros q₁ q₂ hyp,
   refine provable.deduction.mp (provable.GE _),
@@ -273,8 +273,8 @@ def ex : Lindenbaum ⇑T → Lindenbaum T := λ p, Lindenbaum.lift_on p (λ p, �
 prefix `∐`:90 := ex
 
 @[simp] def predicate : ∀ {n} (f : L.pr n), dvector (Herbrand T) n → Lindenbaum T
-| 0     c _ := ⟦form.const c⟧ᴸ.T
-| (n+1) p v := fopl.Herbrand.lift_on_vec v (λ u : dvector (term L) (n+1), ⟦form.app p (u.to_vecterm)⟧ᴸ.T)
+| 0     c _ := ⟦formula.const c⟧ᴸ.T
+| (n+1) p v := fopl.Herbrand.lift_on_vec v (λ u : dvector (term L) (n+1), ⟦formula.app p (u.to_vecterm)⟧ᴸ.T)
   $ λ v₁ v₂ eqn, by { simp[Lindenbaum.of_eq_of] at*, refine ⟨provable.e5.MP eqn, provable.e5.MP (vecterm.equiv_symm _ eqn)⟩ }
 
 def predicate₁ (T : theory L) (f : L.pr 1) (h : Herbrand T) : Lindenbaum T := predicate f (h :: dvector.nil)
@@ -297,7 +297,7 @@ infix ` ∥ `:80 := equal
 def subst₁_aux (t : term L) : Lindenbaum ⇑T → Lindenbaum T :=
 λ p, Lindenbaum.lift_on p (λ p, ⟦p.subst₁ t⟧ᴸ.T) $
 λ p₁ p₂ hyp, by { simp[Lindenbaum.of_eq_of, -provable.iff] at*,
-   have := (GE hyp).subst₁ t, simp[form.subst₁, -provable.iff] at this, refine this }
+   have := (GE hyp).subst₁ t, simp[formula.subst₁, -provable.iff] at this, refine this }
 
 def subst₁ : Herbrand T → Lindenbaum ⇑T → Lindenbaum T :=
 λ t l, Herbrand.lift_on t (λ t, subst₁_aux t l) $
@@ -308,7 +308,7 @@ def subst₁ : Herbrand T → Lindenbaum ⇑T → Lindenbaum T :=
 infix ` ⊳ `:80 := subst₁
 
 def sf : Lindenbaum T → Lindenbaum ⇑T := λ p, Lindenbaum.lift_on p (λ p, ⟦p.sf⟧.⇑T) $
-λ p₁ p₂ hyp, by { simp[form.ex, provable.contrapose] at*, have := provable.dummy_fal_quantifir_iff, }
+λ p₁ p₂ hyp, by { simp[formula.ex, provable.contrapose] at*, have := provable.dummy_fal_quantifir_iff, }
 
 def Box : Lindenbaum T → Prop := λ p, Lindenbaum.lift_on p (λ p, T ⊢̇ p) $
 λ p₁ p₂ hyp, by { simp at*, refine ⟨λ h, hyp.1.MP h, λ h, hyp.2.MP h⟩ }
@@ -376,14 +376,14 @@ begin
   induction l using fopl.Lindenbaum.ind_on, 
   induction h using fopl.Herbrand.ind_on, 
   simp[ex, has_le.le, subst₁, subst₁_aux],
-  apply contrapose.mp, simp[form.ex],
-  rw (show ¬̇(l.subst₁ h) = (¬̇l).subst₁ h, by simp[form.subst₁, form.rew]), 
+  apply contrapose.mp, simp[formula.ex],
+  rw (show ¬̇(l.subst₁ h) = (¬̇l).subst₁ h, by simp[formula.subst₁, formula.rew]), 
   exact provable.q1
 end
 
 lemma eq_top_GE (l : Lindenbaum ⇑T) : l = ⊤ → ∏l = ⊤ :=
 by { induction l using fopl.Lindenbaum.ind_on,
-   simp[has_top.top, fal, Lindenbaum.of_eq_of, form.ex], refine GE }
+   simp[has_top.top, fal, Lindenbaum.of_eq_of, formula.ex], refine GE }
 
 @[simp] lemma subst₁_and {h : Herbrand _} {l m : Lindenbaum ⇑T} : h ⊳ (l ⊓ m) = h ⊳ l ⊓ h ⊳ m :=
 by { induction l using fopl.Lindenbaum.ind_on, induction m using fopl.Lindenbaum.ind_on, 
@@ -460,7 +460,7 @@ private lemma le_sup_inf {l m n : Lindenbaum T} : (l ⊔ m) ⊓ (l ⊔ n) ≤ l 
 by { induction l using fopl.Lindenbaum.ind_on,
      induction m using fopl.Lindenbaum.ind_on,
      induction n using fopl.Lindenbaum.ind_on,
-     simp[has_sup.sup, has_inf.inf, has_le.le, provable.or_r, form.or],
+     simp[has_sup.sup, has_inf.inf, has_le.le, provable.or_r, formula.or],
      refine provable.deduction.mp (provable.deduction.mp _),
      have lmm₁ : T+{(¬̇l →̇ m) ⩑ (¬̇l →̇ n)}+{¬̇l} ⊢̇ (¬̇l →̇ m) ⩑ (¬̇l →̇ n), simp[-provable.and],
      have lmm₂ : T+{(¬̇l →̇ m) ⩑ (¬̇l →̇ n)}+{¬̇l} ⊢̇ ¬̇l, simp,
@@ -468,7 +468,7 @@ by { induction l using fopl.Lindenbaum.ind_on,
 
 private lemma sup_inf_sdiff (l m : Lindenbaum T) : l ⊓ m ⊔ l ⊓ mᶜ = l :=
 by { induction l using fopl.Lindenbaum.ind_on, induction m using fopl.Lindenbaum.ind_on,
-      simp[Lindenbaum.of_eq_of, has_le.le, has_sup.sup, has_inf.inf, has_compl.compl, has_top.top, form.or],
+      simp[Lindenbaum.of_eq_of, has_le.le, has_sup.sup, has_inf.inf, has_compl.compl, has_top.top, formula.or],
       refine ⟨contrapose.mp (deduction.mp _), _⟩, simp,
       have : ∀ n, T+{¬̇l} ⊢̇ ¬̇(l ⩑ n),
       { refine λ n, deduction.mpr (contrapose.mpr (deduction.mp _)),
@@ -479,7 +479,7 @@ by { induction l using fopl.Lindenbaum.ind_on, induction m using fopl.Lindenbaum
 
 private lemma inf_inf_sdiff (l m : Lindenbaum T) : l ⊓ m ⊓ (l ⊓ mᶜ) = ⊥ :=
 by { induction l using fopl.Lindenbaum.ind_on, induction m using fopl.Lindenbaum.ind_on,
-     simp[Lindenbaum.of_eq_of, has_le.le, has_sup.sup, has_inf.inf, has_compl.compl, has_bot.bot, form.or],
+     simp[Lindenbaum.of_eq_of, has_le.le, has_sup.sup, has_inf.inf, has_compl.compl, has_bot.bot, formula.or],
      refine deduction.mp (explosion (show T+{l ⩑ m ⩑ (l ⩑ ¬̇m)} ⊢̇ m, by simp[axiom_and]) (by simp[axiom_and])) }
 
 private lemma inf_compl_le_bot (l : Lindenbaum T) : l ⊓ lᶜ ≤ ⊥ :=
@@ -488,7 +488,7 @@ by { induction l using fopl.Lindenbaum.ind_on, simp[has_le.le, has_inf.inf, has_
      refine provable.deduction.mp (provable.explosion this.1 this.2) }
 
 private lemma top_le_sup_compl (l : Lindenbaum T) : ⊤ ≤ l ⊔ lᶜ :=
-by induction l using fopl.Lindenbaum.ind_on; simp[has_le.le, has_sup.sup, has_compl.compl, has_top.top, form.or]
+by induction l using fopl.Lindenbaum.ind_on; simp[has_le.le, has_sup.sup, has_compl.compl, has_top.top, formula.or]
 
 instance : boolean_algebra (Lindenbaum T) :=
 { bot := ⊥,
@@ -525,7 +525,7 @@ protected theorem provable_iff {p q} : T ⊢̇ p ↔̇ q ↔ ⟦p⟧ᴸ.T = ⟦q
 theorem provable_imp_iff {p q} : T ⊢̇ p →̇ q ↔ ⟦p⟧ᴸ.T ≤ ⟦q⟧ᴸ.T := by simp[has_le.le]
 lemma prenex_ex_quantifir_neg  (l : Lindenbaum ⇑T) : (∐l)ᶜ = ∏lᶜ :=
 by induction l using fopl.Lindenbaum.ind_on;
-   simp[has_compl.compl, ex, fal, Lindenbaum.of_eq_of, form.ex]
+   simp[has_compl.compl, ex, fal, Lindenbaum.of_eq_of, formula.ex]
 
 lemma prenex_fal_quantifir_neg  {l : Lindenbaum ⇑T} : (∏l)ᶜ = ∐lᶜ :=
 by { have := prenex_ex_quantifir_neg lᶜ, simp at this, simp[←this] }
@@ -537,15 +537,15 @@ by { have := prenex_ex_quantifir_neg lᶜ, simp at this, simp[←this] }
 @[simp] theorem provable_neg_eq {p} : ⟦¬̇p⟧ᴸ.T = (⟦p⟧ᴸ.T)ᶜ := rfl
 @[simp] theorem imp_eq {p q} : ⟦p →̇ q⟧ᴸ.T = (⟦p⟧ᴸ.T)ᶜ ⊔ ⟦q⟧ᴸ.T := by {
   have : ⟦p →̇ q⟧ᴸ.T = ⟦¬̇p ⩒ q⟧ᴸ.T, 
-  { simp[Lindenbaum.of_eq_of, -provable_or_eq, form.or], refine ⟨deduction.mp (by simp), deduction.mp _⟩,
+  { simp[Lindenbaum.of_eq_of, -provable_or_eq, formula.or], refine ⟨deduction.mp (by simp), deduction.mp _⟩,
     have : T+{¬̇¬̇p →̇ q} ⊢̇ ¬̇¬̇p →̇ q, simp[-dn1_iff], simp* at* },
   simp[this] }
 @[simp] theorem provable_fal_eq {p} : ⟦Ȧp⟧ᴸ.T = ∏⟦p⟧ᴸ := rfl
 @[simp] theorem provable_ex_eq {p} : ⟦Ėp⟧ᴸ.T = ∐⟦p⟧ᴸ := rfl
 @[simp] lemma provable_equal_eq {t₁ t₂} : ⟦t₁ =̇ t₂⟧ᴸ.T = ⟦t₁⟧ᴴ.T ∥ ⟦t₂⟧ᴴ.T := rfl
-@[simp] theorem provable_predicate₁_iff {p : L.pr 1} {t} : ⟦form.app p t⟧ᴸ.T = predicate₁ T p ⟦t⟧ᴴ := rfl 
+@[simp] theorem provable_predicate₁_iff {p : L.pr 1} {t} : ⟦formula.app p t⟧ᴸ.T = predicate₁ T p ⟦t⟧ᴴ := rfl 
 @[simp] theorem provable_predicate₂_iff {p : L.pr 2} {t₁ t₂} :
-  ⟦form.app p (vecterm.cons t₁ t₂)⟧ᴸ.T = predicate₂ T p ⟦t₁⟧ᴴ ⟦t₂⟧ᴴ := rfl 
+  ⟦formula.app p (vecterm.cons t₁ t₂)⟧ᴸ.T = predicate₂ T p ⟦t₁⟧ᴴ ⟦t₂⟧ᴴ := rfl 
 lemma to_Herbrand {h₁ h₂ : Herbrand T} : h₁ ∥ h₂ = ⊤ ↔ h₁ = h₂ :=
 by { induction h₁ using fopl.Herbrand.ind_on, induction h₂ using fopl.Herbrand.ind_on,
      simp only [equal, Herbrand.of_eq_of, has_top.top],

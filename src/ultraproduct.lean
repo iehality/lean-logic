@@ -136,7 +136,7 @@ variables {F}
 
 @[simp] lemma ult_eq : Ult 𝔄 F = |ℿ 𝔄 ⫽ F| := rfl
 
-private lemma model_exists (p : form L) {e : ∀ i, ℕ → |𝔄 i|} (h : {i | ∃ u, p.val (u ^ˢ e i)} ∈ F) :
+private lemma model_exists (p : formula L) {e : ∀ i, ℕ → |𝔄 i|} (h : {i | ∃ u, p.val (u ^ˢ e i)} ∈ F) :
   ∃ (u : Π i, |𝔄 i|), {i | p.val ((u i) ^ˢ e i)} ∈ F :=
 begin
   have : ∀ i, ∃ u, i ∈ {i | ∃ u, p.val (u ^ˢ e i)} → p.val (u ^ˢ e i),
@@ -159,14 +159,14 @@ lemma models_pr_iff_lmm : ∀ {n} (v : vecterm L n) (e : ∀ i, ℕ → |𝔄 i|
   simp at IH₁ IH₂, simp[quotient.vquotient_cons, IH₁, IH₂], refine ⟨by refl, by refl⟩ }
 | _ (#n)              _ := by { simp[quotient.vquotient_cons], refine ⟨by refl, by refl⟩ } 
 | _ (vecterm.const c) _ := by { simp[quotient.vquotient_cons], refine ⟨by refl, by refl⟩ }
-| _ (vecterm.app f v) _ := by { simp[model_fn_eq, product_fn, models_pr_iff_lmm v], refl }
+| _ (vecterm.app f v) _ := by { simp[model_fn_eq, product_fn, models_pr_iff_lmm v, dvector.head_tail], refl }
 
 lemma models_pr_iff {n} (r : L.pr (n + 1)) (v : vecterm L n) (e : ∀ i, ℕ → |𝔄 i|) :
   (ℿ 𝔄 ⫽ F).pr r (v.val (λ n, ⟦(λ i, e i n)⟧*)) ↔ {i | (𝔄 i).pr r (v.val (e i))} ∈ F :=
 begin
   have : (@vecterm.val _ (ℿ 𝔄 ⫽ F) (λ n, ⟦λ i, e i n⟧*) _ v) = ᵥ⟦dvector.partition (λ i, @vecterm.val _ (𝔄 i) (λ n, e i n) _ v)⟧,
   from models_pr_iff_lmm v e,
-  simp[this, model_pr_eq, product_pr]
+  simp[this, model_pr_eq, product_pr, dvector.head_tail]
 end
 
 lemma vecterm_eq_iff : ∀ {n} (v₁ v₂ : vecterm L n) (e : ∀ i, ℕ → |𝔄 i|),
@@ -179,15 +179,15 @@ lemma vecterm_eq_iff : ∀ {n} (v₁ v₂ : vecterm L n) (e : ∀ i, ℕ → |�
   by { cases t₁; cases t₂; simp[model_fn_eq, product_fn, models_pr_iff_lmm]; try { refl } }
 
 -- Łoś's theorem
-theorem fundamental_param : ∀ (p : form L) (e : ∀ i, ℕ → |𝔄 i|),
+theorem fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|),
   ℿ 𝔄 ⫽ F ⊧[λ n, ⟦λ i, e i n⟧*] p ↔ {i | 𝔄 i ⊧[e i] p} ∈ F
-| (form.const p) e := by simp; refl
-| (form.app p v) e := models_pr_iff p _ _
+| (formula.const p) e := by simp; refl
+| (formula.app p v) e := models_pr_iff p _ _
 | (t₁ =̇ t₂)      e := by simp[vecterm_eq_iff]
 | (p →̇ q)       e := by { simp[fundamental_param p, fundamental_param q],
     show {i | p.val (e i)} ∈ F → {i | q.val (e i)} ∈ F ↔ {i | p.val (e i) → q.val (e i)} ∈ F,
     split,
-    { intros h, by_cases C : {i | form.val (e i) p} ∈ F,
+    { intros h, by_cases C : {i | formula.val (e i) p} ∈ F,
       { have : {i | q.val (e i)} ⊆ {i | p.val (e i) → q.val (e i)}, { intros i hi, simp* at* },
         exact F.sets_of_superset (h C) this },
       { have : {i | p.val (e i)}ᶜ ∈ F, from ultrafilter.compl_mem_iff_not_mem.mpr C,
@@ -215,14 +215,14 @@ theorem fundamental_param : ∀ (p : form L) (e : ∀ i, ℕ → |𝔄 i|),
                show ∃ (u : Π i, |𝔄 i|), {i | ¬p.val ((u i) ^ˢ e i)} ∈ F, from model_exists (¬̇p) h },
              { refine λ h u, F.sets_of_superset h (λ _ _ , by simp* at*) } } }
 
-theorem fundamental {p : form L} :
+theorem fundamental {p : formula L} :
   ℿ 𝔄 ⫽ F ⊧ p ↔ {i | 𝔄 i ⊧ p} ∈ F :=
 begin
   calc
     ℿ 𝔄 ⫽ F ⊧ p ↔ ℿ 𝔄 ⫽ F ⊧ nfal p p.arity : nfal_models_iff
     ...         ↔ {i | 𝔄 i ⊧ nfal p p.arity} ∈ F :
       by { have := fundamental_param (nfal p p.arity) (λ i n, default (|𝔄 i|)),
-           simp[eval_sentence_iff (form.nfal_sentence p)] at this, exact this }
+           simp[eval_sentence_iff (formula.nfal_sentence p)] at this, exact this }
     ...         ↔ {i | 𝔄 i ⊧ p} ∈ F :
       by { have : {i | 𝔄 i ⊧ nfal p p.arity} = {i | 𝔄 i ⊧ p},
            { ext i, simp, refine nfal_models_iff.symm },
@@ -235,26 +235,26 @@ end fopl
 namespace fopl
 variables {L : language.{u}} 
 
-def fintheory (T : theory L) := {S : finset (form L) // ∀ {x}, x ∈ S → x ∈ T}
+def fintheory (T : theory L) := {S : finset (formula L) // ∀ {x}, x ∈ S → x ∈ T}
 
 variables {T : theory L}
 
 def fintheory.empty {T : theory L} : fintheory T := ⟨∅, by simp⟩
 instance : inhabited (fintheory T) := ⟨⟨∅, by simp⟩⟩
 
-noncomputable def fintheory.insert (P : fintheory T) (p : form L) (h : p ∈ T) : fintheory T :=
+noncomputable def fintheory.insert (P : fintheory T) (p : formula L) (h : p ∈ T) : fintheory T :=
 ⟨insert p P.val, λ x hx,  by { simp at hx, cases hx, simp[hx, h], refine P.property hx }⟩
 
-@[simp] lemma fintheory.insert_val (P : fintheory T) (p : form L) (h : T p) :
+@[simp] lemma fintheory.insert_val (P : fintheory T) (p : formula L) (h : T p) :
   (P.insert p h).val = insert p P.val := rfl
 
-instance : has_coe (fintheory T) (set (form L)) := ⟨λ S, S.val⟩
+instance : has_coe (fintheory T) (set (formula L)) := ⟨λ S, S.val⟩
 
 namespace compactness
 
 variables (𝔄 : fintheory T → model L) 
 
-def formdomain (p : form L) : set (fintheory T) := {i | 𝔄 i ⊧ p}
+def formdomain (p : formula L) : set (fintheory T) := {i | 𝔄 i ⊧ p}
 
 def F : set (set (fintheory T)) := {x | ∃ p, T p ∧ x = formdomain 𝔄 p}
 
@@ -296,10 +296,10 @@ theorem ultrafilter_exists (h : ∃ p, p ∈ T) (H : ∀ (i : fintheory T) p, p 
 ultrafilter.exists_ultrafilter_of_finite_inter_nonempty _ (finite_intersection _ h H)
 
 theorem compact (T : theory L) :
-  (∃ 𝔄, 𝔄 ⊧ₜₕ T) ↔ (∀ S : finset (form L), (∀ {p}, p ∈ S → p ∈ T) → ∃ 𝔄, 𝔄 ⊧ₜₕ (S : set (form L))) :=
+  (∃ 𝔄, 𝔄 ⊧ₜₕ T) ↔ (∀ S : finset (formula L), (∀ {p}, p ∈ S → p ∈ T) → ∃ 𝔄, 𝔄 ⊧ₜₕ (S : set (formula L))) :=
   ⟨by { intros H S hyp_S, rcases H with ⟨𝔄, hyp⟩,
         refine ⟨𝔄, λ p h, hyp _ (hyp_S h)⟩ },
-   by { suffices : (∀ S : fintheory T, ∃ 𝔄, 𝔄 ⊧ₜₕ (S : set (form L))) → (∃ 𝔅, 𝔅 ⊧ₜₕ T),
+   by { suffices : (∀ S : fintheory T, ∃ 𝔄, 𝔄 ⊧ₜₕ (S : set (formula L))) → (∃ 𝔅, 𝔅 ⊧ₜₕ T),
         { intros h, refine this (λ S, _),
           rcases h S.val S.property with ⟨𝔄, hyp_𝔄⟩, refine ⟨𝔄, hyp_𝔄⟩ },
     intros H, by_cases C : T = ∅,

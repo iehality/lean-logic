@@ -129,19 +129,19 @@ instance (n) : encodable (vecterm L n) :=
 
 instance : encodable (term L) := ⟨vecterm.encode, (λ e, vecterm.decode L e 0), vecterm.decode_encode⟩
 
-def form.encode : form L → ℕ
-| (form.const c)      := (bit0 $ bit0 (encode c))
-| (@form.app _ n p v) := (bit0 $ bit1 n.mkpair ((encode p).mkpair v.encode))
+def formula.encode : formula L → ℕ
+| (formula.const c)      := (bit0 $ bit0 (encode c))
+| (@formula.app _ n p v) := (bit0 $ bit1 n.mkpair ((encode p).mkpair v.encode))
 | (t =̇ u)             := (bit1 $ bit0 $ bit0 (t.encode.mkpair u.encode))
 | (p →̇ q)            := (bit1 $ bit0 $ bit1 (p.encode.mkpair q.encode))
 | (¬̇p)                := (bit1 $ bit1 $ bit0 p.encode)
 | (Ȧp)                := (bit1 $ bit1 $ bit1 p.encode)
 
-def of_nat_form (L : language.{u}) [∀ n, encodable (L.fn n)] [∀ n, encodable (L.pr n)] : ℕ → option (form L)
+def of_nat_form (L : language.{u}) [∀ n, encodable (L.fn n)] [∀ n, encodable (L.pr n)] : ℕ → option (formula L)
 | e :=
   match e.bodd, e.div2.bodd, e.div2.div2.bodd with
-  | ff, ff, _  := (decode _ e.div2.div2).map form.const
-  | ff, tt, _  := form.app <$> (decode (L.pr $ e.div2.div2.unpair.1 + 1) e.div2.div2.unpair.2.unpair.1) <*>
+  | ff, ff, _  := (decode _ e.div2.div2).map formula.const
+  | ff, tt, _  := formula.app <$> (decode (L.pr $ e.div2.div2.unpair.1 + 1) e.div2.div2.unpair.2.unpair.1) <*>
       (decode (vecterm L _) e.div2.div2.unpair.2.unpair.2)
   | tt, ff, ff := (=̇) <$> (decode (vecterm L 0) e.div2.div2.div2.unpair.1) <*> (decode (vecterm L 0) e.div2.div2.div2.unpair.2)
   | tt, ff, tt := (→̇) <$> (of_nat_form e.div2.div2.div2.unpair.1) <*> (of_nat_form e.div2.div2.div2.unpair.2)
