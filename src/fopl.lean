@@ -164,6 +164,13 @@ namespace formula
 | s (¬̇p)      := ¬̇(p.rew s)
 | s (Ȧp)      := Ȧ(p.rew s⁺)
 
+@[simp] lemma and_rew (p q : formula L) (s) : (p ⩑ q).rew s = p.rew s ⩑ q.rew s :=by simp[and, formula.rew]
+@[simp] lemma or_rew (p q : formula L) (s) : (p ⩒ q).rew s = p.rew s ⩒ q.rew s :=by simp[or, formula.rew]
+@[simp] lemma iff_rew (p q : formula L) (s) : (p ↔̇ q).rew s = p.rew s ↔̇ q.rew s :=by simp[iff, formula.rew]
+@[simp] lemma ex_rew (p : formula L) (s) : (Ėp).rew s = Ėp.rew (#0 ^ˢ λ x, (s x).sf) :=by simp[ex, rewriting_sf]
+@[simp] lemma top_rew (s) : (⊤̇ : formula L).rew s = ⊤̇ := by simp[formula.top, formula.rew, vecterm.rew]
+@[simp] lemma bot_rew (s) : (⊥̇ : formula L).rew s = ⊥̇ := by simp[formula.bot, formula.rew, vecterm.rew]
+
 def sf (p : formula L) : formula L := p.rew (λ x, #(x+1))
 
 @[simp] lemma const_sf (c : L.pr 0) : (const c).sf = const c := rfl
@@ -231,14 +238,6 @@ by simp[formula.sf, formula.subst₁, vecterm.rew]
 @[simp] lemma sf_rew (p : formula L) (t s) : p.sf.rew (t ^ˢ s) = p.rew s :=
 by simp[formula.sf, vecterm.rew]
 
-
-@[simp] lemma and_rew (p q : formula L) (s) : (p ⩑ q).rew s = p.rew s ⩑ q.rew s :=by simp[and, formula.rew]
-@[simp] lemma or_rew (p q : formula L) (s) : (p ⩒ q).rew s = p.rew s ⩒ q.rew s :=by simp[or, formula.rew]
-@[simp] lemma iff_rew (p q : formula L) (s) : (p ↔̇ q).rew s = p.rew s ↔̇ q.rew s :=by simp[iff, formula.rew]
-@[simp] lemma ex_rew (p : formula L) (s) : (Ėp).rew s = Ėp.rew (#0 ^ˢ λ x, (s x).sf) :=by simp[ex, formula.rew]
-@[simp] lemma top_rew (s) : (⊤̇ : formula L).rew s = ⊤̇ := by simp[formula.top, formula.rew, vecterm.rew]
-@[simp] lemma bot_rew (s) : (⊥̇ : formula L).rew s = ⊥̇ := by simp[formula.bot, formula.rew, vecterm.rew]
-
 @[simp] lemma imply_subst₁ (p q : formula L) (t) : (p →̇ q).(t) = p.(t) →̇ q.(t) :=by simp[subst₁, formula.rew]
 @[simp] lemma neg_subst₁ (p : formula L) (t) : (¬̇p).(t) = ¬̇p.(t) :=by simp[subst₁, formula.rew]
 @[simp] lemma and_subst₁ (p q : formula L) (t) : (p ⩑ q).(t) = p.(t) ⩑ q.(t) :=by simp[subst₁, formula.rew]
@@ -273,17 +272,18 @@ end formula
 
 def openform (p : formula L) : Prop := p.Open = tt
 
-def subst' : ℕ → term L → ℕ → term L
-| 0     a := a ^ˢ idvar
-| (n+1) a := #0 ^ˢ (λ m, ((subst' n a) m).sf)
+def subst_sf (t : term L) : ℕ → ℕ → term L
+| 0     := t ^ˢ idvar
+| (n+1) := (subst_sf n)⁺
+notation `[` t ` // `:95  n `]`:0 := subst_sf t n
 
-@[simp] lemma fal_subst' (p : formula L) (t n) :
-  (Ȧp).rew (subst' n t) = Ȧp.rew (subst' (n+1) t) := rfl
-@[simp] lemma ex_subst' (p : formula L) (t n) :
-  (Ėp).rew (subst' n t) = Ėp.rew (subst' (n+1) t) := rfl
+@[simp] lemma fal_subst_sf (p : formula L) (t n) :
+  (Ȧp).rew [t // n] = Ȧp.rew [t // n+1] := rfl
+@[simp] lemma ex_subst_sf (p : formula L) (t n) :
+  (Ėp).rew [t // n] = Ėp.rew [t // n+1] := rfl
 
 @[simp] lemma var_subst_at (t : term L) (n) :
-  (#n).rew (subst' n t) = t 
+  (#n).rew [t // n] = t.rew (λ x, #(x+n)) := by { simp[subst_sf], cases n; simp[subst_sf],  }
 
 end fopl
 
