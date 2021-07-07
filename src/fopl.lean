@@ -76,11 +76,17 @@ infixr ` ^ˢ `:max := slide
 
 infixr ` ^ᵉ `:max := embed
 
-@[simp, reducible] def idvar : ℕ → term L := λ x, #x
+@[reducible] def idvar : ℕ → term L := λ x, #x
+
+@[reducible] def slide_head (a : term L) : ℕ → term L := a ^ˢ idvar
+prefix `sl₁ `:80 := slide_head
+
+@[reducible] def embed_head (a : term L) : ℕ → term L := a ^ᵉ idvar
+prefix `em₁ `:80 := slide_head
 
 namespace vecterm
 
-def rew (s : ℕ → term L) : ∀ {n}, vecterm L n → vecterm L n
+@[simp] def rew (s : ℕ → term L) : ∀ {n}, vecterm L n → vecterm L n
 | _ (cons a v) := cons a.rew v.rew
 | _ (#x)       := s x
 | _ (const c)  := const c
@@ -98,12 +104,6 @@ def arity : ∀ {n}, vecterm L n → ℕ
 | _ (#n)       := n + 1
 | _ (const c)  := 0
 | _ (app f v)  := v.arity
-
-@[simp] def complexity : ∀ {n}, vecterm L n → ℕ
-| _ (cons a v) := (max a.complexity v.complexity)
-| _ (#n)       := 0
-| _ (const c)  := 0
-| _ (app f v)  := v.complexity + 1
 
 @[simp] lemma nested_rew (s₀ s₁) : ∀ {n} (t : vecterm L n),
   (t.rew s₀).rew s₁ = t.rew (λ x, (s₀ x).rew s₁)
@@ -138,6 +138,12 @@ by { suffices : rew s v = rew idvar v, { simp* },
 
 end vecterm
 
+def rewriting_sf (s : ℕ → term L) : ℕ → term L := #0 ^ˢ λ n, (s n).sf
+notation s`⁺`:1200 := rewriting_sf s
+
+@[simp] lemma rewriting_sf_0 (s : ℕ → term L) : s⁺ 0 = #0 := rfl
+@[simp] lemma rewriting_sf_succ (s : ℕ → term L) (n : ℕ) : s⁺ (n.succ) = (s n).sf := rfl
+
 def formula.arity : formula L → ℕ
 | (formula.const c) := 0
 | (formula.app p v) := v.arity
@@ -146,17 +152,17 @@ def formula.arity : formula L → ℕ
 | (¬̇p)           := p.arity
 | (Ȧp)           := p.arity - 1
 
-def sentence : formula L → Prop := λ p, p.arity = 0
+@[reducible] def sentence : formula L → Prop := λ p, p.arity = 0
 
 namespace formula
 
-def rew : (ℕ → term L) → formula L → formula L
+@[simp] def rew : (ℕ → term L) → formula L → formula L
 | _ (const c) := const c 
 | s (app p v) := app p (v.rew s)
 | s (t =̇ u)   := (t.rew s) =̇ (u.rew s)
 | s (p →̇ q)  := p.rew s →̇ q.rew s
 | s (¬̇p)      := ¬̇(p.rew s)
-| s (Ȧp)      := Ȧ(p.rew $ #0 ^ˢ (λ x, (s x).sf))
+| s (Ȧp)      := Ȧ(p.rew s⁺)
 
 def sf (p : formula L) : formula L := p.rew (λ x, #(x+1))
 
@@ -174,13 +180,15 @@ def subst₁ (p : formula L) (x : term L) := p.rew (x ^ˢ idvar)
 
 notation p`.(`x`)` := p.subst₁ x
 
-def subst₂ (p : formula L) (x y : term L) := p.rew (x ^ˢ y^ˢ idvar) 
+def subst₂ (p : formula L) (x y : term L) := p.rew (x ^ˢ y ^ˢ idvar) 
 
 notation p`.(`x`, `y`)` := p.subst₂ x y
 
 def subst₁_e (p : formula L) (x : term L) := p.rew (x ^ᵉ idvar) 
 
 notation p`.ᵉ(`x`)` := p.subst₁_e x
+
+
 
 @[simp] lemma nested_rew : ∀ (p : formula L) (s₀ s₁),
   (p.rew s₀).rew s₁ = p.rew (λ x, (s₀ x).rew s₁)
@@ -194,8 +202,8 @@ notation p`.ᵉ(`x`)` := p.subst₁_e x
 
 @[simp] lemma rew_idvar (p : formula L) : p.rew idvar = p :=
 by { induction p; simp[rew]; try {simp*},
-     have : (#0 ^ˢ λ x, #(x+1) : ℕ → term L) = idvar,
-     { funext n, cases n; simp }, simp* }
+     have : idvar⁺ = idvar,
+     { funext n, cases n; simp }, rw[this], simp* }
 
 lemma rew_rew : ∀ (p : formula L) {s₀ s₁ : ℕ → term L},
   (∀ m, m < p.arity → s₀ m = s₁ m) → p.rew s₀ = p.rew s₁
@@ -223,15 +231,24 @@ by simp[formula.sf, formula.subst₁, vecterm.rew]
 @[simp] lemma sf_rew (p : formula L) (t s) : p.sf.rew (t ^ˢ s) = p.rew s :=
 by simp[formula.sf, vecterm.rew]
 
-@[simp] lemma imp_subst₁ (p q : formula L) (t) : (p →̇ q).(t) = p.(t) →̇ q.(t) :=by simp[subst₁, formula.rew]
-@[simp] lemma neg_subst₁ (p : formula L) (t) : (¬̇p).(t) = ¬̇p.(t) :=by simp[subst₁, formula.rew]
+
 @[simp] lemma and_rew (p q : formula L) (s) : (p ⩑ q).rew s = p.rew s ⩑ q.rew s :=by simp[and, formula.rew]
-@[simp] lemma and_subst₁ (p q : formula L) (t) : (p ⩑ q).(t) = p.(t) ⩑ q.(t) :=by simp[subst₁, formula.rew]
 @[simp] lemma or_rew (p q : formula L) (s) : (p ⩒ q).rew s = p.rew s ⩒ q.rew s :=by simp[or, formula.rew]
-@[simp] lemma or_subst₁ (p q : formula L) (t) : (p ⩒ q).(t) = p.(t) ⩒ q.(t) :=by simp[subst₁, formula.rew]
 @[simp] lemma iff_rew (p q : formula L) (s) : (p ↔̇ q).rew s = p.rew s ↔̇ q.rew s :=by simp[iff, formula.rew]
-@[simp] lemma iff_subst₁ (p q : formula L) (t) : (p ↔̇ q).(t) = p.(t) ↔̇ q.(t) :=by simp[subst₁, formula.rew]
 @[simp] lemma ex_rew (p : formula L) (s) : (Ėp).rew s = Ėp.rew (#0 ^ˢ λ x, (s x).sf) :=by simp[ex, formula.rew]
+@[simp] lemma top_rew (s) : (⊤̇ : formula L).rew s = ⊤̇ := by simp[formula.top, formula.rew, vecterm.rew]
+@[simp] lemma bot_rew (s) : (⊥̇ : formula L).rew s = ⊥̇ := by simp[formula.bot, formula.rew, vecterm.rew]
+
+@[simp] lemma imply_subst₁ (p q : formula L) (t) : (p →̇ q).(t) = p.(t) →̇ q.(t) :=by simp[subst₁, formula.rew]
+@[simp] lemma neg_subst₁ (p : formula L) (t) : (¬̇p).(t) = ¬̇p.(t) :=by simp[subst₁, formula.rew]
+@[simp] lemma and_subst₁ (p q : formula L) (t) : (p ⩑ q).(t) = p.(t) ⩑ q.(t) :=by simp[subst₁, formula.rew]
+@[simp] lemma or_subst₁ (p q : formula L) (t) : (p ⩒ q).(t) = p.(t) ⩒ q.(t) :=by simp[subst₁, formula.rew]
+@[simp] lemma iff_subst₁ (p q : formula L) (t) : (p ↔̇ q).(t) = p.(t) ↔̇ q.(t) :=by simp[subst₁, formula.rew]
+
+
+lemma subst₁_rew (p : formula L) (t) (s) : (p.(t)).rew s = (p.rew (#0 ^ˢ λ x, (s x).sf)).(t.rew s) :=
+by { simp[subst₁, formula.rew, vecterm.rew], congr, ext n, cases n; simp[vecterm.rew] }
+
 
 @[simp] def Open : formula L → bool
 | (const c) := tt
@@ -256,7 +273,21 @@ end formula
 
 def openform (p : formula L) : Prop := p.Open = tt
 
+def subst' : ℕ → term L → ℕ → term L
+| 0     a := a ^ˢ idvar
+| (n+1) a := #0 ^ˢ (λ m, ((subst' n a) m).sf)
+
+@[simp] lemma fal_subst' (p : formula L) (t n) :
+  (Ȧp).rew (subst' n t) = Ȧp.rew (subst' (n+1) t) := rfl
+@[simp] lemma ex_subst' (p : formula L) (t n) :
+  (Ėp).rew (subst' n t) = Ėp.rew (subst' (n+1) t) := rfl
+
+@[simp] lemma var_subst_at (t : term L) (n) :
+  (#n).rew (subst' n t) = t 
+
 end fopl
+
+
 
 @[simp] def dvector.to_vecterm {L : fopl.language} : ∀ {n} (v : dvector (fopl.term L) (n+1)), fopl.vecterm L n
 | 0     (t :: dvector.nil) := t

@@ -19,8 +19,12 @@ prefix `⇑`:max := theory.sf
 @[simp] def formula.equals : ∀ {n}, vecterm L n → vecterm L n → formula L
 | 0     t₁                   t₂                   := t₁ =̇ t₂
 | (n+1) (vecterm.cons t₁ v₁) (vecterm.cons t₂ v₂) := t₁ =̇ t₂ ⩑ formula.equals v₁ v₂
-
 infix ` ≡̇ `:90 := formula.equals
+
+@[simp] lemma equals_rew : ∀ {n} (v₁ v₂ : vecterm L n) (s), (v₁ ≡̇ v₂).rew s = (v₁.rew s) ≡̇ (v₂.rew s)
+| 0     _                    _                    _ := rfl
+| (n+1) (vecterm.cons t₁ v₁) (vecterm.cons t₂ v₂) s :=
+    by simp[formula.rew, vecterm.rew, equals_rew v₁ v₂]
 
 inductive provable : theory L → formula L → Prop
 | GE : ∀ {T : theory L} {p}, provable ⇑T p → provable T (Ȧp)
@@ -56,11 +60,14 @@ notation T`+{`:max p`}` := theory.add T p
 def theory.le (T U : theory L) : Prop := ∀ p, T ⊢̇ p → U ⊢̇ p
 instance : has_le (theory L) := ⟨theory.le⟩
 
-def theory.sentence (T : theory L) : Prop := ∀ {p}, p ∈ T → sentence p
+class closed_theory (T : theory L) := (cl : ∀ {p}, p ∈ T → sentence p)
 
-@[simp] lemma theory_sentence_eq {T : theory L} (h : theory.sentence T) : ⇑T = T :=
-by { ext p, refine ⟨λ hyp, _, λ hyp, _⟩, cases hyp with p hyp_p, simp[formula.sentence_rew (h hyp_p), hyp_p],
-     rw ← (formula.sentence_sf (h hyp)), refine theory.sf.intro hyp }
+instance : closed_theory (∅ : theory L) := ⟨λ _ h, by exfalso; exact h⟩
+
+@[simp] lemma closed_theory_sf_eq {T : theory L} [cl : closed_theory T] : ⇑T = T :=
+by { ext p, refine ⟨λ hyp, _, λ hyp, _⟩, cases hyp with p hyp_p,
+     simp[formula.sentence_rew (closed_theory.cl hyp_p), hyp_p],
+     rw ← (formula.sentence_sf (closed_theory.cl hyp)), refine theory.sf.intro hyp }
 
 lemma sf_dsb (T : theory L) (p : formula L) : ⇑T+{p.sf} = ⇑(T+{p}) :=
 begin
@@ -105,6 +112,9 @@ end
 AX (theory.add.new)
 
 variables {T}
+
+lemma GE_cl {T : theory L} [closed_theory T] {p} (h : T ⊢̇ p) : T ⊢̇ Ȧp :=
+by { apply provable.GE, simp[h] }
 
 @[simp] lemma imp_r {p} (h : T ⊢̇ p) (q) : T ⊢̇ q →̇ p :=
 by { have : T ⊢̇ p →̇ q →̇ p, simp,
@@ -413,22 +423,72 @@ begin
   induction P with p P IH; simp[conjunction],
   refine λ hyp_p hyp, ⟨AX hyp_p, IH hyp⟩,
 end
-
-private lemma prove_emp_sf : ∀ {p : formula L}, ∅ ⊢̇ p → ∅ ⊢̇ p.sf :=
+#check @closed_theory.cl _ _ _
+lemma cl_prove_rew [cl : closed_theory T] : ∀ {p : formula L}, T ⊢̇ p → ∀ s, T ⊢̇ p.rew s :=
 begin
-  suffices : ∀ {p : formula L} {T}, T ⊢̇ p → T = ∅ → ∅ ⊢̇ p.sf,
-  { refine λ p hp, this hp rfl },
+  suffices : ∀ {p : formula L} {T}, T ⊢̇ p → closed_theory T → ∀ s, T ⊢̇ p.rew s,
+  { refine λ p h s, this h cl _ },
   intros p T h,
-  induction h with T p hyp_p IH T p q hyp_pq hyp_p IH₁ IH₂ T p hyp; try {simp[formula.sf, formula.rew] },
-
+  induction h,
+  case GE : T p hyp IH
+  { intros cl s, rw[@closed_theory_sf_eq _ _ cl] at IH,
+    refine GE _, simp[@closed_theory_sf_eq _ _ cl], exact IH cl _ },
+  case MP : T p q hyp_pq hyp_p IH₁ IH₂
+  { intros cl s, simp[formula.rew, @closed_theory_sf_eq _ _ cl] at*, refine (IH₁ cl _).MP (IH₂ cl _) },
+  case AX : T p hyp
+  { intros cl s, simp[@closed_theory.cl _ _ cl _ hyp], exact AX hyp },
+  { simp[formula.rew] },
+  { simp[formula.rew] },
+  { simp[formula.rew] },
+  { intros, simp[formula.rew, formula.subst₁_rew] },
+  { simp[formula.rew] },
+  case q3 : T p { intros,
+    simp[formula.rew, vecterm.sf],
+    have : p.rew (λ n, vecterm.rew (λ m, #(m + 1)) (s n)) = (p.rew s).sf,
+    { simp[formula.sf, formula.rew] },
+    simp[this] },
+  { simp[formula.rew] },
+  { simp[formula.rew] },
+  { simp[formula.rew] },
+  { simp[formula.rew, vecterm.rew] },
+  { simp[formula.rew] },
 end
+
+lemma cl_fal_elim [closed_theory T] {p} : T ⊢̇ Ȧp ↔ T ⊢̇ p :=
+⟨λ h, by { have : T ⊢̇ (Ȧp).rew (λ n, #(n+1)),  from cl_prove_rew h _,
+           have lmm : T ⊢̇ (p.rew (#0 ^ˢ λ n, #(n+2))).subst₁ #0, from this.subst₁ #0,
+           have : (p.rew (#0 ^ˢ λ n, #(n+2))).subst₁ #0 = p,
+           { suffices : (p.rew (#0 ^ˢ λ n, #(n+2))).subst₁ #0 = p.rew idvar, simp* at*,
+             simp[formula.subst₁, -formula.rew_idvar], congr,
+             ext n, cases n; simp[vecterm.rew] },
+           simp[this] at lmm, exact lmm },
+ λ h, GE $ by simp[h]⟩
+
+private lemma conjunction_rew_eq : ∀ (P : list (formula L)) (s),
+  (conjunction P).rew s = conjunction (P.map (λ p, p.rew s))
+| []       _ := by simp[conjunction, formula.rew]
+| (p :: P) s := by simp[conjunction, formula.rew, conjunction_rew_eq P]
+
+lemma conjunction_provable : ∀ {P : list (formula L)} (h : ∀ p, p ∈ P → T ⊢̇ p), T ⊢̇ conjunction P
+| []       h := by simp[conjunction]
+| (p :: P) h := by { simp[conjunction],
+    have lmm₁ : T ⊢̇ p, { refine h _ _, simp },
+    have lmm₂ : T ⊢̇ conjunction P, { refine conjunction_provable (λ p hyp, h _ _), simp, right, exact hyp },
+    refine ⟨lmm₁, lmm₂⟩ }
 
 lemma sf_sf {p} (h : T ⊢̇ p) : ⇑T ⊢̇ p.sf :=
 begin
-  have : ∃ P, (∀ p, p ∈ P → T p) ∧ ∅ ⊢̇ conjunction P →̇ p, from proof_conjunction h, rcases this with ⟨P, hyp, prov⟩,
-
+  have : ∃ P, (∀ p, p ∈ P → p ∈ T) ∧ ∅ ⊢̇ conjunction P →̇ p,
+  from proof_conjunction h, rcases this with ⟨P, hyp_P, prov⟩,
+  have lmm₁ : ⇑T ⊢̇ conjunction (P.map formula.sf),
+  { refine conjunction_provable (λ p hyp, AX _), simp at hyp, rcases hyp with ⟨p', p'_mem, rfl⟩,
+    refine theory.sf.intro (hyp_P p' p'_mem) },
+  have lmm₂ : ⇑T ⊢̇ conjunction (P.map formula.sf) →̇ p.sf,
+  { have : ∅ ⊢̇ (conjunction P).sf →̇ p.sf, from cl_prove_rew prov _,
+    simp[conjunction_rew_eq, formula.sf] at this,
+    refine inclusion this (λ p h, _), exfalso, exact h },
+  refine lmm₂.MP lmm₁
 end
-
 
 lemma use {p : formula L} (t) (h : T ⊢̇ p.(t)) : T ⊢̇ Ėp :=
 begin
@@ -450,12 +510,71 @@ end
 lemma eq_trans {t₁ t₂ t₃} : (T ⊢̇ t₁ =̇ t₂) → (T ⊢̇ t₂ =̇ t₃) → (T ⊢̇ t₁ =̇ t₃) := λ h₁ h₂,
 by { have : T ⊢̇ t₁ =̇ t₂ →̇ t₂ =̇ t₃ →̇ t₁ =̇ t₃, simp, exact (this.MP h₁).MP h₂ }
 
+lemma equal_rew_equals : ∀ {n} (v : vecterm L n) (s₁ s₂ : ℕ → term L) (e : ∀ n, T ⊢̇ s₁ n =̇ s₂ n),
+  T ⊢̇ v.rew s₁ ≡̇ v.rew s₂
+| _ (vecterm.cons t v) _ _ eqn := by simp[vecterm.rew];
+    exact ⟨equal_rew_equals t _ _ eqn, equal_rew_equals v _ _ eqn⟩
+| _ (#n)               _ _ eqn := by simp[vecterm.rew]; exact eqn _
+| _ (vecterm.const c)  _ _ eqn := by simp[vecterm.rew]
+| _ (vecterm.app f v)  _ _ eqn := by simp[vecterm.rew];
+    exact provable.e4.MP (equal_rew_equals v _ _ eqn)
 
+lemma equal_subst₁_equals {n} (v : vecterm L n) {t₁ t₂} (h : T ⊢̇ t₁ =̇ t₂) :
+  T ⊢̇ v.rew (t₁ ^ˢ idvar) ≡̇ v.rew (t₂ ^ˢ idvar) :=
+by { refine equal_rew_equals v _ _ (λ n, _), { cases n; simp[h] } }
+
+lemma equal_rew_iff (p : formula L) : ∀ {s₁ s₂ : ℕ → term L} {T : theory L} (eqn : ∀ n, T ⊢̇ s₁ n =̇ s₂ n),
+  T ⊢̇ p.rew s₁ ↔̇ p.rew s₂ :=
+begin
+  induction p,
+  case const { by simp[formula.subst₁, formula.rew] },
+  case app : n p v { intros, simp[formula.subst₁, formula.rew],
+    exact ⟨(provable.e5.MP (equal_rew_equals v _ _ eqn)),
+      (provable.e5.MP (equal_rew_equals v _ _ (λ n, eq_symm.mp $ eqn n)))⟩ },
+  case equal : t₁ t₂ { intros, simp[formula.subst₁, formula.rew],
+    refine ⟨deduction.mp _, deduction.mp _⟩,
+    { have lmm₁ : T+{t₁.rew s₁ =̇ t₂.rew s₁} ⊢̇ t₁.rew s₂ =̇ t₁.rew s₁,
+      { refine equal_rew_equals t₁ s₂ s₁ (λ n, eq_symm.mp _), simp[eqn n] },
+      have lmm₂ : T+{t₁.rew s₁ =̇ t₂.rew s₁} ⊢̇ t₁.rew s₁ =̇ t₂.rew s₁, { simp },
+      have lmm₃ : T+{t₁.rew s₁ =̇ t₂.rew s₁} ⊢̇ t₂.rew s₁ =̇ t₂.rew s₂,
+      { refine equal_rew_equals t₂ s₁ s₂ (λ n, _), simp[eqn n]  },
+      refine lmm₁.eq_trans (lmm₂.eq_trans lmm₃) },
+    { have lmm₁ : T+{t₁.rew s₂ =̇ t₂.rew s₂} ⊢̇ t₁.rew s₁ =̇ t₁.rew s₂,
+      { refine equal_rew_equals t₁ s₁ s₂ (λ n, _), simp[eqn n] },
+      have lmm₂ : T+{t₁.rew s₂ =̇ t₂.rew s₂} ⊢̇ t₁.rew s₂ =̇ t₂.rew s₂, { simp },
+      have lmm₃ : T+{t₁.rew s₂ =̇ t₂.rew s₂} ⊢̇ t₂.rew s₂ =̇ t₂.rew s₁,
+      { refine equal_rew_equals t₂ s₂ s₁ (λ n, eq_symm.mp _), simp[eqn n]  },
+      refine lmm₁.eq_trans (lmm₂.eq_trans lmm₃) } },
+  case imply : p q IH₁ IH₂
+  { intros, have IH₁ := IH₁ eqn, have IH₂ := IH₂ eqn,
+    simp[formula.subst₁, formula.rew] at*, split,
+    { refine deduction.mp (deduction.mp _), 
+      have : T+{p.rew s₁ →̇ q.rew s₁}+{p.rew s₂} ⊢̇ p.rew s₂, simp,
+      have : T+{p.rew s₁ →̇ q.rew s₁}+{p.rew s₂} ⊢̇ p.rew s₁, from MP (by simp[IH₁]) this,
+      have : T+{p.rew s₁ →̇ q.rew s₁}+{p.rew s₂} ⊢̇ q.rew s₁,
+        from MP (show _ ⊢̇ p.rew s₁ →̇ q.rew s₁, by simp) this,
+      from MP (by simp[IH₂]) this },
+    { refine deduction.mp (deduction.mp _),
+      have : T+{p.rew s₂ →̇ q.rew s₂}+{p.rew s₁} ⊢̇ p.rew s₁, simp,
+      have : T+{p.rew s₂ →̇ q.rew s₂}+{p.rew s₁} ⊢̇ p.rew s₂, from MP (by simp[IH₁]) this,
+      have : T+{p.rew s₂ →̇ q.rew s₂}+{p.rew s₁} ⊢̇ q.rew s₂,
+        from MP (show _ ⊢̇ p.rew s₂ →̇ q.rew s₂, by simp) this,
+      from MP (by simp[IH₂]) this } },
+  case neg : p IH
+  { intros, simp[formula.subst₁, formula.rew] at*,
+    refine ⟨contrapose.mpr _, contrapose.mpr _⟩; simp[IH eqn] },
+  case fal : p IH
+  { intros, simp[formula.subst₁, formula.rew],
+    have := @IH (#0 ^ˢ λ n, (s₁ n).sf) (#0 ^ˢ λ n, (s₂ n).sf) ⇑T
+      (λ n, by { cases n; simp, exact sf_sf (eqn n) }),
+    simp at this, 
+    refine ⟨provable.q2.MP (GE this.1), provable.q2.MP (GE this.2)⟩ }
+end
 
 lemma dummy_fal_quantifir (p) : T ⊢̇ p ↔̇ Ȧ(p.sf) :=
 by { have : T ⊢̇ Ȧp.sf →̇ p.sf.(#0), from provable.q1, simp* at * }
 
-@[simp] lemma dummy_fal_quantifir_iff {p : formula L} : T ⊢̇ Ȧ(p.sf) ↔ T ⊢̇ p :=
+lemma dummy_fal_quantifir_iff {p : formula L} : T ⊢̇ Ȧ(p.sf) ↔ T ⊢̇ p :=
 by { have := provable.iff.mp (@dummy_fal_quantifir _ T p), split,
      { refine λ h, (this.2.MP h) },
      { refine λ h, (this.1.MP h) } }

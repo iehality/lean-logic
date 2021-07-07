@@ -7,7 +7,7 @@ namespace fopl
 variables {L : language.{u}} 
 
 inductive language_fn (L : language.{u}) : ℕ → Type u
-| sk : ∀ (p : form L), language_fn p.arity
+| sk : ∀ (p : formula L), language_fn p.arity
 | old : ∀ {n}, L.fn n → language_fn n
 
 def language.skolemize (L : language) : language := ⟨language_fn L, L.pr⟩
@@ -22,15 +22,15 @@ def vecterm.corresp : ∀ {n}, vecterm L n → vecterm L.skolemize n
 
 instance (n) : has_coe (vecterm L n) (vecterm L.skolemize n) := ⟨vecterm.corresp⟩
 
-def form.corresp : form L → form L.skolemize
-| (form.const c) := form.const c
-| (form.app p v) := form.app p v.corresp
+def formula.corresp : formula L → formula L.skolemize
+| (formula.const c) := formula.const c
+| (formula.app p v) := formula.app p v.corresp
 | (t =̇ u)        := t.corresp =̇ u.corresp
 | (p →̇ q)       := p.corresp →̇ q.corresp
 | (¬̇p)           := ¬̇p.corresp
 | (Ȧp)           := Ȧp.corresp
 
-instance : has_coe (form L) (form L.skolemize) := ⟨form.corresp⟩
+instance : has_coe (formula L) (formula L.skolemize) := ⟨formula.corresp⟩
 
 def normvecvar : ∀ {n}, vecterm L n
 | 0     := #0
@@ -39,7 +39,7 @@ def normvecvar : ∀ {n}, vecterm L n
 namespace skolemization
 variables {L}
 
-def skterm (p : form L) : term L.skolemize :=
+def skterm (p : formula L) : term L.skolemize :=
 begin
   cases C : p.arity,
   have := language_fn.sk p, simp[C] at this, exact vecterm.const this,
@@ -49,7 +49,7 @@ end
 
 
 inductive theory.skolemize (T : theory L) : theory (L.skolemize)
-| sk  : ∀ (p : form L), theory.skolemize (p.corresp →̇ p.corresp.ᵉ(skterm p))
+| sk  : ∀ (p : formula L), theory.skolemize (p.corresp →̇ p.corresp.ᵉ(skterm p))
 | old : ∀ {p}, T p → theory.skolemize p
 
 end skolemization
@@ -57,12 +57,12 @@ end skolemization
 end fopl
 
 namespace fopl
-variables {L : language.{u}} [encodable (form L)] (T : theory L)
+variables {L : language.{u}} [encodable (formula L)] (T : theory L)
 
 
 def theory.maximum_aux (T : theory L) : ℕ → theory L
 | 0     := T
-| (s+1) := let p := idecode (form L) s in
+| (s+1) := let p := idecode (formula L) s in
     if (theory.maximum_aux s +{p}).consistent then theory.maximum_aux s +{p} else theory.maximum_aux s
 
 def theory.maximum  : theory L := {p | ∃ s, T.maximum_aux s p}
@@ -74,10 +74,10 @@ lemma maximum_aux_inclusion (s) : T.maximum_aux s ⊆ T.maximum := λ p h, ⟨s,
 lemma maximum_consistent_aux (h : T.consistent) : ∀ s, (T.maximum_aux s).consistent
 | 0 := h
 | (s+1) := by { simp[theory.maximum_aux],
-    by_cases (T.maximum_aux s +{idecode (form L) s}).consistent; simp[h, maximum_consistent_aux s] }
+    by_cases (T.maximum_aux s +{idecode (formula L) s}).consistent; simp[h, maximum_consistent_aux s] }
 
 lemma maximum_aux_ss (s) : T.maximum_aux s ⊆ T.maximum_aux (s+1) := λ p hyp_p,
-by { simp[theory.maximum_aux], by_cases C₁ : (T.maximum_aux s)+{idecode (form L) s}.consistent; simp[C₁],
+by { simp[theory.maximum_aux], by_cases C₁ : (T.maximum_aux s)+{idecode (formula L) s}.consistent; simp[C₁],
      refine theory.add.old hyp_p, refine hyp_p }
 
 theorem maximum_maximum {p} : T.maximum ⊢̇ p ∨ T.maximum ⊢̇ ¬̇p :=
