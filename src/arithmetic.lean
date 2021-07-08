@@ -1,4 +1,4 @@
-import deduction semantics model
+import deduction semantics cltheory
 
 namespace fopl
 
@@ -52,6 +52,7 @@ local notation n`˙`:1200 := numeral n
 lemma numeral_arity0 : ∀ n, (n˙).arity = 0
 | 0     := rfl
 | (n+1) := by simp[numeral, vecterm.arity, @numeral_arity0 n]
+
 @[elab_as_eliminator] 
 lemma AL_ind {C : term AL → Sort*}
   (var  : ∀ n, C(#n))
@@ -95,27 +96,33 @@ inductive robinson : theory AL
 | q8 : robinson ȦȦ(#0 ≤̇ #1 ↔̇ Ė(#1 +̇ #0 =̇ #2))
 notation `𝐐` := robinson
 
-@[simp] lemma Q_sentence : theory.sentence 𝐐 := λ p h,
-by cases h; simp[sentence, formula.arity, vecterm.arity, formula.iff, formula.ex, formula.and]
-  
+def peano_induction (p : formula AL) : formula AL := p.rew ss[Ż // 0] →̇ Ȧ(p →̇ p.rew em[Ṡ #0 // 0]) →̇ Ȧ p
+prefix `𝐈`:max := peano_induction
+
+instance : closed_theory 𝐐 := ⟨λ p h,
+  by cases h; simp[sentence, formula.arity, vecterm.arity, formula.iff, formula.ex, formula.and]⟩
+
 inductive peano : theory AL
-| q   : ∀ {p}, 𝐐 p → peano p
-| ind : ∀ (p : formula AL), peano (p.(Ż) →̇ Ȧ(p →̇ (p.ᵉ(Ṡ #0))) →̇ Ȧ p)
+| q   : ∀ {p}, p ∈ 𝐐 → peano p
+| ind : ∀ (p : formula AL), peano 𝐈p
 notation `𝐏𝐀` := peano
 
-inductive bounded_peano (C : formula AL → Prop) : theory AL
-| q   : ∀ {p}, 𝐐 p → bounded_peano p
-| ind : ∀ {p : formula AL}, C p → bounded_peano (p.(Ż) →̇ Ȧ(p →̇ (p.ᵉ(Ṡ #0))) →̇ Ȧ p)
-prefix `𝐈`:max := bounded_peano
+inductive bounded_peano (C : set (formula AL)) : theory AL
+| q   : ∀ {p}, p ∈ 𝐐 → bounded_peano p
+| ind : ∀ {p : formula AL}, p ∈ C → bounded_peano 𝐈p
+prefix `𝐐+𝐈`:max := bounded_peano
 
-lemma peano_bd_peano : 𝐏𝐀 = 𝐈(λ x, true) :=
+instance (C : set (formula AL)) : closed_theory 𝐐+𝐈C := ⟨λ p h,
+  by {cases h; simp[sentence, formula.arity, vecterm.arity, formula.iff, formula.ex, formula.and],}⟩
+
+lemma peano_bd_peano : 𝐏𝐀 = 𝐐+𝐈(λ x, true) :=
 by { ext p, split; intros h; induction h with h h h h,
      { exact bounded_peano.q h }, { exact bounded_peano.ind trivial },
      { exact peano.q h }, { exact peano.ind _ } }
 
-lemma Q_bd_peano (C) : 𝐐 ⊆ 𝐈C := λ p h, bounded_peano.q h
+lemma Q_bd_peano (C) : 𝐐 ⊆ 𝐐+𝐈C := λ p h, bounded_peano.q h
 
-lemma bd_peano_subset {C D : set (formula AL)} : C ⊆ D → 𝐈C ⊆ 𝐈D := λ h p hyp_p,
+lemma bd_peano_subset {C D : set (formula AL)} : C ⊆ D → 𝐐+𝐈C ⊆ 𝐐+𝐈D := λ h p hyp_p,
 by { cases hyp_p with _ hyp_p p hyp_p2,
      exact bounded_peano.q hyp_p, refine bounded_peano.ind (h hyp_p2) }
 
@@ -179,21 +186,21 @@ end
 
 theorem Q_consistent : theory.consistent 𝐐 := model_consistent N_models_Q
 
-lemma N_models_bd_PA (C : formula AL → Prop) : 𝒩 ⊧ₜₕ 𝐈C := λ p hyp_p e,
+lemma N_models_bd_PA (C : formula AL → Prop) : 𝒩 ⊧ₜₕ 𝐐+𝐈C := λ p hyp_p e,
 by { cases hyp_p with _ hyp_p p,
      exact N_models_Q p hyp_p e,
-       simp[formula.subst₁, formula.subst₁_e, rew_val_iff],
+       simp[rew_val_iff],
   intros h0 hIH n,
   induction n with n IH,
-  { have : (λ n, (vecterm.val e (Ż ^ˢ vecterm.var $ n)).head) = ((0 : ℕ) ^ˢ e),
+  { have : (λ n, (vecterm.val e (ss[Ż // 0] n)).head) = ((0 : ℕ) ^ˢ e),
     { funext n, cases n; simp[slide] },
     simp[this] at h0, exact h0 },
   { have hIH' := hIH n IH,
-    have : (λ m, (vecterm.val (n ^ˢ e : ℕ → Num.dom) (Ṡ #0 ^ᵉ vecterm.var $ m)).head) = (n+1 : ℕ) ^ˢ e,
+    have : (λ m, (vecterm.val (n ^ˢ e : ℕ → Num.dom) (em[Ṡ #0 // 0] m)).head) = (n+1 : ℕ) ^ˢ e,
     { funext n, cases n; simp[slide, embed] },
     simp[this] at hIH', exact hIH' } }
 
-theorem bd_PA_consistent (C) : theory.consistent 𝐈C := model_consistent (N_models_bd_PA C)
+theorem bd_PA_consistent (C) : theory.consistent 𝐐+𝐈C := model_consistent (N_models_bd_PA C)
 
 lemma N_models_PA : 𝒩 ⊧ₜₕ 𝐏𝐀 :=
 by {rw peano_bd_peano, exact N_models_bd_PA _}
@@ -214,14 +221,14 @@ open provable
 
 @[simp] lemma add_zero (h : Herbrand 𝐐) : function₂ 𝐐 *+ (function₀ 𝐐 *Z) h = h :=
 by { induction h using fopl.Herbrand.ind_on,
-     have := Herbrand.provable_iff.mp ((AX robinson.q4).subst₁ h),
-     simp[formula.subst₁, formula.rew, vecterm.rew, Herbrand.of_eq_of] at this ⊢, exact this }
+     have := Herbrand.provable_iff.mp ((AX robinson.q4).fal_subst h),
+     simp* at* }
 
 @[simp] lemma add_succ (h₁ h₂ : Herbrand 𝐐) :
   (function₂ 𝐐 *+) ((function₁ 𝐐 *S) h₁) h₂ = (function₁ 𝐐 *S) ((function₂ 𝐐 *+) h₁ h₂) :=
 by { induction h₁ using fopl.Herbrand.ind_on, induction h₂ using fopl.Herbrand.ind_on,
-     have := Herbrand.provable_iff.mp (((AX robinson.q5).subst₁ h₂).subst₁ h₁),
-     simp[formula.subst₁, formula.rew, vecterm.rew, Herbrand.of_eq_of] at this ⊢, exact this }
+     have := Herbrand.provable_iff.mp (((AX robinson.q5).fal_subst h₂).fal_subst h₁),
+     simp* at* }
 
 lemma add_eq : ∀ (n m : ℕ), (function₂ 𝐐 *+) ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ = ⟦(n + m)˙⟧ᴴ
 | 0     m := by simp[numeral]
@@ -229,31 +236,26 @@ lemma add_eq : ∀ (n m : ℕ), (function₂ 𝐐 *+) ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ 
 
 lemma mul_eq : ∀ {n m : ℕ}, (function₂ 𝐐 *×) ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ = ⟦(n * m)˙⟧ᴴ
 | 0     m :=
-  by { have := Herbrand.provable_iff.mp ((AX robinson.q6).subst₁ (m˙)),
-    simp[formula.subst₁, formula.rew, vecterm.rew, Herbrand.of_eq_of] at this ⊢, refine this }
+  by { have := Herbrand.provable_iff.mp ((AX robinson.q6).fal_subst (m˙)),
+       simp at this ⊢, exact this }
 | (n+1) m := by { simp[numeral],
-  have q7 := Herbrand.provable_iff.mp (((AX robinson.q7).subst₁ (m˙)).subst₁ (n˙)),
-  have IH := @mul_eq n m,  
-  simp[formula.subst₁, formula.rew, vecterm.rew] at q7 IH ⊢,
+  have q7 := Herbrand.provable_iff.mp (((AX robinson.q7).fal_subst (m˙)).fal_subst (n˙)),
+  have IH := @mul_eq n m, simp at q7 IH ⊢,
   rw (show (n + 1) * m = n * m + m, from nat.succ_mul n m), simp[←add_eq],
   rw ← IH, exact q7 }
 
 lemma le_prove {n m : ℕ} (eqn : n ≤ m) : 𝐐 ⊢̇ n˙ ≤̇ m˙ :=
 begin
   refine Lindenbaum.provable_top_iff.mpr _,
-  have q8 : predicate₂ 𝐐 *≤ ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ = ∐(function₂ ⇑𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ),
-  { have := Lindenbaum.provable_iff.mp (((AX robinson.q8).subst₁ (m˙)).subst₁ (n˙)),
-    simp[formula.rew, vecterm.rew, numeral_arity0] at this ⊢, exact this },
+  have q8 : predicate₂ 𝐐 *≤ ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ = ∐(function₂ 𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ),
+  { have := Lindenbaum.provable_iff.mp (((AX robinson.q8).fal_subst (m˙)).fal_subst (n˙)),
+    simp[numeral_arity0] at this ⊢, exact this },
   simp[formula.rew, vecterm.rew, numeral_arity0],
-  have exist : ⟦(m - n)˙⟧ᴴ ⊳ (function₂ ⇑𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ) = ⊤,
-  { have : (function₂ ⇑𝐐 *+) ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ = ⟦n˙ +̇ #0 =̇ m˙⟧ᴸ := rfl,
-    rw this, simp[fopl.Lindenbaum.subst₁, fopl.Lindenbaum.subst₁_aux, -provable_equal_eq,
-      formula.subst₁, formula.rew, vecterm.rew, numeral_arity0], simp,
-      rw[to_Herbrand], simp[add_eq],
-      have : ⟦(n + (m - n))˙⟧ᴴ = ⟦m˙⟧ᴴ, simp[(show n + (m - n) = m, from nat.add_sub_of_le eqn)],
-      refine this },
-  have : ⟦(m - n)˙⟧ᴴ ⊳ (function₂ ⇑𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ) ≤ ∐(function₂ ⇑𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ),
-  from subst₁_le_ex _ _,
+  have exist : ⟦(m - n)˙⟧ᴴ ⊳[0] (function₂ 𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ) = ⊤,
+  { simp[numeral_arity0, add_eq, to_Herbrand],
+    have : n + (m - n) = m, exact nat.add_sub_of_le eqn, simp[this] },
+  have : ⟦(m - n)˙⟧ᴴ ⊳[0] (function₂ 𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ) ≤ ∐(function₂ 𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ),
+  from closed.subst_sf_L_le_ex _ _,
   simp[exist] at this, simp[q8], exact this,
 end
 
@@ -263,7 +265,7 @@ by refine Lindenbaum.provable_top_iff.mpr _; simp[to_Herbrand, eqn]
 lemma add_inj : ∀ (n : ℕ) (t₁ t₂), 𝐐 ⊢̇ n˙ +̇ t₁ =̇ n˙ +̇ t₂ →̇ t₁ =̇ t₂
 | 0     t₁ t₂ := Lindenbaum.provable_imp_iff.mpr (by simp[numeral])
 | (n+1) t₁ t₂ := by { apply Lindenbaum.provable_imp_iff.mpr, simp,
-  have q2 := Lindenbaum.provable_imp_iff.mp (((AX robinson.q2).subst₁ (n˙ +̇ t₂)).subst₁ (n˙ +̇ t₁)),
+  have q2 := Lindenbaum.provable_imp_iff.mp (((AX robinson.q2).fal_subst (n˙ +̇ t₂)).fal_subst (n˙ +̇ t₁)),
   have IH := Lindenbaum.provable_imp_iff.mp (add_inj n t₁ t₂), 
   simp[formula.rew, vecterm.rew, numeral_arity0, numeral] at q2 IH ⊢,
   exact le_trans q2 IH }
@@ -281,7 +283,7 @@ begin
       refine provable_neg_iff.mpr _,
       simp at this ⊢, simp[←this], refine Lindenbaum.eq_symm _ _ } },
   have lmm₁ : ∀ n, 𝐐 ⊢̇ Ż ≠̇ (n + 1)˙, 
-  { intros n, exact ((AX robinson.q1).subst₁ (n˙)) },
+  { intros n, exact ((AX robinson.q1).fal_subst (n˙)) },
   intros n m,
   have : 𝐐 ⊢̇ Ż ≠̇ (m + 1)˙ →̇ n˙ +̇ Ż ≠̇ n˙ +̇ (m + 1)˙, from contrapose.mpr (add_inj n Ż (m + 1)˙), 
   have : 𝐐 ⊢̇ n˙ +̇ 0˙ ≠̇ n˙ +̇ (m + 1)˙, from this.MP (lmm₁ _),
@@ -295,25 +297,24 @@ begin
   { intros n m eqn, have := this m (n - m - 1),
     simp[show n - m - 1 + 1 + m = n, by omega] at this, exact this },
   have q8 : ∀ n m,
-    predicate₂ 𝐐 *≤ ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ = ∐(function₂ ⇑𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ),
-  { intros n m, have := Lindenbaum.provable_iff.mp (((AX robinson.q8).subst₁ (m˙)).subst₁ (n˙)),
-    simp[formula.rew, vecterm.rew, numeral_arity0] at this ⊢, exact this },
+    predicate₂ 𝐐 *≤ ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ = ∐(function₂ 𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ),
+  { intros n m, have := Lindenbaum.provable_iff.mp (((AX robinson.q8).fal_subst (m˙)).fal_subst (n˙)),
+    simp[numeral_arity0] at this ⊢, exact this },
   have q2 : ∀ {n m}, 
-  function₁ 𝐐 *S (function₂ 𝐐 *+ ⟦(m + 1 + n)˙⟧ᴴ ⟦#0⟧ᴴ) ∥ function₁ 𝐐 *S ⟦n˙⟧ᴴ ≤ function₂ 𝐐 *+ ⟦(m + 1 + n)˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦n˙⟧ᴴ,
-  { intros n m, have := ((AX robinson.q2).subst₁ n˙).subst₁ ((m + 1 + n)˙ +̇ #0),
-    simp[formula.rew, vecterm.rew, numeral_arity0, formula.subst₁, formula.rew, vecterm.rew,
-    Lindenbaum.provable_imp_iff] at this, exact this },
+    function₁ 𝐐 *S (function₂ 𝐐 *+ ⟦(m + 1 + n)˙⟧ᴴ ⟦#0⟧ᴴ) ∥ function₁ 𝐐 *S ⟦n˙⟧ᴴ ≤
+    function₂ 𝐐 *+ ⟦(m + 1 + n)˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦n˙⟧ᴴ,
+  { intros n m, have := ((AX robinson.q2).fal_subst n˙).fal_subst ((m + 1 + n)˙ +̇ #0),
+    simp[numeral_arity0, Lindenbaum.provable_imp_iff] at this, exact this },
   suffices : ∀ (n m : ℕ), 𝐐 ⊢̇ Ȧ¬̇((m + 1 + n)˙ +̇ #0 =̇ n˙),
   { intros n m, have := this n m, simp [provable_top_iff] at this ⊢, simp[q8],
-    rw [←compl_inj_iff, prenex_ex_quantifir_neg], simp[this] },
+    rw [←compl_inj_iff, closed.prenex_ex_quantifir_neg], simp[this] },
   intros n, induction n with n IH; intros m,
-  { apply GE, have := (AX robinson.q1).subst₁ (m˙ +̇ #0),
-    simp[numeral, theory_sentence_eq, provable_neg_iff, formula.subst₁, formula.rew, vecterm.rew] at this ⊢, 
+  { apply GE, have := (AX robinson.q1).fal_subst (m˙ +̇ #0),
+    simp[numeral, provable_neg_iff] at this ⊢, 
     rw Lindenbaum.eq_symm, exact this },
-  { apply GE, have IH' := (IH m).subst₁ (#0),
+  { apply GE, have IH' := (IH m).fal_subst (#0),
     have : m + 1 + n.succ = (m + 1 + n) + 1, from (m + 1).add_succ n, simp[this, numeral],
-    simp[numeral, theory_sentence_eq, provable_neg_iff,
-      formula.subst₁, formula.rew, vecterm.rew, numeral_arity0, numeral] at IH' ⊢,
+    simp[numeral, provable_neg_iff, numeral_arity0] at IH' ⊢,
     exact eq_bot_mono q2 IH' }
 end
 
