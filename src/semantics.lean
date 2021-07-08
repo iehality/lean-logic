@@ -59,7 +59,7 @@ lemma rew_val_iff : ∀ (s : ℕ → term L) (p : formula L) (e : ℕ → |M|),
 | _ (p →̇ q)       _ := by simp[formula.rew, rew_val_iff _ p, rew_val_iff _ q]
 | _ (¬̇p)           _ := by simp[formula.rew, rew_val_iff _ p]
 | s (Ȧp)           e := by { simp[formula.rew, rew_val_iff _ p], refine forall_congr (λ d, _),
-    have : (λ n, (((#0 ^ˢ λ x, (s x).sf) n).val (d ^ˢ e)).head) = (d ^ˢ λ n, ((s n).val e)),
+    have : (λ n, (vecterm.val (d ^ˢ e) (s⁺ n)).head) = (d ^ˢ λ n, ((s n).val e)),
     { funext n,cases n; simp[slide, term.val, vecterm.val] },
     simp[this] }
 
@@ -69,14 +69,17 @@ lemma rew_val_iff : ∀ (s : ℕ → term L) (p : formula L) (e : ℕ → |M|),
 | (t =̇ u)        _ _ := by simp[term.val]
 | (p →̇ q)       _ _ := by simp[sf_slide_val_iff p, sf_slide_val_iff q]
 | (¬̇p)           _ _ := by simp[sf_slide_val_iff p]
-| (Ȧp)           _ _ := by simp[term.val, formula.sf, rew_val_iff, slide]
+| (Ȧp)           e d₀ := by {intros, simp, simp[formula.sf,rew_val_iff], apply forall_congr,
+    intros d,
+    have : (λ n, (vecterm.val (d ^ˢ d₀ ^ˢ e) ((λ x, #(x + 1))⁺ n)).head) = (d ^ˢ e),
+    { ext n, cases n; simp }, simp[this] }
 
 private lemma modelsth_sf {T} : M ⊧ₜₕ T → M ⊧ₜₕ ⇑T := λ h p hyp_p e,
 by { cases hyp_p with p hyp_p', simp[rew_val_iff],
      refine h _ hyp_p' _ }
 
 @[simp] lemma models_ex {p} {e : ℕ → |M|} : (Ėp).val e ↔ ∃ d, p.val (d ^ˢ e) :=
-by simp[formula.ex, models, formula.subst₁, rew_val_iff]
+by simp[formula.ex, models, rew_val_iff]
 
 @[simp] lemma models_and {p q} {e : ℕ → |M|} : (p ⩑ q).val e ↔ (p.val e ∧ q.val e) :=
 by simp[formula.and]
@@ -105,8 +108,8 @@ begin
   case fopl.provable.p3 : T p q
   { intros M hyp_T e h₁, simp[formula.val], contrapose, exact h₁ },
   case fopl.provable.q1 : T p t
-  { intros M hyp_T e h, simp[formula.subst₁, rew_val_iff] at h ⊢,
-    have : (λ n, (vecterm.val e (t ^ˢ vecterm.var $ n)).head) = (t.val e) ^ˢ e,
+  { intros M hyp_T e h, simp[rew_val_iff] at h ⊢,
+    have : (λ n, (vecterm.val e (ss[t // 0] n)).head) = (t.val e) ^ˢ e,
     { funext n, cases n; simp[slide, term.val, vecterm.val] },
     rw this, exact h _ },
   case fopl.provable.q2 : T p q
