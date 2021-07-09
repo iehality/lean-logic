@@ -12,6 +12,10 @@ notation `theory `L:max := set (formula L)
 inductive theory.sf (T : theory L) : theory L
 | intro : ∀ {p : formula L}, p ∈ T → theory.sf p.sf
 
+@[simp] def theory.sf_itr (T : theory L) : ℕ → theory L
+| 0     := T
+| (n+1) := theory.sf (theory.sf_itr n)
+
 instance : has_emptyc (theory L) := ⟨λ p, false⟩
 
 prefix `⇑`:max := theory.sf
@@ -62,7 +66,53 @@ instance : has_le (theory L) := ⟨theory.le⟩
 
 class closed_theory (T : theory L) := (cl : ∀ {p}, p ∈ T → sentence p)
 
+def proper_at (n : ℕ) (T : theory L) := 
+∀ (p : formula L) (s), p ∈ T → p.rew (rewriting_sf_itr s n) ∈ T
+
+class proper (n : ℕ) (T : theory L) := (proper : proper_at n T)
+
+lemma proper.proper0 {T : theory L} [proper 0 T] :
+  ∀ {p : formula L} {s}, p ∈ T → p.rew s ∈ T := @proper.proper _ 0 T _
+
 instance : closed_theory (∅ : theory L) := ⟨λ _ h, by exfalso; exact h⟩
+
+instance (n) : proper n (∅ : theory L) := ⟨λ _ _ h, by exfalso; exact h⟩
+
+instance (n) : proper n (set.univ : theory L) := ⟨λ p s h, by simp⟩
+
+def openform : theory L := {p | p.Open = tt}
+
+instance (n) : proper n (openform : theory L) :=
+⟨λ p s h, by { induction p; simp[openform] at*; simp* at* }⟩
+
+lemma proper_sf_inclusion (T : theory L) [proper 0 T] (n) :
+  (theory.sf_itr T (n+1)) ⊆ (theory.sf_itr T n) := λ p h,
+by { cases h with p hyp,  }
+
+lemma formula.sf_rew_sf_eq (s) (p : formula L) : p.sf.rew s⁺ = (p.rew s).sf :=
+by { simp[formula.sf, formula.nested_rew] }
+
+lemma proper_theory_sf {n : ℕ} {T : theory L} (pp : proper_at n T) :
+  proper_at (n+1) ⇑T := λ p s h,
+by { simp, cases h with p hyp_p,
+     show p.sf.rew (rewriting_sf_itr s n)⁺ ∈ ⇑T, simp[formula.sf_rew_sf_eq],
+     refine theory.sf.intro (pp _ _ hyp_p) }
+
+instance properc_theory_sf {n : ℕ} {T : theory L} [pp : proper n T] :
+  proper (n+1) (⇑T) := ⟨
+by { have : proper_at n T, from @proper.proper L n T pp,
+     have : proper_at (n+1) ⇑T, from proper_theory_sf this, exact this }⟩
+
+lemma proper_theory_sf_itr {n : ℕ} {T : theory L} (pp : proper_at n T) : ∀ m,
+  proper_at (n+m) (theory.sf_itr T m)
+| 0     := by { simp, exact @pp }
+| (m+1) := by { simp[←add_assoc], exact proper_theory_sf (proper_theory_sf_itr m) }
+
+instance properc_theory_sf_itr {T : theory L} [pp : proper 0 T] {n} :
+  proper n (theory.sf_itr T n) := ⟨by { have := proper_theory_sf_itr pp.proper n, simp* at* }⟩ 
+
+lemma closed_proper {T : theory L} [cl : closed_theory T] : proper_at 0 T :=
+λ p s h, by { simp[@closed_theory.cl _ _ cl _ h], exact h }
 
 @[simp] lemma closed_theory_sf_eq {T : theory L} [cl : closed_theory T] : ⇑T = T :=
 by { ext p, refine ⟨λ hyp, _, λ hyp, _⟩, cases hyp with p hyp_p,
@@ -127,6 +177,40 @@ begin
   have l₃ : T ⊢̇ (p →̇ q) →̇ (p →̇ r), from l₁.MP l₂,
   exact l₃.MP h₁
 end
+
+lemma nfal_eq : ∀ (n) (p : formula L), nfal (Ȧp) n = Ȧ(nfal (p) n)
+| 0     p := rfl
+| (n+1) p := by simp; exact nfal_eq n p
+
+lemma GE_itr : ∀ {n p}, theory.sf_itr T n ⊢̇ p → T ⊢̇ nfal p n
+| 0     p h := by simp* at*
+| (n+1) p h := by { simp[←nfal_eq] at*, exact GE_itr (GE h) }
+
+--lemma subst_itr : ∀ (n) (p : formula L) (s : ℕ → term L),
+--  T ⊢̇ nfal p n →̇ p.rew (λ x, if x < n then s x else #(x-n))
+--| 0 p s := by simp
+--| (n+1) p s := by { simp,
+--    have lmm₁ : T ⊢̇ Ȧ(nfal p n) →̇ nfal (p.rew ss[s n // n]) n,
+--    { have := @provable.q1 _ T (nfal p n) (s n), simp[formula.nfal_rew] at this,
+--      have eqn : (λ m, ite (m < n) #m ((ss[s n // 0] (m - n)).rew (λ x, #(x+n)))) = ss[s n // n],
+--      { ext m,
+--        by_cases C : m < n; simp[C],
+--        have C₁ : n = m ∨ n < m, from eq_or_lt_of_le (not_lt.mp C),
+--        cases C₁, { simp[C₁] },
+--        { have : m - n = (m - n - 1) + 1, omega, rw[this], simp[C₁], omega } },
+--        simp[eqn] at this,
+--      exact this },
+--    have s' := s,
+--    have lmm₂ := subst_itr n (p.rew ss[s n // n]) s,
+--    simp[formula.nested_rew] at lmm₂,
+--    have : (λ x, vecterm.rew (λ x, ite (x < n) (s x) #(x - n)) (ss[s n // n] x)) =
+--      (λ x, ite (x < n + 1) (s x) #(x - (n + 1))),
+--    { ext x, have C : x < n ∨ x = n ∨ n < x, from trichotomous _ _,
+--      cases C,
+--      { simp[C, nat.lt.step C] }, cases C; simp[C],
+--      { simp[show ¬(x - 1 < n), by omega, show ¬(x < n + 1), by omega], omega } },
+--    simp[this] at lmm₂,
+--    exact lmm₁.imp_trans lmm₂ }
 
 lemma inclusion {p} (h : T ⊢̇ p) : ∀ {U}, T ⊆ U → U ⊢̇ p :=
 begin
@@ -454,6 +538,42 @@ begin
   { simp[formula.rew] },
 end
 
+lemma pp_prove_rew {n} (pp : proper_at n T) :
+  ∀ {p : formula L}, T ⊢̇ p → ∀ s, T ⊢̇ p.rew (rewriting_sf_itr s n) :=
+begin
+  suffices : ∀ {p : formula L} {T},
+    T ⊢̇ p → ∀ {n}, proper_at n T → ∀ s, T ⊢̇ p.rew (rewriting_sf_itr s n),
+  { refine λ p h s, this h @pp _ },
+  intros p T h,
+  induction h,
+  case GE : T p hyp IH
+  { intros n pp s,
+    refine GE _, refine @IH (n+1) (@proper_theory_sf _ _ _ @pp) s },
+  case MP : T p q hyp_pq hyp_p IH₁ IH₂
+  { intros n pp s, refine (IH₁ @pp _).MP (IH₂ @pp _) },
+  case AX : T p hyp
+  { intros n pp s, refine AX (pp _ _ hyp) },
+  { simp[formula.rew] },
+  { simp[formula.rew] },
+  { simp[formula.rew] },
+  { intros, simp[formula.rew, formula.subst_sf_rew] },
+  { simp[formula.rew] },
+  case q3 : T p { intros,
+    simp[formula.rew, vecterm.sf],
+    simp[formula.sf_rew_sf_eq] },
+  { simp[formula.rew] },
+  { simp[formula.rew] },
+  { simp[formula.rew] },
+  { simp[formula.rew, vecterm.rew] },
+  { simp[formula.rew] },
+end
+
+lemma ppc_prove_rew (n) [pp : proper n T] :
+  ∀ {p : formula L}, T ⊢̇ p → ∀ s, T ⊢̇ p.rew (rewriting_sf_itr s n) := @pp_prove_rew _ _ n pp.proper
+
+lemma ppc0_prove_rew [pp : proper 0 T] :
+  ∀ {p : formula L}, T ⊢̇ p → ∀ s, T ⊢̇ p.rew s := @pp_prove_rew _ _ 0 pp.proper
+
 lemma cl_fal_elim [closed_theory T] {p} : T ⊢̇ Ȧp ↔ T ⊢̇ p :=
 ⟨λ h, by { have : T ⊢̇ (Ȧp).rew (λ n, #(n+1)),  from cl_prove_rew h _,
            have lmm : T ⊢̇ (p.rew (#0 ^ˢ λ n, #(n+2))).rew ss[#0 // 0], from this.fal_subst #0,
@@ -476,9 +596,9 @@ lemma conjunction_provable : ∀ {P : list (formula L)} (h : ∀ p, p ∈ P → 
     have lmm₂ : T ⊢̇ conjunction P, { refine conjunction_provable (λ p hyp, h _ _), simp, right, exact hyp },
     refine ⟨lmm₁, lmm₂⟩ }
 
-lemma sf_sf {p} (h : T ⊢̇ p) : ⇑T ⊢̇ p.sf :=
-begin
-  have : ∃ P, (∀ p, p ∈ P → p ∈ T) ∧ ∅ ⊢̇ conjunction P →̇ p,
+lemma sf_sf {p : formula L} : ⇑T ⊢̇ p.sf ↔ T ⊢̇ p :=
+⟨λ h, by { have := (GE h).fal_subst #0, simp* at* },
+ λ h, by { have : ∃ P, (∀ p, p ∈ P → p ∈ T) ∧ ∅ ⊢̇ conjunction P →̇ p,
   from proof_conjunction h, rcases this with ⟨P, hyp_P, prov⟩,
   have lmm₁ : ⇑T ⊢̇ conjunction (P.map formula.sf),
   { refine conjunction_provable (λ p hyp, AX _), simp at hyp, rcases hyp with ⟨p', p'_mem, rfl⟩,
@@ -487,8 +607,15 @@ begin
   { have : ∅ ⊢̇ (conjunction P).sf →̇ p.sf, from cl_prove_rew prov _,
     simp[conjunction_rew_eq, formula.sf] at this,
     refine inclusion this (λ p h, _), exfalso, exact h },
-  refine lmm₂.MP lmm₁
-end
+  refine lmm₂.MP lmm₁ }⟩
+
+lemma sf_itr_sf_itr : ∀ {n} {p : formula L},
+  theory.sf_itr T n ⊢̇ p.rew (λ x, #(x+n)) ↔ T ⊢̇ p
+| 0     p := by simp
+| (n+1) p := by { simp[←add_assoc],
+    have : p.rew (λ x, #(x + n + 1)) = (p.rew (λ x, #(x+n))).sf,
+    { simp[formula.sf, formula.nested_rew] }, simp[this, sf_sf],
+    exact sf_itr_sf_itr }
 
 lemma use {p : formula L} (t) (h : T ⊢̇ p.rew ss[t // 0]) : T ⊢̇ Ėp :=
 begin
@@ -569,7 +696,7 @@ begin
   case fal : p IH
   { intros, simp[formula.rew],
     have := @IH s₁⁺ s₂⁺ ⇑T
-      (λ n, by { cases n; simp, exact sf_sf (eqn n) }),
+      (λ n, by { cases n; simp, exact sf_sf.mpr (eqn n) }),
     simp at this, 
     refine ⟨provable.q2.MP (GE this.1), provable.q2.MP (GE this.2)⟩ }
 end

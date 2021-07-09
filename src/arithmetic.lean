@@ -43,6 +43,10 @@ notation u` =⟨`t₁`, `t₂`⟩` := term.pair u t₁ t₂
 def term.divide (t u : term AL) : formula AL := Ė(t ×̇ #0 =̇ u)
 infix `|` := term.divide
 
+variables (s : ℕ → term AL)
+#reduce (nfal (#0 +̇ #2 =̇ #9) 9).rew (λ x, #(x+8))
+#reduce (nfal (#0 +̇ #2 =̇ #19 +̇ #12) 2).rew s 
+
 def numeral : ℕ → term AL
 | 0     := Ż
 | (n+1) := Ṡ (numeral n)
@@ -102,18 +106,27 @@ prefix `𝐈`:max := peano_induction
 instance : closed_theory 𝐐 := ⟨λ p h,
   by cases h; simp[sentence, formula.arity, vecterm.arity, formula.iff, formula.ex, formula.and]⟩
 
-inductive peano : theory AL
-| q   : ∀ {p}, p ∈ 𝐐 → peano p
-| ind : ∀ (p : formula AL), peano 𝐈p
-notation `𝐏𝐀` := peano
+instance : proper 0 𝐐 := ⟨λ p s h, by { cases h; simp; exact h }⟩
 
 inductive bounded_peano (C : set (formula AL)) : theory AL
 | q   : ∀ {p}, p ∈ 𝐐 → bounded_peano p
 | ind : ∀ {p : formula AL}, p ∈ C → bounded_peano 𝐈p
 prefix `𝐐+𝐈`:max := bounded_peano
 
-instance (C : set (formula AL)) : closed_theory 𝐐+𝐈C := ⟨λ p h,
-  by {cases h; simp[sentence, formula.arity, vecterm.arity, formula.iff, formula.ex, formula.and],}⟩
+@[reducible] def peano : theory AL := (𝐐+𝐈(set.univ))
+notation `𝐏𝐀` := peano
+
+instance {C : set (formula AL)} [proper 0 C] : proper 0 𝐐+𝐈C := ⟨λ p s h,
+  by { simp, cases h with _ h p hyp,
+       { have : p.rew s ∈ 𝐐, from proper.proper0 h,
+         exact bounded_peano.q this },
+       { simp,
+         have : (p.rew ss[Ż // 0]).rew s = (p.rew s⁺).rew ss[Ż // 0],
+         { simp[formula.nested_rew], congr, ext x, cases x; simp }, simp[this],
+         have : (p.rew em[Ṡ #0 // 0]).rew s⁺ = (p.rew s⁺).rew em[Ṡ #0 // 0],
+         { simp[formula.nested_rew], congr, ext x, cases x; simp }, simp[this],
+         have : p.rew s⁺ ∈ C, from proper.proper0 hyp,
+         have := bounded_peano.ind this, exact this } }⟩
 
 lemma peano_bd_peano : 𝐏𝐀 = 𝐐+𝐈(λ x, true) :=
 by { ext p, split; intros h; induction h with h h h h,

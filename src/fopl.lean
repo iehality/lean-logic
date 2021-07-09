@@ -140,6 +140,10 @@ notation s`⁺`:1200 := rewriting_sf s
 @[simp] lemma rewriting_sf_0 (s : ℕ → term L) : s⁺ 0 = #0 := rfl
 @[simp] lemma rewriting_sf_succ (s : ℕ → term L) (n : ℕ) : s⁺ (n.succ) = (s n).sf := rfl
 
+@[simp] def rewriting_sf_itr (s : ℕ → term L) : ℕ → ℕ → term L
+| 0     := s
+| (n+1) := (rewriting_sf_itr n)⁺
+
 def formula.arity : formula L → ℕ
 | (formula.const c) := 0
 | (formula.app p v) := v.arity
@@ -154,6 +158,10 @@ def subst_sf (t : term L) : ℕ → ℕ → term L
 | 0     := t ^ˢ idvar
 | (n+1) := (subst_sf n)⁺
 notation `ss[`:95 t ` // `:95  n `]`:0 := subst_sf t n
+
+lemma rewriting_sf_itr_subst_sf (t : term L) : ∀ n, rewriting_sf_itr ss[t // 0] n = ss[t // n]
+| 0     := rfl
+| (n+1) := by { simp[rewriting_sf_itr_subst_sf n], refl }
 
 @[simp] lemma subst_sf_0 (t : term L) (n) : ss[t // 0] (n+1) = #n := rfl
 
@@ -229,12 +237,6 @@ def sf (p : formula L) : formula L := p.rew (λ x, #(x+1))
 @[simp] lemma top_sf : (⊤̇ : formula L).sf = ⊤̇ := by simp[top]; refl
 @[simp] lemma bot_sf : (⊥̇ : formula L).sf = ⊥̇ := by simp[bot]; refl
 
-#eval (0 ^ˢ (λ x, x+1)) 1
-
-def subst₁_e (p : formula L) (x : term L) := p.rew (x ^ᵉ idvar) 
-
-notation p`.ᵉ(`x`)` := p.subst₁_e x
-
 lemma nested_rew : ∀ (p : formula L) (s₀ s₁),
   (p.rew s₀).rew s₁ = p.rew (λ x, (s₀ x).rew s₁)
 | (const c) _ _ := rfl
@@ -296,12 +298,21 @@ lemma nfal_arity : ∀ (n) (p : formula L), (nfal p n).arity = p.arity - n
 | 0     p := by simp[formula.arity]
 | (n+1) p := by {simp[formula.arity, nfal_arity n], exact (arity p).sub_sub _ _ }
 
+lemma nfal_rew : ∀ (n) (p : formula L) (s),
+  (nfal p n).rew s = nfal (p.rew (λ m, ite (m < n) (#m) ((s $ m - n).rew (λ x, #(x+n))))) n
+| 0 p s := by simp 
+| (n+1) p s := by { simp[rewriting_sf, nfal_rew n], congr,
+    ext m, by_cases C₁ : m < n,
+    { simp[C₁, nat.lt.step C₁] },
+    by_cases C₂ : m < n + 1; simp[C₁, C₂],
+    { have : m - n = 0, omega, simp[this], omega },
+    { have : m - n = (m - (n + 1)) + 1, omega,
+      simp[this], congr, ext x, simp[nat.succ_add_eq_succ_add x n]} }
+
 lemma nfal_sentence (p : formula L) : sentence (nfal p p.arity) :=
 by { have := nfal_arity p.arity p, simp at*, refine this }
 
 end formula
-
-def openform (p : formula L) : Prop := p.Open = tt
 
 end fopl
 
