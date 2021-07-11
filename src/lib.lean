@@ -21,7 +21,23 @@ by { have h : nat.mkpair 0 1 = 1, { simpa },
      suffices : nat.unpair (nat.mkpair 0 1) = (0, 1), simp[h] at this, exact this,
      simp }
 
+lemma pos_succ {n : ℕ} (h : 0 < n) : n = (n - 1) + 1 :=
+(succ_pred_eq_of_pos h).symm
+
+lemma pos_pred_add {n m : ℕ} (h : m ≤ n) (l) : n - m + l = n + l - m :=
+by { omega }
+
 end nat
+
+namespace function
+variables {α : Type*}
+
+def fun_pow (f : α → α) : ℕ → α → α
+| 0     a := a
+| (n+1) a := f (fun_pow n a)
+infix ` ^ᶠ `:60 := fun_pow
+
+end function
 
 inductive dvector (α : Type u) : ℕ → Type u
 | nil {} : dvector 0
