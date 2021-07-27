@@ -31,7 +31,7 @@ instance (M : model L) : inhabited M.dom := ⟨M.one⟩
 | e (t =̇ u)        := t.val e = u.val e
 | e (p →̇ q)       := p.val e → q.val e
 | e (¬̇p)           := ¬(p.val e)
-| e (Ȧp)           := ∀ d : M.dom, (p.val (d ^ˢ e))
+| e (∀̇p)           := ∀ d : M.dom, (p.val (d ^ˢ e))
 
 notation M` ⊧[`:80 e`] `p :50 := @formula.val _ M e p
 
@@ -58,8 +58,8 @@ lemma rew_val_iff : ∀ (s : ℕ → term L) (p : formula L) (e : ℕ → |M|),
 | _ (t =̇ u)        _ := by simp[formula.rew, term.val, rew_val_eq]
 | _ (p →̇ q)       _ := by simp[formula.rew, rew_val_iff _ p, rew_val_iff _ q]
 | _ (¬̇p)           _ := by simp[formula.rew, rew_val_iff _ p]
-| s (Ȧp)           e := by { simp[formula.rew, rew_val_iff _ p], refine forall_congr (λ d, _),
-    have : (λ n, (vecterm.val (d ^ˢ e) (s⁺ n)).head) = (d ^ˢ λ n, ((s n).val e)),
+| s (∀̇p)           e := by { simp[formula.rew, rew_val_iff _ p], refine forall_congr (λ d, _),
+    have : (λ n, (vecterm.val (d ^ˢ e) (s⁺¹ n)).head) = (d ^ˢ λ n, ((s n).val e)),
     { funext n,cases n; simp[slide, term.val, vecterm.val] },
     simp[this] }
 
@@ -69,16 +69,16 @@ lemma rew_val_iff : ∀ (s : ℕ → term L) (p : formula L) (e : ℕ → |M|),
 | (t =̇ u)        _ _ := by simp[term.val]
 | (p →̇ q)       _ _ := by simp[sf_slide_val_iff p, sf_slide_val_iff q]
 | (¬̇p)           _ _ := by simp[sf_slide_val_iff p]
-| (Ȧp)           e d₀ := by {intros, simp, simp[formula.sf,rew_val_iff], apply forall_congr,
+| (∀̇p)           e d₀ := by {intros, simp, simp[formula.sf,rew_val_iff], apply forall_congr,
     intros d,
-    have : (λ n, (vecterm.val (d ^ˢ d₀ ^ˢ e) ((λ x, #(x + 1))⁺ n)).head) = (d ^ˢ e),
+    have : (λ n, (vecterm.val (d ^ˢ d₀ ^ˢ e) ((λ x, #(x + 1))⁺¹ n)).head) = (d ^ˢ e),
     { ext n, cases n; simp }, simp[this] }
 
 private lemma modelsth_sf {T} : M ⊧ₜₕ T → M ⊧ₜₕ ⇑T := λ h p hyp_p e,
 by { cases hyp_p with p hyp_p', simp[rew_val_iff],
      refine h _ hyp_p' _ }
 
-@[simp] lemma models_ex {p} {e : ℕ → |M|} : (Ėp).val e ↔ ∃ d, p.val (d ^ˢ e) :=
+@[simp] lemma models_ex {p} {e : ℕ → |M|} : (∃̇p).val e ↔ ∃ d, p.val (d ^ˢ e) :=
 by simp[formula.ex, models, rew_val_iff]
 
 @[simp] lemma models_and {p q} {e : ℕ → |M|} : (p ⩑ q).val e ↔ (p.val e ∧ q.val e) :=
@@ -109,7 +109,7 @@ begin
   { intros M hyp_T e h₁, simp[formula.val], contrapose, exact h₁ },
   case fopl.provable.q1 : T p t
   { intros M hyp_T e h, simp[rew_val_iff] at h ⊢,
-    have : (λ n, (vecterm.val e (ss[t // 0] n)).head) = (t.val e) ^ˢ e,
+    have : (λ n, (vecterm.val e (ₛ[t] n)).head) = (t.val e) ^ˢ e,
     { funext n, cases n; simp[slide, term.val, vecterm.val] },
     rw this, exact h _ },
   case fopl.provable.q2 : T p q
@@ -151,7 +151,7 @@ lemma eval_iff : ∀ {p : formula L} {e₁ e₂ : ℕ → |M|},
     simp[eval_iff (λ n h, a _ (or.inl h)), eval_iff (λ n h, a _ (or.inr h))] }
 | (¬̇p)           e₁ e₂ a := by { simp[sentence, formula.arity] at*,
     simp[eval_iff a] }
-| (Ȧp)           e₁ e₂ a := by { simp[sentence, formula.arity] at*,
+| (∀̇p)           e₁ e₂ a := by { simp[sentence, formula.arity] at*,
     have : ∀ (d : |M|), p.val (d ^ˢ e₁) ↔ p.val (d ^ˢ e₂),
     { intros d, refine eval_iff (λ n eqn, _),
       cases n, { simp }, simp, refine a _ (nat.lt_sub_right_of_add_lt eqn) },

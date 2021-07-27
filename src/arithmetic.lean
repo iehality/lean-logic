@@ -16,38 +16,44 @@ inductive langp : ℕ → Type
 | le : langp 2
 notation `*≤` := langp.le
 
-def AL : language := ⟨langf, langp⟩
+def LA : language := ⟨langf, langp⟩
 
-@[reducible] def symbol.zero : term AL := vecterm.const *Z
+@[reducible] def symbol.zero : term LA := vecterm.const *Z
 notation `Ż` := symbol.zero
 
-@[reducible] def symbol.succ : term AL → term AL := λ x, vecterm.app *S x
+
+
+@[reducible] def symbol.succ : term LA → term LA := λ x, vecterm.app *S x
 prefix `Ṡ `:max := symbol.succ
 
-@[reducible] def symbol.add : term AL → term AL → term AL := λ x y, vecterm.app *+ (vecterm.cons x y)
+@[reducible] def symbol.add : term LA → term LA → term LA := λ x y, vecterm.app *+ (vecterm.cons x y)
 infixl ` +̇ `:92 := symbol.add 
 
-@[reducible] def symbol.mult : term AL → term AL → term AL := λ x y, vecterm.app *× (vecterm.cons x y)
+@[reducible] def symbol.mult : term LA → term LA → term LA := λ x y, vecterm.app *× (vecterm.cons x y)
 infixl ` ×̇ `:94 := symbol.mult
 
-@[reducible] def symbol.le : term AL → term AL → formula AL := λ x y, formula.app *≤ (vecterm.cons x y)
+@[reducible] def symbol.le : term LA → term LA → formula LA := λ x y, formula.app *≤ (vecterm.cons x y)
 infixl ` ≤̇ `:90 := symbol.le
 
-def symbol.lt (t u : term AL) : formula AL := ¬̇(u ≤̇ t)
+def symbol.lt (t u : term LA) : formula LA := ¬̇(u ≤̇ t)
 infix `<̇`:90 := symbol.lt
 
-def term.pair (u t₁ t₂ : term AL) : formula AL :=
+def term.pair (u t₁ t₂ : term LA) : formula LA :=
 (t₁ <̇ t₂ ⩑ u =̇ t₂ ×̇ t₂ +̇ t₁) ⩒ (t₂ ≤̇ t₁ ⩑ u =̇ t₁ ×̇ t₁ +̇ t₁ +̇ t₂)
 notation u` =⟨`t₁`, `t₂`⟩` := term.pair u t₁ t₂
 
-def term.divide (t u : term AL) : formula AL := Ė(t ×̇ #0 =̇ u)
+def term.divide (t u : term LA) : formula LA := ∃̇(t ×̇ #0 =̇ u)
 infix `|` := term.divide
 
-variables (s : ℕ → term AL)
+instance (T : theory LA) : has_zero (Herbrand T) := ⟨Herbrand.function₀ T *Z⟩
+instance (T : theory LA) : has_add (Herbrand T) := ⟨Herbrand.function₂ T *+⟩
+instance (T : theory LA) : has_mul (Herbrand T) := ⟨Herbrand.function₂ T *×⟩
+
+variables (s : ℕ → term LA)
 #reduce (nfal (#0 +̇ #2 =̇ #9) 9).rew (λ x, #(x+8))
 #reduce (nfal (#0 +̇ #2 =̇ #19 +̇ #12) 2).rew s 
 
-def numeral : ℕ → term AL
+def numeral : ℕ → term LA
 | 0     := Ż
 | (n+1) := Ṡ (numeral n)
 
@@ -58,7 +64,7 @@ lemma numeral_arity0 : ∀ n, (n˙).arity = 0
 | (n+1) := by simp[numeral, vecterm.arity, @numeral_arity0 n]
 
 @[elab_as_eliminator] 
-lemma AL_ind {C : term AL → Sort*}
+lemma LA_ind {C : term LA → Sort*}
   (var  : ∀ n, C(#n))
   (zero : C (Ż))
   (succ : ∀ {t₁}, C t₁ → C (Ṡ t₁))
@@ -66,41 +72,47 @@ lemma AL_ind {C : term AL → Sort*}
   (mul  : ∀ {t₁ t₂}, C t₁ → C t₂ → C (t₁ ×̇ t₂)) : ∀ t, C t
 | (#n)                                  := var n
 | (vecterm.const *Z)                    := zero
-| (vecterm.app *S t)                    := succ (AL_ind t)
-| (vecterm.app *+ (vecterm.cons t₁ t₂)) := add (AL_ind t₁) (AL_ind t₂)
-| (vecterm.app *× (vecterm.cons t₁ t₂)) := mul (AL_ind t₁) (AL_ind t₂)
+| (vecterm.app *S t)                    := succ (LA_ind t)
+| (vecterm.app *+ (vecterm.cons t₁ t₂)) := add (LA_ind t₁) (LA_ind t₂)
+| (vecterm.app *× (vecterm.cons t₁ t₂)) := mul (LA_ind t₁) (LA_ind t₂)
 
 @[elab_as_eliminator] 
-theorem AL_ind_on {C : term AL → Sort*} (t : term AL)
+theorem LA_ind_on {C : term LA → Sort*} (t : term LA)
   (var  : ∀ n, C(#n))
   (zero : C (Ż))
   (succ : ∀ {t₁}, C t₁ → C (Ṡ t₁))
   (add  : ∀ {t₁ t₂}, C t₁ → C t₂ → C (t₁ +̇ t₂)) 
   (mul  : ∀ {t₁ t₂}, C t₁ → C t₂ → C (t₁ ×̇ t₂)) : C t :=
-AL_ind var zero @succ @add @mul t
+LA_ind var zero @succ @add @mul t
 
-def bounded_fal (t : term AL) (p : formula AL) : formula AL := Ȧ(#0 ≤̇ t.sf →̇ p)
+def bounded_fal (t : term LA) (p : formula LA) : formula LA := ∀̇(#0 ≤̇ t.sf →̇ p)
 
-notation `[Ȧ`` ≤ `t`]`p := bounded_fal t p
+notation `[∀̇`` ≤ `t`]`p := bounded_fal t p
 
-def bounded_ext (t : term AL) (p : formula AL) := Ė(#0 ≤̇ t.sf ⩑ p)
+def bounded_ext (t : term LA) (p : formula LA) := ∃̇(#0 ≤̇ t.sf ⩑ p)
 
-notation `[Ė`` ≤ `t`]`p := bounded_ext t p
+notation `[∃̇`` ≤ `t`]`p := bounded_ext t p
 
-#check [Ė ≤ #2][Ȧ ≤ #3]Ė[Ȧ ≤ #3](#1 ≤̇ #2)
+#check [∃̇ ≤ #2][∀̇ ≤ #3]∃̇[∀̇ ≤ #3](#1 ≤̇ #2)
 
-inductive robinson : theory AL
-| q1 : robinson Ȧ(Ż ≠̇ Ṡ #0)
-| q2 : robinson ȦȦ(Ṡ #0 =̇ Ṡ #1 →̇ #0 =̇ #1)
-| q3 : robinson Ȧ(#0 ≠̇ Ż →̇ Ė(#1 =̇ Ṡ #0))
-| q4 : robinson Ȧ(Ż +̇ #0 =̇ #0)
-| q5 : robinson ȦȦ(Ṡ #0 +̇ #1 =̇ Ṡ(#0 +̇ #1))
-| q6 : robinson Ȧ(Ż ×̇ #0 =̇ Ż)
-| q7 : robinson ȦȦ(Ṡ #0 ×̇ #1 =̇ #0 ×̇ #1 +̇ #1)
-| q8 : robinson ȦȦ(#0 ≤̇ #1 ↔̇ Ė(#1 +̇ #0 =̇ #2))
+@[simp] lemma bounded_fal_rew (t : term LA) (p : formula LA) (s) : ([∀̇ ≤ t]p).rew s = [∀̇ ≤ t.rew s](p.rew s⁺¹) :=
+by simp[bounded_fal, vecterm.sf, vecterm.nested_rew]
+
+@[simp] lemma bounded_ex_rew (t : term LA) (p : formula LA) (s) : ([∃̇ ≤ t]p).rew s = [∃̇ ≤ t.rew s](p.rew s⁺¹) :=
+by simp[bounded_ext, vecterm.sf, vecterm.nested_rew]
+
+inductive robinson : theory LA
+| q1 : robinson ∀̇(Ż ≠̇ Ṡ #0)
+| q2 : robinson ∀̇∀̇(Ṡ #0 =̇ Ṡ #1 →̇ #0 =̇ #1)
+| q3 : robinson ∀̇(#0 ≠̇ Ż →̇ ∃̇(#1 =̇ Ṡ #0))
+| q4 : robinson ∀̇(Ż +̇ #0 =̇ #0)
+| q5 : robinson ∀̇∀̇(Ṡ #0 +̇ #1 =̇ Ṡ(#0 +̇ #1))
+| q6 : robinson ∀̇(Ż ×̇ #0 =̇ Ż)
+| q7 : robinson ∀̇∀̇(Ṡ #0 ×̇ #1 =̇ #0 ×̇ #1 +̇ #1)
+| q8 : robinson ∀̇∀̇(#0 ≤̇ #1 ↔̇ ∃̇(#1 +̇ #0 =̇ #2))
 notation `𝐐` := robinson
 
-def peano_induction (p : formula AL) : formula AL := p.rew ss[Ż // 0] →̇ Ȧ(p →̇ p.rew em[Ṡ #0 // 0]) →̇ Ȧ p
+def peano_induction (p : formula LA) : formula LA := p.rew ₛ[Ż] ⩑ ∀̇(p →̇ p.rew ₑ[Ṡ #0]) →̇ ∀̇ p
 prefix `𝐈`:max := peano_induction
 
 instance : closed_theory 𝐐 := ⟨λ p h,
@@ -108,74 +120,69 @@ instance : closed_theory 𝐐 := ⟨λ p h,
 
 instance : proper 0 𝐐 := ⟨λ p s h, by { cases h; simp; exact h }⟩
 
-inductive bounded_peano (C : set (formula AL)) : theory AL
+inductive bounded_peano (C : set (formula LA)) : theory LA
 | q   : ∀ {p}, p ∈ 𝐐 → bounded_peano p
-| ind : ∀ {p : formula AL}, p ∈ C → bounded_peano 𝐈p
+| ind : ∀ {p : formula LA}, p ∈ C → bounded_peano 𝐈p
 prefix `𝐐+𝐈`:max := bounded_peano
 
-@[reducible] def peano : theory AL := (𝐐+𝐈(set.univ))
+@[reducible] def peano : theory LA := (𝐐+𝐈(set.univ))
 notation `𝐏𝐀` := peano
 
-instance {C : set (formula AL)} [proper 0 C] : proper 0 𝐐+𝐈C := ⟨λ p s h,
+instance {C : set (formula LA)} [proper 0 C] : proper 0 𝐐+𝐈C := ⟨λ p s h,
   by { simp, cases h with _ h p hyp,
        { have : p.rew s ∈ 𝐐, from proper.proper0 h,
          exact bounded_peano.q this },
        { simp,
-         have : (p.rew ss[Ż // 0]).rew s = (p.rew s⁺).rew ss[Ż // 0],
+         have : (p.rew ₛ[Ż]).rew s = (p.rew s⁺¹).rew ₛ[Ż],
          { simp[formula.nested_rew], congr, ext x, cases x; simp }, simp[this],
-         have : (p.rew em[Ṡ #0 // 0]).rew s⁺ = (p.rew s⁺).rew em[Ṡ #0 // 0],
+         have : (p.rew ₑ[Ṡ #0]).rew s⁺¹ = (p.rew s⁺¹).rew ₑ[Ṡ #0],
          { simp[formula.nested_rew], congr, ext x, cases x; simp }, simp[this],
-         have : p.rew s⁺ ∈ C, from proper.proper0 hyp,
+         have : p.rew s⁺¹ ∈ C, from proper.proper0 hyp,
          have := bounded_peano.ind this, exact this } }⟩
-
-lemma peano_bd_peano : 𝐏𝐀 = 𝐐+𝐈(λ x, true) :=
-by { ext p, split; intros h; induction h with h h h h,
-     { exact bounded_peano.q h }, { exact bounded_peano.ind trivial },
-     { exact peano.q h }, { exact peano.ind _ } }
 
 lemma Q_bd_peano (C) : 𝐐 ⊆ 𝐐+𝐈C := λ p h, bounded_peano.q h
 
-lemma bd_peano_subset {C D : set (formula AL)} : C ⊆ D → 𝐐+𝐈C ⊆ 𝐐+𝐈D := λ h p hyp_p,
+lemma bd_peano_subset {C D : set (formula LA)} : C ⊆ D → 𝐐+𝐈C ⊆ 𝐐+𝐈D := λ h p hyp_p,
 by { cases hyp_p with _ hyp_p p hyp_p2,
      exact bounded_peano.q hyp_p, refine bounded_peano.ind (h hyp_p2) }
 
 namespace hierarchy
 
 mutual inductive sigma_form, pie_form
-with sigma_form : ℕ → formula AL → Prop
-| op : ∀ {p : formula AL}, p.Open → sigma_form 0 p
-| bd_fal : ∀ {p} {n t}, sigma_form n p → sigma_form n [Ȧ ≤ t]p
-| bd_ext : ∀ {p} {n t}, sigma_form n p → sigma_form n [Ė ≤ t]p
-| qt : ∀ {p} {n}, pie_form n p → sigma_form (n+1) Ėp 
-with pie_form : ℕ → formula AL → Prop
-| op : ∀ {p : formula AL}, p.Open → pie_form 0 p
-| bd_fal : ∀ {p} {n t}, pie_form n p → pie_form n [Ȧ ≤ t]p
-| bd_ext : ∀ {p} {n t}, pie_form n p → pie_form n [Ė ≤ t]p
-| qt : ∀ {p} {n}, sigma_form n p → pie_form (n+1) Ȧp 
+with sigma_form : ℕ → formula LA → Prop
+| op : ∀ {p : formula LA}, p.Open → sigma_form 0 p
+| bd_fal : ∀ {p} {n t}, sigma_form n p → sigma_form n [∀̇ ≤ t]p
+| bd_ext : ∀ {p} {n t}, sigma_form n p → sigma_form n [∃̇ ≤ t]p
+| qt : ∀ {p} {n}, pie_form n p → sigma_form (n+1) ∃̇p 
+with pie_form : ℕ → formula LA → Prop
+| op : ∀ {p : formula LA}, p.Open → pie_form 0 p
+| bd_fal : ∀ {p} {n t}, pie_form n p → pie_form n [∀̇ ≤ t]p
+| bd_ext : ∀ {p} {n t}, pie_form n p → pie_form n [∃̇ ≤ t]p
+| qt : ∀ {p} {n}, sigma_form n p → pie_form (n+1) ∀̇p 
 
-def sigma (T : theory AL) (n : ℕ) : set (formula AL) := {p | ∃ q, sigma_form n q ∧ T ⊢̇ q ↔̇ p}
-def pie (T : theory AL) (n : ℕ) : set (formula AL) := {p | ∃ q, pie_form n q ∧ T ⊢̇ q ↔̇ p}
-def delta (T : theory AL) (n : ℕ) : set (formula AL) :=
+def sigma (T : theory LA) (n : ℕ) : set (formula LA) := {p | ∃ q, sigma_form n q ∧ T ⊢̇ q ↔̇ p}
+def pie (T : theory LA) (n : ℕ) : set (formula LA) := {p | ∃ q, pie_form n q ∧ T ⊢̇ q ↔̇ p}
+def delta (T : theory LA) (n : ℕ) : set (formula LA) :=
 {p | ∃ q₁ q₂, T ⊢̇ q₁ ↔̇ p ∧ T ⊢̇ q₂ ↔̇ p ∧ q₁ ∈ sigma T n ∧ q₂ ∈ pie T n}
 
 end hierarchy
 
-@[simp] def nat_fn : ∀ n, AL.fn n → dvector ℕ n → ℕ
+@[simp] def nat_fn : ∀ n, LA.fn n → dvector ℕ n → ℕ
 | 0 langf.zero nil             := 0
 | 1 langf.succ (n :: nil)      := n + 1
 | 2 langf.add  (n :: m :: nil) := n + m
 | 2 langf.mult (n :: m :: nil) := n * m
 
-@[simp] def nat_pr : ∀ n, AL.pr n → dvector ℕ n → Prop
+@[simp] def nat_pr : ∀ n, LA.pr n → dvector ℕ n → Prop
 | 2 langp.le  (n :: m :: nil) := n ≤ m
 
-def Num : model AL := ⟨ℕ, 0, nat_fn, nat_pr⟩
+def Num : model LA := ⟨ℕ, 0, nat_fn, nat_pr⟩
 notation `𝒩` := Num
 
-lemma apply_nat_pr (p : AL.pr 2) (a : ℕ) (v : dvector ℕ 1) :
+lemma apply_nat_pr (p : LA.pr 2) (a : ℕ) (v : dvector ℕ 1) :
   nat_pr 2 p (a :: v) = nat_pr 2 p (a :: v.head :: dvector.nil) := by simp[dvector.head_tail]
 
-lemma apply_nat_fn (f : AL.fn 2) (a : ℕ) (v : dvector ℕ 1) :
+lemma apply_nat_fn (f : LA.fn 2) (a : ℕ) (v : dvector ℕ 1) :
   nat_fn 2 f (a :: v) = nat_fn 2 f (a :: v.head :: dvector.nil) := by simp[dvector.head_tail]
 
 @[reducible, simp] lemma nat_dom_eq : Num.dom = ℕ := rfl
@@ -199,28 +206,27 @@ end
 
 theorem Q_consistent : theory.consistent 𝐐 := model_consistent N_models_Q
 
-lemma N_models_bd_PA (C : formula AL → Prop) : 𝒩 ⊧ₜₕ 𝐐+𝐈C := λ p hyp_p e,
+lemma N_models_bd_PA (C : formula LA → Prop) : 𝒩 ⊧ₜₕ 𝐐+𝐈C := λ p hyp_p e,
 by { cases hyp_p with _ hyp_p p,
      exact N_models_Q p hyp_p e,
        simp[rew_val_iff],
   intros h0 hIH n,
   induction n with n IH,
-  { have : (λ n, (vecterm.val e (ss[Ż // 0] n)).head) = ((0 : ℕ) ^ˢ e),
+  { have : (λ n, (vecterm.val e (ₛ[Ż] n)).head) = ((0 : ℕ) ^ˢ e),
     { funext n, cases n; simp[slide] },
     simp[this] at h0, exact h0 },
   { have hIH' := hIH n IH,
-    have : (λ m, (vecterm.val (n ^ˢ e : ℕ → Num.dom) (em[Ṡ #0 // 0] m)).head) = (n+1 : ℕ) ^ˢ e,
+    have : (λ m, (vecterm.val (n ^ˢ e : ℕ → Num.dom) (ₑ[Ṡ #0] m)).head) = (n+1 : ℕ) ^ˢ e,
     { funext n, cases n; simp[slide, embed] },
     simp[this] at hIH', exact hIH' } }
 
 theorem bd_PA_consistent (C) : theory.consistent 𝐐+𝐈C := model_consistent (N_models_bd_PA C)
 
-lemma N_models_PA : 𝒩 ⊧ₜₕ 𝐏𝐀 :=
-by {rw peano_bd_peano, exact N_models_bd_PA _}
+lemma N_models_PA : 𝒩 ⊧ₜₕ 𝐏𝐀 := N_models_bd_PA _
 
 theorem PA_consistent : theory.consistent 𝐏𝐀 := model_consistent N_models_PA
 
-def true_arithmetic : theory AL := {p | 𝒩 ⊧ p}
+def true_arithmetic : theory LA := {p | 𝒩 ⊧ p}
 notation `𝐓𝐀` := true_arithmetic
 
 lemma N_models_TA : 𝒩 ⊧ₜₕ 𝐓𝐀 := λ p hyp_p e, hyp_p e
@@ -232,22 +238,22 @@ open Herbrand Lindenbaum
 
 open provable
 
-@[simp] lemma add_zero (h : Herbrand 𝐐) : function₂ 𝐐 *+ (function₀ 𝐐 *Z) h = h :=
+@[simp] lemma add_zero (h : Herbrand (𝐐^0)) : function₂ (𝐐^0) *+ c[*Z] h = h :=
 by { induction h using fopl.Herbrand.ind_on,
-     have := Herbrand.provable_iff.mp ((AX robinson.q4).fal_subst h),
-     simp* at* }
+     have := Herbrand.provable_iff.mp ((AX robinson.q4).fal_subst h), simp* at *,
+     exact this }
 
-@[simp] lemma add_succ (h₁ h₂ : Herbrand 𝐐) :
-  (function₂ 𝐐 *+) ((function₁ 𝐐 *S) h₁) h₂ = (function₁ 𝐐 *S) ((function₂ 𝐐 *+) h₁ h₂) :=
+@[simp] lemma add_succ (h₁ h₂ : Herbrand (𝐐^0)) :
+  (function₂ (𝐐^0) *+) ((function₁ (𝐐^0) *S) h₁) h₂ = (function₁ _ *S) ((function₂ _ *+) h₁ h₂) :=
 by { induction h₁ using fopl.Herbrand.ind_on, induction h₂ using fopl.Herbrand.ind_on,
      have := Herbrand.provable_iff.mp (((AX robinson.q5).fal_subst h₂).fal_subst h₁),
-     simp* at* }
+     simp* at*, exact this }
 
-lemma add_eq : ∀ (n m : ℕ), (function₂ 𝐐 *+) ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ = ⟦(n + m)˙⟧ᴴ
+lemma add_eq : ∀ (n m : ℕ), (⟦n˙⟧ᴴ f²[*+] ⟦m˙⟧ᴴ : Herbrand (𝐐^0)) = ⟦(n + m)˙⟧ᴴ
 | 0     m := by simp[numeral]
 | (n+1) m := by simp[numeral, add_eq n m, (show n + 1 + m = (n + m) + 1, from nat.succ_add n m)]
 
-lemma mul_eq : ∀ {n m : ℕ}, (function₂ 𝐐 *×) ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ = ⟦(n * m)˙⟧ᴴ
+lemma mul_eq : ∀ {n m : ℕ}, (⟦n˙⟧ᴴ f²[*×] ⟦m˙⟧ᴴ : Herbrand (𝐐^0)) = ⟦(n * m)˙⟧ᴴ
 | 0     m :=
   by { have := Herbrand.provable_iff.mp ((AX robinson.q6).fal_subst (m˙)),
        simp at this ⊢, exact this }
@@ -260,15 +266,15 @@ lemma mul_eq : ∀ {n m : ℕ}, (function₂ 𝐐 *×) ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ
 lemma le_prove {n m : ℕ} (eqn : n ≤ m) : 𝐐 ⊢̇ n˙ ≤̇ m˙ :=
 begin
   refine Lindenbaum.provable_top_iff.mpr _,
-  have q8 : predicate₂ 𝐐 *≤ ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ = ∐(function₂ 𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ),
+  have q8 : predicate₂ (𝐐^0) *≤ ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ = ∐(function₂ _ *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ),
   { have := Lindenbaum.provable_iff.mp (((AX robinson.q8).fal_subst (m˙)).fal_subst (n˙)),
     simp[numeral_arity0] at this ⊢, exact this },
   simp[formula.rew, vecterm.rew, numeral_arity0],
-  have exist : ⟦(m - n)˙⟧ᴴ ⊳[0] (function₂ 𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ) = ⊤,
+  have exist : ⟦(m - n)˙⟧ᴴ ⊳[0] (function₂ (𝐐^1) *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ) = ⊤,
   { simp[numeral_arity0, add_eq, to_Herbrand],
     have : n + (m - n) = m, exact nat.add_sub_of_le eqn, simp[this] },
-  have : ⟦(m - n)˙⟧ᴴ ⊳[0] (function₂ 𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ) ≤ ∐(function₂ 𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ),
-  from closed.subst_sf_L_le_ex _ _,
+  have : ⟦(m - n)˙⟧ᴴ ⊳[0] (function₂ (𝐐^1) *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ) ≤ ∐(function₂ _ *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ),
+  from proper.subst_sf_L_le_ex _ _,
   simp[exist] at this, simp[q8], exact this,
 end
 
@@ -310,17 +316,17 @@ begin
   { intros n m eqn, have := this m (n - m - 1),
     simp[show n - m - 1 + 1 + m = n, by omega] at this, exact this },
   have q8 : ∀ n m,
-    predicate₂ 𝐐 *≤ ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ = ∐(function₂ 𝐐 *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ),
+    predicate₂ (𝐐^0) *≤ ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ = ∐(function₂ _ *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ),
   { intros n m, have := Lindenbaum.provable_iff.mp (((AX robinson.q8).fal_subst (m˙)).fal_subst (n˙)),
     simp[numeral_arity0] at this ⊢, exact this },
   have q2 : ∀ {n m}, 
-    function₁ 𝐐 *S (function₂ 𝐐 *+ ⟦(m + 1 + n)˙⟧ᴴ ⟦#0⟧ᴴ) ∥ function₁ 𝐐 *S ⟦n˙⟧ᴴ ≤
-    function₂ 𝐐 *+ ⟦(m + 1 + n)˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦n˙⟧ᴴ,
+    function₁ (𝐐^0) *S (function₂ _ *+ ⟦(m + 1 + n)˙⟧ᴴ ⟦#0⟧ᴴ) ∥ function₁ (𝐐^0) *S ⟦n˙⟧ᴴ ≤
+    function₂ (𝐐^0) *+ ⟦(m + 1 + n)˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦n˙⟧ᴴ,
   { intros n m, have := ((AX robinson.q2).fal_subst n˙).fal_subst ((m + 1 + n)˙ +̇ #0),
     simp[numeral_arity0, Lindenbaum.provable_imp_iff] at this, exact this },
-  suffices : ∀ (n m : ℕ), 𝐐 ⊢̇ Ȧ¬̇((m + 1 + n)˙ +̇ #0 =̇ n˙),
+  suffices : ∀ (n m : ℕ), 𝐐 ⊢̇ ∀̇¬̇((m + 1 + n)˙ +̇ #0 =̇ n˙),
   { intros n m, have := this n m, simp [provable_top_iff] at this ⊢, simp[q8],
-    rw [←compl_inj_iff, closed.prenex_ex_quantifir_neg], simp[this] },
+    rw [←compl_inj_iff, prenex_ex_neg], simp[this] },
   intros n, induction n with n IH; intros m,
   { apply GE, have := (AX robinson.q1).fal_subst (m˙ +̇ #0),
     simp[numeral, provable_neg_iff] at this ⊢, 
@@ -331,22 +337,23 @@ begin
     exact eq_bot_mono q2 IH' }
 end
 
-lemma arity0_term_val {t : term AL} : t.arity = 0 → ∀ e : ℕ → |𝒩|, ⟦t⟧ᴴ.𝐐 = ⟦(t.val e)˙⟧ᴴ :=
+lemma arity0_term_val {t : term LA} :
+  t.arity = 0 → ∀ e : ℕ → |𝒩|, (⟦t⟧ᴴ : Herbrand (𝐐^0)) = ⟦(t.val e)˙⟧ᴴ :=
 begin
-  induction t using fopl.AL_ind; simp[term.val, vecterm.arity],
+  induction t using fopl.LA_ind; simp[term.val, vecterm.arity],
   case zero { simp[numeral] },
   case succ : t₁ IH
   { intros h e, rw[←dvector.head_tail (vecterm.val e t₁)],
     simp[-dvector.head_tail, IH h e, numeral] },
   case add : t₁ t₂ IH₁ IH₂
   { intros h₁ h₂ e, rw[←dvector.head_tail (vecterm.val e t₂)],
-    simp[-dvector.head_tail, IH₁ h₁ e, IH₂ h₂ e, add_eq] },
+    simp[-dvector.head_tail, IH₁ h₁ e, IH₂ h₂ e, add_eq], },
   case mul : t₁ t₂ IH₁ IH₂
   { intros h₁ h₂ e, rw[←dvector.head_tail (vecterm.val e t₂)],
     simp[-dvector.head_tail, IH₁ h₁ e, IH₂ h₂ e, mul_eq] }
 end
 
-lemma open_complete {p : formula AL} :
+lemma open_complete {p : formula LA} :
   sentence p → p.Open → 𝒩 ⊧ p → 𝐐 ⊢̇ p :=
 begin
   suffices : sentence p → p.Open = tt → ∀ e, (𝒩 ⊧[e] p → 𝐐 ⊢̇ p) ∧ (¬𝒩 ⊧[e] p → 𝐐 ⊢̇ ¬̇p),
@@ -360,7 +367,7 @@ begin
     have eqn₁ : ⟦t₁⟧ᴴ = ⟦(t₁.val e).head˙⟧ᴴ, from arity0_term_val a.1 e,
     have eqn₂ : ⟦t₂⟧ᴴ = ⟦(t₂.val e).head˙⟧ᴴ, from arity0_term_val a.2 e,         
     refine ⟨λ h, _, λ h, _⟩,
-    { have lmm₁ : predicate₂ 𝐐 *≤ ⟦(t₁.val e).head˙⟧ᴴ ⟦(t₂.val e).head˙⟧ᴴ = ⊤,
+    { have lmm₁ : predicate₂ (𝐐^0) *≤ ⟦(t₁.val e).head˙⟧ᴴ ⟦(t₂.val e).head˙⟧ᴴ = ⊤,
       { refine Lindenbaum.provable_top_iff.mp (le_prove h), },
       simp[Lindenbaum.provable_top_iff, eqn₁, eqn₂, lmm₁] },
     { have lmm₁ : 𝐐 ⊢̇ ¬̇((t₁.val e).head˙ ≤̇ (t₂.val e).head˙), refine nle_prove (by simp[h]),
@@ -393,21 +400,47 @@ begin
     have IH := IH a o e, refine ⟨IH.2, IH.1⟩ }
 end
 
-lemma sigma1_complete {p : formula AL} :
+
+
+lemma sigma1_complete {p : formula LA} :
   sentence p → hierarchy.sigma_form 1 p → 𝒩 ⊧ p → 𝐐 ⊢̇ p := λ a H,
 begin
-  induction H
+  induction H∃̇[∀̇ ≤ #1][∃̇ ≤ #1]p
   
 
 end
 
-lemma pair_total : 𝐐 ⊢̇ ȦȦĖ(#0 =⟨#1, #2⟩) :=
+lemma pair_total : 𝐐 ⊢̇ ∀̇∀̇∃̇(#0 =⟨#1, #2⟩) :=
 begin
   refine provable.GE (provable.GE _),
   simp,
 end
 
-
 end robinson
+
+namespace bd_peano
+open Herbrand Lindenbaum
+open provable
+
+lemma Lindenbaum_induction {p : formula LA} {T : theory LA} (h : T ⊢̇ 𝐈p)
+  (zero : (⟦p.rew ₛ[Ż]⟧ᴸ : Lindenbaum (T^0)) = ⊤)
+  (succ : (⟦p⟧ᴸ : Lindenbaum (T^1)) ≤ ⟦p.rew ₑ[Ṡ #0]⟧ᴸ) : (∏⟦p⟧ᴸ : Lindenbaum (T^0)) = ⊤ :=
+begin
+  simp[peano_induction, Lindenbaum.provable_imp_iff, zero] at h,
+  have : ⟦p⟧ᴸᶜ ⊔ ⟦(formula.rew ₑ[Ṡ #0] p)⟧ᴸ = (⊤ : Lindenbaum (T^1)), { simp* },
+  simp[this] at h, exact h
+end
+
+#check 𝐐+𝐈(hierarchy.sigma_form 1)
+
+theorem collection (p : formula LA) : 𝐐+𝐈(hierarchy.sigma_form 1) ⊢̇ ([∀̇ ≤ #0]∃̇p) →̇ ∃̇[∀̇ ≤ #1][∃̇ ≤ #1]p :=
+begin
+  refine deduction.mp _,
+  suffices : 𝐐+𝐈(hierarchy.sigma_form 1)+{[∀̇ ≤ #0]∃̇p} ⊢̇ ∀̇(#0 ≤̇ #1 →̇ ∃̇[∀̇ ≤ #1][∃̇ ≤ #1]p.rew (shift^2)),
+  { have := this.fal_subst #0, simp at this,  }
+end
+
+
+end bd_peano
 
 end fopl

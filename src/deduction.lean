@@ -13,7 +13,7 @@ inductive theory.sf (T : theory L) : theory L
 | intro : ∀ {p : formula L}, p ∈ T → theory.sf p.sf
 prefix `⇑`:max := theory.sf
 
-@[simp] def theory.sf_itr (T : theory L) : ℕ → theory L
+@[simp, reducible] def theory.sf_itr (T : theory L) : ℕ → theory L
 | 0     := T
 | (n+1) := theory.sf (theory.sf_itr n)
 instance sf_itr_pow : has_pow (theory L) ℕ := ⟨theory.sf_itr⟩
@@ -63,6 +63,7 @@ inductive theory.add (T : theory L) (p : formula L) : theory L
 notation T`+{`:max p`}` := theory.add T p
 
 def theory.le (T U : theory L) : Prop := ∀ p, T ⊢̇ p → U ⊢̇ p
+
 instance : has_le (theory L) := ⟨theory.le⟩
 
 class closed_theory (T : theory L) := (cl : ∀ {p}, p ∈ T → sentence p)
@@ -79,8 +80,7 @@ by { cases hyp with p hyp_p, exact theory.sf.intro (h _ hyp_p) }
 instance ordered_theory_sf {T : theory L} [od : ordered T] :
   ordered ⇑T := ⟨oedered_p_theory_sf _ od.ordered⟩
 
-instance ordered_theory_sf_itr {T : theory L} [od : ordered T] : ∀ n : ℕ,
-  ordered (T^n)
+instance ordered_theory_sf_itr {T : theory L} [od : ordered T] : ∀ n : ℕ, ordered (T^n)
 | 0 := od
 | (n+1) := @fopl.ordered_theory_sf _ _  (ordered_theory_sf_itr n)
 
@@ -665,7 +665,7 @@ lemma sf_itr_sf_itr : ∀ {n} {p : formula L},
     { simp[formula.sf, formula.nested_rew] }, simp[this, sf_sf],
     exact sf_itr_sf_itr }
 
-lemma use {p : formula L} (t) (h : T ⊢̇ p.rew ₛ[t]) : T ⊢̇ Ėp :=
+lemma use {p : formula L} (t) (h : T ⊢̇ p.rew ₛ[t]) : T ⊢̇ ∃̇p :=
 begin
   simp[formula.ex],
   refine raa (p.rew ₛ[t]) (by simp[h]) (deduction.mpr _),
@@ -757,7 +757,7 @@ by { have := provable.iff.mp (@dummy_fal_quantifir _ T p), split,
      { refine λ h, (this.2.MP h) },
      { refine λ h, (this.1.MP h) } }
 
-lemma dummy_ex_quantifir (p) : T ⊢̇ p ↔̇ Ė(p.sf) :=
+lemma dummy_ex_quantifir (p) : T ⊢̇ p ↔̇ ∃̇(p.sf) :=
 by { simp[formula.ex], split,
      { refine contrapose.mp _, simp, exact (provable.iff.mp (dummy_fal_quantifir ¬̇p)).2 },
      { refine contrapose.mp _, simp, exact (provable.iff.mp (dummy_fal_quantifir ¬̇p)).1 } }
