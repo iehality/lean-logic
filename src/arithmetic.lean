@@ -95,10 +95,10 @@ notation `[∃̇`` ≤ `t`]`p := bounded_ext t p
 
 #check [∃̇ ≤ #2][∀̇ ≤ #3]∃̇[∀̇ ≤ #3](#1 ≤̇ #2)
 
-@[simp] lemma bounded_fal_rew (t : term LA) (p : formula LA) (s) : ([∀̇ ≤ t]p).rew s = [∀̇ ≤ t.rew s](p.rew s⁺¹) :=
+@[simp] lemma bounded_fal_rew (t : term LA) (p : formula LA) (s) : ([∀̇ ≤ t]p).rew s = [∀̇ ≤ t.rew s](p.rew (s^1)) :=
 by simp[bounded_fal, vecterm.sf, vecterm.nested_rew]
 
-@[simp] lemma bounded_ex_rew (t : term LA) (p : formula LA) (s) : ([∃̇ ≤ t]p).rew s = [∃̇ ≤ t.rew s](p.rew s⁺¹) :=
+@[simp] lemma bounded_ex_rew (t : term LA) (p : formula LA) (s) : ([∃̇ ≤ t]p).rew s = [∃̇ ≤ t.rew s](p.rew (s^1)) :=
 by simp[bounded_ext, vecterm.sf, vecterm.nested_rew]
 
 inductive robinson : theory LA
@@ -133,11 +133,11 @@ instance {C : set (formula LA)} [proper 0 C] : proper 0 𝐐+𝐈C := ⟨λ p s 
        { have : p.rew s ∈ 𝐐, from proper.proper0 h,
          exact bounded_peano.q this },
        { simp,
-         have : (p.rew ₛ[Ż]).rew s = (p.rew s⁺¹).rew ₛ[Ż],
+         have : (p.rew ₛ[Ż]).rew s = (p.rew (s^1)).rew ₛ[Ż],
          { simp[formula.nested_rew], congr, ext x, cases x; simp }, simp[this],
-         have : (p.rew ₑ[Ṡ #0]).rew s⁺¹ = (p.rew s⁺¹).rew ₑ[Ṡ #0],
+         have : (p.rew ₑ[Ṡ #0]).rew (s^1) = (p.rew (s^1)).rew ₑ[Ṡ #0],
          { simp[formula.nested_rew], congr, ext x, cases x; simp }, simp[this],
-         have : p.rew s⁺¹ ∈ C, from proper.proper0 hyp,
+         have : p.rew (s^1) ∈ C, from proper.proper0 hyp,
          have := bounded_peano.ind this, exact this } }⟩
 
 lemma Q_bd_peano (C) : 𝐐 ⊆ 𝐐+𝐈C := λ p h, bounded_peano.q h
