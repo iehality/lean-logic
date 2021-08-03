@@ -131,6 +131,16 @@ by { suffices : rew s v = rew idvar v, { simp* },
 
 @[simp] lemma arity0_sf {n} {v : vecterm L n} (h : v.arity = 0) : v.sf = v := by simp[vecterm.sf, arity0_rew h]
 
+lemma total_rew_inv :
+  ∀ {n} (p : vecterm L n) {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n), ∃ q : vecterm L n, q.rew s = p
+| (n+1) (cons a v) s h := by {
+    rcases total_rew_inv a h with ⟨qa, IH_qa⟩,
+    rcases total_rew_inv v h with ⟨qv, IH_qv⟩,
+    refine ⟨cons qa qv, _⟩, simp[IH_qa, IH_qv] }
+| _     (#x)               s h := by rcases h x with ⟨q, h_q⟩; refine ⟨#q, _⟩; simp[h_q]
+| _     (const c)  s h := ⟨const c, rfl⟩
+| _     (app f v)  s h := by rcases total_rew_inv v h with ⟨q, IH_q⟩; refine ⟨app f q, _⟩; simp[IH_q]
+
 end vecterm
 
 --def rewriting_sf (s : ℕ → term L) : ℕ → term L := #0 ^ˢ λ n, (s n).sf
@@ -147,6 +157,10 @@ instance : has_pow (ℕ → term L) ℕ := ⟨rewriting_sf_itr⟩
 lemma rewriting_sf_itr_succ (s : ℕ → term L) (n) : s^(n+1) = (s^n)^1 := rfl
 
 @[reducible] def vecterm.sf_pow (m : ℕ) {n} (t : vecterm L n) : vecterm L n := t.rew (shift^m)
+
+lemma pow_total {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n) : ∀ n, ∃ m, (s^1) m = #n :=
+λ n, by { cases n, refine ⟨0, _⟩, simp,
+          rcases h n with ⟨m, e_m⟩, refine ⟨m+1, _⟩, simp[e_m] }
 
 def formula.arity : formula L → ℕ
 | (formula.const c) := 0
@@ -309,6 +323,19 @@ by { simp[formula.rew, vecterm.rew, nested_rew], congr, ext n, cases n; simp }
 by { simp[nested_rew],
      have eqn : (λ x, vecterm.rew ₛ[#0] (shift^1 $ x) : ℕ → term L) = idvar,
      { ext x, cases x; simp, }, simp[eqn] }
+
+lemma total_rew_inv :
+  ∀ (p : formula L) {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n), ∃ q : formula L, q.rew s = p
+| (const c) s h := ⟨const c, rfl⟩
+| (app p v) s h := by rcases vecterm.total_rew_inv v h with ⟨u, h_u⟩; refine ⟨app p u, by simp[h_u]⟩
+| (t =̇ u)   s h := 
+    by rcases vecterm.total_rew_inv t h with ⟨w₁, e_w₁⟩;
+       rcases vecterm.total_rew_inv u h with ⟨w₂, e_w₂⟩; refine ⟨w₁ =̇ w₂, by simp[e_w₁, e_w₂]⟩
+| (p →̇ q)  s h := 
+    by rcases total_rew_inv p h with ⟨p', e_p'⟩;
+       rcases total_rew_inv q h with ⟨q', e_q'⟩; refine ⟨p' →̇ q', by simp*⟩
+| (¬̇p)      s h := by rcases total_rew_inv p h with ⟨q, e_q⟩; refine ⟨¬̇q, by simp*⟩
+| (∀̇p)      s h := by { rcases total_rew_inv p h with ⟨q, e_q⟩, refine ⟨∀̇q, _⟩, simp, }
 
 @[simp] def Open : formula L → bool
 | (const c) := tt
