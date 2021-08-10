@@ -15,7 +15,7 @@ prefix `⇑`:max := theory.sf
 
 @[simp, reducible] def theory.sf_itr (T : theory L) : ℕ → theory L
 | 0     := T
-| (n+1) := theory.sf (theory.sf_itr n)
+| (n+1) := ⇑(theory.sf_itr n)
 instance sf_itr_pow : has_pow (theory L) ℕ := ⟨theory.sf_itr⟩
 
 @[simp] lemma sf_itr_0 (T : theory L) : T^0 = T := rfl
@@ -67,6 +67,8 @@ def theory.le (T U : theory L) : Prop := ∀ p, T ⊢̇ p → U ⊢̇ p
 instance : has_le (theory L) := ⟨theory.le⟩
 
 class closed_theory (T : theory L) := (cl : ∀ {p}, p ∈ T → sentence p)
+
+class extend (T₀ T : theory L) := (ss : T₀ ⊆ T)
 
 def proper_at (n : ℕ) (T : theory L) : Prop := ∀ (p : formula L) (s), p ∈ T → p.rew (s^n) ∈ T
 
@@ -121,25 +123,39 @@ lemma mem_theory_sf_itr {T : theory L} : ∀ (n) {p : formula L},
     { simp[formula.sf, formula.sf_itr, formula.nested_rew, add_assoc] },
     simp[this], exact lmm₁ }
 
-lemma proper_sf_inclusion (T : theory L) [proper 0 T] (n) :
-  T^(n+1) ⊆ T^n := λ p h,
-by { have := theory_sf_itr_sf_itr h, rcases this with ⟨q, rfl, lmm⟩,
-     have : q.sf ∈ T, { simp[formula.sf, proper.proper0 lmm] },
-     have : q.sf.sf_itr n ∈ T^n, from mem_theory_sf_itr n this,
-     have eqn : q.rew (λ x, #(x + (n + 1))) = q.sf.sf_itr n,
-     { simp[formula.sf, formula.sf_itr, formula.nested_rew, nat.succ_add_eq_succ_add] },
-     simp[eqn], exact this }
+lemma sentence_mem_theory_sf_itr {T : theory L} {p : formula L} (a : sentence p) (n : ℕ) :
+  p ∈ T → p ∈ T^n := λ h,
+by { have : p.rew (λ x, #(x+n)) = p, exact formula.sentence_rew a _, rw ←this,
+     refine mem_theory_sf_itr _ h }
+
+lemma proper_sf_inclusion (T : theory L) [proper 0 T] : ∀ {n m : ℕ} (h : n ≤ m),
+  T^m ⊆ T^n :=
+begin
+  suffices : ∀ {n m : ℕ}, T^(n+m) ⊆ T^n,
+  { intros n m eqn p hyp, have e : m = n + (m - n), exact (nat.add_sub_of_le eqn).symm, 
+    rw e at hyp,
+    exact this hyp },
+  intros n m p h,
+  induction m with m IH, { exact h },
+  { suffices : p ∈ T^(n + m), from IH this,
+    have := theory_sf_itr_sf_itr h, rcases this with ⟨q, rfl, lmm⟩,
+    have : q.sf ∈ T, { simp[formula.sf, proper.proper0 lmm] },
+    have : q.sf.sf_itr (n + m) ∈ T^(n+m), from mem_theory_sf_itr _ this,
+    have eqn : q.rew (λ x, #(x + n + m + 1)) = q.sf.sf_itr (n + m),
+    { simp[formula.sf, formula.sf_itr, formula.nested_rew, nat.succ_add_eq_succ_add, ←add_assoc],refl },
+    simp[←nat.add_one m, ←add_assoc, eqn] at ⊢, exact this }
+end
 
 lemma ordered_inclusion (T : theory L) [ordered T] : ⇑T ⊆ T := λ p h,
 by { cases h with p hyp, exact ordered.ordered _ hyp }
 
-lemma formula.sf_rew_sf_eq (s) (p : formula L) : p.sf.rew s⁺¹ = (p.rew s).sf :=
+lemma formula.sf_rew_sf_eq (s) (p : formula L) : p.sf.rew (s^1) = (p.rew s).sf :=
 by { simp[formula.sf, formula.nested_rew] }
 
 lemma proper_theory_sf {n : ℕ} {T : theory L} (pp : proper_at n T) :
   proper_at (n+1) ⇑T := λ p s h,
-by { simp, cases h with p hyp_p,
-     show p.sf.rew (s^n)⁺¹ ∈ ⇑T, simp[formula.sf_rew_sf_eq],
+by { cases h with p hyp_p,
+     show p.sf.rew ((s^n)^1) ∈ ⇑T, simp[formula.sf_rew_sf_eq],
      refine theory.sf.intro (pp _ _ hyp_p) }
 
 instance properc_theory_sf {n : ℕ} {T : theory L} [pp : proper n T] :
@@ -547,8 +563,8 @@ lemma fal_subst {p} (h : T ⊢̇ ∀̇p) (t) : T ⊢̇ p.rew ₛ[t] :=
 lemma add_sf (p) : ⇑(T +{∀̇p}) ⊢̇ p :=
 by { have : ⇑(T +{∀̇p}) ⊢̇ (∀̇p).sf, rw ← sf_dsb, simp,simp[formula.sf] at this,
      have := fal_subst this #0, simp[formula.nested_rew] at this,
-     have eqn : (λ x, vecterm.rew ₛ[#0] ((λ x, #(x + 1))⁺¹ x)) = (idvar : ℕ → vecterm L 0),
-      { funext n, cases n; simp[vecterm.rew] }, simp [eqn] at this, exact this }
+     have eqn : (λ x, vecterm.rew ₛ[#0] (((λ x, #(x + 1) : ℕ → term _)^1) x)) = (idvar : ℕ → vecterm L 0),
+      { funext n, cases n; refl }, simp [eqn] at this, exact this }
 
 private lemma rgerg {P : list (formula L)} : (∀ p, p ∈ P → T p) → T ⊢̇ conjunction P :=
 begin
@@ -576,7 +592,7 @@ begin
   { simp[formula.rew] },
   case q3 : T p { intros,
     simp[formula.rew, vecterm.sf],
-    have : p.sf.rew s⁺¹ = (p.rew s).sf,
+    have : p.sf.rew (s^1) = (p.rew s).sf,
     { simp[formula.sf, formula.rew, formula.nested_rew] },
     simp[this] },
   { simp[formula.rew] },
@@ -743,7 +759,7 @@ begin
     refine ⟨contrapose.mpr _, contrapose.mpr _⟩; simp[IH eqn] },
   case fal : p IH
   { intros, simp[formula.rew],
-    have := @IH s₁⁺¹ s₂⁺¹ ⇑T
+    have := @IH (s₁^1) (s₂^1) ⇑T
       (λ n, by { cases n; simp, exact sf_sf.mpr (eqn n) }),
     simp at this, 
     refine ⟨provable.q2.MP (GE this.1), provable.q2.MP (GE this.2)⟩ }

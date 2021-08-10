@@ -59,7 +59,7 @@ lemma rew_val_iff : ∀ (s : ℕ → term L) (p : formula L) (e : ℕ → |M|),
 | _ (p →̇ q)       _ := by simp[formula.rew, rew_val_iff _ p, rew_val_iff _ q]
 | _ (¬̇p)           _ := by simp[formula.rew, rew_val_iff _ p]
 | s (∀̇p)           e := by { simp[formula.rew, rew_val_iff _ p], refine forall_congr (λ d, _),
-    have : (λ n, (vecterm.val (d ^ˢ e) (s⁺¹ n)).head) = (d ^ˢ λ n, ((s n).val e)),
+    have : (λ n, (vecterm.val (d ^ˢ e) (s^1 $ n)).head) = (d ^ˢ λ n, ((s n).val e)),
     { funext n,cases n; simp[slide, term.val, vecterm.val] },
     simp[this] }
 
@@ -71,7 +71,7 @@ lemma rew_val_iff : ∀ (s : ℕ → term L) (p : formula L) (e : ℕ → |M|),
 | (¬̇p)           _ _ := by simp[sf_slide_val_iff p]
 | (∀̇p)           e d₀ := by {intros, simp, simp[formula.sf,rew_val_iff], apply forall_congr,
     intros d,
-    have : (λ n, (vecterm.val (d ^ˢ d₀ ^ˢ e) ((λ x, #(x + 1))⁺¹ n)).head) = (d ^ˢ e),
+    have : (λ n, (vecterm.val (d ^ˢ d₀ ^ˢ e) ((λ x, #(x + 1))^1 $ n)).head) = (d ^ˢ e),
     { ext n, cases n; simp }, simp[this] }
 
 private lemma modelsth_sf {T} : M ⊧ₜₕ T → M ⊧ₜₕ ⇑T := λ h p hyp_p e,

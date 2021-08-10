@@ -21,18 +21,16 @@ def LA : language := ⟨langf, langp⟩
 @[reducible] def symbol.zero : term LA := vecterm.const *Z
 notation `Ż` := symbol.zero
 
-
-
 @[reducible] def symbol.succ : term LA → term LA := λ x, vecterm.app *S x
 prefix `Ṡ `:max := symbol.succ
 
-@[reducible] def symbol.add : term LA → term LA → term LA := λ x y, vecterm.app *+ (vecterm.cons x y)
+@[reducible] def symbol.add : term LA → term LA → term LA := λ x y, vecterm.app *+ (x ::: y)
 infixl ` +̇ `:92 := symbol.add 
 
-@[reducible] def symbol.mult : term LA → term LA → term LA := λ x y, vecterm.app *× (vecterm.cons x y)
+@[reducible] def symbol.mult : term LA → term LA → term LA := λ x y, vecterm.app *× (x ::: y)
 infixl ` ×̇ `:94 := symbol.mult
 
-@[reducible] def symbol.le : term LA → term LA → formula LA := λ x y, formula.app *≤ (vecterm.cons x y)
+@[reducible] def symbol.le : term LA → term LA → formula LA := λ x y, formula.app *≤ (x ::: y)
 infixl ` ≤̇ `:90 := symbol.le
 
 def symbol.lt (t u : term LA) : formula LA := ¬̇(u ≤̇ t)
@@ -45,13 +43,16 @@ notation u` =⟨`t₁`, `t₂`⟩` := term.pair u t₁ t₂
 def term.divide (t u : term LA) : formula LA := ∃̇(t ×̇ #0 =̇ u)
 infix `|` := term.divide
 
-instance (T : theory LA) : has_zero (Herbrand T) := ⟨Herbrand.function₀ T *Z⟩
-instance (T : theory LA) : has_add (Herbrand T) := ⟨Herbrand.function₂ T *+⟩
-instance (T : theory LA) : has_mul (Herbrand T) := ⟨Herbrand.function₂ T *×⟩
+instance (T : theory LA) (i) : has_zero (Herbrand T i) := ⟨Herbrand.function₀ T i *Z⟩
+instance (T : theory LA) (i) : has_add (Herbrand T i) := ⟨Herbrand.function₂ T i *+⟩
+instance (T : theory LA) (i) : has_mul (Herbrand T i) := ⟨Herbrand.function₂ T i *×⟩
+def lessthan {T : theory LA} {i} : Herbrand T i → Herbrand T i → Lindenbaum T i := Lindenbaum.predicate₂ T i *≤
+infix ` ⊑ `:50 := lessthan
+def Succ {T : theory LA} {i} : Herbrand T i → Herbrand T i := Herbrand.function₁ T i *S
+lemma zero_eq {T : theory LA} {i : ℕ} : Herbrand.function₀ T i *Z = 0 := rfl
+lemma Succ_eq {T : theory LA} {i : ℕ} : Herbrand.function₁ T i *S = Succ := rfl
 
 variables (s : ℕ → term LA)
-#reduce (nfal (#0 +̇ #2 =̇ #9) 9).rew (λ x, #(x+8))
-#reduce (nfal (#0 +̇ #2 =̇ #19 +̇ #12) 2).rew s 
 
 def numeral : ℕ → term LA
 | 0     := Ż
@@ -158,7 +159,9 @@ with pie_form : ℕ → formula LA → Prop
 | op : ∀ {p : formula LA}, p.Open → pie_form 0 p
 | bd_fal : ∀ {p} {n t}, pie_form n p → pie_form n [∀̇ ≤ t]p
 | bd_ext : ∀ {p} {n t}, pie_form n p → pie_form n [∃̇ ≤ t]p
-| qt : ∀ {p} {n}, sigma_form n p → pie_form (n+1) ∀̇p 
+| qt : ∀ {p} {n}, sigma_form n p → pie_form (n+1) ∀̇p
+
+prefix `𝚺¹`:1200 := sigma_form
 
 def sigma (T : theory LA) (n : ℕ) : set (formula LA) := {p | ∃ q, sigma_form n q ∧ T ⊢̇ q ↔̇ p}
 def pie (T : theory LA) (n : ℕ) : set (formula LA) := {p | ∃ q, pie_form n q ∧ T ⊢̇ q ↔̇ p}
@@ -235,35 +238,58 @@ theorem TA_consistent : theory.consistent 𝐓𝐀 := model_consistent N_models_
 
 namespace robinson
 open Herbrand Lindenbaum
+variables {T : theory LA} {i : ℕ} [extend 𝐐 T]
 
 open provable
 
-@[simp] lemma add_zero (h : Herbrand (𝐐^0)) : function₂ (𝐐^0) *+ c[*Z] h = h :=
+lemma ss_robinson : 𝐐 ⊆ T^i := λ p h,
+by { refine sentence_mem_theory_sf_itr (closed_theory.cl h) i (extend.ss h)}
+
+@[simp] lemma add_zero  (h : Herbrand T i) : 0 + h = h :=
 by { induction h using fopl.Herbrand.ind_on,
-     have := Herbrand.provable_iff.mp ((AX robinson.q4).fal_subst h), simp* at *,
+     have : ∀̇(Ż +̇ #0 =̇ #0) ∈ T^i, from ss_robinson robinson.q4,
+     have := Herbrand.provable_iff.mp ((AX this).fal_subst h), simp* at *,
      exact this }
 
-@[simp] lemma add_succ (h₁ h₂ : Herbrand (𝐐^0)) :
-  (function₂ (𝐐^0) *+) ((function₁ (𝐐^0) *S) h₁) h₂ = (function₁ _ *S) ((function₂ _ *+) h₁ h₂) :=
+@[simp] lemma mul_zero  (h : Herbrand T i) : 0 * h = 0 :=
+by { induction h using fopl.Herbrand.ind_on,
+     have : ∀̇(Ż ×̇ #0 =̇ Ż) ∈ T^i, from ss_robinson robinson.q6,
+     have := (AX this).fal_subst h,
+     have := Herbrand.provable_iff.mp this, simp* at this, exact this }
+
+@[simp] lemma add_succ {i} (h₁ h₂ : Herbrand T i) :
+  (Succ h₁) + h₂ = Succ (h₁ + h₂) :=
 by { induction h₁ using fopl.Herbrand.ind_on, induction h₂ using fopl.Herbrand.ind_on,
-     have := Herbrand.provable_iff.mp (((AX robinson.q5).fal_subst h₂).fal_subst h₁),
-     simp* at*, exact this }
+     have : ∀̇ ∀̇ (Ṡ #0 +̇ #1 =̇ Ṡ (#0 +̇ #1)) ∈ T^i := ss_robinson robinson.q5,
+     have := ((AX this).fal_subst h₂).fal_subst h₁,
+     have := Herbrand.provable_iff.mp this, simp* at this, exact this }
 
-lemma add_eq : ∀ (n m : ℕ), (⟦n˙⟧ᴴ f²[*+] ⟦m˙⟧ᴴ : Herbrand (𝐐^0)) = ⟦(n + m)˙⟧ᴴ
-| 0     m := by simp[numeral]
-| (n+1) m := by simp[numeral, add_eq n m, (show n + 1 + m = (n + m) + 1, from nat.succ_add n m)]
+@[simp] lemma mul_succ {i} (h₁ h₂ : Herbrand T i) :
+  (Succ h₁) * h₂ = h₁ * h₂ + h₂ :=
+by { induction h₁ using fopl.Herbrand.ind_on, induction h₂ using fopl.Herbrand.ind_on,
+     have : ∀̇ ∀̇ (Ṡ #0 ×̇ #1 =̇ #0 ×̇ #1 +̇ #1) ∈ T^i := ss_robinson robinson.q7,
+     have := ((AX this).fal_subst h₂).fal_subst h₁,
+     have := Herbrand.provable_iff.mp this, simp* at this, exact this }
 
-lemma mul_eq : ∀ {n m : ℕ}, (⟦n˙⟧ᴴ f²[*×] ⟦m˙⟧ᴴ : Herbrand (𝐐^0)) = ⟦(n * m)˙⟧ᴴ
-| 0     m :=
-  by { have := Herbrand.provable_iff.mp ((AX robinson.q6).fal_subst (m˙)),
-       simp at this ⊢, exact this }
-| (n+1) m := by { simp[numeral],
-  have q7 := Herbrand.provable_iff.mp (((AX robinson.q7).fal_subst (m˙)).fal_subst (n˙)),
-  have IH := @mul_eq n m, simp at q7 IH ⊢,
-  rw (show (n + 1) * m = n * m + m, from nat.succ_mul n m), simp[←add_eq],
-  rw ← IH, exact q7 }
+lemma add_eq : ∀ (n m : ℕ), (⟦n˙⟧ᴴ + ⟦m˙⟧ᴴ : Herbrand T i) = ⟦(n + m)˙⟧ᴴ
+| 0     m := by simp[numeral, zero_eq]
+| (n+1) m := by { simp[numeral, add_eq n m, (show n + 1 + m = (n + m) + 1, from nat.succ_add n m)],
+  simp [Succ_eq, add_succ, add_eq n m] }
 
-lemma le_prove {n m : ℕ} (eqn : n ≤ m) : 𝐐 ⊢̇ n˙ ≤̇ m˙ :=
+lemma mul_eq : ∀ (n m : ℕ), (⟦n˙⟧ᴴ * ⟦m˙⟧ᴴ : Herbrand T i) = ⟦(n * m)˙⟧ᴴ
+| 0     m := by { simp, exact mul_zero _ }
+| (n+1) m := by { simp[numeral, Succ_eq, mul_eq n m, add_eq,
+    show (n + 1) * m = n * m + m, from nat.succ_mul n m ] }
+
+lemma le_iff {h₁ h₂ : Herbrand T i} :
+  h₁ ⊑ h₂ = ∐(h₁.sf + ⟦#0⟧ᴴ ∥ h₂.sf) :=
+by { induction h₁ using fopl.Herbrand.ind_on,
+     induction h₂ using fopl.Herbrand.ind_on,
+     have : ∀̇ ∀̇ (#0 ≤̇ #1 ↔̇ ∃̇(#1 +̇ #0 =̇ #2)) ∈ T^i := ss_robinson robinson.q8, 
+     have := Lindenbaum.provable_iff.mp (((AX this).fal_subst h₂).fal_subst h₁),
+     simp at this, exact this }
+
+lemma le_prove {n m : ℕ} (eqn : n ≤ m) : T ⊢̇ n˙ ≤̇ m˙ :=
 begin
   refine Lindenbaum.provable_top_iff.mpr _,
   have q8 : predicate₂ (𝐐^0) *≤ ⟦n˙⟧ᴴ ⟦m˙⟧ᴴ = ∐(function₂ _ *+ ⟦n˙⟧ᴴ ⟦#0⟧ᴴ ∥ ⟦m˙⟧ᴴ),
@@ -282,7 +308,7 @@ lemma eq_prove {n m : ℕ} (eqn : n = m) : 𝐐 ⊢̇ n˙ =̇ m˙ :=
 by refine Lindenbaum.provable_top_iff.mpr _; simp[to_Herbrand, eqn]
 
 lemma add_inj : ∀ (n : ℕ) (t₁ t₂), 𝐐 ⊢̇ n˙ +̇ t₁ =̇ n˙ +̇ t₂ →̇ t₁ =̇ t₂
-| 0     t₁ t₂ := Lindenbaum.provable_imp_iff.mpr (by simp[numeral])
+| 0     t₁ t₂ := Lindenbaum.provable_imp_iff.mpr (by {simp[numeral],})
 | (n+1) t₁ t₂ := by { apply Lindenbaum.provable_imp_iff.mpr, simp,
   have q2 := Lindenbaum.provable_imp_iff.mp (((AX robinson.q2).fal_subst (n˙ +̇ t₂)).fal_subst (n˙ +̇ t₁)),
   have IH := Lindenbaum.provable_imp_iff.mp (add_inj n t₁ t₂), 
@@ -436,8 +462,18 @@ end
 theorem collection (p : formula LA) : 𝐐+𝐈(hierarchy.sigma_form 1) ⊢̇ ([∀̇ ≤ #0]∃̇p) →̇ ∃̇[∀̇ ≤ #1][∃̇ ≤ #1]p :=
 begin
   refine deduction.mp _,
-  suffices : 𝐐+𝐈(hierarchy.sigma_form 1)+{[∀̇ ≤ #0]∃̇p} ⊢̇ ∀̇(#0 ≤̇ #1 →̇ ∃̇[∀̇ ≤ #1][∃̇ ≤ #1]p.rew (shift^2)),
-  { have := this.fal_subst #0, simp at this,  }
+  have : ∀ n, ∃ m, (((ₛ[#0] ^ 1) ^ 1) ^ 1) m = (#n : term LA) :=
+    (rewriting_sf_perm $ rewriting_sf_perm $ rewriting_sf_perm $ slide_perm #0), 
+  rcases formula.total_rew_inv p this with ⟨q, e_q⟩,
+  suffices : 𝐐+𝐈(hierarchy.sigma_form 1)+{[∀̇ ≤ #0] ∃̇ p} ⊢̇ ∀̇ ∀̇ (#0 ≤̇ #1 →̇ ∃̇ [∀̇ ≤ #1] [∃̇ ≤ #1] q),
+  { have := (this.fal_subst #0).fal_subst #0, simp[e_q] at this,
+    sorry },
+  simp[Lindenbaum.provable_top_iff], apply Lindenbaum_induction,
+  { sorry },
+  { simp[e_q],
+    have : predicate₂ (𝐐^0) *≤ ⟦#0⟧ᴴ c⟪*Z⟫⁰ = ⊥,
+    { rw robinson.le_iff, }
+       }
 end
 
 

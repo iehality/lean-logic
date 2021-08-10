@@ -20,6 +20,8 @@ inductive vecterm (L : language.{u}) : ℕ → Type u
 
 prefix `#`:max := vecterm.var
 
+notation h `:::` t  := vecterm.cons h t
+
 @[reducible] def term : Type u := vecterm L 0
 
 inductive formula : Type u
@@ -158,9 +160,9 @@ lemma rewriting_sf_itr_succ (s : ℕ → term L) (n) : s^(n+1) = (s^n)^1 := rfl
 
 @[reducible] def vecterm.sf_pow (m : ℕ) {n} (t : vecterm L n) : vecterm L n := t.rew (shift^m)
 
-lemma pow_total {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n) : ∀ n, ∃ m, (s^1) m = #n :=
-λ n, by { cases n, refine ⟨0, _⟩, simp,
-          rcases h n with ⟨m, e_m⟩, refine ⟨m+1, _⟩, simp[e_m] }
+lemma rewriting_sf_perm {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n) : ∀ n, ∃ m, (s^1) m = #n :=
+λ n, by { cases n, refine ⟨0, by simp⟩,
+          rcases h n with ⟨m, e_m⟩, refine ⟨m+1, by simp[e_m]⟩ }
 
 def formula.arity : formula L → ℕ
 | (formula.const c) := 0
@@ -186,6 +188,8 @@ notation `ₛ[`t`]` := fopl.subst t
 
 @[simp] lemma subst_sf_eq_eq (t : term L) (n : ℕ) : (ₛ[t]^n) n = t.rew (λ x, #(x+n)) :=
 by { induction n with n IH; simp[subst] at*, rw rewriting_sf_itr_succ, simp[IH, vecterm.sf], refl }
+
+lemma slide_perm (t : term L) : ∀ n, ∃ m, (ₛ[t]) m = #n := λ n, ⟨n+1, by simp⟩
 
 @[simp] lemma subst_sf_lt_eq' (t : term L) : ∀ {n m}, n ≤ m → (ₛ[t]^n) (m+1) = #m :=
 by { intros n, induction n with n IH,
@@ -335,7 +339,7 @@ lemma total_rew_inv :
     by rcases total_rew_inv p h with ⟨p', e_p'⟩;
        rcases total_rew_inv q h with ⟨q', e_q'⟩; refine ⟨p' →̇ q', by simp*⟩
 | (¬̇p)      s h := by rcases total_rew_inv p h with ⟨q, e_q⟩; refine ⟨¬̇q, by simp*⟩
-| (∀̇p)      s h := by { rcases total_rew_inv p h with ⟨q, e_q⟩, refine ⟨∀̇q, _⟩, simp, }
+| (∀̇p)      s h := by rcases total_rew_inv p (rewriting_sf_perm h) with ⟨q, e_q⟩; refine ⟨∀̇q, by simp[e_q]⟩
 
 @[simp] def Open : formula L → bool
 | (const c) := tt
