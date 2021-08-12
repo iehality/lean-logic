@@ -199,7 +199,7 @@ theorem fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|),
       { intros i hi, simp at*, refine hi.2 hi.1 },
       exact filter.mp_sets h₂ h₁ } }
 | (¬̇p)          e := by { simp[fundamental_param p], exact ultrafilter.eventually_not.symm }
-| (Ȧp)          e := by { simp, 
+| (∀̇ p)          e := by { simp, 
     calc
       (∀ u, ℿ 𝔄 ⫽ F ⊧[u ^ˢ λ n, ⟦λ i, e i n⟧*] p)
           ↔ (∀ (u : Π i, |𝔄 i|), ℿ 𝔄 ⫽ F ⊧[λ n, ⟦λ i, (λ i, (u i) ^ˢ (e i)) i n⟧*] p) :

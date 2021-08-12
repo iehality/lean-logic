@@ -35,7 +35,7 @@ inductive formula : Type u
 infix ` =̇ `:90 := formula.equal
 infixr ` →̇ `:78 := formula.imply
 prefix `¬̇`:94 := formula.neg
-prefix `∀̇`:90 := formula.fal
+prefix `∀̇ `:90 := formula.fal
 
 variables {L}
 
@@ -52,7 +52,7 @@ def formula.iff (p : formula L) (q : formula L) : formula L := (p →̇ q) ⩑ (
 infix ` ↔̇ `:74 := formula.iff
 
 def formula.ex (p : formula L) : formula L := ¬̇∀̇¬̇p
-prefix `∃̇`:90 := formula.ex
+prefix `∃̇ `:90 := formula.ex
 
 @[irreducible] def formula.top : formula L := ∀̇(#0 =̇ #0)
 notation `⊤̇` := formula.top
@@ -64,7 +64,7 @@ instance : inhabited (formula L) := ⟨⊥̇⟩
 
 @[simp] def nfal (p : formula L) : ℕ → formula L
 | 0     := p
-| (n+1) := ∀̇(nfal n)
+| (n+1) := ∀̇ (nfal n)
 
 @[simp] def slide {α : Type*} (a : α) (s : ℕ → α) : ℕ → α
 | 0     := a
@@ -170,7 +170,7 @@ def formula.arity : formula L → ℕ
 | (t =̇ u)           := max t.arity u.arity
 | (p →̇ q)          := max p.arity q.arity
 | (¬̇p)              := p.arity
-| (∀̇p)              := p.arity - 1
+| (∀̇ p)              := p.arity - 1
 
 @[reducible] def sentence : formula L → Prop := λ p, p.arity = 0
 
@@ -244,7 +244,7 @@ namespace formula
 | s (t =̇ u)   := (t.rew s) =̇ (u.rew s)
 | s (p →̇ q)  := p.rew s →̇ q.rew s
 | s (¬̇p)      := ¬̇(p.rew s)
-| s (∀̇p)      := ∀̇(p.rew (s^1))
+| s (∀̇p)      := ∀̇ (p.rew (s^1))
 
 @[simp] lemma and_rew (p q : formula L) (s) : (p ⩑ q).rew s = p.rew s ⩑ q.rew s :=by simp[and, formula.rew]
 @[simp] lemma or_rew (p q : formula L) (s) : (p ⩒ q).rew s = p.rew s ⩒ q.rew s :=by simp[or, formula.rew]

@@ -75,7 +75,7 @@ lemma rew_val_iff : ∀ (s : ℕ → term L) (p : formula L) (e : ℕ → |M|),
     { ext n, cases n; simp }, simp[this] }
 
 private lemma modelsth_sf {T} : M ⊧ₜₕ T → M ⊧ₜₕ ⇑T := λ h p hyp_p e,
-by { cases hyp_p with p hyp_p', simp[rew_val_iff],
+by { rcases hyp_p with ⟨p, hyp_p', rfl⟩, simp[formula.sf, rew_val_iff],
      refine h _ hyp_p' _ }
 
 @[simp] lemma models_ex {p} {e : ℕ → |M|} : (∃̇p).val e ↔ ∃ d, p.val (d ^ˢ e) :=
@@ -92,7 +92,7 @@ by simp[formula.iff]; exact iff_def.symm
 | 0     t₁ t₂ e := by simp[formula.val]
 | (n+1) (vecterm.cons t₁ v₁) (vecterm.cons t₂ v₂) e := by simp[formula.val, models_equals v₁ v₂]
 
-theorem soundness {T : theory L} : ∀ {p}, T ⊢̇ p → ∀ {M}, M ⊧ₜₕ T → M ⊧ p := λ p hyp,
+theorem soundness {T : theory L} : ∀ {p}, T ⊢ p → ∀ {M}, M ⊧ₜₕ T → M ⊧ p := λ p hyp,
 begin
   induction hyp,
   case fopl.provable.GE : T p hyp_p IH

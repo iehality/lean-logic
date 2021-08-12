@@ -80,31 +80,31 @@ lemma maximum_aux_ss (s) : T.maximum_aux s ⊆ T.maximum_aux (s+1) := λ p hyp_p
 by { simp[theory.maximum_aux], by_cases C₁ : (T.maximum_aux s)+{idecode (formula L) s}.consistent; simp[C₁],
      refine theory.add.old hyp_p, refine hyp_p }
 
-theorem maximum_maximum {p} : T.maximum ⊢̇ p ∨ T.maximum ⊢̇ ¬̇p :=
+theorem maximum_maximum {p} : T.maximum ⊢ p ∨ T.maximum ⊢ ¬̇p :=
 begin
   by_cases C : (T.maximum_aux (encode p) +{p}).consistent,
   { left, have : T.maximum_aux (encode p + 1) = (T.maximum_aux (encode p) +{p}),
     { simp[theory.maximum_aux, C] },
-    have : T.maximum_aux (encode p + 1) ⊢̇ p,
+    have : T.maximum_aux (encode p + 1) ⊢ p,
     { rw this, simp },
     refine provable.inclusion this (maximum_aux_inclusion _) },
   { right, simp[theory.consistent] at C, rcases C with ⟨r, hyp1, hyp2⟩,
-    have hyp1 : T.maximum +{p} ⊢̇ r,
+    have hyp1 : T.maximum +{p} ⊢ r,
     { refine provable.inclusion hyp1 (λ h h1, _), cases h1 with _ h,
       refine theory.add.new, refine theory.add.old (maximum_aux_inclusion _ _ h) },
-    have hyp2 : T.maximum +{p} ⊢̇ ¬̇r,
+    have hyp2 : T.maximum +{p} ⊢ ¬̇r,
     { refine provable.inclusion hyp2 (λ h h1, _), cases h1 with _ h,
       refine theory.add.new, refine theory.add.old (maximum_aux_inclusion _ _ h) },
-    show T.maximum ⊢̇ ¬̇p, from provable.raa _ hyp1 hyp2 }
+    show T.maximum ⊢ ¬̇p, from provable.raa _ hyp1 hyp2 }
 end 
 
 lemma maximum_consistent (con : T.consistent) : T.maximum.consistent :=
 begin
   simp[theory.consistent], intros p hyp A,
-  have : ∃ s, T.maximum_aux s ⊢̇ p, from provable.proof_compact maximum_aux_ss hyp, rcases this with ⟨s₁, lmm₁⟩,
-  have : ∃ s, T.maximum_aux s ⊢̇ ¬̇p, from provable.proof_compact maximum_aux_ss A, rcases this with ⟨s₂, lmm₂⟩,
-  have lmm₁ : T.maximum_aux (max s₁ s₂) ⊢̇ p, from provable.inclusion lmm₁ (ss_le maximum_aux_ss (by simp)),
-  have lmm₂ : T.maximum_aux (max s₁ s₂) ⊢̇ ¬̇p, from provable.inclusion lmm₂ (ss_le maximum_aux_ss (by simp)),
+  have : ∃ s, T.maximum_aux s ⊢ p, from provable.proof_compact maximum_aux_ss hyp, rcases this with ⟨s₁, lmm₁⟩,
+  have : ∃ s, T.maximum_aux s ⊢ ¬̇p, from provable.proof_compact maximum_aux_ss A, rcases this with ⟨s₂, lmm₂⟩,
+  have lmm₁ : T.maximum_aux (max s₁ s₂) ⊢ p, from provable.inclusion lmm₁ (ss_le maximum_aux_ss (by simp)),
+  have lmm₂ : T.maximum_aux (max s₁ s₂) ⊢ ¬̇p, from provable.inclusion lmm₂ (ss_le maximum_aux_ss (by simp)),
   have : ¬(T.maximum_aux (max s₁ s₂)).consistent, simp[theory.consistent], refine ⟨p, lmm₁, lmm₂⟩,
   exact this (maximum_consistent_aux con _)
 end
