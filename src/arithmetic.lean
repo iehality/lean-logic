@@ -216,19 +216,19 @@ namespace Q_model
 
 inductive noncomm : Type
 | nat₀ (n : ℕ) : noncomm
-| int₁ (n : ℤ) : noncomm
-| int₂ (n : ℤ) : noncomm
+| int₁ (i : ℤ) : noncomm
+| int₂ (i : ℤ) : noncomm
 
 /- 
-            .    .-- ... -2, -1, 0, 1, 2, ... 
-                /
- 0, 1, 2, ... --
-                \
-                 -- ... -2, -1, 0, 1, 2, ...
+            .      - ... -2₁, -1₁, 0₁, 1₁, 2₁, ... 
+                  /
+ 0₀, 1₀, 2₀, ... -
+                  \
+                   - ... -2₂, -1₂, 0₂, 1₂, 2₂, ...
 -/
 
 namespace noncomm 
-open noncomm
+
 @[simp] theorem nat₀.inj_iff {a b} : nat₀ a = nat₀ b ↔ a = b :=
 ⟨noncomm.nat₀.inj, congr_arg _⟩
 
@@ -297,15 +297,28 @@ begin
   { intros d₁ d₂, refl }
 end
 
-theorem refutable_comm : ¬𝐐 ⊢ ∀̇ ∀̇ (#0 +̇ #1 =̇ #1 +̇ #0) := λ h,
+theorem refutable_comm_add : ¬𝐐 ⊢ ∀̇ ∀̇ (#0 +̇ #1 =̇ #1 +̇ #0) := λ h,
 by { have : Noncomm ⊧ ∀̇ ∀̇ (#0 +̇ #1 =̇ #1 +̇ #0), from soundness h Noncomm_models_Q,
      have : ∀ n m, add m n = add n m,
      { have := this (λ x, default _), simp at this, exact this },
      have := this (int₁ 0) (int₂ 0),
      simp at this, exact this }
 
-end noncomm
+theorem refutable_comm_mul : ¬𝐐 ⊢ ∀̇ ∀̇ (#0 ×̇ #1 =̇ #1 ×̇ #0) := λ h,
+by { have : Noncomm ⊧ ∀̇ ∀̇ (#0 ×̇ #1 =̇ #1 ×̇ #0), from soundness h Noncomm_models_Q,
+     have : ∀ n m, mul m n = mul n m,
+     { have := this (λ x, default _), simp at this, exact this },
+     have := this (int₁ 0) (int₂ 0),
+     simp at this, exact this }
 
+theorem refutable_zero_mul : ¬𝐐 ⊢ ∀̇ (Ż ×̇ #0 =̇ Ż) := λ h,
+by { have : Noncomm ⊧ ∀̇ (Ż ×̇ #0 =̇ Ż), from soundness h Noncomm_models_Q,
+     have : ∀ n, mul (nat₀ 0) n = nat₀ 0,
+     { have := this (λ x, default _), simp at this, exact this },
+     have := this (int₁ 0),
+     simp at this, exact this }
+
+end noncomm
 
 end Q_model
 
@@ -351,47 +364,37 @@ open provable
 lemma ss_robinson : 𝐐 ⊆ T^i := λ p h,
 by { refine sentence_mem_theory_sf_itr (closed_theory.cl h) i (extend.ss h)}
 
-@[simp] lemma add_zero  (h : Herbrand T i) : 0 + h = h :=
+@[simp] lemma add_zero  (h : Herbrand T i) : h + 0 = h :=
 by { induction h using fopl.Herbrand.ind_on,
-     have : ∀̇(Ż +̇ #0 =̇ #0) ∈ T^i, from ss_robinson robinson.q4,
+     have : ∀̇ (#0 +̇ Ż =̇ #0) ∈ T^i, from ss_robinson robinson.q4,
      have := Herbrand.provable_iff.mp ((AX this).fal_subst h), simp* at *,
      exact this }
 
-@[simp] lemma mul_zero  (h : Herbrand T i) : 0 * h = 0 :=
+@[simp] lemma mul_zero  (h : Herbrand T i) : h * 0 = 0 :=
 by { induction h using fopl.Herbrand.ind_on,
-     have : ∀̇(Ż ×̇ #0 =̇ Ż) ∈ T^i, from ss_robinson robinson.q6,
+     have : ∀̇ (#0 ×̇ Ż =̇ Ż) ∈ T^i, from ss_robinson robinson.q6,
      have := (AX this).fal_subst h,
      have := Herbrand.provable_iff.mp this, simp* at this, exact this }
 
 @[simp] lemma add_succ {i} (h₁ h₂ : Herbrand T i) :
-  (Succ h₁) + h₂ = Succ (h₁ + h₂) :=
+  h₁ + Succ h₂ = Succ (h₁ + h₂) :=
 by { induction h₁ using fopl.Herbrand.ind_on, induction h₂ using fopl.Herbrand.ind_on,
-     have : ∀̇ ∀̇ (Ṡ #0 +̇ #1 =̇ Ṡ (#0 +̇ #1)) ∈ T^i := ss_robinson robinson.q5,
+     have : ∀̇ ∀̇ (#0 +̇ Ṡ #1 =̇ Ṡ (#0 +̇ #1)) ∈ T^i := ss_robinson robinson.q5,
      have := ((AX this).fal_subst h₂).fal_subst h₁,
      have := Herbrand.provable_iff.mp this, simp* at this, exact this }
 
 @[simp] lemma mul_succ {i} (h₁ h₂ : Herbrand T i) :
-  (Succ h₁) * h₂ = h₁ * h₂ + h₂ :=
+  h₁ * Succ h₂ = h₁ * h₂ + h₁ :=
 by { induction h₁ using fopl.Herbrand.ind_on, induction h₂ using fopl.Herbrand.ind_on,
-     have : ∀̇ ∀̇ (Ṡ #0 ×̇ #1 =̇ #0 ×̇ #1 +̇ #1) ∈ T^i := ss_robinson robinson.q7,
+     have : ∀̇ ∀̇ (#0 ×̇ Ṡ #1 =̇ #0 ×̇ #1 +̇ #0) ∈ T^i := ss_robinson robinson.q7,
      have := ((AX this).fal_subst h₂).fal_subst h₁,
      have := Herbrand.provable_iff.mp this, simp* at this, exact this }
-
-lemma add_eq : ∀ (n m : ℕ), (⟦n˙⟧ᴴ + ⟦m˙⟧ᴴ : Herbrand T i) = ⟦(n + m)˙⟧ᴴ
-| 0     m := by simp[numeral, zero_eq]
-| (n+1) m := by { simp[numeral, add_eq n m, (show n + 1 + m = (n + m) + 1, from nat.succ_add n m)],
-  simp [Succ_eq, add_succ, add_eq n m] }
-
-lemma mul_eq : ∀ (n m : ℕ), (⟦n˙⟧ᴴ * ⟦m˙⟧ᴴ : Herbrand T i) = ⟦(n * m)˙⟧ᴴ
-| 0     m := by { simp, exact mul_zero _ }
-| (n+1) m := by { simp[numeral, Succ_eq, mul_eq n m, add_eq,
-    show (n + 1) * m = n * m + m, from nat.succ_mul n m ] }
 
 lemma le_iff {h₁ h₂ : Herbrand T i} :
   h₁ ≼ h₂ = ∐(h₁.sf + ⟦#0⟧ᴴ ∥ h₂.sf) :=
 by { induction h₁ using fopl.Herbrand.ind_on,
      induction h₂ using fopl.Herbrand.ind_on,
-     have : ∀̇ ∀̇ (#0 ≤̇ #1 ↔̇ ∃̇(#1 +̇ #0 =̇ #2)) ∈ T^i := ss_robinson robinson.q8, 
+     have : ∀̇ ∀̇ (#0 ≤̇ #1 ↔̇ ∃̇ (#1 +̇ #0 =̇ #2)) ∈ T^i := ss_robinson robinson.q8, 
      have := Lindenbaum.provable_iff.mp (((AX this).fal_subst h₂).fal_subst h₁),
      simp at this, exact this }
 
