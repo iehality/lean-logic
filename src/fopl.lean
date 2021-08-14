@@ -29,8 +29,8 @@ inductive formula : Type u
 | app   : ∀ {n : ℕ}, L.pr (n+1) → vecterm L n → formula
 | equal : term L → term L → formula
 | imply : formula → formula → formula
-| neg : formula → formula
-| fal : formula → formula
+| neg   : formula → formula
+| fal   : formula → formula
 
 infix ` =̇ `:90 := formula.equal
 infixr ` →̇ `:78 := formula.imply
@@ -170,7 +170,7 @@ def formula.arity : formula L → ℕ
 | (t =̇ u)           := max t.arity u.arity
 | (p →̇ q)          := max p.arity q.arity
 | (¬̇p)              := p.arity
-| (∀̇ p)              := p.arity - 1
+| (∀̇ p)             := p.arity - 1
 
 @[reducible] def sentence : formula L → Prop := λ p, p.arity = 0
 
