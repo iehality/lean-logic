@@ -1,4 +1,4 @@
-import deduction model data.equiv.encodable.basic order.filter.ultrafilter
+import deduction semantics data.equiv.encodable.basic order.filter.ultrafilter
 open encodable
 
 universes u v
@@ -136,11 +136,11 @@ variables {F}
 
 @[simp] lemma ult_eq : Ult 𝔄 F = |ℿ 𝔄 ⫽ F| := rfl
 
-private lemma model_exists (p : formula L) {e : ∀ i, ℕ → |𝔄 i|} (h : {i | ∃ u, p.val (u ^ˢ e i)} ∈ F) :
-  ∃ (u : Π i, |𝔄 i|), {i | p.val ((u i) ^ˢ e i)} ∈ F :=
+private lemma model_exists (p : formula L) {e : ∀ i, ℕ → |𝔄 i|} (h : {i | ∃ u, p.val (u ⌢ e i)} ∈ F) :
+  ∃ (u : Π i, |𝔄 i|), {i | p.val ((u i) ⌢ e i)} ∈ F :=
 begin
-  have : ∀ i, ∃ u, i ∈ {i | ∃ u, p.val (u ^ˢ e i)} → p.val (u ^ˢ e i),
-  { intros i, simp, by_cases C : i ∈ {i | ∃ u, p.val (u ^ˢ e i)}; simp at C,
+  have : ∀ i, ∃ u, i ∈ {i | ∃ u, p.val (u ⌢ e i)} → p.val (u ⌢ e i),
+  { intros i, simp, by_cases C : i ∈ {i | ∃ u, p.val (u ⌢ e i)}; simp at C,
     { rcases C with ⟨u, hu⟩, refine ⟨u, λ v _, hu⟩ },
     { refine ⟨default _, λ _ h, _⟩, exfalso, refine C _ h } },
   rcases classical.skolem.mp this with ⟨u, hu⟩,
@@ -201,18 +201,18 @@ theorem fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|),
 | (¬̇p)          e := by { simp[fundamental_param p], exact ultrafilter.eventually_not.symm }
 | (∀̇ p)          e := by { simp, 
     calc
-      (∀ u, ℿ 𝔄 ⫽ F ⊧[u ^ˢ λ n, ⟦λ i, e i n⟧*] p)
-          ↔ (∀ (u : Π i, |𝔄 i|), ℿ 𝔄 ⫽ F ⊧[λ n, ⟦λ i, (λ i, (u i) ^ˢ (e i)) i n⟧*] p) :
-        by { have eqn: ∀ u, (⟦u⟧* ^ˢ λ n, ⟦(λ i, e i n)⟧*) = (λ n, ⟦(λ i, (u i) ^ˢ e i $ n)⟧* : ℕ → |ℿ 𝔄 ⫽ F|),
-             { intros i, funext x, cases x; simp }, simp, split,
+      (∀ u, ℿ 𝔄 ⫽ F ⊧[u ⌢ λ n, ⟦λ i, e i n⟧*] p)
+          ↔ (∀ (u : Π i, |𝔄 i|), ℿ 𝔄 ⫽ F ⊧[λ n, ⟦λ i, (λ i, (u i) ⌢ (e i)) i n⟧*] p) :
+        by { have eqn: ∀ u, (⟦u⟧* ⌢ λ n, ⟦(λ i, e i n)⟧*) = (λ n, ⟦(λ i, (u i) ⌢ e i $ n)⟧* : ℕ → |ℿ 𝔄 ⫽ F|),
+             { intros i, funext x, cases x; simp[concat] }, simp, split,
              { intros h u, have := h ⟦u⟧*, simp[eqn] at this, exact this },
              { intros h u, induction u using fopl.Ult.ind_on, simp[eqn, h] } }
-      ... ↔ (∀ (u : Π i, |𝔄 i|), {i | p.val ((u i) ^ˢ e i)} ∈ F) :
+      ... ↔ (∀ (u : Π i, |𝔄 i|), {i | p.val ((u i) ⌢ e i)} ∈ F) :
         by { split, { intros h u, simp[←fundamental_param  p _, h] }, { intros h u, simp[fundamental_param  p _, h] } }
-      ... ↔ {i | ∀ (u : |𝔄 i|), p.val (u ^ˢ e i)} ∈ F : 
+      ... ↔ {i | ∀ (u : |𝔄 i|), p.val (u ⌢ e i)} ∈ F : 
         by { split,
              { contrapose, simp[←ultrafilter.compl_mem_iff_not_mem, ←set.compl_eq_compl, set.compl], intros h,
-               show ∃ (u : Π i, |𝔄 i|), {i | ¬p.val ((u i) ^ˢ e i)} ∈ F, from model_exists (¬̇p) h },
+               show ∃ (u : Π i, |𝔄 i|), {i | ¬p.val ((u i) ⌢ e i)} ∈ F, from model_exists (¬̇p) h },
              { refine λ h u, F.sets_of_superset h (λ _ _ , by simp* at*) } } }
 
 theorem fundamental {p : formula L} :

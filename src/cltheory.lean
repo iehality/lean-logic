@@ -118,23 +118,32 @@ protected theorem provable_iff0 {t₁ t₂} : T ⊢ t₁ =̇ t₂ ↔ (⟦t₁�
 @[simp] theorem vecterm_app_function₂_eq {f : L.fn 2} {t₁ t₂} :
   ⟦vecterm.app f (t₁ ::: t₂)⟧ᴴ = function₂ T i f ⟦t₁⟧ᴴ ⟦t₂⟧ᴴ := rfl 
 
-def sf :
-  Herbrand T i → Herbrand T (i+1) :=
-λ h, Herbrand.lift_on h (λ u, ⟦u.sf⟧ᴴ : term L → Herbrand T (i+1)) $
-λ t₁ t₂ hyp, by { simp[Herbrand.of_eq_of, -provable.iff] at*,
-  rw [show t₁.sf =̇ t₂.sf = (t₁ =̇ t₂).sf, by simp, provable.sf_sf], exact hyp }
+def pow (j : ℕ) :
+  Herbrand T i → Herbrand T (i+j) :=
+λ h, Herbrand.lift_on h (λ u, ⟦u^j⟧ᴴ : term L → Herbrand T (i+j)) $
+λ t₁ t₂ hyp, by { simp[Herbrand.of_eq_of, -provable.iff, ←theory.pow_add] at*,
+  rw [show (t₁^j) =̇ (t₂^j) = (t₁ =̇ t₂)^j, by simp, provable.sf_itr_sf_itr], exact hyp }
 
-@[simp] def sf_simp (t : term L) : (⟦t⟧ᴴ : Herbrand T i).sf = ⟦t.sf⟧ᴴ := rfl
+@[simp] def sf_simp (t : term L) (j : ℕ) : (⟦t⟧ᴴ : Herbrand T i).pow j = ⟦t^j⟧ᴴ := rfl
 
 namespace proper
 
 @[simp] def subst_sf_H_aux [proper : proper 0 T] (t : term L) :
+  Herbrand T (i + 1) → Herbrand T i :=
+λ h, Herbrand.lift_on h (λ u, ⟦u.rew ι[i ⇝ t]⟧ᴴ : term L → Herbrand T i) $
+λ t₁ t₂ hyp, by { simp[Herbrand.of_eq_of, -provable.iff] at*,
+    have : ordered (T^(i + 1)), from @fopl.ordered_theory_sf_itr _ T fopl.ordered_proper _,
+    have lmm : T^i ⊢ ∀̇  (t₁ =̇ t₂), from provable.GE hyp,
+    have := lmm.fal_subst t,
+    }
+
+@[simp] def subst_sf_H_aux [proper : proper 0 T] (t : term L) :
   Herbrand T (i+1) → Herbrand T i :=
-λ h, Herbrand.lift_on h (λ u, ⟦u.rew (ₛ[t]^i)⟧ᴴ : term L → Herbrand T i) $
+λ h, Herbrand.lift_on h (λ u, ⟦u.rew (ι[0 ⇝ t]^i)⟧ᴴ : term L → Herbrand T i) $
 λ t₁ t₂ hyp, by { simp[Herbrand.of_eq_of, -provable.iff] at*,
     have : ordered (T^i), from @fopl.ordered_theory_sf_itr _ T fopl.ordered_proper i,
     have lmm : T^i ⊢ t₁ =̇ t₂, exactI provable.inclusion hyp (ordered_inclusion _),
-    refine provable.ppc_prove_rew i lmm ₛ[t] }
+    refine provable.ppc_prove_rew i lmm _ }
 
 variables [proper 0 T]
 
@@ -142,7 +151,8 @@ def subst_sf_H : Herbrand T 0 → Herbrand T (i+1) → Herbrand T i :=
 λ t h, Herbrand.lift_on t (λ t, subst_sf_H_aux t h : term L → Herbrand T i) $
 λ t₁ t₂ hyp, by { induction h using fopl.Herbrand.ind_on,
   simp[Herbrand.of_eq_of, -provable.iff] at*, 
-  refine provable.equal_rew_equals_term h (ₛ[t₁]^i) (ₛ[t₂]^i) (λ m, _),
+  refine provable.equal_rew_equals_term h (ι[0 ⇝ t₁]^i) (ι[0 ⇝ t₂]^i) (λ m, _),
+  simp[subst_pow],
   have C : m < i ∨ m = i ∨ i < m, from trichotomous m i,
   cases C,
   { simp[C] }, cases C; simp[C],
@@ -319,8 +329,9 @@ by { induction l using fopl.Lindenbaum.ind_on, simp[has_top.top, Box, has_le.le]
 
 lemma imply_le {l k : Lindenbaum T i} : l ⊑ k = ⊤ ↔ l ≤ k := by sorry
 
-lemma provable_AX {p} (h : p ∈ T) : (⟦p.rew (λ x, #(x+i))⟧ᴸ : Lindenbaum T i) = ⊤ :=
-by {simp[has_top.top, provable.AX h, Lindenbaum.of_eq_of], simp[provable.sf_itr_sf_itr], exact provable.AX h }
+lemma provable_AX {p} (h : p ∈ T) : (⟦p^i⟧ᴸ : Lindenbaum T i) = ⊤ :=
+by { simp[has_top.top, provable.AX h, Lindenbaum.of_eq_of],
+     simp[provable.sf_itr_sf_itr], exact provable.AX h }
 
 lemma provable_K {l k : Lindenbaum T i} : □(l ⊑ k) → □l → □k :=
 begin
@@ -478,10 +489,10 @@ def ex : Lindenbaum T (i+1) → Lindenbaum T i :=
   refine ⟨provable.q2.MP $ GE $ contrapose.mpr hyp.1, provable.q2.MP $ GE $ contrapose.mpr hyp.2⟩, }
 prefix `∐ `:90 := ex
 
-def sf : Lindenbaum T i → Lindenbaum T (i+1) :=
-λ p, Lindenbaum.lift_on p (λ p, (⟦p.sf⟧ᴸ : Lindenbaum T (i+1))) $
-λ p₁ p₂ hyp, by { simp[contrapose, -provable.iff, Lindenbaum.of_eq_of] at*,
-  exact sf_sf.mpr hyp }
+def pow (j : ℕ) : Lindenbaum T i → Lindenbaum T (i+j) :=
+λ p, Lindenbaum.lift_on p (λ p, (⟦p^j⟧ᴸ : Lindenbaum T (i+j))) $
+λ p₁ p₂ hyp, by { simp[contrapose, -provable.iff, Lindenbaum.of_eq_of, ←theory.pow_add] at*,
+  exact sf_itr_sf_itr.mpr hyp }
 
 namespace proper
 
@@ -489,17 +500,18 @@ variables [proper 0 T]
 
 @[simp] def subst_sf_L_aux (t : term L) :
   Lindenbaum T (i+1) → Lindenbaum T i :=
-λ p, Lindenbaum.lift_on p (λ p, (⟦p.rew (ₛ[t]^i)⟧ᴸ : Lindenbaum T i)) $
+λ p, Lindenbaum.lift_on p (λ p, (⟦p.rew (ι[0 ⇝ t]^i)⟧ᴸ : Lindenbaum T i)) $
 λ p₁ p₂ hyp, by { simp[Lindenbaum.of_eq_of, -provable.iff] at*,
     have lmm : T^i ⊢ p₁ ↔̇ p₂,
     { from provable.inclusion hyp (proper_sf_inclusion T (i.le_succ)) },
-    refine provable.ppc_prove_rew i lmm ₛ[t] }
+    refine provable.ppc_prove_rew i lmm _ }
 
 def subst_sf_L : Herbrand T 0 → Lindenbaum T (i+1) → Lindenbaum T i :=
 λ t l, Herbrand.lift_on t (λ t, subst_sf_L_aux t l) $
 λ t₁ t₂ hyp, by { induction l using fopl.Lindenbaum.ind_on,
   simp[Lindenbaum.of_eq_of, -provable.iff] at*,
   refine equal_rew_iff _ (λ m, _),
+  simp[subst_pow],
   have C : m < i ∨ m = i ∨ i < m, from trichotomous _ _,
   cases C,
   { simp[C] }, cases C; simp[C],
@@ -519,7 +531,7 @@ begin
   induction h using fopl.Herbrand.ind_on, 
   simp[ex, has_le.le, subst_sf_L],
   apply contrapose.mp, simp[formula.ex],
-  rw (show ¬̇(l.rew ₛ[h]) = (¬̇l).rew ₛ[h], by simp), 
+  rw (show ¬̇(l.rew ι[0 ⇝ h]) = (¬̇l).rew ι[0 ⇝ h], by simp), 
   exact provable.q1
 end
 
@@ -581,39 +593,39 @@ lemma prenex_fal_neg {l : Lindenbaum T (i+1)} : (∏ l)ᶜ = ∐ lᶜ :=
 by { have := prenex_ex_neg lᶜ, simp at this, simp[←this] }
 
 lemma prenex_fal_or_left {l : Lindenbaum T (i+1)} {k : Lindenbaum T i} :
-  ∏ l ⊔ k = ∏ (l ⊔ sf k) :=
+  ∏ l ⊔ k = ∏ (l ⊔ k.pow 1) :=
 begin
   induction l using fopl.Lindenbaum.ind_on, induction k using fopl.Lindenbaum.ind_on,
-  simp[fal, has_sup.sup, sf, Lindenbaum.of_eq_of, formula.or], split,
+  simp[fal, has_sup.sup, pow, Lindenbaum.of_eq_of, formula.or], split,
   { refine (deduction.mp $ GE $ contrapose.mp _), rw [←sf_dsb], simp,
-    have lmm₁ : ⇑(T^i)+{¬̇(∀̇ l).sf →̇ k.sf} ⊢ ¬̇k.sf →̇ (∀̇ l).sf, { apply contrapose.mp, simp },
-    have lmm₂ : ⇑(T^i)+{¬̇(∀̇ l).sf →̇ k.sf} ⊢ (∀̇ l).sf →̇ l,
-    { suffices : ⇑(T^i)+{¬̇(∀̇ l).sf →̇ k.sf} ⊢ (∀̇ l).sf →̇ (l.rew $ shift^1).rew ₛ[#0],
-      { simp* at* },
+    have lmm₁ : ⇑(T^i)+{¬̇(∀̇ l)^1 →̇ k^1} ⊢ ¬̇k^1 →̇ (∀̇ l)^1, { apply contrapose.mp, simp },
+    have lmm₂ : ⇑(T^i)+{¬̇(∀̇ l)^1 →̇ k^1} ⊢ (∀̇ l)^1 →̇ l,
+    { suffices : ⇑(T^i)+{¬̇(∀̇ l)^1 →̇ k^1} ⊢ (∀̇ l)^1 →̇ (l.rew $ (λ x, #(x + 1))^1).rew ι[0 ⇝ #0],
+      { simp[formula.nested_rew] at this,  },
       exact provable.q1 },
     exact lmm₁.imp_trans lmm₂ },
   { refine (deduction.mp $ contrapose.mp $ deduction.mp _), simp,
     refine GE _, simp[←sf_dsb], refine deduction.mpr _,
-    show ⇑(T^i)+{(∀̇  (¬̇l →̇ k.sf)).sf} ⊢ ¬̇k.sf →̇ l,
-    have : ⇑(T^i)+{(∀̇  (¬̇l →̇ k.sf)).sf} ⊢ ¬̇l →̇ k.sf,
-    { have : ⇑(T^i)+{(∀̇  (¬̇l →̇ k.sf)).sf} ⊢ (∀̇  (¬̇l →̇ k.sf)).sf, { simp },
+    show ⇑(T^i)+{(∀̇  (¬̇l →̇ k^1))^1} ⊢ ¬̇k^1 →̇ l,
+    have : ⇑(T^i)+{(∀̇  (¬̇l →̇ k^1))^1} ⊢ ¬̇l →̇ k^1,
+    { have : ⇑(T^i)+{(∀̇  (¬̇l →̇ k^1))^1} ⊢ (∀̇  (¬̇l →̇ k^1))^1, { simp },
       have lmm₁ := this.fal_subst #0, simp at lmm₁,
       exact lmm₁ },
     apply contrapose.mp, simp[this] }
 end
 
 lemma prenex_fal_or_right {l : Lindenbaum T i} {k : Lindenbaum T (i+1)} :
-  l ⊔ ∏ k = ∏ (sf l ⊔ k) :=
+  l ⊔ ∏ k = ∏ (l.pow 1 ⊔ k) :=
 by simp[show l ⊔ ∏ k = ∏ k ⊔ l, from sup_comm, prenex_fal_or_left,
-        show k ⊔ l.sf = l.sf ⊔ k, from sup_comm]
+        show k ⊔ l.pow 1 = l.pow 1 ⊔ k, from sup_comm]
 
 lemma prenex_fal_and_left {l : Lindenbaum T (i+1)} {k : Lindenbaum T i} :
-  ∏ l ⊓ k = ∏ (l ⊓ sf k) :=
+  ∏ l ⊓ k = ∏ (l ⊓ k.pow 1) :=
 begin
   induction l using fopl.Lindenbaum.ind_on, induction k using fopl.Lindenbaum.ind_on,
-  simp[fal, has_inf.inf, sf, Lindenbaum.of_eq_of], split,
+  simp[fal, has_inf.inf, pow, Lindenbaum.of_eq_of], split,
   { refine (deduction.mp $ GE _), rw [←sf_dsb], simp[axiom_and],
-    have : ⇑(T^i)+{(∀̇ l).sf}+{k.sf} ⊢ (∀̇ l).sf, simp,
+    have : ⇑(T^i)+{(∀̇ l)^1}+{k^1} ⊢ (∀̇ l)^1, simp,
     have := this.fal_subst #0, simp* at* },
   { refine deduction.mp _, simp,
      split,
@@ -625,7 +637,7 @@ begin
 end
 
 lemma prenex_ex_or_left {l : Lindenbaum T (i+1)} {k : Lindenbaum T i} :
-  ∐ l ⊔ k = ∐ (l ⊔ sf k) :=
+  ∐ l ⊔ k = ∐ (l ⊔ k.pow 1) :=
 begin
   rw ← compl_inj_iff, simp[-compl_inj_iff, prenex_ex_neg, prenex_fal_and_left],
 end

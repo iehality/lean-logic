@@ -20,7 +20,7 @@ inductive vecterm (L : language.{u}) : ℕ → Type u
 
 prefix `#`:max := vecterm.var
 
-notation h `:::` t  := vecterm.cons h t
+notation h ` ::: ` t  := vecterm.cons h t
 
 @[reducible] def term : Type u := vecterm L 0
 
@@ -66,20 +66,24 @@ instance : inhabited (formula L) := ⟨⊥̇⟩
 | 0     := p
 | (n+1) := ∀̇ (nfal n)
 
-@[simp] def slide {α : Type*} (a : α) (s : ℕ → α) : ℕ → α
-| 0     := a
-| (m+1) := s m
+@[simp] lemma nfal_fal (p : formula L) (i : ℕ) : nfal (∀̇  p) i = ∀̇ (nfal p i) :=
+by { induction i with i IH; simp, exact IH }
 
-@[simp] def embed {α : Type*} (a : α) (s : ℕ → α) : ℕ → α
-| 0     := a
-| (m+1) := s (m+1)
+@[reducible] def ι : ℕ → term L := vecterm.var
 
-infixr ` ^ˢ `:max := slide
+def slide' {α : Type*} (s : ℕ → α) (a : α) (n : ℕ) : ℕ → α :=
+λ x, if x < n then s x else if n < x then s (x - 1) else a
+notation s `[`:1200 n ` ⇝ `:95 t `]`:0 := slide' s t n
 
-infixr ` ^ᵉ `:max := embed
+@[simp] lemma slide_eq {α : Type*} (s : ℕ → α) (a : α) (n) : s [n ⇝ a] n = a := by simp[slide']
 
-@[reducible] def idvar : ℕ → term L := λ x, #x
-@[reducible] def shift : ℕ → term L := λ x, #(x+1)
+@[simp] lemma slide_lt {α : Type*} (s : ℕ → α) (a : α) (n m) (h : m < n) : s [n ⇝ a] m = s m := by simp[slide', h]
+
+@[simp] lemma slide_gt {α : Type*} (s : ℕ → α) (a : α) (n m) (h : n < m) : s [n ⇝ a] m = s (m - 1) :=
+by {simp[slide', h], intros hh, exfalso, exact nat.lt_asymm h hh }
+
+def concat {α : Type*} (s : ℕ → α) (a : α) : ℕ → α := s [0 ⇝ a]
+notation a ` ⌢ `:90 s := concat s a
 
 namespace vecterm
 
@@ -89,12 +93,17 @@ namespace vecterm
 | _ (const c)  := const c
 | _ (app f v)  := app f v.rew
 
-@[reducible] def sf {n} (t : vecterm L n) : vecterm L n := t.rew shift
+instance {n : ℕ} : has_pow (vecterm L n) ℕ := ⟨λ t i, t.rew (λ x, #(x + i))⟩
 
-@[simp] lemma cons_sf (a : term L) {n} (v : vecterm L n) : (cons a v).sf = cons a.sf v.sf := rfl
-@[simp] lemma var_sf (n) : (#n : term L).sf = #(n + 1) := rfl
-@[simp] lemma const_sf (c : L.fn 0) : (const c).sf = const c := rfl
-@[simp] lemma app_sf {n} (f : L.fn (n+1)) (v : vecterm L n) : (app f v).sf = app f v.sf := rfl
+lemma pow_eq {n : ℕ} (v : vecterm L n) (i : ℕ) : v^i = v.rew (λ x, #(x + i)) := rfl
+
+@[simp] lemma cons_pow (a : term L) {n} (v : vecterm L n) (i : ℕ) : (cons a v)^i = cons (a^i) (v^i) := rfl
+
+@[simp] lemma var_pow (n i : ℕ) : (#n : term L)^i = #(n + i) := rfl
+
+@[simp] lemma const_pow (c : L.fn 0) (i : ℕ) : (const c)^i = const c := rfl
+
+@[simp] lemma app_pow {n} (f : L.fn (n+1)) (v : vecterm L n) (i : ℕ) : (app f v)^i = app f (v^i) := rfl
 
 def arity : ∀ {n}, vecterm L n → ℕ
 | _ (cons a v) := max a.arity v.arity
@@ -109,11 +118,7 @@ def arity : ∀ {n}, vecterm L n → ℕ
 | _ (const c)  := by simp[rew]
 | _ (app f v)  := by simp[rew, nested_rew]
 
-@[simp] lemma sf_rew_eq {n} (t : vecterm L n) (t₀ : term L) (s : ℕ → term L) :
-  t.sf.rew (t₀ ^ˢ s) = t.rew s :=
-by cases t; by simp[rew, sf]
-
-@[simp] lemma rew_idvar {n} (t : vecterm L n) : t.rew idvar = t :=
+@[simp] lemma rew_ι {n} (t : vecterm L n) : t.rew ι = t :=
 by induction t; simp[rew]; simp*
 
 lemma rew_rew {s₀ s₁ : ℕ → term L} : ∀ {n} (t : vecterm L n),
@@ -124,14 +129,14 @@ lemma rew_rew {s₀ s₁ : ℕ → term L} : ∀ {n} (t : vecterm L n),
 | _ (const c)  _ := rfl
 | _ (app f v)  h := by simp[rew, arity] at h ⊢; refine rew_rew _ h
 
-@[simp] lemma sf_rew {n} (t : vecterm L n) (u) (s) : t.sf.rew (u ^ˢ s) = t.rew s :=
-by simp[vecterm.sf, vecterm.rew]
+lemma pow_add {n} (v : vecterm L n) (i j : ℕ) : (v^i)^j = v^(i + j) :=
+by simp[pow_eq, nested_rew, add_assoc]
 
 @[simp] lemma arity0_rew {n} {v : vecterm L n} (h : v.arity = 0) (s : ℕ → term L) : v.rew s = v :=
-by { suffices : rew s v = rew idvar v, { simp* },
+by { suffices : rew s v = rew ι v, { simp* },
      refine rew_rew _ _, simp[h] }
 
-@[simp] lemma arity0_sf {n} {v : vecterm L n} (h : v.arity = 0) : v.sf = v := by simp[vecterm.sf, arity0_rew h]
+@[simp] lemma arity0_sf {n} {v : vecterm L n} (h : v.arity = 0) (i : ℕ) : v^i = v := by simp[has_pow.pow, h]
 
 lemma total_rew_inv :
   ∀ {n} (p : vecterm L n) {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n), ∃ q : vecterm L n, q.rew s = p
@@ -139,30 +144,56 @@ lemma total_rew_inv :
     rcases total_rew_inv a h with ⟨qa, IH_qa⟩,
     rcases total_rew_inv v h with ⟨qv, IH_qv⟩,
     refine ⟨cons qa qv, _⟩, simp[IH_qa, IH_qv] }
-| _     (#x)               s h := by rcases h x with ⟨q, h_q⟩; refine ⟨#q, _⟩; simp[h_q]
+| _     (#x)       s h := by rcases h x with ⟨q, h_q⟩; refine ⟨#q, _⟩; simp[h_q]
 | _     (const c)  s h := ⟨const c, rfl⟩
 | _     (app f v)  s h := by rcases total_rew_inv v h with ⟨q, IH_q⟩; refine ⟨app f q, _⟩; simp[IH_q]
 
+@[simp] lemma term_pow_0 (t : term L) : t^0 = t := by simp[has_pow.pow]
+
+@[simp] lemma sf_subst_eq {n : ℕ} (v : vecterm L n) (t : term L) (i j : ℕ) (h : j ≤ i) :
+  (v^(i + 1)).rew (ι [j ⇝ t]) = v^i :=
+by { simp[has_pow.pow, rew, nested_rew, h], congr, funext x,
+     have : j < x + (i + 1), from nat.lt_add_left _ _ _ (nat.lt_succ_iff.mpr h),
+     simp[this] }
+
+@[simp] lemma concat_pow_eq {n : ℕ} (v : vecterm L n) (t : term L) (s : ℕ → term L) :
+  (v^1).rew (t ⌢ s) = v.rew s :=
+by simp[concat, rew, pow_eq, nested_rew]
+
 end vecterm
 
---def rewriting_sf (s : ℕ → term L) : ℕ → term L := #0 ^ˢ λ n, (s n).sf
+lemma term.pow_eq (v : term L) (i : ℕ) : v^i = v.rew (λ x, #(x + i)) := rfl
 
 def rewriting_sf_itr (s : ℕ → term L) : ℕ → ℕ → term L
 | 0     := s
-| (n+1) := #0 ^ˢ λ x, (rewriting_sf_itr n x).sf
+| (n+1) := #0 ⌢ λ x, (rewriting_sf_itr n x)^1
 instance : has_pow (ℕ → term L) ℕ := ⟨rewriting_sf_itr⟩
 
-@[simp] lemma rewriting_sf_0 (s : ℕ → term L) : (s^1) 0 = #0 := rfl
-@[simp] lemma rewriting_sf_succ (s : ℕ → term L) (n : ℕ) : (s^1) (n.succ) = (s n).sf := rfl
+@[simp] lemma rewriting_sf_pow0 (s : ℕ → term L) : (s^0) = s := rfl
+@[simp] lemma rewriting_sf_0 (s : ℕ → term L) (i : ℕ) : (s^(i + 1)) 0 = #0 := rfl
+@[simp] lemma rewriting_sf_succ (s : ℕ → term L) (n : ℕ) (i : ℕ) : (s^(i + 1)) (n + 1) = (s^i $ n)^1 :=
+by simp[concat, has_pow.pow, rewriting_sf_itr]
+
+lemma rewriting_sf_itr.pow_eq (s : ℕ → term L) (i : ℕ) : (s^(i + 1)) = #0 ⌢ λ x, (s^i $ x)^1 := rfl
+
+lemma rewriting_sf_itr.pow_add (s : ℕ → term L) (i j : ℕ) : (s^i)^j = s^(i + j) :=
+by { induction j with j IH generalizing s i, { simp },
+     simp[←nat.add_one, ←add_assoc, rewriting_sf_itr.pow_eq, IH] }
 
 @[simp] lemma rewriting_sf_itr_0 (s : ℕ → term L) : s^0 = s := rfl
 lemma rewriting_sf_itr_succ (s : ℕ → term L) (n) : s^(n+1) = (s^n)^1 := rfl
 
-@[reducible] def vecterm.sf_pow (m : ℕ) {n} (t : vecterm L n) : vecterm L n := t.rew (shift^m)
+lemma rewriting_sf_itr.pow_eq' (s : ℕ → term L) (i : ℕ) :
+  (s^i) = (λ x, if x < i then #x else (s (x - i))^i) :=
+by { induction i with i IH generalizing s, { simp },
+     simp[←nat.add_one, rewriting_sf_itr.pow_eq, IH], funext x,
+     cases x; simp[concat, ←nat.add_one],
+     by_cases C : x < i; simp[C, vecterm.pow_add] }
+
 
 lemma rewriting_sf_perm {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n) : ∀ n, ∃ m, (s^1) m = #n :=
 λ n, by { cases n, refine ⟨0, by simp⟩,
-          rcases h n with ⟨m, e_m⟩, refine ⟨m+1, by simp[e_m]⟩ }
+          rcases h n with ⟨m, e_m⟩, refine ⟨m+1, _⟩, simp[e_m] }
 
 def formula.arity : formula L → ℕ
 | (formula.const c) := 0
@@ -174,67 +205,19 @@ def formula.arity : formula L → ℕ
 
 @[reducible] def sentence : formula L → Prop := λ p, p.arity = 0
 
-@[reducible] def subst (t : term L) : ℕ → term L := t ^ˢ idvar
-notation `ₛ[`t`]` := fopl.subst t
+lemma subst_pow (t : term L) (n i : ℕ) : ι[n ⇝ t]^i = ι[n + i ⇝ t^i] :=
+begin
+  induction i with i IH, { simp }, funext x,
+  cases x; simp[←nat.add_one, ←add_assoc, IH],
+  { have T : x < n + i ∨ x = n + i ∨ n + i < x, exact trichotomous _ _,
+    cases T, { simp[T], }, cases T; simp[T, pow_add, vecterm.pow_add],
+    { have : 0 < x, exact pos_of_gt T, congr, exact (nat.pos_succ this).symm} }
+end
 
---def subst_sf (t : term L) : ℕ → ℕ → term L
-----| 0     := t ^ˢ idvar
-----| (n+1) := (subst_sf n)↑
---notation `sₛ[`:95 t ` // `:95  n `]`:0 := subst_sf t n
-
-@[simp] lemma subst_sf_0 (t : term L) : ₛ[t] 0 = t := rfl
-
-@[simp] lemma subst_sf_succ (t : term L) (n) : ₛ[t] (n+1) = #n := rfl
-
-@[simp] lemma subst_sf_eq_eq (t : term L) (n : ℕ) : (ₛ[t]^n) n = t.rew (λ x, #(x+n)) :=
-by { induction n with n IH; simp[subst] at*, rw rewriting_sf_itr_succ, simp[IH, vecterm.sf], refl }
-
-lemma slide_perm (t : term L) : ∀ n, ∃ m, (ₛ[t]) m = #n := λ n, ⟨n+1, by simp⟩
-
-@[simp] lemma subst_sf_lt_eq' (t : term L) : ∀ {n m}, n ≤ m → (ₛ[t]^n) (m+1) = #m :=
-by { intros n, induction n with n IH,
-     { intros, simp },
-     intros m h, simp[rewriting_sf_itr_succ],
-     cases m, { exfalso, simp* at* },
-     have := @IH m (by { exact nat.succ_le_succ_iff.mp h}), simp[this] }
-
-@[simp] lemma subst_sf_lt_eq (t : term L) : ∀ {n m}, n < m → (ₛ[t]^n) m = #(m-1) :=
-by { intros n m h,
-     have lmm := subst_sf_lt_eq' t (nat.le_pred_of_lt h), 
-     have : m - 1 + 1 = m, omega,
-     simp[this] at lmm, exact lmm }
-
-@[simp] lemma subst_sf_gt_eq (t : term L) : ∀ {n m}, m < n → (ₛ[t]^n) m = #m :=
-by { intros n, induction n with n IH; simp[rewriting_sf_itr_succ],
-     intros m h, cases m; simp,
-     simp [@IH m (by { exact nat.succ_lt_succ_iff.mp h})] }
-
-@[reducible] def subst_embed (t : term L) : ℕ → term L := t ^ᵉ idvar
-notation `ₑ[`t`]` := subst_embed t
-
-@[simp] lemma subst_embed_0 (t : term L) : ₑ[t] 0 = t := rfl
-
-@[simp] lemma subst_embed_succ (t : term L) (n) : ₑ[t] (n+1) = #(n+1) := rfl
-
---def embed_sf (t : term L) : ℕ → ℕ → term L
---| 0     := t ^ᵉ idvar
---| (n+1) := (embed_sf n)↑
---notation `em[`:95 t ` // `:95  n `]`:0 := embed_sf t n
-
-@[simp] lemma embed_sf_eq_eq (t : term L) (n) : (ₑ[t]^n) n = t.rew (λ x, #(x+n)) :=
-by { induction n with n IH; simp[subst_embed], rw rewriting_sf_itr_succ, simp[IH, vecterm.sf], refl }
-
-@[simp] lemma embed_sf_lt_eq' (t : term L) : ∀ {n m}, n < m → (ₑ[t]^n) m = #m :=
-by { intros n, induction n with n IH,
-     { intros, simp[subst_embed], cases m; simp* at* },
-     intros m h, simp[subst_embed],
-     cases m, { exfalso, simp* at* },
-     have := @IH m (by { exact nat.succ_le_succ_iff.mp h}), rw rewriting_sf_itr_succ, simp[this] }
-
-@[simp] lemma embed_sf_gt_eq (t : term L) : ∀ {n m}, m < n → (ₑ[t]^n) m = #m :=
-by { intros n, induction n with n IH; simp[subst_embed],
-     intros m h, cases m; rw rewriting_sf_itr_succ; simp,
-     simp [@IH m (by { exact nat.succ_lt_succ_iff.mp h})] }
+lemma slide'_perm (t : term L) (k) : ∀ n, ∃ m, ι[k ⇝ t] m = #n := λ n,
+by { have T : n < k ∨ k ≤ n, exact lt_or_ge _ _,
+     cases T, refine ⟨n, by simp[T]⟩,
+     { refine ⟨n + 1, _⟩, simp[show k < n + 1, from nat.lt_succ_iff.mpr T] }, }
 
 namespace formula
 
@@ -244,28 +227,45 @@ namespace formula
 | s (t =̇ u)   := (t.rew s) =̇ (u.rew s)
 | s (p →̇ q)  := p.rew s →̇ q.rew s
 | s (¬̇p)      := ¬̇(p.rew s)
-| s (∀̇p)      := ∀̇ (p.rew (s^1))
+| s (∀̇ p)     := ∀̇ (p.rew (s^1))
 
 @[simp] lemma and_rew (p q : formula L) (s) : (p ⩑ q).rew s = p.rew s ⩑ q.rew s :=by simp[and, formula.rew]
 @[simp] lemma or_rew (p q : formula L) (s) : (p ⩒ q).rew s = p.rew s ⩒ q.rew s :=by simp[or, formula.rew]
 @[simp] lemma iff_rew (p q : formula L) (s) : (p ↔̇ q).rew s = p.rew s ↔̇ q.rew s :=by simp[iff, formula.rew]
+@[simp] lemma nfal_rew (p : formula L) (i : ℕ) (s) : (nfal p i).rew s = nfal (p.rew (s^i)) i :=
+by { induction i with i IH generalizing s, { simp },
+     simp[←nat.add_one, IH, rewriting_sf_itr.pow_add, add_comm 1 i] }
 @[simp] lemma ex_rew (p : formula L) (s) : (∃̇p).rew s = ∃̇p.rew (s^1) :=by simp[ex]
 @[simp] lemma top_rew (s) : (⊤̇ : formula L).rew s = ⊤̇ := by simp[formula.top, formula.rew, vecterm.rew]
 @[simp] lemma bot_rew (s) : (⊥̇ : formula L).rew s = ⊥̇ := by simp[formula.bot, formula.rew, vecterm.rew]
 
-def sf (p : formula L) : formula L := p.rew (λ x, #(x+1))
+@[simp] lemma rew_ι (p : formula L) : p.rew ι = p :=
+by { induction p; simp[rew]; try {simp*},
+     have : ι^1 = ι,
+     { funext n, cases n, rw[@rewriting_sf_0 L], simp }, rw[this], simp* }
 
-@[reducible] def sf_itr (m) (t : formula L) : formula L := t.rew (λ x, #(x+m))
+instance : has_pow (formula L) ℕ := ⟨λ p i, p.rew (λ x, #(x + i))⟩
 
-@[simp] lemma const_sf (c : L.pr 0) : (const c).sf = const c := rfl
-@[simp] lemma app_sf {n} (p : L.pr (n+1)) (v : vecterm L n) : (app p v).sf = app p v.sf := rfl
-@[simp] lemma eq_sf (t u : term L) : (t =̇ u).sf = t.sf =̇ u.sf := rfl
-@[simp] lemma imply_sf (p q : formula L) : (p →̇ q).sf = p.sf →̇ q.sf := rfl
-@[simp] lemma neg_sf (p : formula L) : (¬̇p).sf = ¬̇p.sf := rfl
-@[simp] lemma and_sf (p q : formula L) : (p ⩑ q).sf = p.sf ⩑ q.sf := rfl
-@[simp] lemma or_sf (p q : formula L) : (p ⩒ q).sf = p.sf ⩒ q.sf := rfl
-@[simp] lemma top_sf : (⊤̇ : formula L).sf = ⊤̇ := by simp[top]; refl
-@[simp] lemma bot_sf : (⊥̇ : formula L).sf = ⊥̇ := by simp[bot]; refl
+lemma pow_eq (p : formula L) (i : ℕ) : p^i = p.rew (λ x, #(x + i)) := rfl
+
+@[simp] lemma formula_pow_0 (p : formula L) : p^0 = p := by simp[has_pow.pow]
+
+@[simp] lemma const_pow (c : L.pr 0) (i : ℕ) : (const c)^i = const c := rfl
+@[simp] lemma app_pow {n} (p : L.pr (n+1)) (v : vecterm L n) (i : ℕ) : (app p v)^i = app p (v^i) := rfl
+@[simp] lemma eq_pow (t u : term L) (i : ℕ) : (t =̇ u)^i = (t^i) =̇ (u^i) := rfl
+@[simp] lemma imply_pow (p q : formula L) (i : ℕ) : (p →̇ q)^i = p^i →̇ q^i := rfl
+@[simp] lemma neg_pow (p : formula L) (i : ℕ) : (¬̇p)^i = ¬̇(p^i) := rfl
+@[simp] lemma and_pow (p q : formula L) (i : ℕ) : (p ⩑ q)^i = (p^i) ⩑ (q^i) := rfl
+@[simp] lemma or_pow (p q : formula L) (i : ℕ) : (p ⩒ q)^i = (p^i) ⩒ (q^i) := rfl
+@[simp] lemma top_pow (i : ℕ) : (⊤̇ : formula L)^i = ⊤̇ := by simp[top]; refl
+@[simp] lemma bot_pow (i : ℕ) : (⊥̇ : formula L)^i = ⊥̇ := by simp[bot]; refl
+lemma fal_pow (p : formula L) (i : ℕ) : (∀̇ p)^i = ∀̇ p.rew (#0 ⌢ λ x, #(x + i + 1)) :=
+by simp[formula.pow_eq, rewriting_sf_itr.pow_eq]
+
+lemma nfal_pow (p : formula L) (n i : ℕ) :
+  (nfal p n)^i = nfal (p.rew (λ x, if x < n then #x else #(x + i))) n :=
+by { simp[formula.pow_eq, rewriting_sf_itr.pow_eq'], congr, funext x,
+     by_cases C : x < n; simp[C], omega }
 
 lemma nested_rew : ∀ (p : formula L) (s₀ s₁),
   (p.rew s₀).rew s₁ = p.rew (λ x, (s₀ x).rew s₁)
@@ -274,13 +274,8 @@ lemma nested_rew : ∀ (p : formula L) (s₀ s₁),
 | (t =̇ u)   _ _ := by simp[rew]
 | (p →̇ q)  _ _ := by simp[rew]; refine ⟨nested_rew p _ _, nested_rew q _ _⟩
 | (¬̇p)      _ _ := by simp[rew]; refine nested_rew p _ _
-| (∀̇p)      _ _ := by { simp[rew, nested_rew p], congr,
-    funext n, cases n; simp[vecterm.rew, vecterm.sf] }
-
-@[simp] lemma rew_idvar (p : formula L) : p.rew idvar = p :=
-by { induction p; simp[rew]; try {simp*},
-     have : idvar^1 = idvar,
-     { funext n, cases n, rw[@rewriting_sf_0 L], simp }, rw[this], simp* }
+| (∀̇ p)     _ _ := by { simp[rew, nested_rew p], congr,
+    funext n, cases n; simp[vecterm.rew], simp[concat, rewriting_sf_itr.pow_eq, vecterm.pow_eq] }
 
 lemma rew_rew : ∀ (p : formula L) {s₀ s₁ : ℕ → term L},
   (∀ m, m < p.arity → s₀ m = s₁ m) → p.rew s₀ = p.rew s₁
@@ -296,37 +291,32 @@ lemma rew_rew : ∀ (p : formula L) {s₀ s₁ : ℕ → term L},
     cases p.arity, { exfalso, simp* at* },
     { simp at h, simp[h _ (nat.succ_lt_succ_iff.mp e)] } }
 
+lemma pow_add (p : formula L) (i j : ℕ) : (p^i)^j = p^(i + j) :=
+by simp[pow_eq, nested_rew, add_assoc]
+
 @[simp] lemma sentence_rew {p : formula L} (h : sentence p) (s : ℕ → term L) : p.rew s = p :=
-by { suffices : rew s p = rew idvar p, { simp* },
+by { suffices : rew s p = rew ι p, { simp* },
      refine rew_rew _ _, simp[show p.arity = 0, from h] }
 
-@[simp] lemma sentence_sf {p : formula L} (h : sentence p) : p.sf = p := by simp[formula.sf, sentence_rew h]
+@[simp] lemma sentence_sf {p : formula L} (h : sentence p) (i : ℕ) : p^i = p :=
+by simp[has_pow.pow, sentence_rew h]
 
-@[simp] lemma sf_subst_eq (p : formula L) (t) : p.sf.rew ₛ[t] = p :=
-by simp[formula.sf, vecterm.rew, nested_rew]
-
-@[simp] lemma sf_rew_eq (p : formula L) (t s) : p.sf.rew (t ^ˢ s) = p.rew s :=
-by simp[formula.sf, vecterm.rew, nested_rew]
-
---lemma sf_rew_eqd (p : formula L) (n : ℕ) (t) : (p.rew (shift^n)).rew (ₛ[t]^(n)) = p :=
---by { induction n with n IH, simp,exact sf_subst_eq _ _, simp[has_pow.pow, rewriting_sf_itr], } }
---
---lemma sf_rew_eqd (p : formula L) (n : ℕ) (t) : (p.rew (shift^n)).rew (ₛ[t]^(n)) = p :=
---by { simp[formula.sf, vecterm.rew, nested_rew],
---     have : ∀ n : ℕ, (λ x, vecterm.rew (ₛ[t]^n) ((shift ^ n) x)) = idvar,
---     { intros n, induction n with n IH, simp,
---       { ext x, cases x; rw[rewriting_sf_itr_succ shift, rewriting_sf_itr_succ ₛ[t]]; simp,
---         
---           }  } }
+@[simp] lemma sf_subst_eq (p : formula L) (t : term L) (i j : ℕ) (h : j ≤ i) : (p^(i + 1)).rew ι[j ⇝ t] = p^i :=
+by { simp[has_pow.pow, vecterm.rew, nested_rew, h], congr, funext x,
+     have : j < x + (i + 1), from nat.lt_add_left _ _ _ (nat.lt_succ_iff.mpr h),
+     simp[this] }
 
 lemma subst_sf_rew (p : formula L) (t : term L) (s : ℕ → term L) :
-  (p.rew ₛ[t]).rew s = (p.rew (s^1)).rew ₛ[t.rew s] :=
+  (p.rew ι[0 ⇝ t]).rew s = (p.rew (s^1)).rew ι[0 ⇝ t.rew s] :=
 by { simp[formula.rew, vecterm.rew, nested_rew], congr, ext n, cases n; simp }
 
-@[simp] lemma shift_rew_eq (p : formula L) : (p.rew (shift^1)).rew ₛ[#0] = p :=
-by { simp[nested_rew],
-     have eqn : (λ x, vecterm.rew ₛ[#0] (shift^1 $ x) : ℕ → term L) = idvar,
-     { ext x, cases x; simp, }, simp[eqn] }
+@[simp] lemma sf_subst_eq_0 (p : formula L) (t) : (p^1).rew ι[0 ⇝ t] = p :=
+by simp[vecterm.rew, nested_rew]
+
+lemma pow_rew_distrib  (p : formula L) (s : ℕ → term L) (i : ℕ): (p.rew s)^i = (p^i).rew (s^i) :=
+by { induction i with i IH generalizong s i, { simp },
+     { simp[←nat.add_one, ←pow_add, ←rewriting_sf_itr.pow_add, IH, formula.pow_eq _ 1, nested_rew],
+       refl } }
 
 lemma total_rew_inv :
   ∀ (p : formula L) {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n), ∃ q : formula L, q.rew s = p
@@ -356,17 +346,6 @@ lemma total_rew_inv :
 lemma nfal_arity : ∀ (n) (p : formula L), (nfal p n).arity = p.arity - n
 | 0     p := by simp[formula.arity]
 | (n+1) p := by {simp[formula.arity, nfal_arity n], exact (arity p).sub_sub _ _ }
-
-lemma nfal_rew : ∀ (n) (p : formula L) (s),
-  (nfal p n).rew s = nfal (p.rew (λ m, ite (m < n) (#m) ((s $ m - n).rew (λ x, #(x+n))))) n
-| 0 p s := by simp 
-| (n+1) p s := by { simp[nfal_rew n], congr,
-    ext m, by_cases C₁ : m < n,
-    { simp[C₁, nat.lt.step C₁] },
-    by_cases C₂ : m < n + 1; simp[C₁, C₂],
-    { have : m - n = 0, omega, simp[this], omega },
-    { have : m - n = (m - (n + 1)) + 1, omega,
-      simp[this], congr, ext x, simp[nat.succ_add_eq_succ_add x n]} }
 
 lemma nfal_sentence (p : formula L) : sentence (nfal p p.arity) :=
 by { have := nfal_arity p.arity p, simp at*, refine this }
