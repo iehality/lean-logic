@@ -412,6 +412,7 @@ instance : translation L₁ (L₁ + L₂) :=
 
 instance {L₁ L₂ : language.{u}} : has_coe (term L₁) (term (L₁ + L₂)) := ⟨add_tr_v1⟩
 instance {L₁ L₂ : language.{u}} : has_coe (formula L₁) (formula (L₁ + L₂)) := ⟨translation.tr⟩
+instance {L₁ L₂ : language.{u}} : has_coe (theory L₁) (theory (L₁ + L₂)) := ⟨λ T, translation.tr '' T⟩
 
 end language
 

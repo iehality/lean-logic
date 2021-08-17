@@ -132,10 +132,14 @@ instance : encodable (term L) := ⟨vecterm.encode, (λ e, vecterm.decode L e 0)
 def formula.encode : formula L → ℕ
 | (formula.const c)      := (bit0 $ bit0 (encode c))
 | (@formula.app _ n p v) := (bit0 $ bit1 n.mkpair ((encode p).mkpair v.encode))
-| (t =̇ u)             := (bit1 $ bit0 $ bit0 (t.encode.mkpair u.encode))
-| (p →̇ q)            := (bit1 $ bit0 $ bit1 (p.encode.mkpair q.encode))
-| (¬̇p)                := (bit1 $ bit1 $ bit0 p.encode)
-| (Ȧp)                := (bit1 $ bit1 $ bit1 p.encode)
+| (t =̇ u)                := (bit1 $ bit0 $ bit0 (t.encode.mkpair u.encode))
+| (p →̇ q)               := (bit1 $ bit0 $ bit1 (p.encode.mkpair q.encode))
+| (¬̇p)                   := (bit1 $ bit1 $ bit0 p.encode)
+| (∀̇ p)                  := (bit1 $ bit1 $ bit1 p.encode)
+
+def of_nat_form (L : language.{u}) [∀ n, encodable (L.fn n)] [∀ n, encodable (L.pr n)] : ℕ → option (formula L)
+| 0     := (decode _ 0).map formula.const
+| (e+1) := 
 
 def of_nat_form (L : language.{u}) [∀ n, encodable (L.fn n)] [∀ n, encodable (L.pr n)] : ℕ → option (formula L)
 | e :=
@@ -145,8 +149,9 @@ def of_nat_form (L : language.{u}) [∀ n, encodable (L.fn n)] [∀ n, encodable
       (decode (vecterm L _) e.div2.div2.unpair.2.unpair.2)
   | tt, ff, ff := (=̇) <$> (decode (vecterm L 0) e.div2.div2.div2.unpair.1) <*> (decode (vecterm L 0) e.div2.div2.div2.unpair.2)
   | tt, ff, tt := (→̇) <$> (of_nat_form e.div2.div2.div2.unpair.1) <*> (of_nat_form e.div2.div2.div2.unpair.2)
-  | tt, tt, ff := ¬̇(of_nat_form e.div2.div2.div2)
-  | tt, tt, tt := Ȧ(of_nat_form e.div2.div2.div2)
+  | tt, tt, ff := (of_nat_form e.div2.div2.div2) >>= (λ p, ¬̇p)
+  | tt, tt, tt := (of_nat_form e.div2.div2.div2) >>= (λ p, ∀̇ p)
   end
+  using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x+1)⟩]}
 
 end fopl

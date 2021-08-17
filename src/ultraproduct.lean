@@ -1,4 +1,4 @@
-import deduction semantics data.equiv.encodable.basic order.filter.ultrafilter
+import deduction semantics lindenbaum data.equiv.encodable.basic order.filter.ultrafilter
 open encodable
 
 universes u v
@@ -299,7 +299,7 @@ theorem compact (T : theory L) :
   (∃ 𝔄, 𝔄 ⊧ₜₕ T) ↔ (∀ S : finset (formula L), (∀ {p}, p ∈ S → p ∈ T) → ∃ 𝔄, 𝔄 ⊧ₜₕ (S : set (formula L))) :=
   ⟨by { intros H S hyp_S, rcases H with ⟨𝔄, hyp⟩,
         refine ⟨𝔄, λ p h, hyp _ (hyp_S h)⟩ },
-   by { suffices : (∀ S : fintheory T, ∃ 𝔄, 𝔄 ⊧ₜₕ (S : set (formula L))) → (∃ 𝔅, 𝔅 ⊧ₜₕ T),
+   by { suffices : (∀ S : fintheory T, ∃ 𝔄, 𝔄 ⊧ₜₕ (↑S : set (formula L))) → (∃ 𝔅, 𝔅 ⊧ₜₕ T),
         { intros h, refine this (λ S, _),
           rcases h S.val S.property with ⟨𝔄, hyp_𝔄⟩, refine ⟨𝔄, hyp_𝔄⟩ },
     intros H, by_cases C : T = ∅,

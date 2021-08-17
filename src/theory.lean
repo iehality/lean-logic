@@ -50,19 +50,12 @@ instance ordered_theory_sf_itr {T : theory L} [od : ordered T] : ∀ n : ℕ, or
 | (n+1) := @fopl.ordered_theory_sf _ _  (ordered_theory_sf_itr n)
 
 class proper (n : ℕ) (T : theory L) := (proper : proper_at n T)
-class proper' (n : ℕ) (T : theory L) := (proper : proper'_at n T)
 
 instance ordered_proper {T : theory L} [pp : proper 0 T] : ordered T :=
 ⟨λ p h, by { have := pp.proper, exact this _ (λ x, #(x+1)) h }⟩
 
-instance ordered_proper' {T : theory L} [pp : proper' 0 T] : ordered T :=
-⟨λ p h, by { have := pp.proper, exact this _ (λ x, #(x+1)) h }⟩
-
 lemma proper.proper0 {T : theory L} [proper 0 T] :
   ∀ {p : formula L} {s}, p ∈ T → p.rew s ∈ T := @proper.proper _ 0 T _
-
-lemma proper'.proper0 {T : theory L} [proper' 0 T] :
-  ∀ {p : formula L} {s}, p ∈ T → p.rew s ∈ T := @proper'.proper _ 0 T _
 
 instance : closed_theory (∅ : theory L) := ⟨λ _ h, by exfalso; exact h⟩
 
@@ -103,21 +96,6 @@ begin
     simp[formula.pow_add, formula.nested_rew, nat.succ_add_eq_succ_add, ←add_assoc] }
 end
 
-lemma proper'_sf_inclusion (T : theory L) [proper' 0 T] : ∀ {n m : ℕ} (h : n ≤ m),
-  T^m ⊆ T^n :=
-begin
-  suffices : ∀ {n m : ℕ}, T^(n+m) ⊆ T^n,
-  { intros n m eqn p hyp, have e : m = n + (m - n), exact (nat.add_sub_of_le eqn).symm, 
-    rw e at hyp,
-    exact this hyp },
-  intros n m p h,
-  induction m with m IH, { exact h },
-  { suffices : p ∈ T^(n + m), from IH this, simp[theory_sf_itr_eq] at h ⊢, rcases h with ⟨q, h, rfl⟩,
-    have : q^1 ∈ T, from @proper'.proper _ 0 T _ _ (λ x, #(x + 1)) h,
-    refine ⟨q^1, this, _⟩,
-    simp[formula.pow_add, formula.nested_rew, nat.succ_add_eq_succ_add, ←add_assoc] }
-end
-
 lemma ordered_inclusion (T : theory L) [ordered T] : ⇑T ⊆ T := λ p h,
 by { rcases h with ⟨p, hyp, rfl⟩, exact ordered.ordered _ hyp }
 
@@ -146,6 +124,22 @@ begin
     rcases hx with ⟨p, hp, rfl⟩, refine ⟨p, theory.add.old hp, rfl⟩ },
   { rcases h with ⟨q, hq, rfl⟩, cases hq with hq hq, refine theory.add.new,
     refine theory.add.old ⟨q, hq, rfl⟩ }
+end
+
+
+variables [primcodable (formula L)] 
+open encodable
+
+class primrec_theory (T : theory L) :=
+(isaxiom : formula L → bool)
+(isaxiom_eq : ∀ p, isaxiom p = to_bool (p ∈ T))
+
+@[simp] lemma isaxiom_iff (T : theory L) [primrec_theory T] (p) : ↥(primrec_theory.isaxiom T p) ↔ p ∈ T :=
+by simp [primrec_theory.isaxiom_eq p]
+
+lemma primrec_theory_pow (T : theory L) [primrec_theory T] (i : ℕ) : primrec_theory (T^i) :=
+begin
+
 end
 
 end fopl

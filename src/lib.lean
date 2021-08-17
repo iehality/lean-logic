@@ -1,4 +1,10 @@
-import tactic data.equiv.encodable.basic
+import
+  tactic data.equiv.encodable.basic
+  computability.primrec
+  computability.partrec
+  computability.partrec_code
+  computability.halting
+  data.pfun
 
 universes u v
 
@@ -169,8 +175,6 @@ private lemma quo_to_vec_eq (s : setoid α) : ∀ {n} (a b : dvector α n), a �
 def mk_vec' {n} {s : setoid α} (a : dvector α n) : dvector (quotient s) n := quo_to_dvec s (quot.mk (s.vec n).1 a)
 notation `ᵥ⟦`u`⟧` := mk_vec' u
 
-
-
 @[elab_as_eliminator, reducible]
 def lift_on_vec {s : setoid α} {n} (q : dvector (quotient s) n) (f : dvector α n → φ)
   (c : ∀ a b : dvector α n, a ≋ b → f a = f b) : φ :=
@@ -212,4 +216,9 @@ lemma vquotient_cons {s : setoid α} {n} (a : α) (as : dvector α n) : ᵥ⟦a 
 | (n+1) (a :: as) (b :: bs) := by simp[vquotient_cons, quotients_eq_iff as bs]
 
 end quotient
+
+section classical
+attribute [instance, priority 0] classical.prop_decidable
+
+end classical
 

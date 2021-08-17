@@ -1,6 +1,8 @@
-import deduction semantics cltheory
+import deduction semantics lindenbaum
 
 namespace fopl
+
+namespace arithmetic
 
 inductive langf : ℕ → Type
 | zero : langf 0
@@ -337,7 +339,7 @@ begin
        }
 end
 
-
 end bd_peano
+end arithmetic
 
 end fopl
