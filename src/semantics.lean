@@ -92,6 +92,33 @@ by simp[formula.iff]; exact iff_def.symm
 | 0     t₁ t₂ e := by simp[formula.val]
 | (n+1) (vecterm.cons t₁ v₁) (vecterm.cons t₂ v₂) e := by simp[formula.val, models_equals v₁ v₂]
 
+@[simp] lemma models_pow {p : formula L} {i : ℕ} {e : ℕ → |M| } : (p^i).val e ↔ p.val (λ n, e (n + i)) :=
+by simp[formula.pow_eq, rew_val_iff]
+
+lemma models_subst {p : formula L} {i : ℕ} {t : term L} {e : ℕ → |M| } :
+  (p.rew ι[i ⇝ t]).val e ↔ p.val (λ n, if n < i then e n else if i < n then e (n - 1) else t.val e) :=
+by { simp[rew_val_iff],
+     have : (λ (n : ℕ), (vecterm.val e (ι[i ⇝ t] n)).head) =
+     (λ n, if n < i then e n else if i < n then e (n - 1) else t.val e),
+     { funext n,
+       have C : n < i ∨ n = i ∨ i < n, exact trichotomous n i,
+       cases C; simp[C],
+       cases C; simp[C], simp[asymm C] },
+     simp[this] }
+
+@[simp] lemma models_subst_0 {p : formula L} {t : term L} {e : ℕ → |M| } :
+  (p.rew ι[0 ⇝ t]).val e ↔ p.val (t.val e ⌢ e) :=
+by { have := @models_subst _ _ p 0 t e, simp at this,
+     have eqn : (λ n, ite (0 < n) (e (n - 1)) (t.val e)) = t.val e ⌢ e,
+     { funext n, cases n; simp }, rw[←eqn], exact this }
+
+@[simp] lemma models_subst_1 {p : formula L} {t : term L} {e : ℕ → |M| } :
+  (p.rew ι[1 ⇝ t]).val e ↔ p.val (e 0 ⌢ t.val e ⌢ (λ x, e (x + 1))) :=
+by { have := @models_subst _ _ p 1 t e, simp at this,
+     have eqn : (λ n, ite (n < 1) (e n) (ite (1 < n) (e (n - 1)) (vecterm.val e t).head)) =
+       e 0 ⌢ t.val e ⌢ (λ x, e (x + 1)),
+     { funext n, cases n; simp[←nat.add_one], cases n; simp }, rw[←eqn], exact this }
+
 theorem soundness {T : theory L} : ∀ {p}, T ⊢ p → ∀ {M}, M ⊧ₜₕ T → M ⊧ p := λ p hyp,
 begin
   induction hyp,

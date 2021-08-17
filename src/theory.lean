@@ -5,10 +5,6 @@ universe u
 namespace fopl
 variables {L : language.{u}}
 
-def theory (L : language) := set (formula L)
-
-notation `theory `L:max := set (formula L)
-
 def theory.sf (T : theory L) : theory L := {p | ∃ q : formula L, q ∈ T ∧ p = q^1}
 
 prefix `⇑`:max := theory.sf

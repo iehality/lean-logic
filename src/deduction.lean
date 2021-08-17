@@ -40,6 +40,8 @@ attribute [simp] provable.p1 provable.p2 provable.p3 provable.q1 provable.q2 pro
 
 def theory.consistent (T : theory L) : Prop := ¬∃p, (T ⊢ p) ∧ (T ⊢ ¬̇p) 
 
+class consistent (T : theory L) := (consistent : theory.consistent T)
+
 def theory.le (T U : theory L) : Prop := ∀ p, T ⊢ p → U ⊢ p
 
 instance : has_le (theory L) := ⟨theory.le⟩
@@ -410,7 +412,7 @@ lemma add_sf (p) : ⇑(T +{∀̇ p}) ⊢ p :=
 by { have : ⇑(T +{∀̇ p}) ⊢ (∀̇ p)^1, rw ← sf_dsb, simp, 
      have := fal_subst this #0, simp[formula.nested_rew] at this,
      have eqn : (λ x, (((λ x, #(x + 1) : ℕ → term _)^1) x).rew ι[0 ⇝ #0]) = (ι : ℕ → vecterm L 0),
-     { funext n, cases n; refl }, simp [eqn] at this, exact this }
+     { funext n, cases n; refl }, exact this }
 
 private lemma rgerg {P : list (formula L)} : (∀ p, p ∈ P → T p) → T ⊢ conjunction P :=
 begin
@@ -649,7 +651,7 @@ end
 lemma dummy_fal_quantifir (p) : T ⊢ p ↔̇ ∀̇ (p^1) :=
 by { have : T ⊢ ∀̇ (p^1) →̇ (p^1).rew ι[0 ⇝ #0], from provable.q1, simp* at * }
 
-lemma dummy_fal_quantifir_iff {p : formula L} : T ⊢ ∀̇(p^1) ↔ T ⊢ p :=
+lemma dummy_fal_quantifir_iff {p : formula L} : T ⊢ ∀̇ (p^1) ↔ T ⊢ p :=
 by { have := provable.iff.mp (@dummy_fal_quantifir _ T p), split,
      { refine λ h, (this.2.MP h) },
      { refine λ h, (this.1.MP h) } }

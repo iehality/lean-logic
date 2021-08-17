@@ -37,25 +37,17 @@ end
 
 theorem Q_consistent : theory.consistent 𝐐 := model_consistent N_models_Q
 
-def peano_ind (p : formula LA) : formula LA :=
-p.rew ₛ[Ż] ⩑ ∀̇ (p →̇ ∀̇ (#1 =̇ Ṡ #0 →̇ p.sf)) →̇ ∀̇ p
-
-lemma mjbjhv (p : formula LA) : 𝒩 ⊧ peano_ind p := λ e,
-by { simp[peano_ind, rew_val_iff], }
+lemma mjbjhv (p : formula LA) : 𝒩 ⊧ 𝐈p := λ e,
+by { simp[peano_induction], intros h0 ih n,
+     induction n with n IH, exact h0, exact ih n IH
+      }
 
 lemma N_models_bd_PA (C : formula LA → Prop) : 𝒩 ⊧ₜₕ 𝐐+𝐈C := λ p hyp_p e,
 by { cases hyp_p with _ hyp_p p,
      exact N_models_Q p hyp_p e,
-       simp[rew_val_iff],
-  intros h0 hIH n,
-  induction n with n IH,
-  { have : (λ n, (vecterm.val e (ₛ[Ż] n)).head) = ((0 : ℕ) ^ˢ e),
-    { funext n, cases n; simp[slide] },
-    simp[this] at h0, exact h0 },
-  { have hIH' := hIH n IH,
-    have : (λ m, (vecterm.val (n ^ˢ e : ℕ → Num.dom) (ₑ[Ṡ #0] m)).head) = (n+1 : ℕ) ^ˢ e,
-    { funext n, cases n; simp[slide, embed] },
-    simp[this] at hIH', exact hIH' } }
+     simp,
+     intros h0 ih n,
+     induction n with n IH, exact h0, exact ih n IH }
 
 theorem bd_PA_consistent (C) : theory.consistent 𝐐+𝐈C := model_consistent (N_models_bd_PA C)
 

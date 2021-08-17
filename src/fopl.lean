@@ -37,6 +37,10 @@ infixr ` →̇ `:78 := formula.imply
 prefix `¬̇`:94 := formula.neg
 prefix `∀̇ `:90 := formula.fal
 
+def theory (L : language) := set (formula L)
+
+notation `theory `L:max := set (formula L)
+
 variables {L}
 
 @[reducible] def formula.neq (t : term L) (u : term L) : formula L := ¬̇(t =̇ u)
@@ -84,6 +88,15 @@ by {simp[slide', h], intros hh, exfalso, exact nat.lt_asymm h hh }
 
 def concat {α : Type*} (s : ℕ → α) (a : α) : ℕ → α := s [0 ⇝ a]
 notation a ` ⌢ `:90 s := concat s a
+
+@[simp] lemma concat_0 {α : Type*} (s : ℕ → α) (a : α) : (a ⌢ s) 0 = a := rfl
+@[simp] lemma concat_succ {α : Type*} (s : ℕ → α) (a : α) (n : ℕ) :
+  (a ⌢ s) (n + 1) = s n := rfl
+
+lemma slide_perm (i : ℕ) (t : term L) : ∀ n, ∃ m, ι[i ⇝ t] m = #n := λ n,
+by { have C : n < i ∨ i ≤ n, exact lt_or_ge n i,
+     cases C, refine ⟨n, by simp[C]⟩, 
+     refine ⟨n + 1, _⟩, simp[nat.lt_succ_iff.mpr C] }
 
 namespace vecterm
 
@@ -148,6 +161,7 @@ lemma total_rew_inv :
 | _     (const c)  s h := ⟨const c, rfl⟩
 | _     (app f v)  s h := by rcases total_rew_inv v h with ⟨q, IH_q⟩; refine ⟨app f q, _⟩; simp[IH_q]
 
+@[simp] lemma pow_0 {n} (t : vecterm L n) : t^0 = t := by simp[has_pow.pow]
 @[simp] lemma term_pow_0 (t : term L) : t^0 = t := by simp[has_pow.pow]
 
 @[simp] lemma sf_subst_eq {n : ℕ} (v : vecterm L n) (t : term L) (i j : ℕ) (h : j ≤ i) :
@@ -218,6 +232,14 @@ lemma slide'_perm (t : term L) (k) : ∀ n, ∃ m, ι[k ⇝ t] m = #n := λ n,
 by { have T : n < k ∨ k ≤ n, exact lt_or_ge _ _,
      cases T, refine ⟨n, by simp[T]⟩,
      { refine ⟨n + 1, _⟩, simp[show k < n + 1, from nat.lt_succ_iff.mpr T] }, }
+
+lemma vecterm.pow_rew_distrib {n} (v : vecterm L n) (s : ℕ → term L) (i : ℕ): (v.rew s)^i = (v^i).rew (s^i) :=
+by { induction i with i IH generalizong s i, { simp, },
+     { simp[←nat.add_one, vecterm.pow_add, rewriting_sf_itr.pow_add, rewriting_sf_itr.pow_eq',
+         IH, vecterm.pow_eq, vecterm.nested_rew] } }
+
+@[simp] lemma rew_subst_ι : (λ x, (((λ x, #(x + 1)) ^ 1) x).rew ι[0 ⇝ #0]  : ℕ → term L) = ι :=
+by { funext x, cases x; simp }
 
 namespace formula
 
@@ -351,6 +373,47 @@ lemma nfal_sentence (p : formula L) : sentence (nfal p p.arity) :=
 by { have := nfal_arity p.arity p, simp at*, refine this }
 
 end formula
+
+open vecterm formula
+
+class translation (L₁ : language.{u}) (L₂ : language.{u}) :=
+(tr_const : L₁.pr 0 → formula L₂)
+(tr_pr : ∀ {n}, L₁.pr (n + 1) → vecterm L₁ n → formula L₂)
+(tr_eq : term L₁ → term L₁ → formula L₂)
+
+@[simp] def translation.tr {L₁ L₂ : language.{u}} [translation L₁ L₂] : formula L₁ → formula L₂
+| (const c) := translation.tr_const c 
+| (app p v) := translation.tr_pr p v
+| (t =̇ u)   := translation.tr_eq t u
+| (p →̇ q)  := translation.tr p →̇ translation.tr q
+| (¬̇p)      := ¬̇translation.tr p
+| (∀̇p)      := ∀̇ translation.tr p
+
+notation `tr[` p `]` := translation.tr p
+
+def translation.tr_theory {L₁ L₂ : language.{u}} [translation L₁ L₂] (T : theory L₁) : theory L₂ := translation.tr '' T
+
+
+
+instance : has_add language := ⟨λ L₁ L₂ : language.{u}, ⟨λ n, L₁.fn n ⊕ L₂.fn n, λ n, L₁.pr n ⊕ L₂.pr n⟩⟩
+
+namespace language
+
+variables {L₁ L₂ : language.{u}} 
+
+@[simp] def add_tr_v1 : ∀ {n}, vecterm L₁ n → vecterm (L₁ + L₂) n
+| _ (cons a v) := add_tr_v1 a ::: add_tr_v1 v
+| _ (#x)       := #x
+| _ (const c)  := const (sum.inl c)
+| _ (app f v)  := app (sum.inl f) (add_tr_v1 v)
+
+instance : translation L₁ (L₁ + L₂) :=
+⟨λ c, const (sum.inl c), λ n p v, app (sum.inl p) (add_tr_v1 v), λ t u, add_tr_v1 t =̇ add_tr_v1 u⟩
+
+instance {L₁ L₂ : language.{u}} : has_coe (term L₁) (term (L₁ + L₂)) := ⟨add_tr_v1⟩
+instance {L₁ L₂ : language.{u}} : has_coe (formula L₁) (formula (L₁ + L₂)) := ⟨translation.tr⟩
+
+end language
 
 end fopl
 
