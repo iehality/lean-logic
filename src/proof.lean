@@ -84,4 +84,5 @@ begin
   case provable'.AX : n p h { refine ⟨proof.AX (p^n), _⟩, simp, sorry },
 
 end
+
 end fopl
