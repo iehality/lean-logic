@@ -72,6 +72,103 @@ inductive provable' (T : theory L) : ℕ → formula L → Prop
 | e5 : ∀ {n m} {v₁ v₂ : vecterm L m} {r : L.pr (m+1)},
     provable' n (v₁ ≡̇ v₂ →̇ formula.app r v₁ →̇ formula.app r v₂)
 
+#check @provable'.rec
+
+@[elab_as_eliminator]
+theorem provable.rec'
+  {T : theory L} (C : ℕ → formula L → Prop)
+  (GE : ∀ {i} {p : formula L} (b : T^(i + 1) ⊢ p), C (i + 1) p → C i (∀̇ p))
+  (MP : ∀ {i} {p q : formula L} (b₁ : T^i ⊢ p →̇ q) (b₂ : T^i ⊢ p), C i (p →̇ q) → C i p → C i q)
+  (AX : ∀ {i} {p : formula L} (mem : p ∈ T^i), C i p)
+  (p1 : ∀ {i} {p q : formula L}, C i (p →̇ q →̇ p))
+  (p2 : ∀ {i} {p q r : formula L}, C i ((p →̇ q →̇ r) →̇ (p →̇ q) →̇ p →̇ r))
+  (p3 : ∀ {i} {p q : formula L}, C i ((¬̇p →̇ ¬̇q) →̇ q →̇ p))
+  (q1 : ∀ {i} {p : formula L} {t : term L}, C i (∀̇ p →̇ p.rew ι[0 ⇝ t]))
+  (q2 : ∀ {i} {p q : formula L}, C i (∀̇ (p →̇ q) →̇ ∀̇ p →̇∀̇ q))
+  (q3 : ∀ {i} {p : formula L}, C i (p →̇ ∀̇ (p^1)))
+  (e1 : ∀ {i} {t : term L}, C i (t =̇ t))
+  (e2 : ∀ {i} {t₁ t₂ : term L}, C i (t₁ =̇ t₂ →̇ t₂ =̇ t₁))
+  (e3 : ∀ {i} {t₁ t₂ t₃ : term L}, C i (t₁ =̇ t₂ →̇ t₂ =̇ t₃ →̇ t₁ =̇ t₃))
+  (e4 : ∀ {i} {m} {f : L.fn (m + 1)} {v₁ v₂ : vecterm L m}, C i (v₁ ≡̇ v₂ →̇ vecterm.app f v₁ =̇ vecterm.app f v₂))
+  (e5 : ∀ {i} {m} {r : L.pr (m + 1)} {v₁ v₂ : vecterm L m}, C i (v₁ ≡̇ v₂ →̇ formula.app r v₁ →̇ formula.app r v₂))
+  : ∀ {i : ℕ} {p : formula L} (b : T^i ⊢ p), C i p :=
+begin
+  suffices :
+    ∀ {p : formula L} {U : theory L} (b : U ⊢ p) {i : ℕ} (ss : U ⊆ T^i),  C i p,
+  { intros i p b, refine this b (by refl) },
+  intros p U b,
+  induction b,
+  case provable.GE : U p b IH
+  { intros i ss,
+  have ss' : ⇑U ⊆ T ^ (i + 1), { rintros _ ⟨q, mem, rfl⟩, simp[theory.sf_itr_succ], refine ⟨q, ss mem, rfl⟩ },
+    have : C (i + 1) p, from @IH (i + 1) ss',
+    refine GE (b.inclusion ss') this },
+  case provable.MP : U p q b₁ b₂ IH₁ IH₂
+  { intros i ss, refine MP (b₁.inclusion ss) (b₂.inclusion ss) (IH₁ ss) (IH₂ ss) },
+  case provable.AX : U p mem
+  { intros i ss, refine AX (ss mem) },
+  { refine λ i ss, p1 },
+  { refine λ i ss, p2 },
+  { refine λ i ss, p3 },
+  { refine λ i ss, q1 },
+  { refine λ i ss, q2 },
+  { refine λ i ss, q3 },
+  { refine λ i ss, e1 },
+  { refine λ i ss, e2 },
+  { refine λ i ss, e3 },
+  { refine λ i ss, e4 },
+  { refine λ i ss, e5 }
+end
+
+@[elab_as_eliminator]
+theorem provable.drec'
+  {T : theory L} (C : Π (i : ℕ) (p : formula L), T^i ⊢ p → Prop)
+  (GE : ∀ {i} {p : formula L} (b : T^(i + 1) ⊢ p), C (i + 1) p b → C i (∀̇ p) (provable.GE b))
+  (MP : ∀ {i} {p q : formula L} (b₁ : T^i ⊢ p →̇ q) (b₂ : T^i ⊢ p), C i (p →̇ q) b₁ → C i p b₂ → C i q (b₁.MP b₂))
+  (AX : ∀ {i} {p : formula L} (mem : p ∈ T^i), C i p (provable.AX mem))
+  (p1 : ∀ {i} {p q : formula L}, C i (p →̇ q →̇ p) provable.p1)
+  (p2 : ∀ {i} {p q r : formula L}, C i ((p →̇ q →̇ r) →̇ (p →̇ q) →̇ p →̇ r) provable.p2)
+  (p3 : ∀ {i} {p q : formula L}, C i ((¬̇p →̇ ¬̇q) →̇ q →̇ p) provable.p3)
+  (q1 : ∀ {i} {p : formula L} {t : term L}, C i (∀̇ p →̇ p.rew ι[0 ⇝ t]) provable.q1)
+  (q2 : ∀ {i} {p q : formula L}, C i (∀̇ (p →̇ q) →̇ ∀̇ p →̇∀̇ q) provable.q2)
+  (q3 : ∀ {i} {p : formula L}, C i (p →̇ ∀̇ (p^1)) provable.q3)
+  (e1 : ∀ {i} {t : term L}, C i (t =̇ t) provable.e1)
+  (e2 : ∀ {i} {t₁ t₂ : term L}, C i (t₁ =̇ t₂ →̇ t₂ =̇ t₁) provable.e2)
+  (e3 : ∀ {i} {t₁ t₂ t₃ : term L}, C i (t₁ =̇ t₂ →̇ t₂ =̇ t₃ →̇ t₁ =̇ t₃) provable.e3)
+  (e4 : ∀ {i} {m} {f : L.fn (m + 1)} {v₁ v₂ : vecterm L m}, C i (v₁ ≡̇ v₂ →̇ vecterm.app f v₁ =̇ vecterm.app f v₂) provable.e4)
+  (e5 : ∀ {i} {m} {r : L.pr (m + 1)} {v₁ v₂ : vecterm L m}, C i (v₁ ≡̇ v₂ →̇ formula.app r v₁ →̇ formula.app r v₂) provable.e5)
+  : ∀ {i : ℕ} {p : formula L} (b : T^i ⊢ p), C i p b :=
+begin
+  suffices :
+    ∀ {p : formula L} {U : theory L} (b : U ⊢ p) {i : ℕ} (ss : U ⊆ T^i),  C i p (provable.inclusion b ss),
+  { intros i p b, refine this b (by refl) },
+  intros p U b,
+  induction b,
+  case provable.GE : U p _ IH
+  { intros i ss,
+    have : C (i + 1) p _, from @IH (i + 1)
+    (by { rintros _ ⟨q, mem, rfl⟩, simp[theory.sf_itr_succ], refine ⟨q, ss mem, rfl⟩ }),
+    refine GE _ this },
+  case provable.MP : U p q _ _ IH₁ IH₂
+  { intros i ss, refine MP _ _ (IH₁ ss) (IH₂ ss) },
+  case provable.AX : U p mem
+  { intros i ss, refine AX (ss mem) },
+  { refine λ i ss, p1 },
+  { refine λ i ss, p2 },
+  { refine λ i ss, p3 },
+  { refine λ i ss, q1 },
+  { refine λ i ss, q2 },
+  { refine λ i ss, q3 },
+  { refine λ i ss, e1 },
+  { refine λ i ss, e2 },
+  { refine λ i ss, e3 },
+  { refine λ i ss, e4 },
+  { refine λ i ss, e5 }
+end
+
+
+
+
 lemma proof_completeness (p : formula L) (n : ℕ) : provable' T n p → ∃ (b : proof n p), b.wellformed T = tt :=
 begin
   intros h,
