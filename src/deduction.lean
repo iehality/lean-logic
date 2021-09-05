@@ -96,16 +96,16 @@ begin
   exact l₃.MP h₁
 end
 
-lemma GE_itr : ∀ {n p}, T^n ⊢ p → T ⊢ nfal p n
+lemma GE_itr : ∀ {n p}, T^n ⊢ p → T ⊢ ∀̇[n] p
 | 0     p h := by simp* at*
 | (n+1) p h := by { simp at*, have := GE_itr (GE h), simp* at* }
 
 lemma subst_itr (T : theory L) : ∀ (n) (p : formula L) (s : ℕ → term L),
-  T ⊢ nfal p n →̇ p.rew (λ x, if x < n then s x else #(x-n))
+  T ⊢ (∀̇[n] p) →̇ p.rew (λ x, if x < n then s x else #(x-n))
 | 0     p s := by simp
 | (n+1) p s := by { simp,
-    have lmm₁ : T ⊢ ∀̇ (nfal p n) →̇ nfal (p.rew $ ι[0 ⇝ s n]^n) n,
-    { have := @provable.q1 _ T (nfal p n) (s n), simp[formula.nfal_rew] at this,
+    have lmm₁ : T ⊢ ∀̇ (∀̇[n] p) →̇ nfal (p.rew $ ι[0 ⇝ s n]^n) n,
+    { have := @provable.q1 _ T (∀̇[n] p) (s n), simp[formula.nfal_rew] at this,
       exact this },
     have s' := s,
     have lmm₂ := subst_itr n (p.rew $ ι[0 ⇝ s n]^n) s,
@@ -121,7 +121,7 @@ lemma subst_itr (T : theory L) : ∀ (n) (p : formula L) (s : ℕ → term L),
     simp[this] at lmm₂,
     exact lmm₁.imp_trans lmm₂ }
 
-lemma subst_itr' {n} {p : formula L} (h : T ⊢ nfal p n ) (s : ℕ → term L) :
+lemma subst_itr' {n} {p : formula L} (h : T ⊢ ∀̇[n] p ) (s : ℕ → term L) :
   T ⊢ p.rew (λ x, if x < n then s x else #(x-n)) := (subst_itr T n p s).MP h
 
 lemma inclusion {p} (h : T ⊢ p) : ∀ {U}, T ⊆ U → U ⊢ p :=

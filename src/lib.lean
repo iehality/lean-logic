@@ -5,6 +5,7 @@ import
   computability.partrec_code
   computability.halting
   data.pfun
+  init.data.list init.data.subtype init.meta.interactive init.data.fin
 
 universes u v
 
@@ -49,56 +50,61 @@ inductive dvector (α : Type u) : ℕ → Type u
 | nil {} : dvector 0
 | cons   : ∀ {n}, α → dvector n → dvector (n+1)
 
-notation a :: b  := dvector.cons a b
+infix ` ::ᵈ `:60  := dvector.cons
 
 namespace dvector
 variables {α : Type u} {β : Type v}
 
-@[simp] def unary (a : α) : dvector α 1 := a :: nil
+@[simp] def unary (a : α) : dvector α 1 := a ::ᵈ nil
 
 @[simp] def head : ∀ {n}, dvector α (n+1) → α
-| _ (a :: _) := a
+| _ (a ::ᵈ _) := a
 
 @[simp] def tail : ∀ {n}, dvector α (n+1) → dvector α n
-| _ (_ :: as) := as
+| _ (_ ::ᵈ as) := as
 
 lemma dvector1_tail : ∀ (a : dvector α 1), a.tail = dvector.nil
-| (a :: dvector.nil) := rfl
+| (a ::ᵈ dvector.nil) := rfl
 
 @[simp] lemma dvector0 : ∀ (a : dvector α 0), a = dvector.nil := λ a,
 by cases a; refl
 
-lemma head_tail : ∀ {n} (v : dvector α (n+1)), v.head :: v.tail = v
-| _ (_ :: _) := rfl
+lemma head_tail : ∀ {n} (v : dvector α (n+1)), v.head ::ᵈ v.tail = v
+| _ (_ ::ᵈ _) := rfl
 
 @[simp] lemma head_inj : ∀ (v₁ v₂ : dvector α 1), v₁.head = v₂.head ↔ v₁ = v₂
-| (_ :: nil) (_ :: nil) := by simp
+| (_ ::ᵈ nil) (_ ::ᵈ nil) := by simp
 
-@[simp] lemma head_nil : ∀ (v : dvector α 1), v.head :: nil = v
-| (_ :: nil) := rfl
+@[simp] lemma head_nil : ∀ (v : dvector α 1), v.head ::ᵈ nil = v
+| (_ ::ᵈ nil) := rfl
 
 @[simp] protected def append : ∀ {n}, dvector α n → ∀ {m}, dvector α m → dvector α (m + n)
 | _ nil      _ l := l
-| _ (a :: l) _ k := a :: (append l k)
+| _ (a ::ᵈ l) _ k := a ::ᵈ (append l k)
 
 @[simp] def filter (f : α → β) : ∀ {n}, dvector α n → dvector β n
 | 0     _         := dvector.nil
-| (n+1) (a :: as) := f a :: filter as
+| (n+1) (a ::ᵈ as) := f a ::ᵈ filter as
 
 @[simp] def app {C : Π i : α, Type v} (a) : ∀ {n}, dvector (Π i, C i) n → dvector (C a) n
 | 0     _         := dvector.nil
-| (n+1) (f :: fs) := f a :: app fs
+| (n+1) (f ::ᵈ fs) := f a ::ᵈ app fs
 
 @[simp] def partition {C : Π i : α, Type*} : ∀ {n}, (Π i, dvector (C i) n) → dvector (Π i, C i) n
 | 0     _ := dvector.nil
-| (n+1) F := (λ i, (F i).head) :: (partition $ λ i, (F i).tail)
+| (n+1) F := (λ i, (F i).head) ::ᵈ (partition $ λ i, (F i).tail)
 
 @[simp] lemma app_partition {C : Π i : α, Type v} (a) : ∀ {n} (F : Π i, dvector (C i) n),
   (partition F).app a = F a
 | 0     F := by { simp, cases F a, refl }
 | (n+1) F := by { simp, cases C : F a with _ f fs, simp[C, app_partition (λ i, (F i).tail)] }
 
+@[simp] def to_vector : Π {n}, dvector α n → vector α n
+| _ nil := vector.nil
+| _ (a ::ᵈ as) := a ::ᵥ as.to_vector
+
 end dvector
+#check vector.elim
 
 namespace encodable
 variables {α : Type u} [encodable α] [inhabited α] 
@@ -116,7 +122,7 @@ namespace setoid
 
 @[simp] def vec_r {α : Type u} [s : setoid α] : ∀ {n}, dvector α n → dvector α n → Prop
 | 0     _         _         := true
-| (n+1) (a :: as) (b :: bs) := a ≈ b ∧ vec_r as bs
+| (n+1) (a ::ᵈ as) (b ::ᵈ bs) := a ≈ b ∧ vec_r as bs
 
 infix ` ≋ `:80 := vec_r
 
@@ -124,11 +130,11 @@ infix ` ≋ `:80 := vec_r
 
 lemma vec_r_symm {α : Type u} [s : setoid α] : ∀ {n} {v w : dvector α n}, vec_r v w → vec_r w v
 | 0 _ _ := by simp
-| (n+1) (a :: as) (b :: bs) := by { simp, refine λ e h, ⟨setoid.symm e, vec_r_symm h⟩ }
+| (n+1) (a ::ᵈ as) (b ::ᵈ bs) := by { simp, refine λ e h, ⟨setoid.symm e, vec_r_symm h⟩ }
 
 lemma vec_r_trans {α : Type u} [s : setoid α] : ∀ {n} {a b c : dvector α n}, vec_r a b → vec_r b c → vec_r a c
 | 0 _ _ _ := by simp
-| (n+1) (a :: as) (b :: bs) (c :: cs) := by { simp, refine λ e₁ h₁ e₂ h₂, ⟨setoid.trans e₁ e₂, vec_r_trans h₁ h₂⟩ }
+| (n+1) (a ::ᵈ as) (b ::ᵈ bs) (c ::ᵈ cs) := by { simp, refine λ e₁ h₁ e₂ h₂, ⟨setoid.trans e₁ e₂, vec_r_trans h₁ h₂⟩ }
 
 lemma vec_r_equiv {α : Type u} [s : setoid α] {n} : equivalence (@vec_r α s n) := ⟨vec_r_refl, λ _ _, vec_r_symm, λ _ _ _, vec_r_trans⟩
 
@@ -138,7 +144,7 @@ instance vec {α : Type u} (s : setoid α) (n) : setoid (dvector α n) := ⟨@ve
   (dvector.nil : dvector α 0) ≋ dvector.nil := by simp[has_equiv.equiv]
 
 @[simp] lemma vec_r_simp_cons {α : Type*} [s : setoid α] {n} {a b : α} {as bs : dvector α n} :
-  (a :: as) ≋ (b :: bs) ↔ a ≈ b ∧ as ≋ bs := by { simp, }
+  (a ::ᵈ as) ≋ (b ::ᵈ bs) ↔ a ≈ b ∧ as ≋ bs := by { simp, }
 
 @[simp] lemma vec_r_equiv_equiv {α : Type*} [s : setoid α] {n} {a b : dvector α n} :
   @setoid.r _ (s.vec n) a b ↔ a ≋ b := iff.rfl
@@ -150,7 +156,7 @@ universes u_a u_b u_c
 variables {α : Type u_a} {β : Sort u_b} {φ : Sort u_c}
 
 def cons_aux (s : setoid α) (a : α) {n} : quotient (s.vec n) → quotient (s.vec (n+1)) :=
-λ q, @quotient.lift_on _ _ (s.vec n) q (λ v, @quotient.mk _ (s.vec (n+1)) (a :: v)) $
+λ q, @quotient.lift_on _ _ (s.vec n) q (λ v, @quotient.mk _ (s.vec (n+1)) (a ::ᵈ v)) $
 λ as bs, by { simp, refine λ h, ⟨by refl, h⟩ }
 
 def cons (s : setoid α) {n} : quotient s → quotient (s.vec n) → quotient (s.vec (n+1)) :=
@@ -159,14 +165,14 @@ def cons (s : setoid α) {n} : quotient s → quotient (s.vec n) → quotient (s
 
 @[simp] def dvec_to_quo (s : setoid α) : ∀ {n}, dvector (quotient s) n → quotient (s.vec n)
 | 0     _         := @quotient.mk _ (s.vec 0) (dvector.nil : dvector α 0)
-| (n+1) (q :: qs) := cons s q (dvec_to_quo qs)
+| (n+1) (q ::ᵈ qs) := cons s q (dvec_to_quo qs)
 
 protected def mk_v' (n) {s : setoid α} (a : dvector α n) : quotient (s.vec n) := quot.mk (s.vec n).1 a
 
 private lemma quo_to_vec_eq (s : setoid α) : ∀ {n} (a b : dvector α n), a ≋ b → 
   dvector.filter quotient.mk a = dvector.filter quotient.mk b
 | 0 dvector.nil dvector.nil _ := rfl
-| (n+1) (a :: as) (b :: bs) eqn := by { simp at*, refine ⟨eqn.1, quo_to_vec_eq _ _ eqn.2⟩ }
+| (n+1) (a ::ᵈ as) (b ::ᵈ bs) eqn := by { simp at*, refine ⟨eqn.1, quo_to_vec_eq _ _ eqn.2⟩ }
 
 @[simp] def quo_to_dvec (s : setoid α) : ∀ {n}, quotient (s.vec n) → dvector (quotient s) n :=
 λ n q, @quotient.lift_on _ _ (s.vec n) q (λ v, v.filter (λ x, ⟦x⟧)) $
@@ -192,12 +198,12 @@ protected lemma lift_on_eq {s : setoid α}  {φ} (u₀ : α) (f : α → φ)
   (h : ∀ v u, v ≈ u → f v = f u) : quotient.lift_on ⟦u₀⟧ f h = f u₀ := rfl
 
 @[simp] lemma cons_eq {s : setoid α} {n} (u : α) (us : dvector α n) :
-  cons s ⟦u⟧ (@quotient.mk _ (s.vec n) us) = @quotient.mk _ (s.vec (n+1)) (u :: us) := rfl
+  cons s ⟦u⟧ (@quotient.mk _ (s.vec n) us) = @quotient.mk _ (s.vec (n+1)) (u ::ᵈ us) := rfl
 
 @[simp] lemma dvec_to_quo_filter_quotient_mk {s : setoid α} : ∀ {n} (u : dvector α n),
   dvec_to_quo s (dvector.filter quotient.mk u) = @quotient.mk _ (s.vec n) u
 | 0     dvector.nil := rfl
-| (n+1) (a :: as)   := by simp [dvec_to_quo_filter_quotient_mk as]
+| (n+1) (a ::ᵈ as)   := by simp [dvec_to_quo_filter_quotient_mk as]
 
 @[simp]
 protected lemma lift_on_vec_eq {s : setoid α} : ∀ {n} (u : dvector α n) (f : dvector α n → φ)
@@ -209,13 +215,17 @@ protected lemma lift_on_nil_eq {s : setoid α} : ∀ (f : dvector α 0 → φ)
   (h : ∀ a b : dvector α 0, a ≋ b → f a = f b),
 quotient.lift_on_vec dvector.nil f h = f dvector.nil := by simp
 
-lemma vquotient_cons {s : setoid α} {n} (a : α) (as : dvector α n) : ᵥ⟦a :: as⟧ = ⟦a⟧ :: ᵥ⟦as⟧ := rfl
+lemma vquotient_cons {s : setoid α} {n} (a : α) (as : dvector α n) : ᵥ⟦a ::ᵈ as⟧ = ⟦a⟧ ::ᵈ ᵥ⟦as⟧ := rfl
 
 @[simp] lemma quotients_eq_iff (s : setoid α) : ∀ {n} (v₁ v₂ : dvector α n), ᵥ⟦v₁⟧ = @mk_vec' _ _ s v₂  ↔ v₁ ≋ v₂
 | 0 dvector.nil dvector.nil := by simp
-| (n+1) (a :: as) (b :: bs) := by simp[vquotient_cons, quotients_eq_iff as bs]
+| (n+1) (a ::ᵈ as) (b ::ᵈ bs) := by simp[vquotient_cons, quotients_eq_iff as bs]
 
 end quotient
+
+def finitary (α β : Type u) : ℕ → Type u
+| 0     := β
+| (n+1) := α → finitary n
 
 section classical
 attribute [instance, priority 0] classical.prop_decidable

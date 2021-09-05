@@ -24,6 +24,10 @@ notation h ` ::: ` t  := vecterm.cons h t
 
 @[reducible] def term : Type u := vecterm L 0
 
+@[simp] def vector.to_vecterm {L : fopl.language} : ∀ {n} (v : vector (term L) (n+1)), fopl.vecterm L n
+| 0     ⟨t :: [], _⟩ := t
+| (n+1) ⟨t :: ts, h⟩ := fopl.vecterm.cons t (@vector.to_vecterm n ⟨ts, by { simp at*, exact h }⟩)
+
 inductive formula : Type u
 | const : L.pr 0 → formula
 | app   : ∀ {n : ℕ}, L.pr (n+1) → vecterm L n → formula
@@ -70,7 +74,9 @@ instance : inhabited (formula L) := ⟨⊥̇⟩
 | 0     := p
 | (n+1) := ∀̇ (nfal n)
 
-@[simp] lemma nfal_fal (p : formula L) (i : ℕ) : nfal (∀̇  p) i = ∀̇ (nfal p i) :=
+notation `∀̇[` i `] `:90 p := nfal p i
+
+@[simp] lemma nfal_fal (p : formula L) (i : ℕ) : nfal (∀̇ p) i = ∀̇ (nfal p i) :=
 by { induction i with i IH; simp, exact IH }
 
 @[reducible] def ι : ℕ → term L := vecterm.var
@@ -99,6 +105,10 @@ by { have C : n < i ∨ i ≤ n, exact lt_or_ge n i,
      refine ⟨n + 1, _⟩, simp[nat.lt_succ_iff.mpr C] }
 
 namespace vecterm
+
+@[simp] def app' : ∀ {n}, L.fn n → vector (term L) n → term L
+| 0     c _ := const c
+| (n+1) f v := app f (vector.to_vecterm v)
 
 @[simp] def rew (s : ℕ → term L) : ∀ {n}, vecterm L n → vecterm L n
 | _ (cons a v) := cons a.rew v.rew
@@ -173,6 +183,21 @@ by { simp[has_pow.pow, rew, nested_rew, h], congr, funext x,
 @[simp] lemma concat_pow_eq {n : ℕ} (v : vecterm L n) (t : term L) (s : ℕ → term L) :
   (v^1).rew (t ⌢ s) = v.rew s :=
 by simp[concat, rew, pow_eq, nested_rew]
+
+def nth : Π {n} (v : vecterm L n), fin n → term L
+| 0       t          _ := t 
+| (n + 1) (cons a v) i := if C₁ : i.val < n then nth v (fin.mk i.val C₁) else
+  if C₂ : i.val = n then a else
+  by { exfalso, rcases i with ⟨i, i_p⟩, simp at*,
+       have : i < n ∨ i = n, exact nat.lt_succ_iff_lt_or_eq.mp i_p,
+       cases this, exact nat.lt_le_antisymm this C₁, exact C₂ this }
+
+def vars : ∀ n, vecterm L n
+| 0     := #0
+| (n+1) := #(n+1) ::: (vars n)
+
+def vector_vars {n} : vector (term L) n := vector.of_fn $ λ i, #i
+notation `##` := vector_vars
 
 end vecterm
 
@@ -419,5 +444,9 @@ end language
 end fopl
 
 @[simp] def dvector.to_vecterm {L : fopl.language} : ∀ {n} (v : dvector (fopl.term L) (n+1)), fopl.vecterm L n
-| 0     (t :: dvector.nil) := t
-| (n+1) (t :: ts)          := fopl.vecterm.cons t ts.to_vecterm 
+| 0     (t ::ᵈ dvector.nil) := t
+| (n+1) (t ::ᵈ ts)          := fopl.vecterm.cons t ts.to_vecterm
+
+@[simp] def vector.to_vecterm {L : fopl.language} : ∀ {n} (v : vector (fopl.term L) (n+1)), fopl.vecterm L n
+| 0     ⟨t :: [], _⟩ := t
+| (n+1) ⟨t :: ts, h⟩ := fopl.vecterm.cons t (@vector.to_vecterm n ⟨ts, by { simp at*, exact h }⟩)

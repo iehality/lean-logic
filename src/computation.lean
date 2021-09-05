@@ -1,4 +1,3 @@
-
 import 
   computability.primrec
   computability.partrec
@@ -10,55 +9,51 @@ import
 open encodable denumerable roption
 
 namespace nat.primrec
+open vector
 
-inductive code : Type
-| zero : code
-| succ : code
-| left : code
-| right : code
-| pair : code → code → code
-| comp : code → code → code
-| prec : code → code → code
+#check @nat.primrec'.comp
 
-namespace code
+inductive pcode : ℕ → Type
+| zero : pcode 0
+| succ : pcode 1
+| nth {n} (i : fin n) : pcode n
+| comp {m n} : pcode n → (fin n → pcode m) → pcode m
+| prec {n} : pcode n → pcode (n + 2) → pcode (n + 1)
 
-def eval : code → ℕ → ℕ
-| zero         := λ x, 0
-| succ         := nat.succ
-| left         := λ n : ℕ, n.unpair.1
-| right        := λ n : ℕ, n.unpair.2
-| (pair cf cg) := λ n, nat.mkpair (eval cf n) (eval cg n)
-| (comp cf cg) := λ n, eval cf (eval cg n)
-| (prec cf cg) := nat.unpaired (λ a n : ℕ, n.elim (eval cf a) (λ y i, eval cg (a.mkpair (y.mkpair i))))
+namespace pcode
 
-theorem exists_code {f : ℕ → ℕ} : nat.primrec f ↔ ∃ c : code, eval c = f := ⟨λ h,
+def eval : ∀ {n}, pcode n → vector ℕ n → ℕ
+| _ zero            := λ _, 0
+| _ succ            := λ v, nat.succ v.head
+| _ (nth i)         := λ v, v.nth i
+| _ (comp cf cg)    := λ a, eval cf (of_fn (λ i, eval (cg i) a))
+| _ (@prec n cf cg) := λ v : vector ℕ (n+1),
+    v.head.elim (eval cf v.tail) (λ y IH, eval cg (y ::ᵥ IH ::ᵥ v.tail))
+
+theorem exists_pcode {n f} : @nat.primrec' n f ↔ ∃ c : pcode n, eval c = f := ⟨λ h,
 begin
   induction h,
-  case nat.primrec.zero { refine ⟨zero, rfl⟩ },
-  case nat.primrec.succ { exact ⟨succ, rfl⟩ },
-  case nat.primrec.left { exact ⟨left, rfl⟩ },
-  case nat.primrec.right { exact ⟨right, rfl⟩ },  
-  case nat.primrec.pair : f g pf pg hf hg 
-  { rcases hf with ⟨cf, rfl⟩, rcases hg with ⟨cg, rfl⟩, refine ⟨pair cf cg, rfl⟩ },
-  case nat.primrec.comp : f g pf pg hf hg {
-    rcases hf with ⟨cf, rfl⟩, rcases hg with ⟨cg, rfl⟩,
-    exact ⟨comp cf cg, rfl⟩ },
-  case nat.primrec.prec : f g pf pg hf hg {
+  case zero { exact ⟨zero, rfl⟩ },
+  case succ { exact ⟨succ, rfl⟩ },
+  case nth  : n i { exact ⟨nth i, rfl⟩ },
+  case comp : ar_gs ar_f f gs pf pgs IH_f IH_gs {
+    rcases IH_f with ⟨cf, rfl⟩,
+    rcases classical.skolem.mp IH_gs with ⟨cgs, cgs_eqn⟩,
+    refine ⟨comp cf cgs, _⟩, simp[eval, cgs_eqn] },
+  case prec : n f g pf pg hf hg {
     rcases hf with ⟨cf, rfl⟩, rcases hg with ⟨cg, rfl⟩,
     exact ⟨prec cf cg, rfl⟩ }
 end, λ h,
 begin
   rcases h with ⟨c, rfl⟩, induction c,
-  case nat.primrec.code.zero { exact nat.primrec.zero },
-  case nat.primrec.code.succ { exact nat.primrec.succ },
-  case nat.primrec.code.left { exact nat.primrec.left },
-  case nat.primrec.code.right { exact nat.primrec.right },
-  case nat.primrec.code.pair : cf cg pf pg { exact pf.pair pg },
-  case nat.primrec.code.comp : cf cg pf pg { exact pf.comp pg },
-  case nat.primrec.code.prec : cf cg pf pg { exact pf.prec pg },
+  case pcode.zero { exact nat.primrec'.zero },
+  case pcode.succ { exact nat.primrec'.succ },
+  case pcode.nth : n i { exact nat.primrec'.nth _ },
+  case pcode.comp : _ _ cf cgs pf pgs { refine nat.primrec'.comp _ pf pgs },
+  case pcode.prec : _ cf cg pf pg { exact nat.primrec'.prec pf pg },
 end⟩
 
-end code
+end pcode
 
 end nat.primrec
 
@@ -69,10 +64,9 @@ namespace arithmetic
 namespace LC
 
 inductive langf : ℕ → Type
-| fn₁ : nat.primrec.code → langf 1
-| pair : langf 2
-notation `*fn₁` n := langf.fn₁ n
-notation `*fn₂` n := langf.fn₂ n
+| fn₁ {n} : nat.primrec.pcode n → langf n
+
+notation `*fn ` n := langf.fn₁ n
 
 inductive langp : ℕ → Type
 
@@ -80,39 +74,45 @@ end LC
 
 def LC : language := ⟨LC.langf, LC.langp⟩
 
-open nat.primrec
+open nat.primrec vector
 
-@[reducible] def symbol.fn₁ (c : nat.primrec.code) : term (LA + LC) → term (LA + LC) := λ x, vecterm.app (sum.inr (*fn₁ c)) x
+@[reducible] def symbol.const (c : nat.primrec.pcode 0) : term (LA + LC) :=
+vecterm.const (sum.inr (*fn c))
+prefix `Ċ `:max := symbol.const
+
+@[reducible] def symbol.fn₁ {n} (c : nat.primrec.pcode n) : vector (term (LA + LC)) n → term (LA + LC) :=
+λ x, vecterm.app' (sum.inr (*fn c)) x
+
 prefix `Ḟ `:max := symbol.fn₁
-
-@[reducible] def pair : term (LA + LC) → term (LA + LC) → term (LA + LC) :=
-λ x y, vecterm.app (sum.inr LC.langf.pair) (x ::: y)
+#check @symbol.const
 
 inductive Prim : theory (LA + LC)
-| zero   : Prim ∀̇ (Ḟ code.zero #0 =̇ Ż)
-| succ   : Prim ∀̇ (Ḟ code.succ #0 =̇ Ṡ #0)
-| right  : Prim ∀̇ (Ḟ code.right (pair #0 #1) =̇ #0)
-| left   : Prim ∀̇ (Ḟ code.left (pair #0 #1) =̇ #1)
-| pair   : ∀ (c₁ c₂ : code), Prim ∀̇ (Ḟ (code.pair c₁ c₂) #0 =̇ pair (Ḟ c₁ $ #0) (Ḟ c₂ $ #0))
-| comp   : ∀ (c₁ c₂ : code), Prim ∀̇ (Ḟ (code.comp c₁ c₂) #0 =̇ Ḟ c₁ (Ḟ c₂ $ #0))
-| prec_z : ∀ (c₁ c₂ : code), Prim ∀̇ (Ḟ (code.prec c₁ c₂) (pair #0 Ż) =̇ Ḟ c₁ #0)
-| prec_s : ∀ (c₁ c₂ : code),
-    Prim ∀̇ ∀̇ (Ḟ (code.prec c₁ c₂) (pair #0 (Ṡ #1)) =̇ Ḟ c₂ (pair #0 (Ḟ (code.prec c₁ c₂) (pair #0 #1))))
+| zero   : Prim (Ḟ pcode.zero nil =̇ Ż)
+| succ   : Prim ∀̇ (Ḟ pcode.succ (#0 ::ᵥ nil) =̇ Ṡ #0)
+| nth {n} (i : fin n) {v : vector (term _) n} : Prim ∀̇ (Ḟ (pcode.nth i) v =̇ v.nth i)
+| comp {m n} : ∀ (c : pcode n) (cs : fin n → pcode m),
+    Prim ∀̇[m+1] (Ḟ (pcode.comp c cs) ## =̇ Ḟ c (of_fn (λ i, Ḟ (cs i) ##)))
+| prec_z {n} : ∀ (c₀ : pcode n) (c₁ : pcode (n + 2)),
+    Prim ∀̇[n+1] (Ḟ (pcode.prec c₀ c₁) (Ż ::ᵥ ##) =̇ Ḟ c₀ ##)
+| prec_s {n} : ∀ (c₀ : pcode n) (c₁ : pcode (n + 2)),
+    Prim ∀̇[n+2] (Ḟ (pcode.prec c₀ c₁) (Ṡ #0 ::ᵥ (of_fn $ λ i, #(i + 1))) =̇
+                 Ḟ c₁ (#0 ::ᵥ (Ḟ (pcode.prec c₀ c₁) ##) ::ᵥ (of_fn $ λ i, #(i + 1))))
 
-theorem complete (T : theory LA) [extend 𝐐 T] (f : ℕ → ℕ) (h : primrec f) : ∃ c : code, ∀ n m : ℕ,
+#check @Prim.prec_z
+theorem complete (T : theory LA) [extend 𝐐 T] (f : ℕ → ℕ) (h : primrec f) : ∃ c : pcode, ∀ n m : ℕ,
   f n = m → Prim ⊢ Ḟ c (numeral n) =̇ (numeral m) :=
 begin
   suffices :
-    ∀ c : code, ∀ n m : ℕ, c.eval n = m → Prim ⊢ Ḟ c (numeral n) =̇ (numeral m),
-  { rcases code.exists_code.mp (primrec.nat_iff.mp h) with ⟨c, rfl⟩,
+    ∀ c : pcode, ∀ n m : ℕ, c.eval n = m → Prim ⊢ Ḟ c (numeral n) =̇ (numeral m),
+  { rcases pcode.exists_pcode.mp (primrec.nat_iff.mp h) with ⟨c, rfl⟩,
     refine ⟨c, this c⟩ },
   intros c, induction c,
-  case code.zero { simp[code.eval], rintros n m rfl, refine (provable.AX Prim.zero).fal_subst (numeral n) },
-  case code.succ { simp[code.eval], rintros n m rfl, refine (provable.AX Prim.succ).fal_subst (numeral n) },
-  case code.comp : cf cg hf hg { simp[code.eval], rintros n m rfl,
+  case pcode.zero { simp[pcode.eval], rintros n m rfl, refine (provable.AX Prim.zero).fal_subst (numeral n) },
+  case pcode.succ { simp[pcode.eval], rintros n m rfl, refine (provable.AX Prim.succ).fal_subst (numeral n) },
+  case pcode.comp : cf cg hf hg { simp[pcode.eval], rintros n m rfl,
     have : Prim ⊢ Ḟ (cf.comp cg) (numeral n) =̇ Ḟ cf (Ḟ cg (numeral n)), from (provable.AX $ Prim.comp cf cg).fal_subst (numeral n),
     sorry }, sorry,
-  --rcases code.exists_code.mp (primrec.nat_iff.mp h) with ⟨c, rfl⟩,
+  --rcases pcode.exists_pcode.mp (primrec.nat_iff.mp h) with ⟨c, rfl⟩,
   --use c,
 end
 
