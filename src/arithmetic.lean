@@ -231,9 +231,11 @@ by { induction h₁ using fopl.Herbrand.ind_on,
      have := Lindenbaum.provable_iff.mp (((AX this).fal_subst h₂).fal_subst h₁),
      simp[←vecterm.pow_rew_distrib] at this, exact this }
 
-@[simp] lemma le_refl {h : Herbrand T i} :
+@[simp] lemma le_refl [proper 0 T] {h : Herbrand T i} :
   h ≼ h = ⊤ :=
-by { simp[le_iff],  }
+by { simp[le_iff],
+     have := Lindenbaum.proper.ex_subst_le ((h.pow 1) + ♯0 ∥ (h.pow 1)) 0,
+     simp at*, }
 
 @[simp] lemma pow_0_eq (n : ℕ) : (0 : Herbrand T i).pow n = 0 := rfl
 

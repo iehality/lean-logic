@@ -85,8 +85,8 @@ fopl.Herbrand.lift_on_vec ᵥ⟦u⟧ f h = f u := quotient.lift_on_vec_eq u f h
 
 @[simp] lemma equivs_equals : ∀ {n} (v₁ v₂ : dvector (term L) (n+1)),
   (@setoid.vec_r _ (herbrand T i) _) v₁ v₂ ↔ (T^i ⊢ v₁.to_vecterm ≡̇ v₂.to_vecterm)
-| 0 (t₁ :: dvector.nil) (t₂ :: dvector.nil) := by { simp, refl }
-| (n+1) (t₁ :: v₁) (t₂ :: v₂) := by { simp[equivs_equals v₁ v₂], intros, refl }
+| 0 (t₁ ::ᵈ dvector.nil) (t₂ ::ᵈ dvector.nil) := by { simp, refl }
+| (n+1) (t₁ ::ᵈ v₁) (t₂ ::ᵈ v₂) := by { simp[equivs_equals v₁ v₂], intros, refl }
 
 def symbol.fn : ∀ {n} (f : L.fn n), dvector (Herbrand T i) n → Herbrand T i
 | 0     c _ := ⟦vecterm.const c⟧ᴴ
@@ -96,9 +96,9 @@ def symbol.fn : ∀ {n} (f : L.fn n), dvector (Herbrand T i) n → Herbrand T i
 def function₀ (T : theory L) (i) (c : L.fn 0) : Herbrand T i := symbol.fn c dvector.nil
 notation `c⟪` s `⟫⁰` := function₀ _ _ s
 
-def function₁ (f : L.fn 1) (h : Herbrand T i) : Herbrand T i := symbol.fn f (h :: dvector.nil)
+def function₁ (f : L.fn 1) (h : Herbrand T i) : Herbrand T i := symbol.fn f (h ::ᵈ dvector.nil)
 
-def function₂ (f : L.fn 2) (h₁ h₂ : Herbrand T i) : Herbrand T i := symbol.fn f (h₁ :: h₂ :: dvector.nil)
+def function₂ (f : L.fn 2) (h₁ h₂ : Herbrand T i) : Herbrand T i := symbol.fn f (h₁ ::ᵈ h₂ ::ᵈ dvector.nil)
 notation h₁ ` f⟪` s `⟫² ` h₂ :80 := function₂ s h₁ h₂
 
 def symbol.pr : ∀ {n} (f : L.pr n), dvector (Herbrand T i) n → Prop
@@ -296,10 +296,10 @@ instance : has_bot (Lindenbaum T i) := ⟨⟦⊥̇⟧ᴸ⟩
   refine ⟨provable.e5.MP eqn, provable.e5.MP (vecterm.equiv_symm _ eqn)⟩ }
 
 def predicate₁ (f : L.pr 1) (h : Herbrand T i) : Lindenbaum T i :=
-predicate f (h :: dvector.nil)
+predicate f (h ::ᵈ dvector.nil)
 
 def predicate₂ (f : L.pr 2) (h₁ h₂ : Herbrand T i) : Lindenbaum T i :=
-predicate f (h₁ :: h₂ :: dvector.nil)
+predicate f (h₁ ::ᵈ h₂ ::ᵈ dvector.nil)
 
 def equal : Herbrand T i → Herbrand T i → Lindenbaum T i :=
 λ h₁ h₂, fopl.Herbrand.lift_on₂ h₁ h₂ (λ t₁ t₂, (⟦t₁ =̇ t₂⟧ᴸ : Lindenbaum T i)) $
@@ -356,16 +356,16 @@ by { induction h₁ using fopl.Herbrand.ind_on, induction h₂ using fopl.Herbra
   h₁ ∥ h₂ ≤ predicate₁ p h₁ ⊑ predicate₁ p h₂ :=
 by { induction h₁ using fopl.Herbrand.ind_on, induction h₂ using fopl.Herbrand.ind_on,
       simp[equal, has_le.le, imply, has_top.top, predicate₁,
-        (show (⟦h₁⟧ᴴ : Herbrand T i) :: dvector.nil = ᵥ⟦h₁ :: dvector.nil⟧, by refl),
-        (show (⟦h₂⟧ᴴ : Herbrand T i) :: dvector.nil = ᵥ⟦h₂ :: dvector.nil⟧, by refl) ],
+        (show (⟦h₁⟧ᴴ : Herbrand T i) ::ᵈ dvector.nil = ᵥ⟦h₁ ::ᵈ dvector.nil⟧, by refl),
+        (show (⟦h₂⟧ᴴ : Herbrand T i) ::ᵈ dvector.nil = ᵥ⟦h₂ ::ᵈ dvector.nil⟧, by refl) ],
         refine @provable.e5 _ _ _ h₁ h₂ p }
 
 @[simp] lemma equal_subst_fn₁ {h₁ h₂ : Herbrand T i} {f : L.fn 1} : 
   h₁ ∥ h₂ ≤ function₁ f h₁ ∥ function₁ f h₂ :=
 by { induction h₁ using fopl.Herbrand.ind_on, induction h₂ using fopl.Herbrand.ind_on,
       simp[equal, has_le.le, imply, has_top.top, Herbrand.function₁,
-        (show (⟦h₁⟧ᴴ : Herbrand T i) :: dvector.nil = ᵥ⟦h₁ :: dvector.nil⟧, by refl),
-        (show (⟦h₂⟧ᴴ : Herbrand T i) :: dvector.nil = ᵥ⟦h₂ :: dvector.nil⟧, by refl) ],
+        (show (⟦h₁⟧ᴴ : Herbrand T i) ::ᵈ dvector.nil = ᵥ⟦h₁ ::ᵈ dvector.nil⟧, by refl),
+        (show (⟦h₂⟧ᴴ : Herbrand T i) ::ᵈ dvector.nil = ᵥ⟦h₂ ::ᵈ dvector.nil⟧, by refl) ],
         refine @provable.e4 _ _ _ h₁ h₂ f }
 
 @[simp] lemma double_inv (l : Lindenbaum T i) : lᶜᶜ = l :=

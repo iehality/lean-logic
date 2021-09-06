@@ -11,7 +11,7 @@ open encodable denumerable roption
 namespace nat.primrec
 open vector
 
-#check @nat.primrec'.comp
+#check @nat.rec
 
 inductive pcode : ℕ → Type
 | zero : pcode 0
@@ -89,18 +89,17 @@ prefix `Ḟ `:max := symbol.fn₁
 inductive Prim : theory (LA + LC)
 | zero   : Prim (Ḟ pcode.zero nil =̇ Ż)
 | succ   : Prim ∀̇ (Ḟ pcode.succ (#0 ::ᵥ nil) =̇ Ṡ #0)
-| nth {n} (i : fin n) {v : vector (term _) n} : Prim ∀̇ (Ḟ (pcode.nth i) v =̇ v.nth i)
+| nth {n} (i : fin n) : Prim ∀̇[n+1] (Ḟ (pcode.nth i) ## =̇ #i)
 | comp {m n} : ∀ (c : pcode n) (cs : fin n → pcode m),
-    Prim ∀̇[m+1] (Ḟ (pcode.comp c cs) ## =̇ Ḟ c (of_fn (λ i, Ḟ (cs i) ##)))
+    Prim ∀̇[m+1] (Ḟ (pcode.comp c cs) ## =̇ Ḟ c (of_fn $ λ i, Ḟ (cs i) ##))
 | prec_z {n} : ∀ (c₀ : pcode n) (c₁ : pcode (n + 2)),
     Prim ∀̇[n+1] (Ḟ (pcode.prec c₀ c₁) (Ż ::ᵥ ##) =̇ Ḟ c₀ ##)
 | prec_s {n} : ∀ (c₀ : pcode n) (c₁ : pcode (n + 2)),
-    Prim ∀̇[n+2] (Ḟ (pcode.prec c₀ c₁) (Ṡ #0 ::ᵥ (of_fn $ λ i, #(i + 1))) =̇
-                 Ḟ c₁ (#0 ::ᵥ (Ḟ (pcode.prec c₀ c₁) ##) ::ᵥ (of_fn $ λ i, #(i + 1))))
+    Prim ∀̇[n+2] (Ḟ (pcode.prec c₀ c₁) (Ṡ #0 ::ᵥ (of_fn $ λ i, #(i + 1))) =̇ Ḟ c₁ (Ḟ (pcode.prec c₀ c₁) ## ::ᵥ ##))
 
 #check @Prim.prec_z
-theorem complete (T : theory LA) [extend 𝐐 T] (f : ℕ → ℕ) (h : primrec f) : ∃ c : pcode, ∀ n m : ℕ,
-  f n = m → Prim ⊢ Ḟ c (numeral n) =̇ (numeral m) :=
+theorem complete (T : theory LA) [extend 𝐐 T] {i} (f : vector ℕ i → ℕ) (h : primrec f) : ∃ c : pcode i, ∀ n m,
+  f n = m → Prim ⊢ Ḟ c (n.map ↑numeral) =̇ (numeral m) :=
 begin
   suffices :
     ∀ c : pcode, ∀ n m : ℕ, c.eval n = m → Prim ⊢ Ḟ c (numeral n) =̇ (numeral m),

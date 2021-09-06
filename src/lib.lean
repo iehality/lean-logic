@@ -50,7 +50,7 @@ inductive dvector (α : Type u) : ℕ → Type u
 | nil {} : dvector 0
 | cons   : ∀ {n}, α → dvector n → dvector (n+1)
 
-infix ` ::ᵈ `:60  := dvector.cons
+infixr ` ::ᵈ `:60  := dvector.cons
 
 namespace dvector
 variables {α : Type u} {β : Type v}
