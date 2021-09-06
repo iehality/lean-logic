@@ -104,7 +104,33 @@ lemma head_tail : ∀ {n} (v : dvector α (n+1)), v.head ::ᵈ v.tail = v
 | _ (a ::ᵈ as) := a ::ᵥ as.to_vector
 
 end dvector
-#check vector.elim
+
+def finitary (α : Type*) (n : ℕ) := fin n → α
+
+namespace finitary
+variables {α : Type*}
+open vector
+
+def of_vec_of_fn : Π {n}, (fin n → α) → vector α n
+| 0 f := nil
+| (n+1) f := cons (f 0) (of_fn (λi, f i.succ))
+
+@[simp] def Max {α : Type u} [linear_order α] (d : α) : ∀ {n}, finitary α n → α
+| 0     _ := d
+| (n+1) f := max (f ⟨n, lt_add_one n⟩) (@Max n (λ i, f ↑i))
+
+def Max_le {α : Type u} [linear_order α] (d : α) {n} (v : finitary α n) (i) : v i ≤ Max d v :=
+begin
+  induction n with n IH; rcases i with ⟨i, i_p⟩,
+  { exfalso, exact nat.not_lt_zero i i_p },
+  simp,
+  have : i < n ∨ i = n, exact nat.lt_succ_iff_lt_or_eq.mp i_p,
+  cases this,
+  { right, have := IH (λ i, v ↑i) ⟨i, this⟩, simp at this, exact this },
+  { left, simp[this] }
+end
+
+end finitary
 
 namespace encodable
 variables {α : Type u} [encodable α] [inhabited α] 

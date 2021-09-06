@@ -12,25 +12,14 @@ structure language : Type (u+1) :=
 
 variables (L : language.{u})
 
-inductive vecterm (L : language.{u}) : ℕ → Type u
-| cons   : ∀ {n : ℕ}, vecterm 0 → vecterm n → vecterm (n+1)
-| var {} : ℕ → vecterm 0
-| const  : L.fn 0 → vecterm 0
-| app    : ∀ {n : ℕ}, L.fn (n+1) → vecterm n → vecterm 0
+inductive term (L : language.{u}) : Type u
+| var {} : ℕ → term
+| app    : ∀ {n : ℕ}, L.fn n → (fin n → term) → term
 
-prefix `#`:max := vecterm.var
-
-notation h ` ::: ` t  := vecterm.cons h t
-
-@[reducible] def term : Type u := vecterm L 0
-
-@[simp] def vector.to_vecterm {L : fopl.language} : ∀ {n} (v : vector (term L) (n+1)), fopl.vecterm L n
-| 0     ⟨t :: [], _⟩ := t
-| (n+1) ⟨t :: ts, h⟩ := fopl.vecterm.cons t (@vector.to_vecterm n ⟨ts, by { simp at*, exact h }⟩)
+prefix `#`:max := term.var
 
 inductive formula : Type u
-| const : L.pr 0 → formula
-| app   : ∀ {n : ℕ}, L.pr (n+1) → vecterm L n → formula
+| app   : ∀ {n : ℕ}, L.pr n → (fin n → term L) → formula
 | equal : term L → term L → formula
 | imply : formula → formula → formula
 | neg   : formula → formula
@@ -79,7 +68,7 @@ notation `∀̇[` i `] `:90 p := nfal p i
 @[simp] lemma nfal_fal (p : formula L) (i : ℕ) : nfal (∀̇ p) i = ∀̇ (nfal p i) :=
 by { induction i with i IH; simp, exact IH }
 
-@[reducible] def ι : ℕ → term L := vecterm.var
+@[reducible] def ι : ℕ → term L := term.var
 
 def slide' {α : Type*} (s : ℕ → α) (a : α) (n : ℕ) : ℕ → α :=
 λ x, if x < n then s x else if n < x then s (x - 1) else a
@@ -104,104 +93,71 @@ by { have C : n < i ∨ i ≤ n, exact lt_or_ge n i,
      cases C, refine ⟨n, by simp[C]⟩, 
      refine ⟨n + 1, _⟩, simp[nat.lt_succ_iff.mpr C] }
 
-namespace vecterm
+namespace term
 
-@[simp] def app' : ∀ {n}, L.fn n → vector (term L) n → term L
-| 0     c _ := const c
-| (n+1) f v := app f (vector.to_vecterm v)
+@[simp] def rew (s : ℕ → term L) : term L → term L
+| (#x)       := s x
+| (app f v)  := app f (λ i, (v i).rew)
 
-@[simp] def rew (s : ℕ → term L) : ∀ {n}, vecterm L n → vecterm L n
-| _ (cons a v) := cons a.rew v.rew
-| _ (#x)       := s x
-| _ (const c)  := const c
-| _ (app f v)  := app f v.rew
+instance : has_pow (term L) ℕ := ⟨λ t i, t.rew (λ x, #(x + i))⟩
 
-instance {n : ℕ} : has_pow (vecterm L n) ℕ := ⟨λ t i, t.rew (λ x, #(x + i))⟩
+instance vec_pow {n : ℕ} : has_pow (fin n → term L) ℕ := ⟨λ v m, (λ i, (v i^m))⟩
 
-lemma pow_eq {n : ℕ} (v : vecterm L n) (i : ℕ) : v^i = v.rew (λ x, #(x + i)) := rfl
-
-@[simp] lemma cons_pow (a : term L) {n} (v : vecterm L n) (i : ℕ) : (cons a v)^i = cons (a^i) (v^i) := rfl
+lemma pow_eq (v : term L) (i : ℕ) : v^i = v.rew (λ x, #(x + i)) := rfl
 
 @[simp] lemma var_pow (n i : ℕ) : (#n : term L)^i = #(n + i) := rfl
 
-@[simp] lemma const_pow (c : L.fn 0) (i : ℕ) : (const c)^i = const c := rfl
+@[simp] lemma app_pow {n} (f : L.fn n) (v : fin n → term L) (i : ℕ) : (app f v)^i = app f (v^i) := rfl
 
-@[simp] lemma app_pow {n} (f : L.fn (n+1)) (v : vecterm L n) (i : ℕ) : (app f v)^i = app f (v^i) := rfl
+def arity : term L → ℕ
+| (#n)       := n + 1
+| (app f v)  := finitary.Max 0 (λ i, (v i).arity)
 
-def arity : ∀ {n}, vecterm L n → ℕ
-| _ (cons a v) := max a.arity v.arity
-| _ (#n)       := n + 1
-| _ (const c)  := 0
-| _ (app f v)  := v.arity
-
-@[simp] lemma nested_rew (s₀ s₁) : ∀ {n} (t : vecterm L n),
+@[simp] lemma nested_rew (s₀ s₁) : ∀ (t : term L),
   (t.rew s₀).rew s₁ = t.rew (λ x, (s₀ x).rew s₁)
-| _ (cons a v) := by simp[rew, nested_rew]
-| _ (#x)       := by simp[rew]
-| _ (const c)  := by simp[rew]
-| _ (app f v)  := by simp[rew, nested_rew]
+| (#x)       := by simp[rew]
+| (app f v)  := by simp[rew, nested_rew]
 
-@[simp] lemma rew_ι {n} (t : vecterm L n) : t.rew ι = t :=
+@[simp] lemma rew_ι (t : term L) : t.rew ι = t :=
 by induction t; simp[rew]; simp*
 
-lemma rew_rew {s₀ s₁ : ℕ → term L} : ∀ {n} (t : vecterm L n),
+lemma rew_rew {s₀ s₁ : ℕ → term L} : ∀ (t : term L),
   (∀ m, m < t.arity → s₀ m = s₁ m) → t.rew s₀ = t.rew s₁
-| _ (cons a v) h := by simp[rew, arity] at h ⊢;
-    refine ⟨rew_rew _ (λ _ e, h _ (or.inl e)), rew_rew _ (λ _ e, h _ (or.inr e))⟩
-| _ (#x)       h := by simp[rew, arity] at h ⊢; simp*
-| _ (const c)  _ := rfl
-| _ (app f v)  h := by simp[rew, arity] at h ⊢; refine rew_rew _ h
+| (#x)            h := by simp[rew, arity] at h ⊢; simp*
+| (@app _ n f v)  h := by simp[rew, arity] at h ⊢; refine
+  funext (λ i, rew_rew (v i) (λ m eqn, h m (lt_of_lt_of_le eqn (finitary.Max_le 0 (λ i, (v i).arity) i))))
 
-lemma pow_add {n} (v : vecterm L n) (i j : ℕ) : (v^i)^j = v^(i + j) :=
+lemma pow_add (t : term L) (i j : ℕ) : (t^i)^j = t^(i + j) :=
 by simp[pow_eq, nested_rew, add_assoc]
 
-@[simp] lemma arity0_rew {n} {v : vecterm L n} (h : v.arity = 0) (s : ℕ → term L) : v.rew s = v :=
-by { suffices : rew s v = rew ι v, { simp* },
+@[simp] lemma arity0_rew {t : term L} (h : t.arity = 0) (s : ℕ → term L) : t.rew s = t :=
+by { suffices : rew s t = rew ι t, { simp* },
      refine rew_rew _ _, simp[h] }
 
-@[simp] lemma arity0_sf {n} {v : vecterm L n} (h : v.arity = 0) (i : ℕ) : v^i = v := by simp[has_pow.pow, h]
+@[simp] lemma arity0_sf {v : term L} (h : v.arity = 0) (i : ℕ) : v^i = v := by simp[has_pow.pow, h]
 
-lemma total_rew_inv :
-  ∀ {n} (p : vecterm L n) {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n), ∃ q : vecterm L n, q.rew s = p
-| (n+1) (cons a v) s h := by {
-    rcases total_rew_inv a h with ⟨qa, IH_qa⟩,
-    rcases total_rew_inv v h with ⟨qv, IH_qv⟩,
-    refine ⟨cons qa qv, _⟩, simp[IH_qa, IH_qv] }
-| _     (#x)       s h := by rcases h x with ⟨q, h_q⟩; refine ⟨#q, _⟩; simp[h_q]
-| _     (const c)  s h := ⟨const c, rfl⟩
-| _     (app f v)  s h := by rcases total_rew_inv v h with ⟨q, IH_q⟩; refine ⟨app f q, _⟩; simp[IH_q]
+lemma total_rew_inv
+  (s : ℕ → term L) (h : ∀ n, ∃ m, s m = #n) : ∀ (p : term L) , ∃ q : term L, q.rew s = p
+| (#x) := by rcases h x with ⟨q, h_q⟩; refine ⟨#q, _⟩; simp[h_q]
+| (@app _ n f v) := by rcases classical.skolem.mp (λ i, total_rew_inv (v i)) with ⟨w, w_eqn⟩;
+    refine ⟨app f w, by simp[w_eqn]⟩
 
-@[simp] lemma pow_0 {n} (t : vecterm L n) : t^0 = t := by simp[has_pow.pow]
-@[simp] lemma term_pow_0 (t : term L) : t^0 = t := by simp[has_pow.pow]
+@[simp] lemma pow_0 (t : term L) : t^0 = t := by simp[has_pow.pow]
 
-@[simp] lemma sf_subst_eq {n : ℕ} (v : vecterm L n) (t : term L) (i j : ℕ) (h : j ≤ i) :
+@[simp] lemma sf_subst_eq (v : term L) (t : term L) (i j : ℕ) (h : j ≤ i) :
   (v^(i + 1)).rew (ι [j ⇝ t]) = v^i :=
 by { simp[has_pow.pow, rew, nested_rew, h], congr, funext x,
      have : j < x + (i + 1), from nat.lt_add_left _ _ _ (nat.lt_succ_iff.mpr h),
      simp[this] }
 
-@[simp] lemma concat_pow_eq {n : ℕ} (v : vecterm L n) (t : term L) (s : ℕ → term L) :
+@[simp] lemma concat_pow_eq (v : term L) (t : term L) (s : ℕ → term L) :
   (v^1).rew (t ⌢ s) = v.rew s :=
 by simp[concat, rew, pow_eq, nested_rew]
-
-def nth : Π {n} (v : vecterm L n), fin n → term L
-| 0       t          _ := t 
-| (n + 1) (cons a v) i := if C₁ : i.val < n then nth v (fin.mk i.val C₁) else
-  if C₂ : i.val = n then a else
-  by { exfalso, rcases i with ⟨i, i_p⟩, simp at*,
-       have : i < n ∨ i = n, exact nat.lt_succ_iff_lt_or_eq.mp i_p,
-       cases this, exact nat.lt_le_antisymm this C₁, exact C₂ this }
-
-def vars : ∀ n, vecterm L n
-| 0     := #0
-| (n+1) := #(n+1) ::: (vars n)
 
 def vector_vars {n} : vector (term L) n := vector.of_fn $ λ i, #i
 notation `##` := vector_vars
 
-end vecterm
-
-lemma term.pow_eq (v : term L) (i : ℕ) : v^i = v.rew (λ x, #(x + i)) := rfl
+end term
 
 def rewriting_sf_itr (s : ℕ → term L) : ℕ → ℕ → term L
 | 0     := s
@@ -227,16 +183,14 @@ lemma rewriting_sf_itr.pow_eq' (s : ℕ → term L) (i : ℕ) :
 by { induction i with i IH generalizing s, { simp },
      simp[←nat.add_one, rewriting_sf_itr.pow_eq, IH], funext x,
      cases x; simp[concat, ←nat.add_one],
-     by_cases C : x < i; simp[C, vecterm.pow_add] }
-
+     by_cases C : x < i; simp[C, term.pow_add] }
 
 lemma rewriting_sf_perm {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n) : ∀ n, ∃ m, (s^1) m = #n :=
 λ n, by { cases n, refine ⟨0, by simp⟩,
           rcases h n with ⟨m, e_m⟩, refine ⟨m+1, _⟩, simp[e_m] }
 
 def formula.arity : formula L → ℕ
-| (formula.const c) := 0
-| (formula.app p v) := v.arity
+| (formula.app p v) := finitary.Max 0 (λ i, (v i).arity)
 | (t =̇ u)           := max t.arity u.arity
 | (p →̇ q)          := max p.arity q.arity
 | (¬̇p)              := p.arity
@@ -249,7 +203,7 @@ begin
   induction i with i IH, { simp }, funext x,
   cases x; simp[←nat.add_one, ←add_assoc, IH],
   { have T : x < n + i ∨ x = n + i ∨ n + i < x, exact trichotomous _ _,
-    cases T, { simp[T], }, cases T; simp[T, pow_add, vecterm.pow_add],
+    cases T, { simp[T], }, cases T; simp[T, pow_add, term.pow_add],
     { have : 0 < x, exact pos_of_gt T, congr, exact (nat.pos_succ this).symm} }
 end
 
@@ -258,10 +212,10 @@ by { have T : n < k ∨ k ≤ n, exact lt_or_ge _ _,
      cases T, refine ⟨n, by simp[T]⟩,
      { refine ⟨n + 1, _⟩, simp[show k < n + 1, from nat.lt_succ_iff.mpr T] }, }
 
-lemma vecterm.pow_rew_distrib {n} (v : vecterm L n) (s : ℕ → term L) (i : ℕ): (v.rew s)^i = (v^i).rew (s^i) :=
+lemma term.pow_rew_distrib (t : term L) (s : ℕ → term L) (i : ℕ): (t.rew s)^i = (t^i).rew (s^i) :=
 by { induction i with i IH generalizong s i, { simp, },
-     { simp[←nat.add_one, vecterm.pow_add, rewriting_sf_itr.pow_add, rewriting_sf_itr.pow_eq',
-         IH, vecterm.pow_eq, vecterm.nested_rew] } }
+     { simp[←nat.add_one, term.pow_add, rewriting_sf_itr.pow_add, rewriting_sf_itr.pow_eq',
+         IH, term.pow_eq, term.nested_rew] } }
 
 @[simp] lemma rew_subst_ι : (λ x, (((λ x, #(x + 1)) ^ 1) x).rew ι[0 ⇝ #0]  : ℕ → term L) = ι :=
 by { funext x, cases x; simp }
@@ -269,8 +223,7 @@ by { funext x, cases x; simp }
 namespace formula
 
 @[simp] def rew : (ℕ → term L) → formula L → formula L
-| _ (const c) := const c 
-| s (app p v) := app p (v.rew s)
+| s (app p v) := app p (λ i, (v i).rew s)
 | s (t =̇ u)   := (t.rew s) =̇ (u.rew s)
 | s (p →̇ q)  := p.rew s →̇ q.rew s
 | s (¬̇p)      := ¬̇(p.rew s)
@@ -283,8 +236,8 @@ namespace formula
 by { induction i with i IH generalizing s, { simp },
      simp[←nat.add_one, IH, rewriting_sf_itr.pow_add, add_comm 1 i] }
 @[simp] lemma ex_rew (p : formula L) (s) : (∃̇p).rew s = ∃̇p.rew (s^1) :=by simp[ex]
-@[simp] lemma top_rew (s) : (⊤̇ : formula L).rew s = ⊤̇ := by simp[formula.top, formula.rew, vecterm.rew]
-@[simp] lemma bot_rew (s) : (⊥̇ : formula L).rew s = ⊥̇ := by simp[formula.bot, formula.rew, vecterm.rew]
+@[simp] lemma top_rew (s) : (⊤̇ : formula L).rew s = ⊤̇ := by simp[formula.top]
+@[simp] lemma bot_rew (s) : (⊥̇ : formula L).rew s = ⊥̇ := by simp[formula.bot]
 
 @[simp] lemma rew_ι (p : formula L) : p.rew ι = p :=
 by { induction p; simp[rew]; try {simp*},
@@ -297,8 +250,7 @@ lemma pow_eq (p : formula L) (i : ℕ) : p^i = p.rew (λ x, #(x + i)) := rfl
 
 @[simp] lemma formula_pow_0 (p : formula L) : p^0 = p := by simp[has_pow.pow]
 
-@[simp] lemma const_pow (c : L.pr 0) (i : ℕ) : (const c)^i = const c := rfl
-@[simp] lemma app_pow {n} (p : L.pr (n+1)) (v : vecterm L n) (i : ℕ) : (app p v)^i = app p (v^i) := rfl
+@[simp] lemma app_pow {n} (p : L.pr n) (v : finitary (term L) n) (i : ℕ) : (app p v)^i = app p (v^i) := rfl
 @[simp] lemma eq_pow (t u : term L) (i : ℕ) : (t =̇ u)^i = (t^i) =̇ (u^i) := rfl
 @[simp] lemma imply_pow (p q : formula L) (i : ℕ) : (p →̇ q)^i = p^i →̇ q^i := rfl
 @[simp] lemma neg_pow (p : formula L) (i : ℕ) : (¬̇p)^i = ¬̇(p^i) := rfl
@@ -316,20 +268,19 @@ by { simp[formula.pow_eq, rewriting_sf_itr.pow_eq'], congr, funext x,
 
 lemma nested_rew : ∀ (p : formula L) (s₀ s₁),
   (p.rew s₀).rew s₁ = p.rew (λ x, (s₀ x).rew s₁)
-| (const c) _ _ := rfl
 | (app p v) _ _ := by simp[rew]
 | (t =̇ u)   _ _ := by simp[rew]
 | (p →̇ q)  _ _ := by simp[rew]; refine ⟨nested_rew p _ _, nested_rew q _ _⟩
 | (¬̇p)      _ _ := by simp[rew]; refine nested_rew p _ _
 | (∀̇ p)     _ _ := by { simp[rew, nested_rew p], congr,
-    funext n, cases n; simp[vecterm.rew], simp[concat, rewriting_sf_itr.pow_eq, vecterm.pow_eq] }
+    funext n, cases n; simp, simp[concat, rewriting_sf_itr.pow_eq, term.pow_eq] }
 
 lemma rew_rew : ∀ (p : formula L) {s₀ s₁ : ℕ → term L},
   (∀ m, m < p.arity → s₀ m = s₁ m) → p.rew s₀ = p.rew s₁
-| (const c) _ _ _ := rfl
-| (app p v) _ _ h := by simp[rew, arity] at h ⊢; refine vecterm.rew_rew _ h
+| (app p v) _ _ h := by simp[rew, arity] at h ⊢; refine funext
+    (λ i, term.rew_rew (v i) (λ m eqn, h _ $ lt_of_lt_of_le eqn (finitary.Max_le 0 _ i)))
 | (t =̇ u)   _ _ h := by simp[rew, arity] at h ⊢;
-    refine ⟨vecterm.rew_rew _ (λ _ e, h _ (or.inl e)), vecterm.rew_rew _ (λ _ e, h _ (or.inr e))⟩
+    refine ⟨term.rew_rew _ (λ _ e, h _ (or.inl e)), term.rew_rew _ (λ _ e, h _ (or.inr e))⟩
 | (p →̇ q)  _ _ h := by simp[rew, arity] at h ⊢;
     refine ⟨rew_rew _ (λ _ e, h _ (or.inl e)), rew_rew _ (λ _ e, h _ (or.inr e))⟩
 | (¬̇p)      _ _ h := by simp[rew, arity] at h ⊢; refine rew_rew _ h
@@ -349,16 +300,16 @@ by { suffices : rew s p = rew ι p, { simp* },
 by simp[has_pow.pow, sentence_rew h]
 
 @[simp] lemma sf_subst_eq (p : formula L) (t : term L) (i j : ℕ) (h : j ≤ i) : (p^(i + 1)).rew ι[j ⇝ t] = p^i :=
-by { simp[has_pow.pow, vecterm.rew, nested_rew, h], congr, funext x,
+by { simp[has_pow.pow, nested_rew, h], congr, funext x,
      have : j < x + (i + 1), from nat.lt_add_left _ _ _ (nat.lt_succ_iff.mpr h),
      simp[this] }
 
 lemma subst_sf_rew (p : formula L) (t : term L) (s : ℕ → term L) :
   (p.rew ι[0 ⇝ t]).rew s = (p.rew (s^1)).rew ι[0 ⇝ t.rew s] :=
-by { simp[formula.rew, vecterm.rew, nested_rew], congr, ext n, cases n; simp }
+by { simp[formula.rew, nested_rew], congr, ext n, cases n; simp }
 
 @[simp] lemma sf_subst_eq_0 (p : formula L) (t) : (p^1).rew ι[0 ⇝ t] = p :=
-by simp[vecterm.rew, nested_rew]
+by simp[nested_rew]
 
 lemma pow_rew_distrib  (p : formula L) (s : ℕ → term L) (i : ℕ): (p.rew s)^i = (p^i).rew (s^i) :=
 by { induction i with i IH generalizong s i, { simp },
@@ -366,20 +317,19 @@ by { induction i with i IH generalizong s i, { simp },
        refl } }
 
 lemma total_rew_inv :
-  ∀ (p : formula L) {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n), ∃ q : formula L, q.rew s = p
-| (const c) s h := ⟨const c, rfl⟩
-| (app p v) s h := by rcases vecterm.total_rew_inv v h with ⟨u, h_u⟩; refine ⟨app p u, by simp[h_u]⟩
-| (t =̇ u)   s h := 
-    by rcases vecterm.total_rew_inv t h with ⟨w₁, e_w₁⟩;
-       rcases vecterm.total_rew_inv u h with ⟨w₂, e_w₂⟩; refine ⟨w₁ =̇ w₂, by simp[e_w₁, e_w₂]⟩
-| (p →̇ q)  s h := 
-    by rcases total_rew_inv p h with ⟨p', e_p'⟩;
-       rcases total_rew_inv q h with ⟨q', e_q'⟩; refine ⟨p' →̇ q', by simp*⟩
-| (¬̇p)      s h := by rcases total_rew_inv p h with ⟨q, e_q⟩; refine ⟨¬̇q, by simp*⟩
-| (∀̇p)      s h := by rcases total_rew_inv p (rewriting_sf_perm h) with ⟨q, e_q⟩; refine ⟨∀̇q, by simp[e_q]⟩
+  ∀ (s : ℕ → term L) (h : ∀ n, ∃ m, s m = #n) (p : formula L), ∃ q : formula L, q.rew s = p
+| s h (@app _ n p v) := by rcases classical.skolem.mp (λ i : fin n, @term.total_rew_inv _ s h (v i : term L)) with ⟨w, w_p⟩;
+    refine ⟨app p w, by simp[w_p]⟩
+| s h (t =̇ u)        := 
+    by rcases term.total_rew_inv s h t with ⟨w₁, e_w₁⟩;
+       rcases term.total_rew_inv s h u with ⟨w₂, e_w₂⟩; refine ⟨w₁ =̇ w₂, by simp[e_w₁, e_w₂]⟩
+| s h (p →̇ q)       := 
+    by rcases total_rew_inv s h p with ⟨p', e_p'⟩;
+       rcases total_rew_inv s h q with ⟨q', e_q'⟩; refine ⟨p' →̇ q', by simp*⟩
+| s h (¬̇p)      := by rcases total_rew_inv s h p with ⟨q, e_q⟩; refine ⟨¬̇q, by simp*⟩
+| s h (∀̇p)      := by rcases total_rew_inv _ (rewriting_sf_perm h) p with ⟨q, e_q⟩; refine ⟨∀̇q, by simp[e_q]⟩
 
 @[simp] def Open : formula L → bool
-| (const c) := tt
 | (app p v) := tt
 | (t =̇ u)   := tt
 | (p →̇ q)  := p.Open && q.Open
@@ -399,15 +349,13 @@ by { have := nfal_arity p.arity p, simp at*, refine this }
 
 end formula
 
-open vecterm formula
+open term formula
 
 class translation (L₁ : language.{u}) (L₂ : language.{u}) :=
-(tr_const : L₁.pr 0 → formula L₂)
-(tr_pr : ∀ {n}, L₁.pr (n + 1) → vecterm L₁ n → formula L₂)
+(tr_pr : ∀ {n}, L₁.pr n → (fin n → term L₁) → formula L₂)
 (tr_eq : term L₁ → term L₁ → formula L₂)
 
 @[simp] def translation.tr {L₁ L₂ : language.{u}} [translation L₁ L₂] : formula L₁ → formula L₂
-| (const c) := translation.tr_const c 
 | (app p v) := translation.tr_pr p v
 | (t =̇ u)   := translation.tr_eq t u
 | (p →̇ q)  := translation.tr p →̇ translation.tr q
@@ -418,22 +366,18 @@ notation `tr[` p `]` := translation.tr p
 
 def translation.tr_theory {L₁ L₂ : language.{u}} [translation L₁ L₂] (T : theory L₁) : theory L₂ := translation.tr '' T
 
-
-
 instance : has_add language := ⟨λ L₁ L₂ : language.{u}, ⟨λ n, L₁.fn n ⊕ L₂.fn n, λ n, L₁.pr n ⊕ L₂.pr n⟩⟩
 
 namespace language
 
 variables {L₁ L₂ : language.{u}} 
 
-@[simp] def add_tr_v1 : ∀ {n}, vecterm L₁ n → vecterm (L₁ + L₂) n
-| _ (cons a v) := add_tr_v1 a ::: add_tr_v1 v
-| _ (#x)       := #x
-| _ (const c)  := const (sum.inl c)
-| _ (app f v)  := app (sum.inl f) (add_tr_v1 v)
+@[simp] def add_tr_v1 : term L₁ → term (L₁ + L₂)
+| (#x)       := #x
+| (app f v)  := app (sum.inl f) (λ i, add_tr_v1 (v i))
 
 instance : translation L₁ (L₁ + L₂) :=
-⟨λ c, const (sum.inl c), λ n p v, app (sum.inl p) (add_tr_v1 v), λ t u, add_tr_v1 t =̇ add_tr_v1 u⟩
+⟨λ n p v, app (sum.inl p) (λ i, add_tr_v1 (v i)), λ t u, add_tr_v1 t =̇ add_tr_v1 u⟩
 
 instance {L₁ L₂ : language.{u}} : has_coe (term L₁) (term (L₁ + L₂)) := ⟨add_tr_v1⟩
 instance {L₁ L₂ : language.{u}} : has_coe (formula L₁) (formula (L₁ + L₂)) := ⟨translation.tr⟩
@@ -442,11 +386,3 @@ instance {L₁ L₂ : language.{u}} : has_coe (theory L₁) (theory (L₁ + L₂
 end language
 
 end fopl
-
-@[simp] def dvector.to_vecterm {L : fopl.language} : ∀ {n} (v : dvector (fopl.term L) (n+1)), fopl.vecterm L n
-| 0     (t ::ᵈ dvector.nil) := t
-| (n+1) (t ::ᵈ ts)          := fopl.vecterm.cons t ts.to_vecterm
-
-@[simp] def vector.to_vecterm {L : fopl.language} : ∀ {n} (v : vector (fopl.term L) (n+1)), fopl.vecterm L n
-| 0     ⟨t :: [], _⟩ := t
-| (n+1) ⟨t :: ts, h⟩ := fopl.vecterm.cons t (@vector.to_vecterm n ⟨ts, by { simp at*, exact h }⟩)
