@@ -30,8 +30,6 @@ infixr ` →̇ `:78 := formula.imply
 prefix `¬̇`:94 := formula.neg
 prefix `∀̇ `:90 := formula.fal
 
-def theory (L : language) := set (formula L)
-
 notation `theory `L:max := set (formula L)
 
 variables {L}
@@ -67,6 +65,14 @@ notation `∀̇[` i `] `:90 p := nfal p i
 
 @[simp] lemma nfal_fal (p : formula L) (i : ℕ) : nfal (∀̇ p) i = ∀̇ (nfal p i) :=
 by { induction i with i IH; simp, exact IH }
+
+@[simp] def conjunction' : ∀ n, (fin n → formula L) → formula L
+| 0 _        := ⊤̇
+| (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⩑ conjunction' n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
+
+def conjunction : list (formula L) → formula L
+| []        := ⊤̇
+| (p :: ps) := p ⩑ conjunction ps
 
 @[reducible] def ι : ℕ → term L := term.var
 
@@ -109,7 +115,7 @@ lemma pow_eq (v : term L) (i : ℕ) : v^i = v.rew (λ x, #(x + i)) := rfl
 
 @[simp] lemma app_pow {n} (f : L.fn n) (v : fin n → term L) (i : ℕ) : (app f v)^i = app f (v^i) := rfl
 
-def arity : term L → ℕ
+@[simp] def arity : term L → ℕ
 | (#n)       := n + 1
 | (app f v)  := finitary.Max 0 (λ i, (v i).arity)
 
@@ -162,6 +168,7 @@ end term
 def rewriting_sf_itr (s : ℕ → term L) : ℕ → ℕ → term L
 | 0     := s
 | (n+1) := #0 ⌢ λ x, (rewriting_sf_itr n x)^1
+
 instance : has_pow (ℕ → term L) ℕ := ⟨rewriting_sf_itr⟩
 
 @[simp] lemma rewriting_sf_pow0 (s : ℕ → term L) : (s^0) = s := rfl
@@ -189,7 +196,7 @@ lemma rewriting_sf_perm {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n) : ∀ 
 λ n, by { cases n, refine ⟨0, by simp⟩,
           rcases h n with ⟨m, e_m⟩, refine ⟨m+1, _⟩, simp[e_m] }
 
-def formula.arity : formula L → ℕ
+@[simp] def formula.arity : formula L → ℕ
 | (formula.app p v) := finitary.Max 0 (λ i, (v i).arity)
 | (t =̇ u)           := max t.arity u.arity
 | (p →̇ q)          := max p.arity q.arity
@@ -229,9 +236,9 @@ namespace formula
 | s (¬̇p)      := ¬̇(p.rew s)
 | s (∀̇ p)     := ∀̇ (p.rew (s^1))
 
-@[simp] lemma and_rew (p q : formula L) (s) : (p ⩑ q).rew s = p.rew s ⩑ q.rew s :=by simp[and, formula.rew]
-@[simp] lemma or_rew (p q : formula L) (s) : (p ⩒ q).rew s = p.rew s ⩒ q.rew s :=by simp[or, formula.rew]
-@[simp] lemma iff_rew (p q : formula L) (s) : (p ↔̇ q).rew s = p.rew s ↔̇ q.rew s :=by simp[iff, formula.rew]
+@[simp] lemma and_rew (p q : formula L) (s) : (p ⩑ q).rew s = p.rew s ⩑ q.rew s := by simp[and, formula.rew]
+@[simp] lemma or_rew (p q : formula L) (s) : (p ⩒ q).rew s = p.rew s ⩒ q.rew s := by simp[or, formula.rew]
+@[simp] lemma iff_rew (p q : formula L) (s) : (p ↔̇ q).rew s = p.rew s ↔̇ q.rew s := by simp[iff, formula.rew]
 @[simp] lemma nfal_rew (p : formula L) (i : ℕ) (s) : (nfal p i).rew s = nfal (p.rew (s^i)) i :=
 by { induction i with i IH generalizing s, { simp },
      simp[←nat.add_one, IH, rewriting_sf_itr.pow_add, add_comm 1 i] }
@@ -243,6 +250,9 @@ by { induction i with i IH generalizing s, { simp },
 by { induction p; simp[rew]; try {simp*},
      have : ι^1 = ι,
      { funext n, cases n, rw[@rewriting_sf_0 L], simp }, rw[this], simp* }
+
+@[simp] lemma conjunction'_rew {n} (P : finitary (formula L) n) (s) : (conjunction' n P).rew s = conjunction' n (λ i, (P i).rew s) :=
+by { induction n with n IH; simp, simp[IH] }
 
 instance : has_pow (formula L) ℕ := ⟨λ p i, p.rew (λ x, #(x + i))⟩
 
@@ -340,12 +350,16 @@ lemma total_rew_inv :
 
 @[simp] lemma op.or (p q : formula L) : (p ⩒ q).Open = p.Open && q.Open := rfl
 
-lemma nfal_arity : ∀ (n) (p : formula L), (nfal p n).arity = p.arity - n
+@[simp] lemma nfal_arity : ∀ (n) (p : formula L), (nfal p n).arity = p.arity - n
 | 0     p := by simp[formula.arity]
 | (n+1) p := by {simp[formula.arity, nfal_arity n], exact (arity p).sub_sub _ _ }
 
 lemma nfal_sentence (p : formula L) : sentence (nfal p p.arity) :=
-by { have := nfal_arity p.arity p, simp at*, refine this }
+by simp[sentence]
+
+@[simp] lemma conjunction_arity {n} {v : finitary (formula L) n} :
+  (conjunction' n v).arity = finitary.Max 0 (λ i, (v i).arity) :=
+by { induction n with n IH; simp[finitary.Max, top, and, arity, term.arity], simp[IH], refl }
 
 end formula
 

@@ -115,20 +115,39 @@ def of_vec_of_fn : Π {n}, (fin n → α) → vector α n
 | 0 f := nil
 | (n+1) f := cons (f 0) (of_fn (λi, f i.succ))
 
-@[simp] def Max {α : Type u} [linear_order α] (d : α) : ∀ {n}, finitary α n → α
+def Max [linear_order α] (d : α) : ∀ {n}, finitary α n → α
 | 0     _ := d
 | (n+1) f := max (f ⟨n, lt_add_one n⟩) (@Max n (λ i, f ↑i))
 
-def Max_le {α : Type u} [linear_order α] (d : α) {n} (v : finitary α n) (i) : v i ≤ Max d v :=
+def Max_le [linear_order α] (d : α) {n} (v : finitary α n) (i) : v i ≤ Max d v :=
 begin
   induction n with n IH; rcases i with ⟨i, i_p⟩,
   { exfalso, exact nat.not_lt_zero i i_p },
-  simp,
+  simp[Max],
   have : i < n ∨ i = n, exact nat.lt_succ_iff_lt_or_eq.mp i_p,
   cases this,
   { right, have := IH (λ i, v ↑i) ⟨i, this⟩, simp at this, exact this },
   { left, simp[this] }
 end
+
+@[simp] def Max_0 [linear_order α] (d : α) (v : finitary α 0) : Max d v = d :=
+by simp[Max]
+
+
+protected def mem : ∀ {n}, α → finitary α n → Prop
+| 0     a _ := false
+| (n+1) a f := a = f ⟨n, lt_add_one n⟩ ∨ @mem n a (λ i, f ⟨i.val, nat.lt.step i.property⟩)
+
+instance {n} : has_mem α (finitary α n) := ⟨finitary.mem⟩
+
+@[simp] lemma index_mem {n} (f : finitary α n) (i) :  f i ∈ f :=
+by { induction n with n IH; simp[has_mem.mem, finitary.mem],
+     { exact i.val.not_lt_zero i.property },
+     have := nat.lt_succ_iff_lt_or_eq.mp i.property, cases this,
+     {right, have := IH (λ (i : fin n), f ⟨i.val, nat.lt.step i.property⟩) ⟨i, this⟩, simp at*, refine this },
+     simp[←this] }
+
+protected def subset {n₁ n₂} (f₁ : finitary α n₁) (f₂ : finitary α n₂) := ∀ ⦃a : α⦄, a ∈ f₁ → a ∈ f₂
 
 end finitary
 
@@ -248,10 +267,6 @@ lemma vquotient_cons {s : setoid α} {n} (a : α) (as : dvector α n) : ᵥ⟦a 
 | (n+1) (a ::ᵈ as) (b ::ᵈ bs) := by simp[vquotient_cons, quotients_eq_iff as bs]
 
 end quotient
-
-def finitary (α β : Type u) : ℕ → Type u
-| 0     := β
-| (n+1) := α → finitary n
 
 section classical
 attribute [instance, priority 0] classical.prop_decidable
