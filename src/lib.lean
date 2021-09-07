@@ -117,7 +117,21 @@ def of_vec_of_fn : Π {n}, (fin n → α) → vector α n
 
 def Max [linear_order α] (d : α) : ∀ {n}, finitary α n → α
 | 0     _ := d
-| (n+1) f := max (f ⟨n, lt_add_one n⟩) (@Max n (λ i, f ↑i))
+| (n+1) f := max (f ⟨n, lt_add_one n⟩) (@Max n (λ i, f ⟨i, nat.lt.step i.property⟩))
+
+@[elab_as_eliminator]
+lemma finitary_induction (p : Π {n}, finitary α n → Prop)
+  (nil : ∀ f : finitary α 0, p f)
+  (cons : ∀ {n} (a : α) (f : finitary α n), p f → @p (n + 1) (λ i, if h : ↑i < n then f ⟨↑i, h⟩ else a)) :
+  ∀ {n} (f : finitary α n), p f :=
+by { intros n, induction n with n IH, refine nil, intros f,
+      let f' : finitary α n := λ i, f ⟨↑i, nat.lt.step i.property⟩,
+      have : f = (λ i, if h : ↑i < n then f' ⟨↑i, h⟩ else f n),
+      { funext i,
+        have : ↑i < n ∨ ↑i = n, exact nat.lt_succ_iff_lt_or_eq.mp i.property,
+        cases this; simp [this], { simp[f'], unfold_coes, simp },
+        { simp[←this] } },
+      rw [this], refine cons _ _ (IH _) }
 
 def Max_le [linear_order α] (d : α) {n} (v : finitary α n) (i) : v i ≤ Max d v :=
 begin

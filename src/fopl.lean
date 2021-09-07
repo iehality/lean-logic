@@ -107,9 +107,11 @@ namespace term
 
 instance : has_pow (term L) ℕ := ⟨λ t i, t.rew (λ x, #(x + i))⟩
 
-instance vec_pow {n : ℕ} : has_pow (fin n → term L) ℕ := ⟨λ v m, (λ i, (v i^m))⟩
+instance finitary_pow {n : ℕ} : has_pow (fin n → term L) ℕ := ⟨λ v m, (λ i, (v i^m))⟩
 
 lemma pow_eq (v : term L) (i : ℕ) : v^i = v.rew (λ x, #(x + i)) := rfl
+
+@[simp] lemma finitary_pow_app {n} (v : fin n → term L) (i : fin n) (m : ℕ) : (v^m) i = (v i)^m := rfl
 
 @[simp] lemma var_pow (n i : ℕ) : (#n : term L)^i = #(n + i) := rfl
 
