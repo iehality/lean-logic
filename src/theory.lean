@@ -9,17 +9,17 @@ def theory.sf (T : theory L) : theory L := {p | ∃ q : formula L, q ∈ T ∧ p
 
 prefix `⇑`:max := theory.sf
 
-@[simp, reducible] def theory.sf_itr (T : theory L) : ℕ → theory L
+@[reducible] def theory.sf_itr (T : theory L) : ℕ → theory L
 | 0     := T
 | (n+1) := ⇑(theory.sf_itr n)
 
 instance sf_itr_pow : has_pow (theory L) ℕ := ⟨theory.sf_itr⟩
 
 @[simp] lemma theory.sf_itr_0 (T : theory L) : T^0 = T := rfl
-@[simp] lemma theory.sf_itr_succ (T : theory L) (n) : T^(n+1) = ⇑(T^n) := rfl
+lemma theory.sf_itr_succ (T : theory L) (n) : T^(n+1) = ⇑(T^n) := rfl
 
 lemma theory.pow_add (T : theory L) (i j : ℕ) : (T^i)^j = T^(i + j) :=
-by { induction j with j IH; simp[←nat.add_one, ←add_assoc], simp[IH] }
+by { induction j with j IH; simp[theory.sf_itr_succ, ←nat.add_one, ←add_assoc], simp[IH] }
 
 inductive theory.add (T : theory L) (p : formula L) : theory L 
 | new : theory.add p
@@ -71,7 +71,7 @@ instance (n) : proper n (openform : theory L) :=
 lemma theory_sf_itr_eq {T : theory L} : ∀ {i : ℕ},
   T^i = {p | ∃ q : formula L, q ∈ T ∧ p = q^i}
 | 0      := by simp
-| (i+1)  := by { simp[@theory_sf_itr_eq i, theory.sf], ext p,
+| (i+1)  := by { simp[theory.sf_itr_succ, @theory_sf_itr_eq i, theory.sf], ext p,
   simp, refine ⟨λ h, _, λ h, _⟩,
   { rcases h with ⟨q1, ⟨q2, h, rfl⟩, rfl⟩, refine ⟨q2, h, by simp[formula.pow_add]⟩ },
   { rcases h with ⟨q, h, rfl⟩, refine ⟨q^i, ⟨q, h, rfl⟩, by simp[formula.pow_add]⟩ } }

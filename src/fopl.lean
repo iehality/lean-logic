@@ -18,6 +18,8 @@ inductive term (L : language.{u}) : Type u
 
 prefix `#`:max := term.var
 
+instance : inhabited (term L) := ⟨#0⟩
+
 inductive formula : Type u
 | app   : ∀ {n : ℕ}, L.pr n → (fin n → term L) → formula
 | equal : term L → term L → formula
@@ -29,6 +31,8 @@ infix ` =̇ `:90 := formula.equal
 infixr ` →̇ `:78 := formula.imply
 prefix `¬̇`:94 := formula.neg
 prefix `∀̇ `:90 := formula.fal
+
+instance : inhabited (formula L) := ⟨#0 =̇ #0⟩
 
 notation `theory `L:max := set (formula L)
 
@@ -54,8 +58,6 @@ notation `⊤̇` := formula.top
 
 @[irreducible] def formula.bot : formula L := ¬̇⊤̇
 notation `⊥̇` := formula.bot
-
-instance : inhabited (formula L) := ⟨⊥̇⟩
 
 @[simp] def nfal (p : formula L) : ℕ → formula L
 | 0     := p
@@ -361,7 +363,7 @@ by simp[sentence]
 
 @[simp] lemma conjunction_arity {n} {v : finitary (formula L) n} :
   (conjunction' n v).arity = finitary.Max 0 (λ i, (v i).arity) :=
-by { induction n with n IH; simp[finitary.Max, top, and, arity, term.arity], simp[IH], refl }
+by { induction n with n IH; simp[finitary.Max, top, and, arity, term.arity], simp[IH] }
 
 end formula
 

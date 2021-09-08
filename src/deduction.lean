@@ -448,7 +448,7 @@ begin
   induction P with p P IH; simp[conjunction],
   have lmm₁ : T ⊢ p ⩑ conjunction P →̇ p, from hyp_and_left (by simp),
   have lmm₂ : ∀ q, q ∈ P → T ⊢ p ⩑ conjunction P →̇ q, from λ q hq, hyp_and_right (IH hq),
-  refine ⟨lmm₁, lmm₂⟩
+  refine ⟨lmm₁, lmm₂⟩,
 end
 
 lemma conjunction_inclusion {P Q : list (formula L)} : 
@@ -688,7 +688,7 @@ by { have : T ⊢ t₁ =̇ t₂ →̇ t₂ =̇ t₃ →̇ t₁ =̇ t₃,
        exact this },
      exact (this.MP h₁).MP h₂ }
 
-private lemma e4' {n} (f : L.fn n) (v₁ v₂ : finitary (term L) n) :
+lemma e4' {n} (f : L.fn n) (v₁ v₂ : finitary (term L) n) :
   T ⊢ conjunction' n (λ i, v₁ i =̇ v₂ i) →̇ term.app f v₁ =̇ term.app f v₂ :=
 by { let s : ℕ → term L :=
        (λ x, if h₁ : x < n then v₁ ⟨x, h₁⟩ else
@@ -704,7 +704,7 @@ by { let s : ℕ → term L :=
      have := nfal_subst' (@provable.e4 _ T _ f) s,
      simp[eq_conj, eq_v₁, eq_v₂] at this, exact this }
 
-private lemma e5' {n} (r : L.pr n) (v₁ v₂ : finitary (term L) n) :
+lemma e5' {n} (r : L.pr n) (v₁ v₂ : finitary (term L) n) :
   T ⊢ conjunction' n (λ i, v₁ i =̇ v₂ i) →̇ formula.app r v₁ →̇ formula.app r v₂ :=
 by { let s : ℕ → term L :=
        (λ x, if h₁ : x < n then v₁ ⟨x, h₁⟩ else
@@ -732,7 +732,6 @@ lemma equal_rew_equal (s₁ s₂ : ℕ → term L) (e : ∀ n, T ⊢ s₁ n =̇ 
 lemma equal_fal_subst_equal (t : term L) {t₁ t₂} (h : T ⊢ t₁ =̇ t₂) :
   T ⊢ t.rew (t₁ ⌢ ι) =̇ t.rew (t₂ ⌢ ι) :=
 by { refine equal_rew_equal _ _ (λ n, _) t, { cases n; simp[concat, h] } }
-
 
 lemma equal_rew_iff {s₁ s₂ : ℕ → term L} (eqn : ∀ n, T ⊢ s₁ n =̇ s₂ n) (p : formula L) :
   T ⊢ p.rew s₁ ↔̇ p.rew s₂ :=

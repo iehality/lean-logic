@@ -105,11 +105,18 @@ lemma head_tail : ∀ {n} (v : dvector α (n+1)), v.head ::ᵈ v.tail = v
 
 end dvector
 
+namespace vector
+
+end vector
+
 def finitary (α : Type*) (n : ℕ) := fin n → α
 
 namespace finitary
 variables {α : Type*}
 open vector
+
+lemma zero_eq (f₁ f₂ : finitary α 0) : f₁ = f₂ :=
+funext (λ i, by { have := i.property, exfalso, exact i.val.not_lt_zero this })
 
 def of_vec_of_fn : Π {n}, (fin n → α) → vector α n
 | 0 f := nil
@@ -147,7 +154,6 @@ end
 @[simp] def Max_0 [linear_order α] (d : α) (v : finitary α 0) : Max d v = d :=
 by simp[Max]
 
-
 protected def mem : ∀ {n}, α → finitary α n → Prop
 | 0     a _ := false
 | (n+1) a f := a = f ⟨n, lt_add_one n⟩ ∨ @mem n a (λ i, f ⟨i.val, nat.lt.step i.property⟩)
@@ -162,6 +168,18 @@ by { induction n with n IH; simp[has_mem.mem, finitary.mem],
      simp[←this] }
 
 protected def subset {n₁ n₂} (f₁ : finitary α n₁) (f₂ : finitary α n₂) := ∀ ⦃a : α⦄, a ∈ f₁ → a ∈ f₂
+
+def cons {n} (f : finitary α n) (a : α) : finitary α (n + 1) := λ i, if h : ↑i < n then f ⟨i, h⟩ else a
+
+infixr ` ::ᶠ `:60  := finitary.cons
+
+@[simp] lemma cons_app0 {n} (f : finitary α n) (a : α) : (f ::ᶠ a) ⟨n, lt_add_one n⟩ = a := by simp[finitary.cons]
+
+@[simp] lemma cons_app1 {n} (f : finitary α n) (a : α) (i : fin n) : (f ::ᶠ a) ⟨i, nat.lt.step i.property⟩ = f i :=
+by { simp[finitary.cons], intros h, exfalso, exact nat.lt_le_antisymm i.property h }
+
+def nil : finitary α 0 := λ i, by { exfalso, exact i.val.not_lt_zero i.property }
+notation `fin[` l:(foldr `, ` (h t, finitary.cons t h) nil `]`) := l
 
 end finitary
 
@@ -279,6 +297,36 @@ lemma vquotient_cons {s : setoid α} {n} (a : α) (as : dvector α n) : ᵥ⟦a 
 @[simp] lemma quotients_eq_iff (s : setoid α) : ∀ {n} (v₁ v₂ : dvector α n), ᵥ⟦v₁⟧ = @mk_vec' _ _ s v₂  ↔ v₁ ≋ v₂
 | 0 dvector.nil dvector.nil := by simp
 | (n+1) (a ::ᵈ as) (b ::ᵈ bs) := by simp[vquotient_cons, quotients_eq_iff as bs]
+
+end quotient
+
+namespace quotient
+variables {α : Type u}
+
+protected def lift_on_finitary {s : setoid α} {φ} : ∀ {n : ℕ} (v : finitary (quotient s) n) (f : finitary α n → φ)
+  (h : ∀ v₁ v₂ : finitary α n, (∀ n, setoid.r (v₁ n) (v₂ n)) → f v₁ = f v₂), φ
+| 0       v f h := f finitary.nil
+| (n + 1) v f h :=
+    let f' : α → finitary α n → φ := λ t v, f (λ i, if h : ↑i < n then (v ⟨i, h⟩) else t) in
+    have h_0 : ∀ (a₁ a₂ : α) (eq : setoid.r a₁ a₂), f' a₁ = f' a₂,
+    { intros t₁ t₂ eq, funext v, simp[f'], refine h _ _ (λ i, _),
+      have : ↑i < n ∨ ↑i = n, exact nat.lt_succ_iff_lt_or_eq.mp i.property, cases this; simp[this],
+      { exact quotient.eq'.mp rfl }, refine eq },
+    have h_v : ∀ (a : α) (v₁ v₂ : finitary α n) (eqs : ∀ (n : fin n), setoid.r (v₁ n) (v₂ n)), f' a v₁ = f' a v₂,
+    { intros t v₁ v₂ hyp, refine h _ _ (λ i, _), 
+      have : ↑i < n ∨ ↑i = n, exact nat.lt_succ_iff_lt_or_eq.mp i.property, cases this; simp[this],
+      refine hyp _, exact quotient.eq'.mp rfl },
+    let f'_p : α → φ := λ t, lift_on_finitary (λ i, v ⟨i, nat.lt.step i.property⟩) (f' t) (h_v t) in
+    quotient.lift_on (v ⟨n, lt_add_one n⟩) f'_p (λ a₁ a₂ h, by { simp[f'_p], funext _, simp[h_0 a₁ a₂ h] })
+
+@[simp]
+protected lemma lift_on_finitary_eq {s : setoid α} {φ} {n} (v : finitary α n) (f : finitary α n → φ)
+  (h : ∀ v₁ v₂ : finitary α n, (∀ n, setoid.r (v₁ n) (v₂ n)) → f v₁ = f v₂) :
+  quotient.lift_on_finitary (λ x, ⟦v x⟧) f h = f v :=
+by { induction n with n IH; simp[quotient.lift_on_finitary], { simp [finitary.zero_eq finitary.nil v] },
+     simp[IH], congr, funext i,
+     have : ↑i < n ∨ ↑i = n, exact nat.lt_succ_iff_lt_or_eq.mp i.property, cases this; simp[this], simp[←this] }
+
 
 end quotient
 
