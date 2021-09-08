@@ -37,9 +37,6 @@ quotient (ult 𝔄 F: setoid (Π i, |𝔄 i|))
 
 def to_quotient {𝔄 : I → model L} {F : ultrafilter I} (u : Π i, |𝔄 i|) : Ult 𝔄 F := quotient.mk' u
 
-def to_quotients {𝔄 : I → model L} {F : ultrafilter I} {n} (u : dvector (Π i, |𝔄 i|) n) : dvector (Ult 𝔄 F) n :=
-quotient.mk_vec' u
-
 notation `⟦`u`⟧*` :max := to_quotient u
 
 instance : inhabited (Ult 𝔄 F) := ⟨⟦λ i, (𝔄 i).one⟧*⟩
@@ -72,61 +69,63 @@ protected lemma lift_on₂_eq {φ} (u₁ u₂ : Π i, |𝔄 i|) (f : (Π i, |�
   (h : ∀ t₁ t₂ u₁ u₂, (t₁ ~[F] u₁) → (t₂ ~[F] u₂) → f t₁ t₂ = f u₁ u₂) :
   fopl.Ult.lift_on₂ F ⟦u₁⟧* ⟦u₂⟧* f h = f u₁ u₂ := rfl
 
+@[elab_as_eliminator, reducible]
+protected def lift_on_finitary {φ} {n : ℕ} (v : finitary (Ult 𝔄 F) n) (f : finitary (Π i, |𝔄 i|) n → φ)
+  (h : ∀ v₁ v₂ : finitary (Π i, |𝔄 i|) n, (∀ n, (v₁ n) ~[F] (v₂ n)) → f v₁ = f v₂) : φ :=
+quotient.lift_on_finitary v f h 
+
+@[simp]
+protected lemma lift_on_finitary_eq {φ} {n} (v : finitary (Π i, |𝔄 i|) n) (f : finitary (Π i, |𝔄 i|) n → φ)
+  (h : ∀ v₁ v₂ : finitary (Π i, |𝔄 i|) n, (∀ n, (v₁ n) ~[F] (v₂ n)) → f v₁ = f v₂) :
+  fopl.Ult.lift_on_finitary F (λ x, ⟦v x⟧*) f h = f v :=
+quotient.lift_on_finitary_eq v f h
+
 @[simp] lemma of_eq_of {u₁ u₂ : Π i, |𝔄 i|} : (⟦u₁⟧* : Ult 𝔄 F) = ⟦u₂⟧* ↔ u₁ ~[F] u₂ :=
 by simp[to_quotient, quotient.eq']
 
-@[elab_as_eliminator, reducible]
-protected def lift_on_vec {φ} {n} (d : dvector (Ult 𝔄 F) n) (f : dvector (Π i, |𝔄 i|) n → φ)
-  (h : ∀ (v u : dvector (Π i, |𝔄 i|) n), v ≋ u → f v = f u) : φ :=
-quotient.lift_on_vec d f h
+lemma equivs_mem {n} {v₁ v₂ : finitary (Π i, |𝔄 i|) n} (h : ∀ (x : fin n), {i : I | v₁ x i = v₂ x i} ∈ F) :
+  {i | (λ x, v₁ x i) = (λ x, v₂ x i)} ∈ F := 
+begin
+  induction n with n IH,
+  { have : {i : I | (λ x, v₁ x i) = (λ x, v₂ x i)} = set.univ,
+    { ext i, simp }, rw this, exact F.univ_sets },
+  { have ss : {i | v₁.head i = v₂.head i} ∩ {i | (λ x, v₁.tail x i) = (λ x, v₂.tail x i)} ⊆ {i : I | (λ x, v₁ x i) = (λ x, v₂ x i)},
+    { intros i hi, rw [←finitary.tail_cons_head v₁, ←finitary.tail_cons_head v₂], simp at*,
+      funext x, cases fin.cases' x with h h,
+      { rcases h with ⟨x', rfl⟩, simp, exact (@congr_fun _ _ _ _ hi.2) x' },
+      { rcases h with rfl, simp[hi.1] } },
+    have : {i | v₁.head i = v₂.head i} ∩ {i | (λ x, v₁.tail x i) = (λ x, v₂.tail x i)} ∈ F,
+      from (filter.inter_mem_sets (h _) (@IH v₁.tail v₂.tail (λ x, h _))),
+    refine filter.mem_sets_of_superset this ss }
+end
 
-@[simp]
-protected lemma lift_on_vec_eq {φ} {n} (u : dvector (Π i, |𝔄 i|) n) (f : dvector (Π i, |𝔄 i|) n → φ)
-  (h : ∀ (v u : dvector (Π i, |𝔄 i|) n), v ≋ u → f v = f u) :
-fopl.Ult.lift_on_vec F ᵥ⟦u⟧ f h = f u := quotient.lift_on_vec_eq u f h
-
-@[simp]
-protected lemma lift_on_nil_eq {φ} (f : dvector (Π i, |𝔄 i|) 0 → φ)
-  (h : ∀ (v u : dvector (Π i, |𝔄 i|) 0), v ≋ u → f v = f u) :
-fopl.Ult.lift_on_vec F dvector.nil f h = f dvector.nil := quotient.lift_on_vec_eq _ f h 
-
-#check quotient.quo_to_dvec
-
-lemma equivs_mem : ∀ {n} {u₁ u₂ : dvector (Π i, |𝔄 i|) n},
-  u₁ ≋ u₂ → {i | u₁.app i = u₂.app i} ∈ F
-| 0     dvector.nil dvector.nil _ := by { simp, exact F.univ_sets }
-| (n+1) (u₁ :: us₁) (u₂ :: us₂) h := by { simp at*,
-    have : {i | u₁ i = u₂ i} ∩ {i | us₁.app i = us₂.app i} ⊆ {i | u₁ i = u₂ i ∧ us₁.app i = us₂.app i},
-    { intros i hi, simp* at* },
-    refine filter.mem_sets_of_superset (filter.inter_mem_sets h.1 (equivs_mem h.2)) this }
-
-lemma fn_equiv {n} {u₁ u₂ : dvector (Π i, |𝔄 i|) n} (h : u₁ ≋ u₂) (f : L.fn n) :
-  (λ i, (𝔄 i).fn f (u₁.app i)) ~[F] (λ i, (𝔄 i).fn f (u₂.app i)) :=
+lemma fn_equiv {n} {v₁ v₂ : finitary (Π i, |𝔄 i|) n} (h : ∀ x, v₁ x ~[F] v₂ x) (f : L.fn n) :
+  (λ i, (𝔄 i).fn f (λ x, v₁ x i)) ~[F] (λ i, (𝔄 i).fn f (λ x, v₂ x i)) :=
 begin
   simp[uequiv] at*,
-  have : {i | u₁.app i = u₂.app i} ⊆ {i | (𝔄 i).fn f (u₁.app i) = (𝔄 i).fn f (u₂.app i)},
+  have : {i | (λ x, v₁ x i) = (λ x, v₂ x i)} ⊆ {i | (𝔄 i).fn f (λ x, v₁ x i) = (𝔄 i).fn f (λ x, v₂ x i)},
   { intros i hi, simp* at* },
   exact F.sets_of_superset (equivs_mem F h) this
 end
 
-lemma pr_equiv : ∀ {n} {u₁ u₂ : dvector (Π i, |𝔄 i|) n} (h : u₁ ≋ u₂) (p : L.pr n),
-  {i | (𝔄 i).pr p (u₁.app i)} ∈ F ↔ {i | (𝔄 i).pr p (u₂.app i)} ∈ F :=
+lemma pr_equiv : ∀ {n} {v₁ v₂ : finitary (Π i, |𝔄 i|) n} (h : ∀ x, v₁ x ~[F] v₂ x) (p : L.pr n),
+  {i | (𝔄 i).pr p (λ x, v₁ x i)} ∈ F ↔ {i | (𝔄 i).pr p (λ x, v₂ x i)} ∈ F :=
 begin
-  suffices : ∀ {n} {u₁ u₂ : dvector (Π i, |𝔄 i|) n} (h : u₁ ≋ u₂) (p : L.pr n),
-  {i | (𝔄 i).pr p (u₁.app i)} ∈ F → {i | (𝔄 i).pr p (u₂.app i)} ∈ F,
-  { intros n u₁ u₂ eqn p, refine ⟨this eqn p, this (@setoid.vec_r_symm _ (ult _ _) _ _ _ eqn) _⟩ },
-  intros n u₁ u₂ eqn p h,
-  have : {i | (𝔄 i).pr p (u₁.app i)} ∩ {i | u₁.app i = u₂.app i} ⊆ {i | (𝔄 i).pr p (u₂.app i)},
+  suffices : ∀ {n} {v₁ v₂ : finitary (Π i, |𝔄 i|) n} (h : ∀ x, v₁ x ~[F] v₂ x) (p : L.pr n),
+  {i | (𝔄 i).pr p (λ x, v₁ x i)} ∈ F → {i | (𝔄 i).pr p (λ x, v₂ x i)} ∈ F,
+  { intros n v₁ v₂ eqn p, refine ⟨this eqn p, this (λ x, uequiv_symm _ (eqn x)) p⟩ },
+  intros n v₁ v₂ eqn p h,
+  have : {i | (𝔄 i).pr p (λ x, v₁ x i)} ∩ {i | (λ x, v₁ x i) = (λ x, v₂ x i)} ⊆ {i | (𝔄 i).pr p (λ x, v₂ x i)},
   { intros i hi, simp* at*, simp[←hi.2], exact hi.1 },
   refine filter.mem_sets_of_superset (filter.inter_mem_sets h (equivs_mem _ eqn)) this
 end
 
-def product_fn (n) (f : L.fn n) : dvector (Ult 𝔄 F) n → Ult 𝔄 F :=
-λ v, fopl.Ult.lift_on_vec F v (λ u, (⟦λ i, (𝔄 i).fn f (u.app i)⟧* : Ult 𝔄 F)) $ λ u₁ u₂ eqn,
+def product_fn (n) (f : L.fn n) : finitary (Ult 𝔄 F) n → Ult 𝔄 F :=
+λ v, fopl.Ult.lift_on_finitary F v (λ v, (⟦λ i, (𝔄 i).fn f (λ x, v x i)⟧* : Ult 𝔄 F)) $ λ u₁ u₂ eqn,
 by { simp, exact fn_equiv F eqn f }
 
-def product_pr (n) (p : L.pr n) : dvector (Ult 𝔄 F) n → Prop :=
-λ v, fopl.Ult.lift_on_vec F v (λ u, {i | (𝔄 i).pr p (u.app i)} ∈ F) $ λ u₁ u₂ eqn,
+def product_pr (n) (p : L.pr n) : finitary (Ult 𝔄 F) n → Prop :=
+λ v, fopl.Ult.lift_on_finitary F v (λ v, {i | (𝔄 i).pr p (λ x, v x i)} ∈ F) $ λ u₁ u₂ eqn,
 by { simp, exact pr_equiv F eqn p }
 
 def product (𝔄 : I → model L) (F : ultrafilter I) : model L := ⟨Ult 𝔄 F, default _, product_fn F, product_pr F⟩
@@ -152,38 +151,25 @@ lemma model_fn_eq {n} (f : L.fn n) : (ℿ 𝔄 ⫽ F).fn f = product_fn F _ f :=
 
 lemma model_pr_eq {n} (r : L.pr n) : (ℿ 𝔄 ⫽ F).pr r = product_pr F _ r := rfl
 
-lemma models_pr_iff_lmm : ∀ {n} (v : vecterm L n) (e : ∀ i, ℕ → |𝔄 i|),
-  (@vecterm.val _ (ℿ 𝔄 ⫽ F) (λ n, ⟦λ i, e i n⟧*) _ v) = ᵥ⟦dvector.partition (λ i, @vecterm.val _ (𝔄 i) (λ n, e i n) _ v)⟧
-| _ (vecterm.cons a v) e := by {
-  have IH₁ := models_pr_iff_lmm v e, have IH₂ := models_pr_iff_lmm a e,
-  simp at IH₁ IH₂, simp[quotient.vquotient_cons, IH₁, IH₂], refine ⟨by refl, by refl⟩ }
-| _ (#n)              _ := by { simp[quotient.vquotient_cons], refine ⟨by refl, by refl⟩ } 
-| _ (vecterm.const c) _ := by { simp[quotient.vquotient_cons], refine ⟨by refl, by refl⟩ }
-| _ (vecterm.app f v) _ := by { simp[model_fn_eq, product_fn, models_pr_iff_lmm v, dvector.head_tail], refl }
+lemma models_pr_iff_lmm : ∀ (t : term L) (e : ∀ i, ℕ → |𝔄 i|),
+  (@term.val _ (ℿ 𝔄 ⫽ F) (λ n, ⟦λ i, e i n⟧*) t) = ⟦λ i, @term.val _ (𝔄 i) (λ n, e i n) t⟧*
+| (#n)                _ := by simp 
+| (@term.app _ n f v) e :=
+  by { simp[model_fn_eq, product_fn],
+       let v' : finitary (Π i, |𝔄 i|) n := λ x i, (v x).val (e i),
+       have : (λ x, @term.val _ (ℿ 𝔄 ⫽ F) (λ n, ⟦(λ i, e i n)⟧*) (v x)) = λ x, ⟦v' x⟧*,
+       { funext x, simp[v', models_pr_iff_lmm (v x)] },
+       simp[this] }
 
-lemma models_pr_iff {n} (r : L.pr (n + 1)) (v : vecterm L n) (e : ∀ i, ℕ → |𝔄 i|) :
-  (ℿ 𝔄 ⫽ F).pr r (v.val (λ n, ⟦(λ i, e i n)⟧*)) ↔ {i | (𝔄 i).pr r (v.val (e i))} ∈ F :=
-begin
-  have : (@vecterm.val _ (ℿ 𝔄 ⫽ F) (λ n, ⟦λ i, e i n⟧*) _ v) = ᵥ⟦dvector.partition (λ i, @vecterm.val _ (𝔄 i) (λ n, e i n) _ v)⟧,
-  from models_pr_iff_lmm v e,
-  simp[this, model_pr_eq, product_pr, dvector.head_tail]
-end
-
-lemma vecterm_eq_iff : ∀ {n} (v₁ v₂ : vecterm L n) (e : ∀ i, ℕ → |𝔄 i|),
-  @vecterm.val _ (ℿ 𝔄 ⫽ F) (λ n, ⟦(λ i, e i n)⟧*) _ v₁ = @vecterm.val _ (ℿ 𝔄 ⫽ F) (λ n, ⟦(λ i, e i n)⟧*) _ v₂ ↔
-  {i | v₁.val (e i) = v₂.val (e i)} ∈ F
-| (n+1) (vecterm.cons t₁ v₁) (vecterm.cons t₂ v₂) e :=
-  by { simp[vecterm_eq_iff t₁, vecterm_eq_iff t₂, vecterm_eq_iff v₁, vecterm_eq_iff v₂],
-       exact filter.eventually_and.symm }
-| 0     t₁                   t₂                   e :=
-  by { cases t₁; cases t₂; simp[model_fn_eq, product_fn, models_pr_iff_lmm]; try { refl } }
+lemma models_pr_iff {n} (r : L.pr n) (v : finitary (term L) n) (e : ∀ i, ℕ → |𝔄 i|) :
+  (ℿ 𝔄 ⫽ F).pr r (λ x, (v x).val (λ n, ⟦λ i, e i n⟧*)) ↔ {i | (𝔄 i).pr r (λ x, (v x).val (e i))} ∈ F :=
+by simp[models_pr_iff_lmm, model_pr_eq, product_pr]
 
 -- Łoś's theorem
 theorem fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|),
   ℿ 𝔄 ⫽ F ⊧[λ n, ⟦λ i, e i n⟧*] p ↔ {i | 𝔄 i ⊧[e i] p} ∈ F
-| (formula.const p) e := by simp; refl
 | (formula.app p v) e := models_pr_iff p _ _
-| (t₁ =̇ t₂)      e := by simp[vecterm_eq_iff]
+| (t₁ =̇ t₂)      e := by simp[models_pr_iff_lmm]; refl
 | (p →̇ q)       e := by { simp[fundamental_param p, fundamental_param q],
     show {i | p.val (e i)} ∈ F → {i | q.val (e i)} ∈ F ↔ {i | p.val (e i) → q.val (e i)} ∈ F,
     split,
@@ -219,13 +205,13 @@ theorem fundamental {p : formula L} :
   ℿ 𝔄 ⫽ F ⊧ p ↔ {i | 𝔄 i ⊧ p} ∈ F :=
 begin
   calc
-    ℿ 𝔄 ⫽ F ⊧ p ↔ ℿ 𝔄 ⫽ F ⊧ nfal p p.arity : nfal_models_iff
+    ℿ 𝔄 ⫽ F ⊧ p ↔ ℿ 𝔄 ⫽ F ⊧ nfal p p.arity : nfal_models_iff.symm
     ...         ↔ {i | 𝔄 i ⊧ nfal p p.arity} ∈ F :
       by { have := fundamental_param (nfal p p.arity) (λ i n, default (|𝔄 i|)),
            simp[eval_sentence_iff (formula.nfal_sentence p)] at this, exact this }
     ...         ↔ {i | 𝔄 i ⊧ p} ∈ F :
       by { have : {i | 𝔄 i ⊧ nfal p p.arity} = {i | 𝔄 i ⊧ p},
-           { ext i, simp, refine nfal_models_iff.symm },
+           { ext i, simp, refine nfal_models_iff },
            simp[this] }
 end
 

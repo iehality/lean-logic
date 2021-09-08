@@ -51,9 +51,6 @@ protected lemma lift_on₂_eq {φ} (t u : term L) (f : term L → term L → φ)
   (h : ∀ t₁ t₂ u₁ u₂, (T^i ⊢ t₁ =̇ u₁) → (T^i ⊢ t₂ =̇ u₂) → f t₁ t₂ = f u₁ u₂) :
   fopl.Herbrand.lift_on₂ ⟦t⟧ᴴ ⟦u⟧ᴴ f h = f t u := rfl
 
-lemma of_eq_of {t u : term L} : (⟦t⟧ᴴ : Herbrand T i) = ⟦u⟧ᴴ ↔ (T^i ⊢ t =̇ u) :=
-by simp[term.quo, term.equiv, quotient.eq']
-
 protected def lift_on_finitary {φ} {n : ℕ} (v : finitary (Herbrand T i) n) (f : finitary (term L) n → φ)
   (h : ∀ v₁ v₂ : finitary (term L) n, (∀ n, T^i ⊢ (v₁ n) =̇ (v₂ n)) → f v₁ = f v₂) : φ :=
 quotient.lift_on_finitary v f h 
@@ -64,11 +61,8 @@ protected lemma lift_on_finitary_eq {φ} {n} (v : finitary (term L) n) (f : fini
   fopl.Herbrand.lift_on_finitary (λ x, (⟦v x⟧ᴴ : Herbrand T i)) f h = f v :=
 quotient.lift_on_finitary_eq v f h
 
-@[simp]
-protected lemma lift_on_finitary_eq₁ {φ} (t : term L) (f : finitary (term L) 1 → φ)
-  (h : ∀ v₁ v₂ : finitary (term L) 1, (∀ n, T^i ⊢ (v₁ n) =̇ (v₂ n)) → f v₁ = f v₂) :
-  fopl.Herbrand.lift_on_finitary fin[(⟦t⟧ᴴ : Herbrand T i)] f h = f fin[t] :=
-quotient.lift_on_finitary_eq fin[t] f h
+lemma of_eq_of {t u : term L} : (⟦t⟧ᴴ : Herbrand T i) = ⟦u⟧ᴴ ↔ (T^i ⊢ t =̇ u) :=
+by simp[term.quo, term.equiv, quotient.eq']
 
 def symbol.fn {n} (f : L.fn n) : finitary (Herbrand T i) n → Herbrand T i :=
 λ v, fopl.Herbrand.lift_on_finitary v (λ u : finitary (term L) n, ⟦term.app f u⟧ᴴ) 

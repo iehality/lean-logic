@@ -111,6 +111,18 @@ end vector
 
 def finitary (α : Type*) (n : ℕ) := fin n → α
 
+namespace fin
+#check nat.cases
+
+def add' {n} (i : fin n) : fin (n + 1) := ⟨i, nat.lt.step i.property⟩
+
+lemma cases' {n} (i : fin (n + 1)) : (∃ i' : fin n, i = add' i') ∨ i = ⟨n, lt_add_one n⟩ :=
+by { have : ↑i < n ∨ ↑i = n, exact nat.lt_succ_iff_lt_or_eq.mp i.property, cases this,
+     { left, refine ⟨⟨i, this⟩, fin.eq_of_veq _⟩, simp[add'] },
+     { right, apply fin.eq_of_veq, simp[this] } }
+
+end fin
+
 namespace finitary
 variables {α : Type*}
 open vector
@@ -175,11 +187,21 @@ infixr ` ::ᶠ `:60  := finitary.cons
 
 @[simp] lemma cons_app0 {n} (f : finitary α n) (a : α) : (f ::ᶠ a) ⟨n, lt_add_one n⟩ = a := by simp[finitary.cons]
 
-@[simp] lemma cons_app1 {n} (f : finitary α n) (a : α) (i : fin n) : (f ::ᶠ a) ⟨i, nat.lt.step i.property⟩ = f i :=
-by { simp[finitary.cons], intros h, exfalso, exact nat.lt_le_antisymm i.property h }
+@[simp] lemma cons_app1 {n} (f : finitary α n) (a : α) (i : fin n) : (f ::ᶠ a) i.add' = f i :=
+by { simp[finitary.cons, fin.add'], intros h, exfalso, exact nat.lt_le_antisymm i.property h }
 
 def nil : finitary α 0 := λ i, by { exfalso, exact i.val.not_lt_zero i.property }
 notation `fin[` l:(foldr `, ` (h t, finitary.cons t h) nil `]`) := l
+
+def tail {n} (f : finitary α (n + 1)) : finitary α n := λ i, f ⟨i, nat.lt.step i.property⟩
+def head {n} (f : finitary α (n + 1)) : α := f ⟨n, lt_add_one n⟩
+
+lemma tail_cons_head {n} (f : finitary α (n + 1)) : f.tail ::ᶠ f.head = f :=
+funext (λ i, by { simp[cons, tail, head],
+  intros h,
+  congr, apply fin.eq_of_veq, simp,
+  have : ↑i ≤ n, from fin.is_le i,
+  exact le_antisymm h this })
 
 end finitary
 
