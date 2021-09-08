@@ -69,6 +69,9 @@ by simp[formula.ex, models, rew_val_iff]
 @[simp] lemma models_and {p q} {e : ℕ → |M|} : (p ⩑ q).val e ↔ (p.val e ∧ q.val e) :=
 by simp[formula.and]
 
+@[simp] lemma models_or {p q} {e : ℕ → |M|} : (p ⩒ q).val e ↔ (p.val e ∨ q.val e) :=
+by {simp[formula.or], exact or_iff_not_imp_left.symm }
+
 @[simp] lemma models_iff {p q} {e : ℕ → |M|} : (p ↔̇ q).val e ↔ (p.val e ↔ q.val e) :=
 by simp[formula.iff]; exact iff_def.symm
 

@@ -4,14 +4,14 @@ namespace fopl
 
 namespace arithmetic
 
-@[simp] def nat_fn : ∀ n, LA.fn n → dvector ℕ n → ℕ
-| 0 langf.zero nil             := 0
-| 1 langf.succ (n :: nil)      := n + 1
-| 2 langf.add  (n :: m :: nil) := n + m
-| 2 langf.mult (n :: m :: nil) := n * m
+@[simp] def nat_fn : ∀ n, LA.fn n → finitary ℕ n → ℕ
+| 0 langf.zero _ := 0
+| 1 langf.succ v := v 0 + 1
+| 2 langf.add  v := v 0 + v 1
+| 2 langf.mul  v := v 0 * v 1
 
-@[simp] def nat_pr : ∀ n, LA.pr n → dvector ℕ n → Prop
-| 2 langp.le  (n :: m :: nil) := n ≤ m
+@[simp] def nat_pr : ∀ n, LA.pr n → finitary ℕ n → Prop
+| 2 langp.le v := v 0 ≤ v 1
 
 def Num : model LA := ⟨ℕ, 0, nat_fn, nat_pr⟩
 notation `𝒩` := Num
@@ -24,12 +24,13 @@ notation `𝒩` := Num
 
 lemma N_models_Q : 𝒩 ⊧ₜₕ 𝐐 := λ p hyp_p e,
 begin
-  cases hyp_p; simp,
+  cases hyp_p; simp[symbol.zero, symbol.succ, symbol.add, symbol.mul, finitary.cons],
   { exact λ _, of_to_bool_ff rfl},
   { exact λ _ _, nat.succ.inj },
-  { exact λ _, nat.exists_eq_succ_of_ne_zero },
-  { exact λ n m, by simp[add_assoc] },
-  { exact λ n m, nat.mul_succ m n },
+  { intros n, cases n,
+    { left, refl }, { right, refine ⟨n, rfl⟩ } },
+  { intros n, simp[add_assoc] },
+  { intros n m, exact nat.mul_succ m n },
   { intros n m, split; intros h,
     refine ⟨(n - m : ℕ), nat.add_sub_of_le h⟩,
     rcases h with ⟨_, h⟩, exact nat.le.intro h }
@@ -114,14 +115,14 @@ namespace noncomm
 | (int₂ i) (int₁ j)     := int₂ (i * j)
 | (int₂ i) (int₂ j)     := int₂ (i * j)
 
-@[simp] def Noncomm_fn : ∀ n, LA.fn n → dvector noncomm n → noncomm
-| 0 langf.zero nil             := nat₀ 0
-| 1 langf.succ (n :: nil)      := n.succ
-| 2 langf.add  (n :: m :: nil) := n.add m
-| 2 langf.mult (n :: m :: nil) := n.mul m
+@[simp] def Noncomm_fn : ∀ n, LA.fn n → finitary noncomm n → noncomm
+| 0 langf.zero _ := nat₀ 0
+| 1 langf.succ v := (v 0).succ
+| 2 langf.add  v := (v 0).add (v 1)
+| 2 langf.mul  v := (v 0).mul (v 1)
 
-@[simp] def Noncomm_pr : ∀ n, LA.pr n → dvector noncomm n → Prop
-| 2 langp.le  (n :: m :: nil) := ∃ d, n.add d = m
+@[simp] def Noncomm_pr : ∀ n, LA.pr n → finitary noncomm n → Prop
+| 2 langp.le  v := ∃ d, (v 0).add d = v 1
 
 def Noncomm : model LA := ⟨noncomm, nat₀ 0, Noncomm_fn, Noncomm_pr⟩
 
@@ -133,7 +134,7 @@ def Noncomm : model LA := ⟨noncomm, nat₀ 0, Noncomm_fn, Noncomm_pr⟩
 
 theorem Noncomm_models_Q : Noncomm ⊧ₜₕ 𝐐 := λ p hyp_p e,
 begin
-  cases hyp_p; simp[Noncomm_fn],
+  cases hyp_p; simp[Noncomm_fn ,symbol.zero, symbol.succ, symbol.add, symbol.mul, finitary.cons],
   { intros d, cases d; simp, exact of_to_bool_ff rfl },
   { intros d₁ d₂, cases d₁; cases d₂; simp[sum.inl.inj_iff, sum.inr.inj_iff] },
   { intros d, cases d; simp,
@@ -150,7 +151,7 @@ end
 theorem refutable_comm_add : ¬𝐐 ⊢ ∀̇ ∀̇ (#0 +̇ #1 =̇ #1 +̇ #0) := λ h,
 by { have : Noncomm ⊧ ∀̇ ∀̇ (#0 +̇ #1 =̇ #1 +̇ #0), from soundness h Noncomm_models_Q,
      have : ∀ n m, add m n = add n m,
-     { have := this (λ x, default _), simp at this, exact this },
+     { have := this (λ x, default _), simp[symbol.add] at this, exact this },
      have := this (int₁ 0) (int₂ 0),
      simp at this, exact this }
 
