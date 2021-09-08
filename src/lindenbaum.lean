@@ -101,6 +101,12 @@ def pow : Herbrand T i → Herbrand T (i+1) :=
 λ t₁ t₂ hyp, by { simp[Herbrand.of_eq_of, -provable.iff, ←theory.pow_add] at*,
   rw [show (t₁^1) =̇ (t₂^1) = (t₁ =̇ t₂)^1, by simp, provable.sf_itr_sf_itr], exact hyp }
 
+lemma sentence_pow {t : term L} (a : t.arity = 0) :
+  (⟦t⟧ᴴ : Herbrand T i).pow = ⟦t⟧ᴴ := by simp[pow, Herbrand.of_eq_of, a]
+
+@[simp] lemma constant_pow (c : L.fn 0) :
+  (function₀ T i c : Herbrand T i).pow = function₀ T (i + 1) c := sentence_pow (by simp)
+
 @[simp] def sf_simp (t : term L) (j : ℕ) : (⟦t⟧ᴴ : Herbrand T i).pow = ⟦t^1⟧ᴴ := rfl
 
 def var (n : ℕ) : Herbrand T i := ⟦#n⟧ᴴ
@@ -477,6 +483,9 @@ def pow : Lindenbaum T i → Lindenbaum T (i+1) :=
 λ p₁ p₂ hyp, by { simp[contrapose, -provable.iff, Lindenbaum.of_eq_of, ←theory.pow_add] at*,
   exact (sf_itr_sf_itr _ _).mpr hyp }
 
+lemma sentence_pow {p : formula L} (a : sentence p) :
+  (⟦p⟧ᴸ : Lindenbaum T i).pow = ⟦p⟧ᴸ := by simp[pow, Herbrand.of_eq_of, a]
+
 @[simp] lemma pow_compl (l : Lindenbaum T i) : pow (lᶜ) = (pow l)ᶜ :=
 by { induction l using fopl.Lindenbaum.ind_on, simp[pow, has_compl.compl] }
 
@@ -718,7 +727,7 @@ theorem provable_imp_iff0 {p q} : T ⊢ p →̇ q ↔ (⟦p⟧ᴸ : Lindenbaum T
 lemma subst_eq [proper 0 T] (p : formula L) (t : term L) :
   (⟦p.rew ι[i ⇝ t]⟧ᴸ : Lindenbaum T i) = ⟦t⟧ᴴ ⊳ ⟦p⟧ᴸ := rfl
 
-lemma pow_eq (p : formula L) (j : ℕ) :
+lemma pow_eq (p : formula L) :
   (⟦p^1⟧ᴸ : Lindenbaum T (i + 1)) = ⟦p⟧ᴸ.pow := rfl
 @[simp] lemma provable_equal_eq {t₁ t₂} : (⟦t₁ =̇ t₂⟧ᴸ : Lindenbaum T i) = ⟦t₁⟧ᴴ ∥ ⟦t₂⟧ᴴ := rfl
 @[simp] theorem provable_predicate₁_iff {p : L.pr 1} {t} : (⟦formula.app p fin[t]⟧ᴸ : Lindenbaum T i) = predicate₁ p ⟦t⟧ᴴ := rfl

@@ -8,11 +8,11 @@ inductive langf : ℕ → Type
 | zero : langf 0
 | succ : langf 1
 | add  : langf 2
-| mult : langf 2
+| mul : langf 2
 notation `*Z` := langf.zero
 notation `*S` := langf.succ
 notation `*+` := langf.add
-notation `*×` := langf.mult
+notation `*×` := langf.mul
 
 inductive langp : ℕ → Type
 | le : langp 2
@@ -20,19 +20,19 @@ notation `*≤` := langp.le
 
 def LA : language := ⟨langf, langp⟩
 
-@[reducible] def symbol.zero : term LA := vecterm.const *Z
+def symbol.zero : term LA := term.app *Z finitary.nil
 notation `Ż` := symbol.zero
 
-@[reducible] def symbol.succ : term LA → term LA := λ x, vecterm.app *S x
+def symbol.succ : term LA → term LA := λ x, term.app *S fin[x]
 prefix `Ṡ `:max := symbol.succ
 
-@[reducible] def symbol.add : term LA → term LA → term LA := λ x y, vecterm.app *+ (x ::: y)
+def symbol.add : term LA → term LA → term LA := λ x y, term.app *+ fin[x, y]
 infixl ` +̇ `:92 := symbol.add 
 
-@[reducible] def symbol.mult : term LA → term LA → term LA := λ x y, vecterm.app *× (x ::: y)
-infixl ` ×̇ `:94 := symbol.mult
+def symbol.mul : term LA → term LA → term LA := λ x y, term.app *× fin[x, y]
+infixl ` ×̇ `:94 := symbol.mul
 
-@[reducible] def symbol.le : term LA → term LA → formula LA := λ x y, formula.app *≤ (x ::: y)
+def symbol.le : term LA → term LA → formula LA := λ x y, formula.app *≤ fin[x, y]
 infixl ` ≤̇ `:90 := symbol.le
 
 def symbol.lt (t u : term LA) : formula LA := ¬̇(u ≤̇ t)
@@ -57,20 +57,24 @@ local notation n`˙`:1200 := numeral n
 
 lemma numeral_arity0 : ∀ n, (n˙).arity = 0
 | 0     := rfl
-| (n+1) := by simp[numeral, vecterm.arity, @numeral_arity0 n]
+| (n+1) := by simp[symbol.succ, numeral, @numeral_arity0 n, finitary.Max, finitary.cons]
 
-@[elab_as_eliminator] 
+@[elab_as_eliminator]
 lemma LA_ind {C : term LA → Sort*}
   (var  : ∀ n, C(#n))
   (zero : C (Ż))
   (succ : ∀ {t₁}, C t₁ → C (Ṡ t₁))
   (add  : ∀ {t₁ t₂}, C t₁ → C t₂ → C (t₁ +̇ t₂)) 
-  (mul  : ∀ {t₁ t₂}, C t₁ → C t₂ → C (t₁ ×̇ t₂)) : ∀ t, C t
-| (#n)                                  := var n
-| (vecterm.const *Z)                    := zero
-| (vecterm.app *S t)                    := succ (LA_ind t)
-| (vecterm.app *+ (vecterm.cons t₁ t₂)) := add (LA_ind t₁) (LA_ind t₂)
-| (vecterm.app *× (vecterm.cons t₁ t₂)) := mul (LA_ind t₁) (LA_ind t₂)
+  (mul  : ∀ {t₁ t₂}, C t₁ → C t₂ → C (t₁ ×̇ t₂)) : ∀ t, C t := λ t,
+begin
+  induction t with n n f v IH,
+  { exact var _ },
+  cases f,
+  case langf.zero { simp[finitary.zero_eq v], exact zero },
+  case langf.succ { rw (show v = fin[v 0], by simp), exact succ (IH 0) },
+  case langf.add  { rw (show v = fin[v 0, v 1], by simp), exact add (IH 0) (IH 1) },
+  case langf.mul  { rw (show v = fin[v 0, v 1], by simp), exact mul (IH 0) (IH 1) }
+end
 
 @[elab_as_eliminator] 
 theorem LA_ind_on {C : term LA → Sort*} (t : term LA)
@@ -81,6 +85,20 @@ theorem LA_ind_on {C : term LA → Sort*} (t : term LA)
   (mul  : ∀ {t₁ t₂}, C t₁ → C t₂ → C (t₁ ×̇ t₂)) : C t :=
 LA_ind var zero @succ @add @mul t
 
+@[simp] lemma zero_rew (s : ℕ → term LA) : Ż.rew s = Ż := by simp[symbol.zero]
+
+@[simp] lemma succ_rew (t : term LA) (s : ℕ → term LA) : (Ṡ t).rew s = Ṡ (t.rew s) :=
+by simp[symbol.succ]
+
+@[simp] lemma add_rew (t₁ t₂ : term LA) (s : ℕ → term LA) : (t₁ +̇ t₂).rew s = (t₁.rew s) +̇ (t₂.rew s) :=
+by simp[symbol.add]
+
+@[simp] lemma mul_rew (t₁ t₂ : term LA) (s : ℕ → term LA) : (t₁ ×̇ t₂).rew s = (t₁.rew s) ×̇ (t₂.rew s) :=
+by simp[symbol.mul]
+
+@[simp] lemma le_rew (t₁ t₂ : term LA) (s : ℕ → term LA) : (t₁ ≤̇ t₂).rew s = (t₁.rew s) ≤̇ (t₂.rew s) :=
+by simp[symbol.le]
+
 def bounded_fal (t : term LA) (p : formula LA) : formula LA := ∀̇ (#0 ≤̇ (t^1) →̇ p)
 
 notation `[∀̇`` ≤ `t`]`p := bounded_fal t p
@@ -90,10 +108,10 @@ def bounded_ext (t : term LA) (p : formula LA) := ∃̇(#0 ≤̇ (t^1) ⩑ p)
 notation `[∃̇`` ≤ `t`]`p := bounded_ext t p
 
 @[simp] lemma bounded_fal_rew (t : term LA) (p : formula LA) (s) : ([∀̇ ≤ t] p).rew s = [∀̇ ≤ t.rew s] (p.rew (s^1)) :=
-by simp[bounded_fal, vecterm.nested_rew, vecterm.pow_rew_distrib]
+by simp[bounded_fal, term.nested_rew, term.pow_rew_distrib]
 
 @[simp] lemma bounded_ex_rew (t : term LA) (p : formula LA) (s) : ([∃̇ ≤ t] p).rew s = [∃̇ ≤ t.rew s] (p.rew (s^1)) :=
-by simp[bounded_ext, vecterm.nested_rew, vecterm.pow_rew_distrib]
+by simp[bounded_ext, term.nested_rew, term.pow_rew_distrib]
 
 inductive robinson : theory LA
 | q1 : robinson ∀̇ (Ż ≠̇ Ṡ #0)
@@ -111,7 +129,8 @@ p.rew ι[0 ⇝ Ż] ⩑ ∀̇ ((p^1).rew ι[1 ⇝ #0] →̇ (p^1).rew ι[1 ⇝ S
 prefix `𝐈`:max := peano_induction
 
 instance : closed_theory 𝐐 := ⟨λ p h,
-  by cases h; simp[sentence, formula.arity, vecterm.arity, formula.or, formula.iff, formula.ex, formula.and]⟩
+  by cases h; simp[sentence, formula.or, formula.iff, formula.ex, formula.and,
+     symbol.zero, symbol.succ, symbol.add, symbol.mul, symbol.le]⟩
 
 instance : proper 0 𝐐 := ⟨λ p s h, by { cases h; simp; exact h }⟩
 
@@ -133,10 +152,10 @@ begin
     { simp[formula.nested_rew], congr, ext x, cases x; simp }, simp[this],
     have : ((p^1).rew ι[1 ⇝ #0]).rew (s^1) = ((p.rew (s^1))^1).rew (ι[1 ⇝ #0]),
     { simp[formula.pow_rew_distrib, formula.pow_eq, formula.nested_rew, rewriting_sf_itr.pow_eq'],
-      congr, funext x, cases x; simp[←nat.add_one, vecterm.pow_eq] }, simp[this],
+      congr, funext x, cases x; simp[←nat.add_one, term.pow_eq] }, simp[this],
     have : ((p^1).rew ι[1 ⇝ Ṡ #0]).rew (s^1) = ((p.rew (s^1))^1).rew (ι[1 ⇝ Ṡ #0]),
     { simp[formula.pow_rew_distrib, formula.pow_eq, formula.nested_rew, rewriting_sf_itr.pow_eq'],
-      congr, funext x, cases x; simp[←nat.add_one, vecterm.pow_eq] }, simp[this],
+      congr, funext x, cases x; simp[←nat.add_one, term.pow_eq] }, simp[this],
     have : p.rew (s^1) ∈ C, from proper.proper0 hyp,
     have := bounded_peano.ind this, exact this } end⟩
 
@@ -224,20 +243,20 @@ by { induction h₁ using fopl.Herbrand.ind_on, induction h₂ using fopl.Herbra
      have := Herbrand.provable_iff.mp this, simp* at this, exact this }
 
 lemma le_iff {h₁ h₂ : Herbrand T i} :
-  h₁ ≼ h₂ = ∐(h₁.pow 1 + ♯0 ∥ h₂.pow 1) :=
+  h₁ ≼ h₂ = ∐(h₁.pow + ♯0 ∥ h₂.pow) :=
 by { induction h₁ using fopl.Herbrand.ind_on,
      induction h₂ using fopl.Herbrand.ind_on,
      have : ∀̇ ∀̇ (#0 ≤̇ #1 ↔̇ ∃̇ (#1 +̇ #0 =̇ #2)) ∈ T^i := ss_robinson robinson.q8, 
      have := Lindenbaum.provable_iff.mp (((AX this).fal_subst h₂).fal_subst h₁),
-     simp[←vecterm.pow_rew_distrib] at this, exact this }
+     simp[←term.pow_rew_distrib] at this, exact this }
 
 @[simp] lemma le_refl [proper 0 T] {h : Herbrand T i} :
   h ≼ h = ⊤ :=
 by { simp[le_iff],
-     have := Lindenbaum.proper.ex_subst_le ((h.pow 1) + ♯0 ∥ (h.pow 1)) 0,
+     have := Lindenbaum.proper.ex_subst_le (h.pow + ♯0 ∥ h.pow) 0,
      simp at*, }
 
-@[simp] lemma pow_0_eq (n : ℕ) : (0 : Herbrand T i).pow n = 0 := rfl
+@[simp] lemma pow_0_eq : (0 : Herbrand T i).pow = 0 := by simp[has_zero.zero]
 
 end robinson
 
@@ -265,16 +284,16 @@ lemma Lindenbaum_induction
   (l : Lindenbaum 𝐐+𝐈C 1) (m : Lindenbaum 𝐐+𝐈C 0)
   (h : Ind l)
   (zero : m ≤ 0 ⊳ l)
-  (succ : m.pow 1 ≤ (♯0 ⊳ (l.pow 1))ᶜ ⊔ Succ ♯0 ⊳ (l.pow 1)) : m ≤ ∏ l :=
+  (succ : m.pow ≤ (♯0 ⊳ l.pow)ᶜ ⊔ Succ ♯0 ⊳ l.pow) : m ≤ ∏ l :=
 begin
   induction l using fopl.Lindenbaum.ind_on with p,
   have P := (provable_top_iff0.mpr (Ind_mem _ h)),
-  have trn : (0 : Herbrand 𝐐+𝐈C 0) ⊳ ⟦p⟧ᴸ ⊓ ∏ ((♯0 ⊳ ⟦p⟧ᴸ.pow 1)ᶜ ⊔ Succ ♯0 ⊳ ⟦p⟧ᴸ.pow 1) ≤ ∏ ⟦p⟧ᴸ,
+  have trn : (0 : Herbrand 𝐐+𝐈C 0) ⊳ ⟦p⟧ᴸ ⊓ ∏ ((♯0 ⊳ ⟦p⟧ᴸ.pow)ᶜ ⊔ Succ ♯0 ⊳ ⟦p⟧ᴸ.pow) ≤ ∏ ⟦p⟧ᴸ,
   { simp[peano_induction, Lindenbaum.subst_eq, Lindenbaum.pow_eq, compl_sup_iff_le,
     provable_imp_iff0] at P, refine P },
-  have succ' : m ≤ ∏ ((♯0 ⊳ pow 1 ⟦p⟧ᴸ)ᶜ ⊔ Succ ♯0 ⊳ pow 1 ⟦p⟧ᴸ),
+  have succ' : m ≤ ∏ ((♯0 ⊳ pow ⟦p⟧ᴸ)ᶜ ⊔ Succ ♯0 ⊳ pow ⟦p⟧ᴸ),
     from Lindenbaum.proper.pow_le_le_fal succ,
-  have : m ≤ 0 ⊳ ⟦p⟧ᴸ ⊓ ∏ ((♯0 ⊳ pow 1 ⟦p⟧ᴸ)ᶜ ⊔ Succ ♯0 ⊳ pow 1 ⟦p⟧ᴸ), 
+  have : m ≤ 0 ⊳ ⟦p⟧ᴸ ⊓ ∏ ((♯0 ⊳ pow ⟦p⟧ᴸ)ᶜ ⊔ Succ ♯0 ⊳ pow ⟦p⟧ᴸ), 
     from le_inf zero succ',
   exact le_trans this trn
 end
@@ -282,21 +301,21 @@ end
 lemma Lindenbaum_induction_top {p : formula LA} (l : Lindenbaum 𝐐+𝐈C 1)
   (h : Ind l)
   (zero : 0 ⊳ l = ⊤)
-  (succ : ♯0 ⊳ (l.pow 1) ≤ Succ ♯0 ⊳ (l.pow 1)) : ∏ l = ⊤ :=
+  (succ : ♯0 ⊳ l.pow ≤ Succ ♯0 ⊳ l.pow) : ∏ l = ⊤ :=
 begin
   induction l using fopl.Lindenbaum.ind_on with p,
   have P := (provable_top_iff0.mpr (Ind_mem _ h)),
-  have : (0 : Herbrand 𝐐+𝐈C 0) ⊳ ⟦p⟧ᴸ ⊓ ∏ ((♯0 ⊳ ⟦p⟧ᴸ.pow 1)ᶜ ⊔ Succ ♯0 ⊳ ⟦p⟧ᴸ.pow 1) ≤ ∏ ⟦p⟧ᴸ,
+  have : (0 : Herbrand 𝐐+𝐈C 0) ⊳ ⟦p⟧ᴸ ⊓ ∏ ((♯0 ⊳ ⟦p⟧ᴸ.pow)ᶜ ⊔ Succ ♯0 ⊳ ⟦p⟧ᴸ.pow) ≤ ∏ ⟦p⟧ᴸ,
   { simp[peano_induction, Lindenbaum.subst_eq, Lindenbaum.pow_eq, compl_sup_iff_le,
     provable_imp_iff0] at P, refine P },
   simp[zero, succ] at this,
-  have eqn : (♯0 ⊳ ⟦p⟧ᴸ.pow 1)ᶜ ⊔ Succ ♯0 ⊳ ⟦p⟧ᴸ.pow 1 = ⊤,
-    from ((♯0 ⊳ ⟦p⟧ᴸ.pow 1).compl_sup_iff_le (Succ ♯0 ⊳ ⟦p⟧ᴸ.pow 1)).mpr succ,
+  have eqn : (♯0 ⊳ ⟦p⟧ᴸ.pow)ᶜ ⊔ Succ ♯0 ⊳ ⟦p⟧ᴸ.pow = ⊤,
+    from ((♯0 ⊳ ⟦p⟧ᴸ.pow).compl_sup_iff_le (Succ ♯0 ⊳ ⟦p⟧ᴸ.pow)).mpr succ,
   simp[eqn] at this, exact this
 end
 
-def Lindenbaum.bd_fal {T : theory LA} (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : Lindenbaum T i := ∏ ((♯0 ≼ h.pow 1)ᶜ ⊔ l)
-def Lindenbaum.bd_ex {T : theory LA} (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : Lindenbaum T i := ∐ ((♯0 ≼ h.pow 1) ⊓ l)
+def Lindenbaum.bd_fal {T : theory LA} (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : Lindenbaum T i := ∏ ((♯0 ≼ h.pow)ᶜ ⊔ l)
+def Lindenbaum.bd_ex {T : theory LA} (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : Lindenbaum T i := ∐ ((♯0 ≼ h.pow) ⊓ l)
 
 notation `∏_{≼ `:95 h `} ` l :90 := Lindenbaum.bd_fal l h 
 notation `∐_{≼ `:95 h `} ` l :90 := Lindenbaum.bd_ex l h 
@@ -304,12 +323,12 @@ notation `∐_{≼ `:95 h `} ` l :90 := Lindenbaum.bd_ex l h
 theorem collection (p : formula LA) [proper 0 (𝚺⁰1)] :
   𝐐+𝐈𝚺⁰1 ⊢ ([∀̇ ≤ #0] ∃̇ p) →̇ ∃̇ [∀̇ ≤ #1] [∃̇ ≤ #1] ((p^3).rew ι[4 ⇝ #0]).rew ι[3 ⇝ #1] :=
 begin
-  simp[provable_imp_iff0, bounded_fal, bounded_ext, Lindenbaum.pow_eq p 3, Herbrand.subst_eq, Lindenbaum.subst_eq],
+  simp[provable_imp_iff0, bounded_fal, bounded_ext, Lindenbaum.pow_eq p, Herbrand.subst_eq, Lindenbaum.subst_eq],
   suffices : ∀ l : Lindenbaum 𝐐+𝐈𝚺⁰1 2,
-    ∏_{≼ ♯1} ∐ l ≤ ∐ ∏_{≼ ♯2} ∐_{≼ ♯2} (♯1 ⊳ ♯0 ⊳ l.pow 3),
+    ∏_{≼ ♯1} ∐ l ≤ ∐ ∏_{≼ ♯2} ∐_{≼ ♯2} (♯1 ⊳ ♯0 ⊳ l.pow.pow.pow),
   { sorry },
   intros l,
-  have : ∏_{≼ ♯1} ∐ l ≤ ∏ ∏ ((♯0 ≼ ♯1)ᶜ ⊔ ∐ ∏_{≼ ♯1} ∐_{≼ ♯1} l.pow 3),
+  have : ∏_{≼ ♯1} ∐ l ≤ ∏ ∏ ((♯0 ≼ ♯1)ᶜ ⊔ ∐ ∏_{≼ ♯1} ∐_{≼ ♯1} l.pow.pow.pow),
   { refine Lindenbaum_induction _ _ _ _ _, { sorry },
     { simp, } }
 
@@ -324,7 +343,7 @@ begin
   suffices : 𝐐+𝐈𝚺⁰1+{[∀̇ ≤ #0] ∃̇ p} ⊢ ∀̇ ∀̇ (#0 ≤̇ #1 →̇ ∃̇ [∀̇ ≤ #1] [∃̇ ≤ #1] q),
   { have := (this.fal_subst #0).fal_subst #0,
     simp[e_q, formula.nested_rew, rewriting_sf_itr.pow_add, subst_pow] at this,
-    have eqn : (λ (x : ℕ), vecterm.rew ι[3 ⇝ #3] (ι[4 ⇝ #4] x) : ℕ → term LA) = 
+    have eqn : (λ (x : ℕ), term.rew ι[3 ⇝ #3] (ι[4 ⇝ #4] x) : ℕ → term LA) = 
       (λ x, if x < 4 then #x else if 4 < x then #(x - 2) else #3 ),
     { funext x, have C : x < 4 ∨ x = 4 ∨ 4 < x := trichotomous x 4,
       cases C, simp[C], { by_cases C₂ : x < 3, simp[C₂], simp[show x = 3, by omega] },

@@ -104,8 +104,19 @@ by { have C : n < i ∨ i ≤ n, exact lt_or_ge n i,
 namespace term
 
 @[simp] def rew (s : ℕ → term L) : term L → term L
-| (#x)       := s x
-| (app f v)  := app f (λ i, (v i).rew)
+| (#x)      := s x
+| (app f v) := app f (λ i, (v i).rew)
+
+@[simp] lemma constant_rew (c : L.fn 0) (s : ℕ → term L) {v : finitary (term L) 0} : (app c v).rew s = app c finitary.nil :=
+by simp
+
+@[simp] lemma unary_rew (f : L.fn 1) (s : ℕ → term L) (t : term L) : (app f fin[t]).rew s = app f fin[t.rew s] :=
+by simp[finitary.cons]
+
+@[simp] lemma binary_rew (f : L.fn 2) (s : ℕ → term L) (t₁ t₂ : term L) :
+  (app f fin[t₁, t₂]).rew s = app f fin[t₁.rew s, t₂.rew s] :=
+by { simp, rw ←(finitary.fin2_eq (λ i, term.rew s (fin[t₁, t₂] i))), simp,
+     simp[finitary.cons] }
 
 instance : has_pow (term L) ℕ := ⟨λ t i, t.rew (λ x, #(x + i))⟩
 
@@ -119,9 +130,29 @@ lemma pow_eq (v : term L) (i : ℕ) : v^i = v.rew (λ x, #(x + i)) := rfl
 
 @[simp] lemma app_pow {n} (f : L.fn n) (v : fin n → term L) (i : ℕ) : (app f v)^i = app f (v^i) := rfl
 
+@[simp] lemma constant_pow (c : L.fn 0) (i : ℕ) {v : finitary (term L) 0} : (app c v)^i = app c finitary.nil :=
+by simp
+
+@[simp] lemma unary_pow (f : L.fn 1) (i : ℕ) (t : term L) : (app f fin[t])^i = app f fin[t^i] :=
+by simp[pow_eq]
+
+@[simp] lemma binary_pow (f : L.fn 2) (i : ℕ) (t₁ t₂ : term L) :
+  (app f fin[t₁, t₂])^i = app f fin[t₁^i, t₂^i] :=
+by simp[pow_eq]
+
 @[simp] def arity : term L → ℕ
 | (#n)       := n + 1
 | (app f v)  := finitary.Max 0 (λ i, (v i).arity)
+
+@[simp] lemma constant_arity (c : L.fn 0) {v : finitary (term L) 0} : (app c v).arity = 0 :=
+by simp
+
+@[simp] lemma unary_arity (f : L.fn 1) (t : term L) : (app f fin[t]).arity = t.arity :=
+by simp[finitary.cons, finitary.Max]
+
+@[simp] lemma binary_arity (f : L.fn 2) (t₁ t₂ : term L) :
+  (app f fin[t₁, t₂]).arity = max t₁.arity t₂.arity :=
+by { simp[finitary.Max, finitary.cons, fin.add'], exact max_comm _ _ }
 
 @[simp] lemma nested_rew (s₀ s₁) : ∀ (t : term L),
   (t.rew s₀).rew s₁ = t.rew (λ x, (s₀ x).rew s₁)
@@ -233,12 +264,33 @@ by { funext x, cases x; simp }
 
 namespace formula
 
+@[simp] lemma constant_arity (c : L.pr 0) {v : finitary (term L) 0} : (app c v).arity = 0 :=
+by simp
+
+@[simp] lemma unary_arity (p : L.pr 1) (t : term L) : (app p fin[t]).arity = t.arity :=
+by simp[finitary.cons, finitary.Max]
+
+@[simp] lemma binary_arity (p : L.pr 2) (t₁ t₂ : term L) :
+  (app p fin[t₁, t₂]).arity = max t₁.arity t₂.arity :=
+by { simp[finitary.Max, finitary.cons, fin.add'], exact max_comm _ _ }
+
 @[simp] def rew : (ℕ → term L) → formula L → formula L
 | s (app p v) := app p (λ i, (v i).rew s)
 | s (t =̇ u)   := (t.rew s) =̇ (u.rew s)
 | s (p →̇ q)  := p.rew s →̇ q.rew s
 | s (¬̇p)      := ¬̇(p.rew s)
 | s (∀̇ p)     := ∀̇ (p.rew (s^1))
+
+@[simp] lemma constant_rew (c : L.pr 0) (s : ℕ → term L) {v : finitary (term L) 0} : (app c v).rew s = app c finitary.nil :=
+by simp
+
+@[simp] lemma unary_rew (p : L.pr 1) (s : ℕ → term L) (t : term L) : (app p fin[t]).rew s = app p fin[t.rew s] :=
+by simp[finitary.cons]
+
+@[simp] lemma binary_rew (p : L.pr 2) (s : ℕ → term L) (t₁ t₂ : term L) :
+  (app p fin[t₁, t₂]).rew s = app p fin[t₁.rew s, t₂.rew s] :=
+by { simp, rw ←(finitary.fin2_eq (λ i, term.rew s (fin[t₁, t₂] i))), simp,
+     simp[finitary.cons] }
 
 @[simp] lemma and_rew (p q : formula L) (s) : (p ⩑ q).rew s = p.rew s ⩑ q.rew s := by simp[and, formula.rew]
 @[simp] lemma or_rew (p q : formula L) (s) : (p ⩒ q).rew s = p.rew s ⩒ q.rew s := by simp[or, formula.rew]
@@ -265,6 +317,17 @@ lemma pow_eq (p : formula L) (i : ℕ) : p^i = p.rew (λ x, #(x + i)) := rfl
 @[simp] lemma formula_pow_0 (p : formula L) : p^0 = p := by simp[has_pow.pow]
 
 @[simp] lemma app_pow {n} (p : L.pr n) (v : finitary (term L) n) (i : ℕ) : (app p v)^i = app p (v^i) := rfl
+
+@[simp] lemma constant_pow (c : L.pr 0) (i : ℕ) {v : finitary (term L) 0} : (app c v)^i = app c finitary.nil :=
+by simp
+
+@[simp] lemma unary_pow (p : L.pr 1) (i : ℕ) (t : term L) : (app p fin[t])^i = app p fin[t^i] :=
+by simp[pow_eq]; refl
+
+@[simp] lemma binary_pow (p : L.pr 2) (i : ℕ) (t₁ t₂ : term L) :
+  (app p fin[t₁, t₂])^i = app p fin[t₁^i, t₂^i] :=
+by simp[pow_eq]; refl
+
 @[simp] lemma eq_pow (t u : term L) (i : ℕ) : (t =̇ u)^i = (t^i) =̇ (u^i) := rfl
 @[simp] lemma imply_pow (p q : formula L) (i : ℕ) : (p →̇ q)^i = p^i →̇ q^i := rfl
 @[simp] lemma neg_pow (p : formula L) (i : ℕ) : (¬̇p)^i = ¬̇(p^i) := rfl
@@ -363,7 +426,7 @@ by simp[sentence]
 
 @[simp] lemma conjunction_arity {n} {v : finitary (formula L) n} :
   (conjunction' n v).arity = finitary.Max 0 (λ i, (v i).arity) :=
-by { induction n with n IH; simp[finitary.Max, top, and, arity, term.arity], simp[IH] }
+by { induction n with n IH; simp[finitary.Max, fin.add', top, and, arity, term.arity], simp[IH] }
 
 end formula
 
