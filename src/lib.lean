@@ -5,7 +5,11 @@ import
   computability.partrec_code
   computability.halting
   data.pfun
-  init.data.list init.data.subtype init.meta.interactive init.data.fin
+  order
+  init.data.list
+  init.data.subtype
+  init.meta.interactive
+  init.data.fin
 
 universes u v
 
@@ -357,6 +361,95 @@ by { induction n with n IH; simp[quotient.lift_on_finitary], { simp [finitary.ze
      have : ↑i < n ∨ ↑i = n, exact nat.lt_succ_iff_lt_or_eq.mp i.property, cases this; simp[this], simp[←this] }
 
 end quotient
+
+@[notation_class] class has_eq (α : Sort*) (β : Sort*) := (eq : α → α → β)
+
+infix ` ≃ `:80 := has_eq.eq
+
+@[notation_class] class has_negation (α : Sort*) := (neg : α → α)
+
+prefix `⁻`:75 := has_negation.neg
+
+@[reducible] def has_eq.ineq {α : Sort*} {β : Sort*} [has_eq α β] [has_negation β] (a b : α) : β := ⁻a ≃ b
+
+infix ` ≄ `:80 := has_eq.ineq
+
+@[notation_class] class has_arrow (α : Sort*) := (arrow : α → α → α)
+
+infixr ` ⟶ `:60 := has_arrow.arrow
+
+@[notation_class] class has_lrarrow (α : Sort*) := (lrarrow : α → α → α)
+
+
+
+@[notation_class] class has_univ_quantifier (α : Sort*) := (univ : α → α)
+
+prefix `∏ `:64 := has_univ_quantifier.univ
+
+@[notation_class] class has_exists_quantifier (α : Sort*) := (ex : α → α)
+
+prefix `∐ `:64 := has_exists_quantifier.ex
+
+@[notation_class] class has_turnstile (α : Sort*) (β : Sort*) := (turnstile : α → β → Prop)
+
+infix ` ⊢ `:55 := has_turnstile.turnstile
+
+def has_arrow.lrarrow {α : Type*} [has_arrow α] [has_inf α] (a b : α) : α := (a ⟶ b) ⊓ (b ⟶ a)
+
+infix ` ⟷ `:59 := has_arrow.lrarrow
+
+lemma lrarrow_def {α : Type*} [has_arrow α] [has_inf α] (a b : α) : a ⟷ b = (a ⟶ b) ⊓ (b ⟶ a) := rfl
+
+notation T` +{ ` :max p ` }` := set.insert p T
+
+@[simp] lemma set.insert_mem {α : Sort*} (T : set α) (a : α) : a ∈ T +{ a } :=
+by simp[set.insert]
+
+@[simp] lemma set.insert_mem_of_mem {α : Sort*} {T : set α} {b : α} (h : b ∈ T) (a : α) :
+  b ∈ T +{ a } := by simp[set.insert, h]
+
+@[simp] lemma set.insert_mem_iff {α : Sort*} {T : set α} {a b : α} :
+  b ∈ T +{ a } ↔ b = a ∨ b ∈ T := by simp[set.insert]
+
+class intuitionistic_logic (F : Sort*)
+  extends has_negation F, has_arrow F, has_inf F, has_sup F, has_turnstile (set F) F :=
+(modus_ponens {T : set F} {p q : F} : T ⊢ p ⟶ q → T ⊢ p → T ⊢ q)
+(by_axiom {T : set F} {p : F} : p ∈ T → T ⊢ p)
+(imply₁ {T : set F} {p q : F} : T ⊢ p ⟶ q ⟶ p)
+(imply₂ {T : set F} {p q r : F} : T ⊢ (p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r)
+(conj₁ {T : set F} {p q : F} : T ⊢ p ⊓ q ⟶ p)
+(conj₂ {T : set F} {p q : F} : T ⊢ p ⊓ q ⟶ q)
+(conj₃ {T : set F} {p q : F} : T ⊢ p ⟶ q ⟶ p ⊓ q)
+(disj₁ {T : set F} {p q : F} : T ⊢ p ⟶ p ⊔ q)
+(disj₂ {T : set F} {p q : F} : T ⊢ q ⟶ p ⊔ q)
+(disj₃ {T : set F} {p q r : F} : T ⊢ (p ⟶ r) ⟶ (q ⟶ r) ⟶ p ⊔ q ⟶ r)
+(neg₁ {T : set F} {p q : F} : T ⊢ (p ⟶ q) ⟶ (p ⟶ ⁻q) ⟶ ⁻p)
+(neg₂ {T : set F} {p q : F} : T ⊢ p ⟶ ⁻p ⟶ q)
+
+class classical_logic (F : Sort*)
+  extends has_negation F, has_arrow F, has_inf F, has_sup F, has_top F, has_bot F, has_turnstile (set F) F :=
+(deduction' {T : set F} {p q : F} : T +{ p } ⊢ q → T ⊢ p ⟶ q)
+(weakening {T : set F} {U : set F} {p : F} : T ⊆ U → T ⊢ p → U ⊢ p)
+(modus_ponens {T : set F} {p q : F} : T ⊢ p ⟶ q → T ⊢ p → T ⊢ q)
+(by_axiom {T : set F} {p : F} : p ∈ T → T ⊢ p)
+(imply₁ {T : set F} {p q : F} : T ⊢ p ⟶ q ⟶ p)
+(imply₂ {T : set F} {p q r : F} : T ⊢ (p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r)
+(contrapose {T : set F} {p q : F} : T ⊢ (⁻p ⟶ ⁻q) ⟶ q ⟶ p)
+(provable_top {T : set F} : T ⊢ (⊤ : F))
+(provable_bot : (⊥ : F) = ⁻⊤)
+(and_def {p q : F} : p ⊓ q = ⁻(p ⟶ ⁻q))
+(or_def {p q : F} : p ⊔ q = ⁻p ⟶ q)
+
+attribute [simp] classical_logic.imply₁ classical_logic.imply₂ classical_logic.contrapose
+  classical_logic.provable_top
+
+@[notation_class] class has_double_turnstile (α : Sort*) (β : Sort*) (γ : Sort*) := (double_turnstile : α → β → γ)
+
+infix ` ⊧ ` :55 := has_double_turnstile.double_turnstile
+
+instance : has_arrow Prop := ⟨(→)⟩
+
+instance : has_negation Prop := ⟨not⟩
 
 section classical
 attribute [instance, priority 0] classical.prop_decidable

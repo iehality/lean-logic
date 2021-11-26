@@ -21,17 +21,12 @@ lemma theory.sf_itr_succ (T : theory L) (n) : T^(n+1) = ⇑(T^n) := rfl
 lemma theory.pow_add (T : theory L) (i j : ℕ) : (T^i)^j = T^(i + j) :=
 by { induction j with j IH; simp[theory.sf_itr_succ, ←nat.add_one, ←add_assoc], simp[IH] }
 
-inductive theory.add (T : theory L) (p : formula L) : theory L 
-| new : theory.add p
-| old : ∀ {q}, q ∈ T → theory.add q
-
-notation T`+{`:max p`}` := theory.add T p
-
 class closed_theory (T : theory L) := (cl : ∀ {p}, p ∈ T → sentence p)
 
 class extend (T₀ T : theory L) := (ss : T₀ ⊆ T)
 
 def proper_at (n : ℕ) (T : theory L) : Prop := ∀ (p : formula L) (s), p ∈ T → p.rew (s^n) ∈ T
+
 def proper'_at (n : ℕ) (T : theory L) : Prop := ∀ (p : formula L) (s : ℕ → term L),
   p ∈ T → p.rew (λ x, if x < n then #x else s (x - n)) ∈ T
 
@@ -117,29 +112,13 @@ by { ext p, refine ⟨λ hyp, _, λ hyp, _⟩, rcases hyp with ⟨p, hyp_p, rfl�
      simp[closed_theory.cl hyp_p, hyp_p],
      rw ← (formula.sentence_sf (closed_theory.cl hyp)), refine ⟨p, hyp, rfl⟩ }
 
-lemma sf_dsb (T : theory L) (p : formula L) : ⇑T+{p^1} = ⇑(T+{p}) :=
+lemma sf_dsb (T : theory L) (p : formula L) : ⇑T +{ p^1 } = ⇑(T +{ p }) :=
 begin
   ext x, split; intros h,
-  { cases h with h hx, refine ⟨p, theory.add.new, rfl⟩,
-    rcases hx with ⟨p, hp, rfl⟩, refine ⟨p, theory.add.old hp, rfl⟩ },
-  { rcases h with ⟨q, hq, rfl⟩, cases hq with hq hq, refine theory.add.new,
-    refine theory.add.old ⟨q, hq, rfl⟩ }
-end
-
-
-variables [primcodable (formula L)] 
-open encodable
-
-class primrec_theory (T : theory L) :=
-(isaxiom : formula L → bool)
-(isaxiom_eq : ∀ p, isaxiom p = to_bool (p ∈ T))
-
-@[simp] lemma isaxiom_iff (T : theory L) [primrec_theory T] (p) : ↥(primrec_theory.isaxiom T p) ↔ p ∈ T :=
-by simp [primrec_theory.isaxiom_eq p]
-
-lemma primrec_theory_pow (T : theory L) [primrec_theory T] (i : ℕ) : primrec_theory (T^i) :=
-begin
-
+  { cases h with hx, refine ⟨p, by simp, hx⟩,
+    rcases h with ⟨p', hp, rfl⟩, refine ⟨p', by simp[hp], rfl⟩ },
+  { rcases h with ⟨q, hq, rfl⟩, rcases hq with (rfl | hq); simp,
+    refine or.inr ⟨q, hq, rfl⟩ }
 end
 
 end fopl
