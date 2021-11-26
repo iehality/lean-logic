@@ -390,7 +390,7 @@ prefix `∏ `:64 := has_univ_quantifier.univ
 
 prefix `∐ `:64 := has_exists_quantifier.ex
 
-@[notation_class] class has_turnstile (α : Sort*) (β : Sort*) := (turnstile : α → β → Prop)
+@[notation_class] class has_turnstile (α : Sort*) := (turnstile : set α → α → Prop)
 
 infix ` ⊢ `:55 := has_turnstile.turnstile
 
@@ -411,37 +411,42 @@ by simp[set.insert]
 @[simp] lemma set.insert_mem_iff {α : Sort*} {T : set α} {a b : α} :
   b ∈ T +{ a } ↔ b = a ∨ b ∈ T := by simp[set.insert]
 
-class intuitionistic_logic (F : Sort*)
-  extends has_negation F, has_arrow F, has_inf F, has_sup F, has_turnstile (set F) F :=
-(modus_ponens {T : set F} {p q : F} : T ⊢ p ⟶ q → T ⊢ p → T ⊢ q)
-(by_axiom {T : set F} {p : F} : p ∈ T → T ⊢ p)
-(imply₁ {T : set F} {p q : F} : T ⊢ p ⟶ q ⟶ p)
-(imply₂ {T : set F} {p q r : F} : T ⊢ (p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r)
-(conj₁ {T : set F} {p q : F} : T ⊢ p ⊓ q ⟶ p)
-(conj₂ {T : set F} {p q : F} : T ⊢ p ⊓ q ⟶ q)
-(conj₃ {T : set F} {p q : F} : T ⊢ p ⟶ q ⟶ p ⊓ q)
-(disj₁ {T : set F} {p q : F} : T ⊢ p ⟶ p ⊔ q)
-(disj₂ {T : set F} {p q : F} : T ⊢ q ⟶ p ⊔ q)
-(disj₃ {T : set F} {p q r : F} : T ⊢ (p ⟶ r) ⟶ (q ⟶ r) ⟶ p ⊔ q ⟶ r)
-(neg₁ {T : set F} {p q : F} : T ⊢ (p ⟶ q) ⟶ (p ⟶ ⁻q) ⟶ ⁻p)
-(neg₂ {T : set F} {p q : F} : T ⊢ p ⟶ ⁻p ⟶ q)
+class propositional_formula (F : Sort*)
+  extends has_negation F, has_arrow F, has_inf F, has_sup F, has_top F, has_bot F
 
-class classical_logic (F : Sort*)
-  extends has_negation F, has_arrow F, has_inf F, has_sup F, has_top F, has_bot F, has_turnstile (set F) F :=
-(deduction' {T : set F} {p q : F} : T +{ p } ⊢ q → T ⊢ p ⟶ q)
-(weakening {T : set F} {U : set F} {p : F} : T ⊆ U → T ⊢ p → U ⊢ p)
-(modus_ponens {T : set F} {p q : F} : T ⊢ p ⟶ q → T ⊢ p → T ⊢ q)
-(by_axiom {T : set F} {p : F} : p ∈ T → T ⊢ p)
-(imply₁ {T : set F} {p q : F} : T ⊢ p ⟶ q ⟶ p)
-(imply₂ {T : set F} {p q r : F} : T ⊢ (p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r)
-(contrapose {T : set F} {p q : F} : T ⊢ (⁻p ⟶ ⁻q) ⟶ q ⟶ p)
-(provable_top {T : set F} : T ⊢ (⊤ : F))
-(provable_bot : (⊥ : F) = ⁻⊤)
+class intuitionistic_logic {F : Sort*} [propositional_formula F] (P : F → Prop) :=
+(modus_ponens {p q : F} : P (p ⟶ q) → P p → P q)
+(imply₁ {p q : F} : P (p ⟶ q ⟶ p))
+(imply₂ {p q r : F} : P ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r))
+(conj₁ {p q : F} : P (p ⊓ q ⟶ p))
+(conj₂ {p q : F} : P (p ⊓ q ⟶ q))
+(conj₃ {p q : F} : P (p ⟶ q ⟶ p ⊓ q))
+(disj₁ {p q : F} : P (p ⟶ p ⊔ q))
+(disj₂ {p q : F} : P (q ⟶ p ⊔ q))
+(disj₃ {p q r : F} : P ((p ⟶ r) ⟶ (q ⟶ r) ⟶ p ⊔ q ⟶ r))
+(neg₁ {p q : F} : P ((p ⟶ q) ⟶ (p ⟶ ⁻q) ⟶ ⁻p))
+(neg₂ {p q : F} : P (p ⟶ ⁻p ⟶ q))
+(provable_top : P ⊤)
+(bot_eq : (⊥ : F) = ⁻⊤)
+
+class classical_logic {F : Sort*} [propositional_formula F] (P : set F) :=
+(modus_ponens {p q : F} : p ⟶ q ∈ P → p ∈ P → q ∈ P)
+(imply₁ {p q : F} : p ⟶ q ⟶ p ∈ P)
+(imply₂ {p q r : F} : (p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r ∈ P)
+(contraposition {p q : F} : (⁻p ⟶ ⁻q) ⟶ q ⟶ p ∈ P)
+(provable_top : ⊤ ∈ P)
+(bot_eq : (⊥ : F) = ⁻⊤)
 (and_def {p q : F} : p ⊓ q = ⁻(p ⟶ ⁻q))
 (or_def {p q : F} : p ⊔ q = ⁻p ⟶ q)
 
-attribute [simp] classical_logic.imply₁ classical_logic.imply₂ classical_logic.contrapose
+attribute [simp] classical_logic.imply₁ classical_logic.imply₂ classical_logic.contraposition
   classical_logic.provable_top
+
+class axiomatic_classical_logic (F : Sort*) [propositional_formula F] extends has_turnstile F :=
+(classical {T : set F} : classical_logic ((⊢) T))
+(by_axiom {T : set F} {p : F} : p ∈ T → T ⊢ p)
+(deduction' {T : set F} {p q : F} : T +{ p } ⊢ q → T ⊢ p ⟶ q)
+(weakening {T : set F} {U : set F} {p : F} : T ⊆ U → T ⊢ p → U ⊢ p)
 
 @[notation_class] class has_double_turnstile (α : Sort*) (β : Sort*) (γ : Sort*) := (double_turnstile : α → β → γ)
 
