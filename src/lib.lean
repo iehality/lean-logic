@@ -380,8 +380,6 @@ infixr ` ⟶ `:60 := has_arrow.arrow
 
 @[notation_class] class has_lrarrow (α : Sort*) := (lrarrow : α → α → α)
 
-
-
 @[notation_class] class has_univ_quantifier (α : Sort*) := (univ : α → α)
 
 prefix `∏ `:64 := has_univ_quantifier.univ
@@ -411,10 +409,9 @@ by simp[set.insert]
 @[simp] lemma set.insert_mem_iff {α : Sort*} {T : set α} {a b : α} :
   b ∈ T +{ a } ↔ b = a ∨ b ∈ T := by simp[set.insert]
 
-class propositional_formula (F : Sort*)
-  extends has_negation F, has_arrow F, has_inf F, has_sup F, has_top F, has_bot F
 
-class intuitionistic_logic {F : Sort*} [propositional_formula F] (P : F → Prop) :=
+class intuitionistic_logic
+  {F : Sort*} [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F] (P : F → Prop) :=
 (modus_ponens {p q : F} : P (p ⟶ q) → P p → P q)
 (imply₁ {p q : F} : P (p ⟶ q ⟶ p))
 (imply₂ {p q r : F} : P ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r))
@@ -429,7 +426,8 @@ class intuitionistic_logic {F : Sort*} [propositional_formula F] (P : F → Prop
 (provable_top : P ⊤)
 (bot_eq : (⊥ : F) = ⁻⊤)
 
-class classical_logic {F : Sort*} [propositional_formula F] (P : set F) :=
+class classical_logic
+  {F : Sort*} [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F] (P : set F) :=
 (modus_ponens {p q : F} : p ⟶ q ∈ P → p ∈ P → q ∈ P)
 (imply₁ {p q : F} : p ⟶ q ⟶ p ∈ P)
 (imply₂ {p q r : F} : (p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r ∈ P)
@@ -442,9 +440,13 @@ class classical_logic {F : Sort*} [propositional_formula F] (P : set F) :=
 attribute [simp] classical_logic.imply₁ classical_logic.imply₂ classical_logic.contraposition
   classical_logic.provable_top
 
-class axiomatic_classical_logic (F : Sort*) [propositional_formula F] extends has_turnstile F :=
+class axiomatic_classical_logic'
+  (F : Sort*) [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F] extends has_turnstile F :=
 (classical {T : set F} : classical_logic ((⊢) T))
 (by_axiom {T : set F} {p : F} : p ∈ T → T ⊢ p)
+
+class axiomatic_classical_logic
+  (F : Sort*) [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F] extends axiomatic_classical_logic' F :=
 (deduction' {T : set F} {p q : F} : T +{ p } ⊢ q → T ⊢ p ⟶ q)
 (weakening {T : set F} {U : set F} {p : F} : T ⊆ U → T ⊢ p → U ⊢ p)
 

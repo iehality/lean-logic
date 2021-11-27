@@ -4,7 +4,8 @@ universe u
 
 namespace classical_logic
 
-variables {F : Type*} [propositional_formula F] (P : set F) (T : set F) [CL : classical_logic P]
+variables {F : Type*} [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F]
+  (P : set F) (T : set F) [CL : classical_logic P]
 include CL
 
 @[simp] lemma neg_top_eq : (⁻⊤ : F) = ⊥ := eq.symm (bot_eq P)
@@ -100,7 +101,7 @@ begin
   exact this ⨀₂ h₁
 end
 
-@[simp] lemma hyp_bot {p : F} : ⊥ ⟶ p ∈ P :=
+@[simp] lemma hyp_bot (p : F) : ⊥ ⟶ p ∈ P :=
 explosion_hyp (show (⊥ ⟶ ⊤ : F) ∈ P, by simp) (show (⊥ : F) ⟶ ⁻⊤ ∈ P, by simp[neg_top_eq P])
 
 lemma contrapose {p q : F} : (⁻p ⟶ ⁻q ∈ P) ↔ (q ⟶ p ∈ P) :=
@@ -135,7 +136,19 @@ begin
   exact this
 end
 
-lemma iff_and {p q : F} : (p ⊓ q ∈ P) ↔ (p ∈ P ∧ q ∈ P) :=
+@[simp] lemma and_inply_left {p₁ p₂ q : F} : (p₁ ⟶ q) ⟶ p₁ ⊓ p₂ ⟶ q ∈ P :=
+(show (p₁ ⟶ q) ⟶ p₁ ⊓ p₂ ⟶ p₁ ⟶ q ∈ P, by simp) ⨀₂ (show (p₁ ⟶ q) ⟶ p₁ ⊓ p₂ ⟶ p₁ ∈ P, by simp)
+
+lemma and_inply_of_imply_left {p₁ p₂ q : F} (h : p₁ ⟶ q ∈ P) : p₁ ⊓ p₂ ⟶ q ∈ P :=
+(show (p₁ ⟶ q) ⟶ p₁ ⊓ p₂ ⟶ q ∈ P, by simp) ⨀ h
+
+@[simp] lemma and_imply_right {p₁ p₂ q : F} : (p₂ ⟶ q) ⟶ p₁ ⊓ p₂ ⟶ q ∈ P :=
+(show (p₂ ⟶ q) ⟶ p₁ ⊓ p₂ ⟶ p₂ ⟶ q ∈ P, by simp) ⨀₂ (show (p₂ ⟶ q) ⟶ p₁ ⊓ p₂ ⟶ p₂ ∈ P, by simp)
+
+lemma and_inply_of_imply_right {p₁ p₂ q : F} (h : p₂ ⟶ q ∈ P) : p₁ ⊓ p₂ ⟶ q ∈ P :=
+(show (p₂ ⟶ q) ⟶ p₁ ⊓ p₂ ⟶ q ∈ P, by simp) ⨀ h
+
+@[simp] lemma iff_and {p q : F} : (p ⊓ q ∈ P) ↔ (p ∈ P ∧ q ∈ P) :=
 ⟨λ h, by { split,
    { exact modus_ponens (show p ⊓ q ⟶ p ∈ P, by simp) h },
    { exact modus_ponens (show p ⊓ q ⟶ q ∈ P, by simp) h } },
@@ -144,7 +157,7 @@ lemma iff_and {p q : F} : (p ⊓ q ∈ P) ↔ (p ∈ P ∧ q ∈ P) :=
    have : q ⟶ ⁻(p ⟶ ⁻q) ∈ P, from impl_trans (dni _) (contrapose.mpr this),
    exact modus_ponens this h₂ }⟩
 
-lemma iff_equiv {p q : F} : (p ⟷ q ∈ P) ↔ (p ⟶ q ∈ P ∧ q ⟶ p ∈ P) :=
+@[simp] lemma iff_equiv {p q : F} : (p ⟷ q ∈ P) ↔ (p ⟶ q ∈ P ∧ q ⟶ p ∈ P) :=
 by simp[lrarrow_def, iff_and]
 
 lemma equiv_imply_of_equiv {p₁ q₁ p₂ q₂ : F} (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : (p₁ ⟶ q₁) ⟷ (p₂ ⟶ q₂) ∈ P :=
@@ -167,13 +180,13 @@ lemma neg_of_equiv {p₁ p₂ : F} (h : ⁻p₁ ∈ P) (hp : p₁ ⟷ p₂ ∈ P
 by { have : ⁻p₁ ⟶ ⁻p₂ ∈ P, from (iff_equiv.mp (equiv_neg_of_equiv hp)).1, exact this ⨀ h }
 
 lemma equiv_and_of_equiv {p₁ q₁ p₂ q₂: F} (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₁ ⊓ q₁ ⟷ p₂ ⊓ q₂ ∈ P :=
-by { simp[and_def P], refine equiv_neg_of_equiv (equiv_imply_of_equiv hp (equiv_neg_of_equiv hq)) }
+by { simp only [and_def P], refine equiv_neg_of_equiv (equiv_imply_of_equiv hp (equiv_neg_of_equiv hq)) }
 
 lemma and_of_equiv {p₁ q₁ p₂ q₂: F} (h : p₁ ⊓ q₁ ∈ P) (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₂ ⊓ q₂ ∈ P :=
 by { have : p₁ ⊓ q₁ ⟶ p₂ ⊓ q₂ ∈ P, from (iff_equiv.mp (equiv_and_of_equiv hp hq)).1, exact this ⨀ h }
 
 lemma equiv_or_of_equiv {p₁ q₁ p₂ q₂: F} (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₁ ⊔ q₁ ⟷ p₂ ⊔ q₂ ∈ P :=
-by { simp[or_def P], refine (equiv_imply_of_equiv (equiv_neg_of_equiv hp) hq) }
+by { simp only [or_def P], refine (equiv_imply_of_equiv (equiv_neg_of_equiv hp) hq) }
 
 lemma or_of_equiv {p₁ q₁ p₂ q₂: F} (h : p₁ ⊔ q₁ ∈ P) (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₂ ⊔ q₂ ∈ P :=
 by { have : p₁ ⊔ q₁ ⟶ p₂ ⊔ q₂ ∈ P, from (iff_equiv.mp (equiv_or_of_equiv hp hq)).1, exact this ⨀ h }
@@ -197,25 +210,25 @@ variables (P)
 @[reducible] def equiv (p q : F) : Prop := p ⟷ q ∈ P
 
 theorem equiv_equivalence : equivalence (equiv P) :=
-⟨equiv_refl, @equiv_symm _ _ _ _, @equiv_trans _ _ _ _⟩
+⟨equiv_refl, @equiv_symm _ _ _ _ _ _ _ _ _, @equiv_trans _ _ _ _ _ _ _ _ _⟩
 
 variables {P}
 
-@[simp] lemma iff_dn_refl_right {p : F} : p ⟷ ⁻⁻p ∈ P := by simp[iff_equiv]
+@[simp] lemma iff_dn_refl_right (p : F) : p ⟷ ⁻⁻p ∈ P := by simp[iff_equiv]
 
-@[simp] lemma iff_dn_refl_left {p : F} : ⁻⁻p ⟷ p ∈ P := by simp[iff_equiv]
+@[simp] lemma iff_dn_refl_left (p : F) : ⁻⁻p ⟷ p ∈ P := by simp[iff_equiv]
 
-@[simp] lemma contraposition_inv {p q : F} : (p ⟶ q) ⟶ (⁻q ⟶ ⁻p) ∈ P :=
+@[simp] lemma contraposition_inv (p q : F) : (p ⟶ q) ⟶ (⁻q ⟶ ⁻p) ∈ P :=
 by { have : (⁻⁻p ⟶ ⁻⁻q) ⟶ ⁻q ⟶ ⁻p ∈ P, simp, 
      refine imply_of_equiv this (equiv_imply_of_equiv _ _) _; simp }
 
-@[simp] lemma contraposition_iff {p q : F} : (p ⟶ q) ⟷ (⁻q ⟶ ⁻p) ∈ P :=
+@[simp] lemma contraposition_iff (p q : F) : (p ⟶ q) ⟷ (⁻q ⟶ ⁻p) ∈ P :=
 by simp[iff_equiv]
 
-@[simp] lemma contraposition_iff_inv {p q : F} : (⁻q ⟶ ⁻p) ⟷ (p ⟶ q) ∈ P :=
+@[simp] lemma contraposition_iff_inv (p q : F) : (⁻p ⟶ ⁻q) ⟷ (q ⟶ p) ∈ P :=
 by simp[iff_equiv]
 
-@[simp] lemma neg_hyp' {p : F} : (p ⟶ ⁻p) ⟶ ⁻p ∈ P :=
+@[simp] lemma neg_hyp' (p : F) : (p ⟶ ⁻p) ⟶ ⁻p ∈ P :=
 begin
   have : (p ⟶ ⁻p) ⟶ p ⟶ ⁻(p ⟶ ⁻p) ∈ P,
   { have lmm₁ : (p ⟶ ⁻p) ⟶ p ⟶ p ∈ P, { simp }, exact explosion_hyp₂ lmm₁ (by simp) },
@@ -233,10 +246,10 @@ begin
     refine (show (p ⟶ ⊥) ⟶ (p ⟶ ⁻p) ⟶ ⁻p ∈ P, by simp) ⨀₁ this }
 end
 
-@[simp] lemma neg_imp {p q : F} : ⁻(p ⟶ q) ⟷ p ⊓ ⁻q ∈ P :=
-by simp [and_def P]; refine (equiv_neg_of_equiv (equiv_imply_of_equiv _ _)); simp
+@[simp] lemma neg_impl_equiv_and (p q : F) : ⁻(p ⟶ q) ⟷ p ⊓ ⁻q ∈ P :=
+by simp only [and_def P]; refine (equiv_neg_of_equiv (equiv_imply_of_equiv _ _)); simp
 
-@[simp] lemma neg_imp' {p q : F} : (⁻(p ⟶ q) ∈ P) ↔ (p ⊓ ⁻q ∈ P) :=
+lemma neg_impl_iff_and {p q : F} : (⁻(p ⟶ q) ∈ P) ↔ (p ⊓ ⁻q ∈ P) :=
 begin
   simp [and_def P], split; intros h,
   { refine neg_of_equiv h (equiv_imply_of_equiv _ _); simp },
@@ -250,10 +263,10 @@ by { simp only [and_def P], refine equiv_neg_of_equiv _,
 @[simp] lemma equiv_symm_equiv (p q : F) : (p ⟷ q) ⟷ (q ⟷ p) ∈ P := equiv_symm_and _ _
 
 @[simp] lemma equiv_symm_or (p q : F) : p ⊔ q ⟷ q ⊔ p ∈ P :=
-by { simp [or_def P],
+by { simp only [or_def P],
      refine equiv_of_equiv (show ⁻p ⟶ q ⟷ ⁻q ⟶ ⁻⁻p ∈ P, by simp) _ (equiv_imply_of_equiv _ _); simp }
 
-@[simp] lemma and_destruct {p q : F} : p ⟶ q ⟶ p ⊓ q ∈ P :=
+@[simp] lemma and_destruct (p q : F) : p ⟶ q ⟶ p ⊓ q ∈ P :=
 by { simp only [and_def P],
      have : p ⟶ (p ⟶ ⁻q) ⟶ ⁻q ∈ P, from (show p ⟶ (p ⟶ ⁻q) ⟶ p ⟶ ⁻q ∈ P, by simp) ⨀₂ (show p ⟶ (p ⟶ ⁻q) ⟶ p ∈ P, by simp),
      refine imply_of_equiv this (by simp) _,
@@ -265,26 +278,26 @@ by simp[or_def P]; refine explosion_hyp₂ (show p ⟶ ⁻p ⟶ p ∈ P, by simp
 @[simp] lemma imply_or_right (p q : F) : q ⟶ p ⊔ q ∈ P :=
 by simp[or_def P]
 
-@[simp] lemma imply_and {p q r : F} : (p ⟶ q) ⟶ (p ⟶ r) ⟶ p ⟶ q ⊓ r ∈ P :=
+@[simp] lemma imply_and (p q r : F) : (p ⟶ q) ⟶ (p ⟶ r) ⟶ p ⟶ q ⊓ r ∈ P :=
 begin
   have : (p ⟶ q) ⟶ (p ⟶ r) ⟶ p ⟶ r ⟶ q ⊓ r ∈ P,
     from (show (p ⟶ q) ⟶ (p ⟶ r) ⟶ p ⟶ q ⟶ r ⟶ q ⊓ r ∈ P, by simp) ⨀₃ (show (p ⟶ q) ⟶ (p ⟶ r) ⟶ p ⟶ q ∈ P, by simp),
   exact this ⨀₃ (show (p ⟶ q) ⟶ (p ⟶ r) ⟶ p ⟶ r ∈ P, by simp),
 end
 
-@[simp] lemma neg_and_equiv_or_neg {p q : F} : ⁻(p ⊓ q) ⟷ ⁻p ⊔ ⁻q ∈ P :=
+@[simp] lemma neg_and_equiv_or_neg (p q : F) : ⁻(p ⊓ q) ⟷ ⁻p ⊔ ⁻q ∈ P :=
 begin
-  simp [and_def P, or_def P],
+  simp only [and_def P, or_def P],
   refine equiv_of_equiv (show p ⟶ ⁻q ⟷ p ⟶ ⁻q ∈ P, by simp) _ (equiv_imply_of_equiv _ _); simp
 end
 
-@[simp] lemma neg_or_equiv_and_neg {p q : F} : ⁻(p ⊔ q) ⟷ ⁻p ⊓ ⁻q ∈ P :=
+@[simp] lemma neg_or_equiv_and_neg (p q : F) : ⁻(p ⊔ q) ⟷ ⁻p ⊓ ⁻q ∈ P :=
 begin
-  simp [and_def P, or_def P],
+  simp only [and_def P, or_def P],
   refine equiv_of_equiv (show ⁻(⁻p ⟶ q) ⟷ ⁻(⁻p ⟶ q) ∈ P, by simp) _ (equiv_neg_of_equiv (equiv_imply_of_equiv _ _)); simp
 end
 
-@[simp] lemma hyp_or {p q r : F} : (p ⟶ r) ⟶ (q ⟶ r) ⟶ p ⊔ q ⟶ r ∈ P :=
+@[simp] lemma or_imply (p q r : F) : (p ⟶ r) ⟶ (q ⟶ r) ⟶ p ⊔ q ⟶ r ∈ P :=
 begin
   have : (⁻r ⟶ ⁻p) ⟶ (⁻r ⟶ ⁻q) ⟶ ⁻r ⟶ ⁻p ⊓ ⁻q ∈ P, { simp },
   refine imply_of_equiv this (by simp) (equiv_imply_of_equiv (by simp) _),
@@ -300,18 +313,20 @@ def lindenbaum := quotient (⟨equiv P, equiv_equivalence P⟩ : setoid F)
 
 end classical_logic
 
-namespace axiomatic_classical_logic
+namespace axiomatic_classical_logic'
 open classical_logic
-variables {F : Type*} [propositional_formula F] (T : set F) [axiomatic_classical_logic F]
+variables {F : Type*} [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F]
+  (T : set F) [axiomatic_classical_logic' F]
 
-instance : classical_logic ((⊢) T) := axiomatic_classical_logic.classical
-
+instance : classical_logic ((⊢) T) := axiomatic_classical_logic'.classical
 
 variables {T}
 
 lemma modus_ponens {p q : F} : T ⊢ p ⟶ q → T ⊢ p → T ⊢ q := modus_ponens
 
-local infixr ` ⨀ `:90 := axiomatic_classical_logic.modus_ponens
+local infixl ` ⨀ `:90 := axiomatic_classical_logic'.modus_ponens
+
+@[simp] lemma mem_iff_prov (p : F) : (@has_mem.mem F (set F) _) p ((⊢) T : set F) ↔ T ⊢ p := by refl
 
 @[simp] lemma imply₁ (p q) : T ⊢ p ⟶ q ⟶ p := imply₁
 
@@ -321,14 +336,87 @@ local infixr ` ⨀ `:90 := axiomatic_classical_logic.modus_ponens
 
 @[simp] lemma provable_top : T ⊢ (⊤ : F) := provable_top
 
+@[simp] lemma refl (p : F) : T ⊢ p ⟶ p := classical_logic.refl p
+
+@[simp] lemma hyp_right {p : F} (h : T ⊢ p) (q) : T ⊢ q ⟶ p := hyp_right h q
+
 @[simp] lemma dne (p : F) : T ⊢ ⁻⁻p ⟶ p := dne p
 
 @[simp] lemma dni (p : F) : T ⊢ p ⟶ ⁻⁻p := dni p
 
+@[simp] lemma dn_iff {p : F} : T ⊢ ⁻⁻p ↔ T ⊢ p := dn_iff
 
+@[simp] lemma dn1_iff {p q : F} : T ⊢ ⁻⁻p ⟶ q ↔ T ⊢ p ⟶ q := dn1_iff
 
-@[simp] lemma insert (p) : T +{ p } ⊢ p :=
-by_axiom (by simp)
+@[simp] lemma dn2_iff {p q : F} : T ⊢ p ⟶ ⁻⁻q ↔ T ⊢ p ⟶ q := dn2_iff
+
+@[simp] lemma hyp_bot (p : F) : T ⊢ ⊥ ⟶ p := hyp_bot p
+
+@[simp] lemma and_left (p q : F) : T ⊢ p ⊓ q ⟶ p := and_left p q
+
+@[simp] lemma and_right (p q : F) : T ⊢ p ⊓ q ⟶ q := and_right p q
+
+@[simp] lemma iff_and {p q : F} : T ⊢ p ⊓ q ↔ (T ⊢ p ∧ T ⊢ q) := iff_and
+
+@[simp] lemma iff_equiv {p q : F} : T ⊢ p ⟷ q ↔ (T ⊢ p ⟶ q ∧ T ⊢ q ⟶ p) := iff_equiv
+
+@[simp] lemma equiv_refl (p : F) : T ⊢ p ⟷ p := equiv_refl p
+
+@[simp] lemma iff_dn_refl_right (p : F) : T ⊢ p ⟷ ⁻⁻p := iff_dn_refl_right p
+
+@[simp] lemma iff_dn_refl_left (p : F) : T ⊢ ⁻⁻p ⟷ p := iff_dn_refl_left p
+
+@[simp] lemma contraposition_inv (p q : F) : T ⊢ (p ⟶ q) ⟶ (⁻q ⟶ ⁻p) := contraposition_inv p q
+
+@[simp] lemma contraposition_iff (p q : F) : T ⊢ (p ⟶ q) ⟷ (⁻q ⟶ ⁻p) := contraposition_iff p q
+
+@[simp] lemma contraposition_iff_inv (p q : F) : T ⊢ (⁻p ⟶ ⁻q) ⟷ (q ⟶ p) := contraposition_iff_inv p q
+
+@[simp] lemma neg_hyp' (p : F) : T ⊢ (p ⟶ ⁻p) ⟶ ⁻p := neg_hyp' p
+
+@[simp] lemma neg_iff (p : F) : T ⊢ ⁻p ⟷ (p ⟶ ⊥) := neg_iff p
+
+@[simp] lemma neg_impl_equiv_and (p q : F) : T ⊢ ⁻(p ⟶ q) ⟷ p ⊓ ⁻q := neg_impl_equiv_and p q
+
+lemma neg_impl_iff_and {p q : F} : T ⊢ ⁻(p ⟶ q) ↔ T ⊢ p ⊓ ⁻q := neg_impl_iff_and
+
+@[simp] lemma equiv_symm_and (p q : F) : T ⊢ p ⊓ q ⟷ q ⊓ p := equiv_symm_and p q
+
+@[simp] lemma equiv_symm_equiv (p q : F) : T ⊢ (p ⟷ q) ⟷ (q ⟷ p) := equiv_symm_equiv p q
+
+@[simp] lemma and_destruct (p q : F) : T ⊢ p ⟶ q ⟶ p ⊓ q := and_destruct p q
+
+@[simp] lemma imply_or_left (p q : F) : T ⊢ p ⟶ p ⊔ q := imply_or_left p q
+
+@[simp] lemma imply_or_right (p q : F) : T ⊢ q ⟶ p ⊔ q := imply_or_right p q
+
+@[simp] lemma imply_and (p q r : F) : T ⊢ (p ⟶ q) ⟶ (p ⟶ r) ⟶ p ⟶ q ⊓ r := imply_and p q r
+
+@[simp] lemma neg_and_equiv_or_neg (p q : F) : T ⊢ ⁻(p ⊓ q) ⟷ ⁻p ⊔ ⁻q := neg_and_equiv_or_neg p q
+
+@[simp] lemma neg_or_equiv_and_neg (p q : F) : T ⊢ ⁻(p ⊔ q) ⟷ ⁻p ⊓ ⁻q := neg_or_equiv_and_neg p q
+
+@[simp] lemma or_imply (p q r : F) : T ⊢ (p ⟶ r) ⟶ (q ⟶ r) ⟶ p ⊔ q ⟶ r := or_imply p q r
+
+@[simp] lemma insert (p) : T +{ p } ⊢ p := by_axiom (by simp)
+
+variables (T)
+
+def equiv : F → F → Prop := equiv ((⊢) T)
+
+#check equiv T
+
+end axiomatic_classical_logic'
+
+namespace axiomatic_classical_logic
+open classical_logic axiomatic_classical_logic'
+
+variables {F : Type*} [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F]
+  (T : set F) [axiomatic_classical_logic F]
+
+local infixl ` ⨀ `:90 := axiomatic_classical_logic'.modus_ponens
+
+variables {T}
 
 @[simp] lemma weakening_insert {q : F} (h : T ⊢ q) (p) : T +{ p } ⊢ q :=
 weakening (show T ⊆ T +{ p }, by { intros x h, simp[h] }) h
@@ -336,33 +424,18 @@ weakening (show T ⊆ T +{ p }, by { intros x h, simp[h] }) h
 theorem deduction {p q} : (T +{ p } ⊢ q) ↔ (T ⊢ p ⟶ q) :=
 ⟨deduction', λ h, by { have : T +{ p } ⊢ p ⟶ q, simp[h], exact this ⨀ (by simp) }⟩
 
-@[simp] lemma refl (p : F) : T ⊢ p ⟶ p := classical_logic.refl p
-
-@[simp] lemma hyp_right {p : F} (h : T ⊢ p) (q) : T ⊢ q ⟶ p := hyp_right h q
-
-lemma modus_ponens_hyp {p q r: F} (hqr : T ⊢ p ⟶ q ⟶ r) (hq : T ⊢ p ⟶ q) : T ⊢ p ⟶ r :=
-by { have : T ⊢ (p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r, simp,
-     exact modus_ponens (modus_ponens this hqr) hq }
-
-lemma impl_trans {p q r : F} : (T ⊢ p ⟶ q) → (T ⊢ q ⟶ r) → (T ⊢ p ⟶ r) := λ h₁ h₂,
-begin
-  have l₁ : T ⊢ (p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ (p ⟶ r), simp,  
-  have l₂ : T ⊢ (p ⟶ q ⟶ r), simp[h₂],
-  have l₃ : T ⊢ (p ⟶ q) ⟶ (p ⟶ r), from modus_ponens l₁ l₂,
-  exact modus_ponens l₃ h₁
-end
-
-
-
 lemma axiom_and {p₁ p₂ q : F} : T +{ p₁ ⊓ p₂ } ⊢ q ↔ T +{ p₁ } +{ p₂ } ⊢ q :=
 ⟨λ h,
- by { have lmm₁ : T +{ p₁ } +{ p₂ } ⊢ p₁ ⊓ p₂, by simp,
+ by { have lmm₁ : T +{ p₁ } +{ p₂ } ⊢ p₁ ⊓ p₂, by simp[axiomatic_classical_logic'.iff_and],
       have lmm₂ : T +{ p₁ } +{ p₂ } ⊢ p₁ ⊓ p₂ ⟶ q, simp[deduction.mp h],
-      exact modus_ponens lmm₂ lmm₁ },
+      exact lmm₂ ⨀ lmm₁ },
  λ h,
  by { have lmm₁ : T +{ p₁ ⊓ p₂ } ⊢ p₁ ⟶ p₂ ⟶ q, simp[deduction.mp (deduction.mp h)],
-      have lmm₂ : T +{ p₁ ⊓ p₂ } ⊢ p₁ ⊓ p₂, from insert _, simp at lmm₂,
-      exact modus_ponens (modus_ponens lmm₁ lmm₂.1) lmm₂.2 } ⟩
+      have lmm₂ : T +{ p₁ ⊓ p₂ } ⊢ p₁ ⊓ p₂, from insert _, simp only [axiomatic_classical_logic'.iff_and] at lmm₂,
+      exact lmm₁ ⨀ lmm₂.1 ⨀ lmm₂.2 } ⟩
+
+lemma raa {p} (q) (h₁ : T+{p} ⊢ q) (h₂ : T+{p} ⊢ ⁻q) : T ⊢ ⁻p :=
+neg_hyp (deduction.mp (explosion h₁ h₂))
 
 end axiomatic_classical_logic
 

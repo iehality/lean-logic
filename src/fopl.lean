@@ -27,55 +27,77 @@ inductive formula : Type u
 | neg   : formula → formula
 | fal   : formula → formula
 
-infix ` ≃ ` := formula.equal
-infix ` ≃₁ `:80 := formula.equal
-infixr ` →̇ `:78 := formula.imply
-prefix `¬̇`:94 := formula.neg
-prefix `∀̇ `:90 := formula.fal
+attribute [pattern]  has_eq.eq has_negation.neg has_arrow.arrow has_univ_quantifier.univ
 
-instance : inhabited (formula L) := ⟨#0 ≃₁ #0⟩
+instance : has_arrow (formula L) := ⟨formula.imply⟩
+
+instance : has_eq (term L) (formula L) := ⟨formula.equal⟩
+
+local infix ` ≃₁ `:80 := ((≃) : term L → term L → formula L)
+
+instance : has_negation (formula L) := ⟨formula.neg⟩
+
+instance : has_univ_quantifier (formula L) := ⟨formula.fal⟩
+
+@[simp] lemma formula.imply_eq : @formula.imply L = (⟶) := rfl
+@[simp] lemma formula.equal_eq : @formula.equal L = (≃) := rfl
+@[simp] lemma formula.neg_eq : @formula.neg L = has_negation.neg := rfl
+@[simp] lemma formula.fal_eq : @formula.fal L = has_univ_quantifier.univ := rfl
+
+instance : inhabited (formula L) := ⟨(#0 : term L) ≃ #0⟩
 
 notation `theory `L:max := set (formula L)
 
 variables {L}
 
-@[reducible] def formula.neq (t : term L) (u : term L) : formula L := ¬̇(t ≃ u)
-infix ` ≠̇ `:90 := formula.neq
+def formula.and (p : formula L) (q : formula L) : formula L := ⁻(p ⟶ ⁻q)
 
-def formula.and (p : formula L) (q : formula L) : formula L := ¬̇(p →̇ ¬̇q)
-infix ` ⩑ `:86 := formula.and
+instance : has_inf (formula L) := ⟨formula.and⟩
 
-def formula.or (p : formula L) (q : formula L) : formula L := ¬̇p →̇ q
-infix ` ⩒ `:82 := formula.or
+def formula.or (p : formula L) (q : formula L) : formula L := ⁻p ⟶ q
 
-def formula.iff (p : formula L) (q : formula L) : formula L := (p →̇ q) ⩑ (q →̇ p)
-infix ` ↔̇ `:74 := formula.iff
+instance : has_sup (formula L) := ⟨formula.or⟩
 
-def formula.ex (p : formula L) : formula L := ¬̇∀̇¬̇p
-prefix `∃̇ `:90 := formula.ex
+def formula.ex (p : formula L) : formula L := ⁻∏⁻p
 
-@[irreducible] def formula.top : formula L := ∀̇(#0 ≃₁ #0)
-notation `⊤̇` := formula.top
+instance : has_exists_quantifier (formula L) := ⟨formula.ex⟩
 
-@[irreducible] def formula.bot : formula L := ¬̇⊤̇
-notation `⊥̇` := formula.bot
+@[irreducible] def formula.top : formula L := ∏((#0 : term L) ≃ #0)
+
+instance : has_top (formula L) := ⟨formula.top⟩
+
+@[irreducible] def formula.bot : formula L := ⁻⊤
+
+instance : has_bot (formula L) := ⟨formula.bot⟩
+
+@[simp] lemma formula.equal.inj' (t₁ u₁ t₂ u₂ : term L) : (t₁ ≃ t₂ : formula L) = u₁ ≃ u₂ ↔ t₁ = u₁ ∧ t₂ = u₂ :=
+⟨formula.equal.inj, by simp; exact congr_arg2 (≃)⟩
+
+@[simp] lemma formula.imply.inj' (p₁ q₁ p₂ q₂ : formula L) : p₁ ⟶ p₂ = q₁ ⟶ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
+⟨formula.imply.inj, by simp; exact congr_arg2 (⟶)⟩
+
+@[simp] lemma formula.neg.inj' (p q : formula L) : ⁻p = ⁻q ↔ p = q := ⟨formula.neg.inj, congr_arg _⟩
+
+@[simp] lemma formula.fal.inj' (p q : formula L) : ∏ p = ∏ q ↔ p = q := ⟨formula.fal.inj, congr_arg _⟩
+
+@[simp] lemma formula.ex.inj' (p q : formula L) : ∐ p = ∐ q ↔ p = q := by simp[has_exists_quantifier.ex, formula.ex]
 
 @[simp] def nfal (p : formula L) : ℕ → formula L
 | 0     := p
-| (n+1) := ∀̇ (nfal n)
+| (n+1) := ∏ (nfal n)
 
-notation `∀̇[` i `] `:90 p := nfal p i
+notation `∏[` i `] `:90 p := nfal p i
 
-@[simp] lemma nfal_fal (p : formula L) (i : ℕ) : nfal (∀̇ p) i = ∀̇ (nfal p i) :=
+@[simp] lemma nfal_fal (p : formula L) (i : ℕ) : nfal (∏ p) i = ∏ (nfal p i) :=
 by { induction i with i IH; simp, exact IH }
 
 @[simp] def conjunction' : ∀ n, (fin n → formula L) → formula L
-| 0 _        := ⊤̇
-| (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⩑ conjunction' n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
+| 0 _        := ⊤
+| (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊓ conjunction' n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
 
 def conjunction : list (formula L) → formula L
-| []        := ⊤̇
-| (p :: ps) := p ⩑ conjunction ps
+| []        := ⊤
+| (p :: ps) := p ⊓ conjunction ps
 
 @[reducible] def ι : ℕ → term L := term.var
 
@@ -234,12 +256,27 @@ lemma rewriting_sf_perm {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n) : ∀ 
 
 @[simp] def formula.arity : formula L → ℕ
 | (formula.app p v) := finitary.Max 0 (λ i, (v i).arity)
-| (t ≃ u)           := max t.arity u.arity
-| (p →̇ q)          := max p.arity q.arity
-| (¬̇p)              := p.arity
-| (∀̇ p)             := p.arity - 1
+| (t ≃₁ u) := max t.arity u.arity
+| (p ⟶ q)  := max p.arity q.arity
+| (⁻p)     := p.arity
+| (∏ p)    := p.arity - 1
 
 @[reducible] def sentence : formula L → Prop := λ p, p.arity = 0
+
+@[simp] lemma formula.and_arity (p q : formula L) : (p ⊓ q).arity = max p.arity q.arity :=
+by simp[has_inf.inf, formula.and]
+
+@[simp] lemma formula.or_arity (p q : formula L) : (p ⊔ q).arity = max p.arity q.arity :=
+by simp[has_sup.sup, formula.or]
+
+@[simp] lemma formula.top_arity : (⊤ : formula L).arity = 0 :=
+by simp[has_top.top, formula.top]
+
+@[simp] lemma formula.bot_arity : (⊥ : formula L).arity = 0 :=
+by simp[has_bot.bot, formula.bot]
+
+@[simp] lemma formula.ex_arity (p : formula L) : (∐ p).arity = p.arity - 1 :=
+by simp[has_exists_quantifier.ex, formula.ex]
 
 lemma subst_pow (t : term L) (n i : ℕ) : ι[n ⇝ t]^i = ι[n + i ⇝ t^i] :=
 begin
@@ -277,10 +314,10 @@ by { simp[finitary.Max, finitary.cons, fin.add'], exact max_comm _ _ }
 
 @[simp] def rew : (ℕ → term L) → formula L → formula L
 | s (app p v) := app p (λ i, (v i).rew s)
-| s (t ≃ u)   := (t.rew s) ≃ (u.rew s)
-| s (p →̇ q)  := p.rew s →̇ q.rew s
-| s (¬̇p)      := ¬̇(p.rew s)
-| s (∀̇ p)     := ∀̇ (p.rew (s^1))
+| s (t ≃₁ u)  := (t.rew s) ≃ (u.rew s)
+| s (p ⟶ q)  := p.rew s ⟶ q.rew s
+| s (⁻p)      := ⁻(p.rew s)
+| s (∏ p)    := ∏ (p.rew (s^1))
 
 @[simp] lemma constant_rew (c : L.pr 0) (s : ℕ → term L) {v : finitary (term L) 0} : (app c v).rew s = app c finitary.nil :=
 by simp
@@ -293,18 +330,18 @@ by simp[finitary.cons]
 by { simp, rw ←(finitary.fin2_eq (λ i, term.rew s (fin[t₁, t₂] i))), simp,
      simp[finitary.cons] }
 
-@[simp] lemma and_rew (p q : formula L) (s) : (p ⩑ q).rew s = p.rew s ⩑ q.rew s := by simp[and, formula.rew]
-@[simp] lemma or_rew (p q : formula L) (s) : (p ⩒ q).rew s = p.rew s ⩒ q.rew s := by simp[or, formula.rew]
-@[simp] lemma iff_rew (p q : formula L) (s) : (p ↔̇ q).rew s = p.rew s ↔̇ q.rew s := by simp[iff, formula.rew]
+@[simp] lemma and_rew (p q : formula L) (s) : (p ⊓ q).rew s = p.rew s ⊓ q.rew s := by simp[has_inf.inf, and, formula.rew]
+@[simp] lemma or_rew (p q : formula L) (s) : (p ⊔ q).rew s = p.rew s ⊔ q.rew s := by simp[has_sup.sup, or, formula.rew]
+@[simp] lemma iff_rew (p q : formula L) (s) : (p ⟷ q).rew s = p.rew s ⟷ q.rew s := by simp[lrarrow_def, formula.rew]
 @[simp] lemma nfal_rew (p : formula L) (i : ℕ) (s) : (nfal p i).rew s = nfal (p.rew (s^i)) i :=
 by { induction i with i IH generalizing s, { simp },
      simp[←nat.add_one, IH, rewriting_sf_itr.pow_add, add_comm 1 i] }
-@[simp] lemma ex_rew (p : formula L) (s) : (∃̇p).rew s = ∃̇p.rew (s^1) :=by simp[ex]
-@[simp] lemma top_rew (s) : (⊤̇ : formula L).rew s = ⊤̇ := by simp[formula.top]
-@[simp] lemma bot_rew (s) : (⊥̇ : formula L).rew s = ⊥̇ := by simp[formula.bot]
+@[simp] lemma ex_rew (p : formula L) (s) : (∐ p).rew s = ∐p.rew (s^1) :=by simp[has_exists_quantifier.ex, ex]
+@[simp] lemma top_rew (s) : (⊤ : formula L).rew s = ⊤ := by simp[has_top.top, formula.top]
+@[simp] lemma bot_rew (s) : (⊥ : formula L).rew s = ⊥ := by simp[has_bot.bot, formula.bot]
 
 @[simp] lemma rew_ι (p : formula L) : p.rew ι = p :=
-by { induction p; simp[rew]; try {simp*},
+by { induction p; try {simp[rew]}; try {simp*},
      have : ι^1 = ι,
      { funext n, cases n, rw[@rewriting_sf_0 L], simp }, rw[this], simp* }
 
@@ -329,14 +366,14 @@ by simp[pow_eq]; refl
   (app p fin[t₁, t₂])^i = app p fin[t₁^i, t₂^i] :=
 by simp[pow_eq]; refl
 
-@[simp] lemma eq_pow (t u : term L) (i : ℕ) : (t ≃₁ u)^i = (t^i) ≃₁ (u^i) := rfl
-@[simp] lemma imply_pow (p q : formula L) (i : ℕ) : (p →̇ q)^i = p^i →̇ q^i := rfl
-@[simp] lemma neg_pow (p : formula L) (i : ℕ) : (¬̇p)^i = ¬̇(p^i) := rfl
-@[simp] lemma and_pow (p q : formula L) (i : ℕ) : (p ⩑ q)^i = (p^i) ⩑ (q^i) := rfl
-@[simp] lemma or_pow (p q : formula L) (i : ℕ) : (p ⩒ q)^i = (p^i) ⩒ (q^i) := rfl
-@[simp] lemma top_pow (i : ℕ) : (⊤̇ : formula L)^i = ⊤̇ := by simp[top]; refl
-@[simp] lemma bot_pow (i : ℕ) : (⊥̇ : formula L)^i = ⊥̇ := by simp[bot]; refl
-lemma fal_pow (p : formula L) (i : ℕ) : (∀̇ p)^i = ∀̇ p.rew (#0 ⌢ λ x, #(x + i + 1)) :=
+@[simp] lemma eq_pow (t u : term L) (i : ℕ) : (t ≃₁ u)^i = (t^i) ≃ (u^i) := rfl
+@[simp] lemma imply_pow (p q : formula L) (i : ℕ) : (p ⟶ q)^i = p^i ⟶ q^i := rfl
+@[simp] lemma neg_pow (p : formula L) (i : ℕ) : (⁻p)^i = ⁻(p^i) := rfl
+@[simp] lemma and_pow (p q : formula L) (i : ℕ) : (p ⊓ q)^i = (p^i) ⊓ (q^i) := rfl
+@[simp] lemma or_pow (p q : formula L) (i : ℕ) : (p ⊔ q)^i = (p^i) ⊔ (q^i) := rfl
+@[simp] lemma top_pow (i : ℕ) : (⊤ : formula L)^i = ⊤ := by simp[has_top.top, top]; refl
+@[simp] lemma bot_pow (i : ℕ) : (⊥ : formula L)^i = ⊥ := by simp[has_bot.bot, bot]; refl
+lemma fal_pow (p : formula L) (i : ℕ) : (∏ p)^i = ∏ p.rew (#0 ⌢ λ x, #(x + i + 1)) :=
 by simp[formula.pow_eq, rewriting_sf_itr.pow_eq]
 
 lemma nfal_pow (p : formula L) (n i : ℕ) :
@@ -347,22 +384,22 @@ by { simp[formula.pow_eq, rewriting_sf_itr.pow_eq'], congr, funext x,
 lemma nested_rew : ∀ (p : formula L) (s₀ s₁),
   (p.rew s₀).rew s₁ = p.rew (λ x, (s₀ x).rew s₁)
 | (app p v) _ _ := by simp[rew]
-| (t ≃ u)   _ _ := by simp[rew]
-| (p →̇ q)  _ _ := by simp[rew]; refine ⟨nested_rew p _ _, nested_rew q _ _⟩
-| (¬̇p)      _ _ := by simp[rew]; refine nested_rew p _ _
-| (∀̇ p)     _ _ := by { simp[rew, nested_rew p], congr,
+| (t ≃₁ u)   _ _ := by simp[rew]
+| (p ⟶ q)  _ _ := by simp[rew, nested_rew p, nested_rew q]
+| (⁻p)      _ _ := by simp[rew]; refine nested_rew p _ _
+| (∏ p)     _ _ := by { simp[rew, nested_rew p], congr,
     funext n, cases n; simp, simp[concat, rewriting_sf_itr.pow_eq, term.pow_eq] }
 
 lemma rew_rew : ∀ (p : formula L) {s₀ s₁ : ℕ → term L},
   (∀ m, m < p.arity → s₀ m = s₁ m) → p.rew s₀ = p.rew s₁
 | (app p v) _ _ h := by simp[rew, arity] at h ⊢; refine funext
     (λ i, term.rew_rew (v i) (λ m eqn, h _ $ lt_of_lt_of_le eqn (finitary.Max_le 0 _ i)))
-| (t ≃ u)   _ _ h := by simp[rew, arity] at h ⊢;
-    refine ⟨term.rew_rew _ (λ _ e, h _ (or.inl e)), term.rew_rew _ (λ _ e, h _ (or.inr e))⟩
-| (p →̇ q)  _ _ h := by simp[rew, arity] at h ⊢;
+| (t ≃₁ u)   _ _ h := by simp[rew, arity] at h ⊢;
+    { refine ⟨term.rew_rew _ (λ _ e, h _ (or.inl e)), term.rew_rew _ (λ _ e, h _ (or.inr e))⟩ }
+| (p ⟶ q)  _ _ h := by simp[rew, arity] at h ⊢;
     refine ⟨rew_rew _ (λ _ e, h _ (or.inl e)), rew_rew _ (λ _ e, h _ (or.inr e))⟩
-| (¬̇p)      _ _ h := by simp[rew, arity] at h ⊢; refine rew_rew _ h
-| (∀̇p)      _ _ h := by { simp[rew, arity] at h ⊢,
+| (⁻p)      _ _ h := by simp[rew, arity] at h ⊢; refine rew_rew _ h
+| (∏p)      _ _ h := by { simp[rew, arity] at h ⊢,
     refine rew_rew _ (λ m e, _), cases m; simp,
     cases p.arity, { exfalso, simp* at* },
     { simp at h, simp[h _ (nat.succ_lt_succ_iff.mp e)] } }
@@ -398,25 +435,25 @@ lemma total_rew_inv :
   ∀ (s : ℕ → term L) (h : ∀ n, ∃ m, s m = #n) (p : formula L), ∃ q : formula L, q.rew s = p
 | s h (@app _ n p v) := by rcases classical.skolem.mp (λ i : fin n, @term.total_rew_inv _ s h (v i : term L)) with ⟨w, w_p⟩;
     refine ⟨app p w, by simp[w_p]⟩
-| s h (t ≃ u)        := 
+| s h (t ≃₁ u)        := 
     by rcases term.total_rew_inv s h t with ⟨w₁, e_w₁⟩;
        rcases term.total_rew_inv s h u with ⟨w₂, e_w₂⟩; refine ⟨w₁ ≃ w₂, by simp[e_w₁, e_w₂]⟩
-| s h (p →̇ q)       := 
+| s h (p ⟶ q)       := 
     by rcases total_rew_inv s h p with ⟨p', e_p'⟩;
-       rcases total_rew_inv s h q with ⟨q', e_q'⟩; refine ⟨p' →̇ q', by simp*⟩
-| s h (¬̇p)      := by rcases total_rew_inv s h p with ⟨q, e_q⟩; refine ⟨¬̇q, by simp*⟩
-| s h (∀̇p)      := by rcases total_rew_inv _ (rewriting_sf_perm h) p with ⟨q, e_q⟩; refine ⟨∀̇q, by simp[e_q]⟩
+       rcases total_rew_inv s h q with ⟨q', e_q'⟩; refine ⟨p' ⟶ q', by simp*⟩
+| s h (⁻p)      := by rcases total_rew_inv s h p with ⟨q, e_q⟩; refine ⟨⁻q, by simp*⟩
+| s h (∏ p)      := by rcases total_rew_inv _ (rewriting_sf_perm h) p with ⟨q, e_q⟩; refine ⟨∏q, by simp[e_q]⟩
 
 @[simp] def Open : formula L → bool
 | (app p v) := tt
-| (t ≃ u)   := tt
-| (p →̇ q)  := p.Open && q.Open
-| (¬̇p)      := p.Open
-| (∀̇p)      := ff
+| (t ≃₁ u)   := tt
+| (p ⟶ q)  := p.Open && q.Open
+| (⁻p)      := p.Open
+| (∏p)      := ff
 
-@[simp] lemma op.and (p q : formula L) : (p ⩑ q).Open = p.Open && q.Open := rfl
+@[simp] lemma op.and (p q : formula L) : (p ⊓ q).Open = p.Open && q.Open := rfl
 
-@[simp] lemma op.or (p q : formula L) : (p ⩒ q).Open = p.Open && q.Open := rfl
+@[simp] lemma op.or (p q : formula L) : (p ⊔ q).Open = p.Open && q.Open := rfl
 
 @[simp] lemma nfal_arity : ∀ (n) (p : formula L), (nfal p n).arity = p.arity - n
 | 0     p := by simp[formula.arity]
@@ -427,7 +464,7 @@ by simp[sentence]
 
 @[simp] lemma conjunction_arity {n} {v : finitary (formula L) n} :
   (conjunction' n v).arity = finitary.Max 0 (λ i, (v i).arity) :=
-by { induction n with n IH; simp[finitary.Max, fin.add', top, and, arity, term.arity], simp[IH] }
+by { induction n with n IH; simp[finitary.Max, fin.add'], simp[IH] }
 
 end formula
 
@@ -439,10 +476,10 @@ class translation (L₁ : language.{u}) (L₂ : language.{u}) :=
 
 @[simp] def translation.tr {L₁ L₂ : language.{u}} [translation L₁ L₂] : formula L₁ → formula L₂
 | (app p v) := translation.tr_pr p v
-| (t ≃ u)   := translation.tr_eq t u
-| (p →̇ q)  := translation.tr p →̇ translation.tr q
-| (¬̇p)      := ¬̇translation.tr p
-| (∀̇p)      := ∀̇ translation.tr p
+| ((t : term L₁) ≃ u)   := translation.tr_eq t u
+| (p ⟶ q)  := translation.tr p ⟶ translation.tr q
+| (⁻p)      := ⁻translation.tr p
+| (∏ p)      := ∏ translation.tr p
 
 notation `tr[` p `]` := translation.tr p
 
@@ -459,7 +496,7 @@ variables {L₁ L₂ : language.{u}}
 | (app f v)  := app (sum.inl f) (λ i, add_tr_v1 (v i))
 
 instance : translation L₁ (L₁ + L₂) :=
-⟨λ n p v, app (sum.inl p) (λ i, add_tr_v1 (v i)), λ t u, add_tr_v1 t ≃₁ add_tr_v1 u⟩
+⟨λ n p v, app (sum.inl p) (λ i, add_tr_v1 (v i)), λ t u, (add_tr_v1 t : term (L₁ + L₂)) ≃ add_tr_v1 u⟩
 
 instance {L₁ L₂ : language.{u}} : has_coe (term L₁) (term (L₁ + L₂)) := ⟨add_tr_v1⟩
 instance {L₁ L₂ : language.{u}} : has_coe (formula L₁) (formula (L₁ + L₂)) := ⟨translation.tr⟩
