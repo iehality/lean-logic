@@ -305,11 +305,134 @@ begin
   refine equiv_of_equiv (show ⁻r ⟶ ⁻(p ⊔ q) ⟷ p ⊔ q ⟶ r ∈ P, by simp) (equiv_imply_of_equiv _ _) _; simp
 end
 
+@[simp] lemma le_sup_inf (p q r : F) : (p ⊔ q) ⊓ (p ⊔ r) ⟶ p ⊔ q ⊓ r ∈ P :=
+begin
+  simp[or_def P],
+  exact (show (⁻p ⟶ q) ⊓ (⁻p ⟶ r) ⟶ (⁻p ⟶ q) ⟶ (⁻p ⟶ r) ⟶ ⁻p ⟶ q ⊓ r ∈ P, by simp) ⨀₁
+        (show (⁻p ⟶ q) ⊓ (⁻p ⟶ r) ⟶ (⁻p ⟶ q) ∈ P, by simp) ⨀₁
+        (show (⁻p ⟶ q) ⊓ (⁻p ⟶ r) ⟶ (⁻p ⟶ r) ∈ P, by simp)
+end
+
 variables (P)
 
 def lindenbaum := quotient (⟨equiv P, equiv_equivalence P⟩ : setoid F)
 
+variables {P}
 
+def to_quo (p : F) : lindenbaum P := quotient.mk' p
+
+#check @to_quo _ _ _ _ _ _ _ P _
+
+local notation `⟦` p `⟧ᶜ` := @to_quo _ _ _ _ _ _ _ P _ p
+
+namespace lindenbaum
+
+@[elab_as_eliminator]
+protected lemma ind_on {C : lindenbaum P → Prop} (d : lindenbaum P)
+  (h : ∀ p : F, C (to_quo p)) : C d := quotient.induction_on' d h
+
+@[elab_as_eliminator, reducible]
+protected def lift_on {φ : Sort*} (p : lindenbaum P) (f : F → φ)
+  (h : ∀ p q : F, p ⟷ q ∈ P → f p = f q) : φ := quotient.lift_on' p f h
+
+@[simp]
+protected lemma lift_on_eq {φ : Sort*} (p : F) (f : F → φ)
+  (h : ∀ p q, p ⟷ q ∈ P → f p = f q) : classical_logic.lindenbaum.lift_on ⟦p⟧ᶜ f h = f p := rfl
+
+@[elab_as_eliminator, reducible]
+protected def lift_on₂ {φ : Sort*} (p₁ p₂ : lindenbaum P) (f : F → F → φ)
+  (h : ∀ p₁ p₂ q₁ q₂, p₁ ⟷ q₁ ∈ P → p₂ ⟷ q₂ ∈ P → f p₁ p₂ = f q₁ q₂) : φ :=
+quotient.lift_on₂' p₁ p₂ f h
+
+@[simp]
+protected lemma lift_on₂_eq {φ : Sort*} (p₁ p₂ : F) (f : F → F → φ)
+  (h : ∀ p₁ p₂ q₁ q₂, p₁ ⟷ q₁ ∈ P → p₂ ⟷ q₂ ∈ P → f p₁ p₂ = f q₁ q₂)  :
+classical_logic.lindenbaum.lift_on₂ ⟦p₁⟧ᶜ ⟦p₂⟧ᶜ f h = f p₁ p₂ := rfl
+
+@[elab_as_eliminator, reducible]
+protected def lift_on_finitary {φ : Sort*} {n : ℕ} (v : finitary (lindenbaum P) n) (f : finitary F n → φ)
+  (h : ∀ v₁ v₂ : finitary F n, (∀ n, v₁ n ⟷ v₂ n ∈ P) → f v₁ = f v₂) : φ :=
+quotient.lift_on_finitary v f h 
+
+@[simp]
+protected lemma lift_on_finitary_eq {φ : Sort*} {n : ℕ} (v : finitary F n) (f : finitary F n → φ)
+  (h : ∀ v₁ v₂ : finitary F n, (∀ n, v₁ n ⟷ v₂ n ∈ P) → f v₁ = f v₂) :
+classical_logic.lindenbaum.lift_on_finitary (λ x, ⟦v x⟧ᶜ) f h = f v :=
+quotient.lift_on_finitary_eq v f h
+
+@[simp]
+lemma of_eq_of {p q : F} : ⟦p⟧ᶜ = ⟦q⟧ᶜ ↔ p ⟷ q ∈ P :=
+by simp[to_quo, equiv, quotient.eq']
+
+instance : distrib_lattice (lindenbaum P) :=
+{ le := λ p₁ p₂, classical_logic.lindenbaum.lift_on₂ p₁ p₂ (λ p₁ p₂, p₁ ⟶ p₂ ∈ P)
+    (λ p₁ p₂ q₁ q₂ h₁ h₂,
+      by { simp, exact ⟨λ h, imply_of_equiv h h₁ h₂, λ h, imply_of_equiv h (equiv_symm h₁) (equiv_symm h₂)⟩ }),
+  le_refl := λ p, by induction p using classical_logic.lindenbaum.ind_on; simp,
+  le_trans := λ p₁ p₂ p₃ h₁₂ h₂₃,
+  by { induction p₁ using classical_logic.lindenbaum.ind_on,
+       induction p₂ using classical_logic.lindenbaum.ind_on,
+       induction p₃ using classical_logic.lindenbaum.ind_on,
+       simp at h₁₂ h₂₃ ⊢, exact impl_trans h₁₂ h₂₃ },
+  le_antisymm := λ p₁ p₂,
+  by { induction p₁ using classical_logic.lindenbaum.ind_on,
+       induction p₂ using classical_logic.lindenbaum.ind_on,
+       simp[has_le.le], intros h₁ h₂, simp* },
+  inf := λ p₁ p₂, classical_logic.lindenbaum.lift_on₂ p₁ p₂ (λ p₁ p₂, ⟦p₁ ⊓ p₂⟧ᶜ)
+    (λ p₁ p₂ q₁ q₂ h₁ h₂, by { simp[-iff_equiv], exact equiv_and_of_equiv h₁ h₂ }),
+  sup := λ p₁ p₂, classical_logic.lindenbaum.lift_on₂ p₁ p₂ (λ p₁ p₂, ⟦p₁ ⊔ p₂⟧ᶜ)
+    (λ p₁ p₂ q₁ q₂ h₁ h₂, by { simp[-iff_equiv], exact equiv_or_of_equiv h₁ h₂ }),
+  le_sup_left := λ p q,
+  by { induction p using classical_logic.lindenbaum.ind_on,
+       induction q using classical_logic.lindenbaum.ind_on,
+       simp[has_le.le, preorder.le] },
+  le_sup_right := λ p q,
+  by { induction p using classical_logic.lindenbaum.ind_on,
+       induction q using classical_logic.lindenbaum.ind_on,
+       simp[has_le.le, preorder.le] },
+  sup_le := λ p q r,
+  by { induction p using classical_logic.lindenbaum.ind_on,
+       induction q using classical_logic.lindenbaum.ind_on,
+       induction r using classical_logic.lindenbaum.ind_on,
+       simp[has_le.le, preorder.le],
+       intros hpr hqr, exact (show (p ⟶ r) ⟶ (q ⟶ r) ⟶ p ⊔ q ⟶ r ∈ P, by simp) ⨀ hpr ⨀ hqr },
+  inf_le_left := λ p q,
+  by { induction p using classical_logic.lindenbaum.ind_on,
+       induction q using classical_logic.lindenbaum.ind_on,
+       simp[has_le.le, preorder.le] },
+  inf_le_right := λ p q,
+  by { induction p using classical_logic.lindenbaum.ind_on,
+       induction q using classical_logic.lindenbaum.ind_on,
+       simp[has_le.le, preorder.le] },
+  le_inf := λ p q r,
+  by { induction p using classical_logic.lindenbaum.ind_on,
+       induction q using classical_logic.lindenbaum.ind_on,
+       induction r using classical_logic.lindenbaum.ind_on,
+       simp[has_le.le, preorder.le],
+       intros hpq hpr, exact (show (p ⟶ q) ⟶ (p ⟶ r) ⟶ p ⟶ q ⊓ r ∈ P, by simp) ⨀ hpq ⨀ hpr },
+  le_sup_inf := λ p q r,
+  by { induction p using classical_logic.lindenbaum.ind_on,
+       induction q using classical_logic.lindenbaum.ind_on,
+       induction r using classical_logic.lindenbaum.ind_on,
+       simp[has_le.le, preorder.le, partial_order.le, semilattice_inf.le,
+         has_sup.sup, semilattice_sup.sup, has_inf.inf, semilattice_inf.inf] } }
+
+instance : has_compl (lindenbaum P) := ⟨λ p, classical_logic.lindenbaum.lift_on p (λ p, ⟦⁻p⟧ᶜ)
+    (λ p q h, by { simp[-iff_equiv], exact equiv_neg_of_equiv h })⟩
+
+lemma neg_def (p : F) : (to_quo p)ᶜ = ⟦⁻p⟧ᶜ := rfl
+
+lemma inf_def (p q : F) : to_quo p ⊓ to_quo q = ⟦p ⊓ q⟧ᶜ := rfl
+
+lemma sup_def (p q : F) : to_quo p ⊔ to_quo q = ⟦p ⊔ q⟧ᶜ := rfl
+
+--instance : bounded_order (lindenbaum P) :=
+
+
+instance : boolean_algebra (lindenbaum P) :=
+{ ..lindenbaum.distrib_lattice }
+
+end lindenbaum
 
 end classical_logic
 
@@ -403,8 +526,6 @@ lemma neg_impl_iff_and {p q : F} : T ⊢ ⁻(p ⟶ q) ↔ T ⊢ p ⊓ ⁻q := ne
 variables (T)
 
 def equiv : F → F → Prop := equiv ((⊢) T)
-
-#check equiv T
 
 end axiomatic_classical_logic'
 
