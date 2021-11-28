@@ -8,8 +8,6 @@ import
   order
   init.data.list
   init.data.subtype
-  init.meta.interactive
-  init.data.fin
 
 universes u v
 
@@ -184,7 +182,7 @@ protected def subset {n₁ n₂} (f₁ : finitary α n₁) (f₂ : finitary α n
 
 def cons {n} (f : finitary α n) (a : α) : finitary α (n + 1) := λ i, if h : ↑i < n then f ⟨i, h⟩ else a
 
-infixr ` ::ᶠ `:60  := finitary.cons
+infixl ` ::ᶠ `:60  := finitary.cons
 
 @[simp] lemma cons_app0 {n} (f : finitary α n) (a : α) : (f ::ᶠ a) ⟨n, lt_add_one n⟩ = a := by simp[finitary.cons]
 
@@ -192,9 +190,13 @@ infixr ` ::ᶠ `:60  := finitary.cons
 by { simp[finitary.cons, fin.add'], intros h, exfalso, exact nat.lt_le_antisymm i.property h }
 
 def nil : finitary α 0 := λ i, by { exfalso, exact i.val.not_lt_zero i.property }
-notation `fin[` l:(foldl `, ` (h t, finitary.cons t h) nil `]`) := l
+
+instance : has_emptyc (finitary α 0) := ⟨nil⟩
+
+notation `fin[` l:(foldl `, ` (h t, finitary.cons t h) ∅ `]`) := l
 
 def tail {n} (f : finitary α (n + 1)) : finitary α n := λ i, f ⟨i, nat.lt.step i.property⟩
+
 def head {n} (f : finitary α (n + 1)) : α := f ⟨n, lt_add_one n⟩
 
 lemma tail_cons_head {n} (f : finitary α (n + 1)) : f.tail ::ᶠ f.head = f :=
@@ -204,15 +206,19 @@ funext (λ i, by { simp[cons, tail, head],
   have : ↑i ≤ n, from fin.is_le i,
   exact le_antisymm h this })
 
-@[simp] lemma zero_eq (f : finitary α 0) : f = finitary.nil :=
+@[simp] lemma zero_eq (f : finitary α 0) : f = ∅ :=
 funext (λ i, by { have := i.property, exfalso, exact i.val.not_lt_zero this })
 
-@[simp] lemma fin1_eq (f : finitary α 1) : fin[f 0] = f :=
+lemma fin1_eq_head (f : finitary α 1) : f 0 = f.head := by refl
+
+lemma fin1_eq (f : finitary α 1) : fin[f 0] = f :=
 funext (λ i, by { rcases i with ⟨i, i_p⟩, cases i; simp[cons], exfalso, simp[←nat.add_one] at*, exact i_p })
 
-@[simp] lemma fin2_eq (f : finitary α 2) : fin[f 0, f 1] = f :=
+lemma fin2_eq (f : finitary α 2) : fin[f 0, f 1] = f :=
 funext (λ i, by { rcases i with ⟨i, i_p⟩, cases i; simp[cons], cases i, { simp },
   exfalso, simp[←nat.add_one] at i_p, exact i_p })
+
+@[simp] lemma fin1_app_eq (a : α) (i : fin 1) : (fin[a] : finitary α 1) i = a := rfl
 
 end finitary
 
@@ -356,7 +362,8 @@ protected def lift_on_finitary {s : setoid α} {φ} : ∀ {n : ℕ} (v : finitar
 protected lemma lift_on_finitary_eq {s : setoid α} {φ} {n} (v : finitary α n) (f : finitary α n → φ)
   (h : ∀ v₁ v₂ : finitary α n, (∀ n, setoid.r (v₁ n) (v₂ n)) → f v₁ = f v₂) :
   quotient.lift_on_finitary (λ x, ⟦v x⟧) f h = f v :=
-by { induction n with n IH; simp[quotient.lift_on_finitary], { simp [finitary.zero_eq v] },
+by { induction n with n IH; simp[quotient.lift_on_finitary],
+     { simp [finitary.zero_eq v, show (finitary.nil : finitary α 0) = ∅, by refl] },
      simp[IH], congr, funext i,
      have : ↑i < n ∨ ↑i = n, exact nat.lt_succ_iff_lt_or_eq.mp i.property, cases this; simp[this], simp[←this] }
 
@@ -380,11 +387,11 @@ infixr ` ⟶ `:60 := has_arrow.arrow
 
 @[notation_class] class has_lrarrow (α : Sort*) := (lrarrow : α → α → α)
 
-@[notation_class] class has_univ_quantifier (α : Sort*) := (univ : α → α)
+@[notation_class] class has_univ_quantifier (α : Sort*) (β : Sort*):= (univ : α → β)
 
 prefix `∏ `:64 := has_univ_quantifier.univ
 
-@[notation_class] class has_exists_quantifier (α : Sort*) := (ex : α → α)
+@[notation_class] class has_exists_quantifier (α : Sort*) (β : Sort*) := (ex : α → β)
 
 prefix `∐ `:64 := has_exists_quantifier.ex
 
@@ -408,7 +415,6 @@ by simp[set.insert]
 
 @[simp] lemma set.insert_mem_iff {α : Sort*} {T : set α} {a b : α} :
   b ∈ T +{ a } ↔ b = a ∨ b ∈ T := by simp[set.insert]
-
 
 class intuitionistic_logic
   {F : Sort*} [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F] (P : F → Prop) :=

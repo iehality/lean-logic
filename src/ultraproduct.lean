@@ -6,6 +6,9 @@ universes u v
 namespace fopl
 variables {L : language.{u}} {I : Type u} [inhabited I] (F : ultrafilter I) {𝔄 : I → model L}
 
+local infix ` ≃₁ `:80 := ((≃) : term L → term L → formula L)
+local prefix `∏₁ `:64 := (has_univ_quantifier.univ : formula L → formula L)
+
 def uequiv : (Π i, |𝔄 i|) → (Π i, |𝔄 i|) → Prop :=
 λ u₁ u₂, {i | u₁ i = u₂ i} ∈ F
 
@@ -21,7 +24,7 @@ lemma uequiv_trans {u₁ u₂ u₃ : Π i, |𝔄 i|} : u₁ ~[F] u₂ → u₂ ~
 by { simp[uequiv], intros h₁ h₂,
      have : {i | u₁ i = u₂ i} ∩ {i | u₂ i = u₃ i} ⊆ {i | u₁ i = u₃ i},
      { intros i hi, simp* at* },
-     exact filter.mem_sets_of_superset (filter.inter_mem_sets h₁ h₂) this }
+     exact F.sets_of_superset (F.inter_sets h₁ h₂) this }
 
 theorem uequiv_equivalence : equivalence (@uequiv L I _ F 𝔄) :=
 ⟨uequiv_refl F, λ _ _ , uequiv_symm F, λ _ _ _, uequiv_trans F⟩
@@ -95,8 +98,8 @@ begin
       { rcases h with ⟨x', rfl⟩, simp, exact (@congr_fun _ _ _ _ hi.2) x' },
       { rcases h with rfl, simp[hi.1] } },
     have : {i | v₁.head i = v₂.head i} ∩ {i | (λ x, v₁.tail x i) = (λ x, v₂.tail x i)} ∈ F,
-      from (filter.inter_mem_sets (h _) (@IH v₁.tail v₂.tail (λ x, h _))),
-    refine filter.mem_sets_of_superset this ss }
+      from (F.inter_sets (h _) (@IH v₁.tail v₂.tail (λ x, h _))),
+    refine F.sets_of_superset this ss }
 end
 
 lemma fn_equiv {n} {v₁ v₂ : finitary (Π i, |𝔄 i|) n} (h : ∀ x, v₁ x ~[F] v₂ x) (f : L.fn n) :
@@ -117,7 +120,7 @@ begin
   intros n v₁ v₂ eqn p h,
   have : {i | (𝔄 i).pr p (λ x, v₁ x i)} ∩ {i | (λ x, v₁ x i) = (λ x, v₂ x i)} ⊆ {i | (𝔄 i).pr p (λ x, v₂ x i)},
   { intros i hi, simp* at*, simp[←hi.2], exact hi.1 },
-  refine filter.mem_sets_of_superset (filter.inter_mem_sets h (equivs_mem _ eqn)) this
+  refine F.sets_of_superset (F.inter_sets h (equivs_mem _ eqn)) this
 end
 
 def product_fn (n) (f : L.fn n) : finitary (Ult 𝔄 F) n → Ult 𝔄 F :=
@@ -169,8 +172,8 @@ by simp[models_pr_iff_lmm, model_pr_eq, product_pr]
 theorem fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|),
   ℿ 𝔄 ⫽ F ⊧[λ n, ⟦λ i, e i n⟧*] p ↔ {i | 𝔄 i ⊧[e i] p} ∈ F
 | (formula.app p v) e := models_pr_iff p _ _
-| (t₁ =̇ t₂)      e := by simp[models_pr_iff_lmm]; refl
-| (p →̇ q)       e := by { simp[fundamental_param p, fundamental_param q],
+| (t₁ ≃₁ t₂)      e := by simp[models_pr_iff_lmm]; refl
+| (p ⟶ q)       e := by { simp[fundamental_param p, fundamental_param q],
     show {i | p.val (e i)} ∈ F → {i | q.val (e i)} ∈ F ↔ {i | p.val (e i) → q.val (e i)} ∈ F,
     split,
     { intros h, by_cases C : {i | formula.val (e i) p} ∈ F,
@@ -183,9 +186,9 @@ theorem fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|),
     { intros h₁ h₂,
       have : {i | p.val (e i)} ∩ {i | p.val (e i) → q.val (e i)} ⊆ {i | q.val (e i)},
       { intros i hi, simp at*, refine hi.2 hi.1 },
-      exact filter.mp_sets h₂ h₁ } }
-| (¬̇p)          e := by { simp[fundamental_param p], exact ultrafilter.eventually_not.symm }
-| (∀̇ p)          e := by { simp, 
+      exact filter.mp_mem h₂ h₁ } }
+| (⁻p)          e := by { simp[fundamental_param p], exact ultrafilter.eventually_not.symm }
+| (∏₁ p)          e := by { simp, 
     calc
       (∀ u, ℿ 𝔄 ⫽ F ⊧[u ⌢ λ n, ⟦λ i, e i n⟧*] p)
           ↔ (∀ (u : Π i, |𝔄 i|), ℿ 𝔄 ⫽ F ⊧[λ n, ⟦λ i, (λ i, (u i) ⌢ (e i)) i n⟧*] p) :
@@ -198,7 +201,7 @@ theorem fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|),
       ... ↔ {i | ∀ (u : |𝔄 i|), p.val (u ⌢ e i)} ∈ F : 
         by { split,
              { contrapose, simp[←ultrafilter.compl_mem_iff_not_mem, ←set.compl_eq_compl, set.compl], intros h,
-               show ∃ (u : Π i, |𝔄 i|), {i | ¬p.val ((u i) ⌢ e i)} ∈ F, from model_exists (¬̇p) h },
+               show ∃ (u : Π i, |𝔄 i|), {i | ¬p.val ((u i) ⌢ e i)} ∈ F, from model_exists (⁻p) h },
              { refine λ h u, F.sets_of_superset h (λ _ _ , by simp* at*) } } }
 
 theorem fundamental {p : formula L} :

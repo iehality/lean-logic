@@ -148,22 +148,22 @@ begin
   { intros d₁ d₂, refl }
 end
 
-theorem refutable_comm_add : ¬𝐐 ⊢ ∀̇ ∀̇ (#0 +̇ #1 =̇ #1 +̇ #0) := λ h,
-by { have : Noncomm ⊧ ∀̇ ∀̇ (#0 +̇ #1 =̇ #1 +̇ #0), from soundness h Noncomm_models_Q,
+theorem refutable_comm_add : ¬𝐐 ⊢ ∏ ∏ (#0 +̇ #1 ≃ #1 +̇ #0) := λ h,
+by { have : Noncomm ⊧ ∏ ∏ (#0 +̇ #1 ≃ #1 +̇ #0), from soundness h Noncomm_models_Q,
      have : ∀ n m, add m n = add n m,
      { have := this (λ x, default _), simp[symbol.add] at this, exact this },
      have := this (int₁ 0) (int₂ 0),
      simp at this, exact this }
 
-theorem refutable_comm_mul : ¬𝐐 ⊢ ∀̇ ∀̇ (#0 ×̇ #1 =̇ #1 ×̇ #0) := λ h,
-by { have : Noncomm ⊧ ∀̇ ∀̇ (#0 ×̇ #1 =̇ #1 ×̇ #0), from soundness h Noncomm_models_Q,
+theorem refutable_comm_mul : ¬𝐐 ⊢ ∏ ∏ (#0 ×̇ #1 ≃ #1 ×̇ #0) := λ h,
+by { have : Noncomm ⊧ ∏ ∏ (#0 ×̇ #1 ≃ #1 ×̇ #0), from soundness h Noncomm_models_Q,
      have : ∀ n m, mul m n = mul n m,
      { have := this (λ x, default _), simp at this, exact this },
      have := this (int₁ 0) (int₂ 0),
      simp at this, exact this }
 
-theorem refutable_zero_mul : ¬𝐐 ⊢ ∀̇ (Ż ×̇ #0 =̇ Ż) := λ h,
-by { have : Noncomm ⊧ ∀̇ (Ż ×̇ #0 =̇ Ż), from soundness h Noncomm_models_Q,
+theorem refutable_zero_mul : ¬𝐐 ⊢ ∏ (Ż ×̇ #0 ≃ Ż) := λ h,
+by { have : Noncomm ⊧ ∏ (Ż ×̇ #0 ≃ Ż), from soundness h Noncomm_models_Q,
      have : ∀ n, mul (nat₀ 0) n = nat₀ 0,
      { have := this (λ x, default _), simp at this, exact this },
      have := this (int₁ 0),

@@ -5,35 +5,35 @@ namespace fopl
 variables {L : language.{0}} 
 
 inductive proof : ℕ → formula L → Type
-| p1 : ∀ {n} p q, proof n (p →̇ q →̇ p)
-| p2 : ∀ {n} p q r, proof n ((p →̇ q →̇ r) →̇ (p →̇ q) →̇ p →̇ r)
-| p3 : ∀ {n} p q, proof n ((¬̇p →̇ ¬̇q) →̇ q →̇ p)
-| q1 : ∀ {n} p t, proof n (∀̇ p →̇ p.rew ι[0 ⇝ t])
-| q2 : ∀ {n} p q, proof n (∀̇ (p →̇ q) →̇ ∀̇ p →̇∀̇ q)
-| q3 : ∀ {n} p, proof n (p →̇ ∀̇ (p^1))
-| e1 : ∀ {n} t, proof n (t =̇ t)
-| e2 : ∀ {n} t₁ t₂, proof n (t₁ =̇ t₂ →̇ t₂ =̇ t₁)
-| e3 : ∀ {n} t₁ t₂ t₃, proof n (t₁ =̇ t₂ →̇ t₂ =̇ t₃ →̇ t₁ =̇ t₃)
-| e4 : ∀ {n m} f (v₁ v₂ : vecterm L m), proof n (v₁ ≡̇ v₂ →̇ vecterm.app f v₁ =̇ vecterm.app f v₂)
-| e5 : ∀ {n m} r (v₁ v₂ : vecterm L m), proof n (v₁ ≡̇ v₂ →̇ formula.app r v₁ →̇ formula.app r v₂)
-| GE : ∀ {n p}, proof (n + 1) p → proof n (∀̇ p)
-| MP : ∀ {n p q}, proof n (p →̇ q) → proof n p → proof n q
+| p1 : ∀ {n} p q, proof n (p ⟶ q ⟶ p)
+| p2 : ∀ {n} p q r, proof n ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r)
+| p3 : ∀ {n} p q, proof n ((⁻p ⟶ ⁻q) ⟶ q ⟶ p)
+| q1 : ∀ {n} p t, proof n (∏ p ⟶ p.rew ι[0 ⇝ t])
+| q2 : ∀ {n} p q, proof n (∏ (p ⟶ q) ⟶ ∏ p ⟶∏ q)
+| q3 : ∀ {n} p, proof n (p ⟶ ∏ (p^1))
+| e1 : ∀ {n} t, proof n (t ≃ t)
+| e2 : ∀ {n} t₁ t₂, proof n (t₁ ≃ t₂ ⟶ t₂ ≃ t₁)
+| e3 : ∀ {n} t₁ t₂ t₃, proof n (t₁ ≃ t₂ ⟶ t₂ ≃ t₃ ⟶ t₁ ≃ t₃)
+| e4 : ∀ {n m} f (v₁ v₂ : vecterm L m), proof n (v₁ ≡̇ v₂ ⟶ vecterm.app f v₁ ≃ vecterm.app f v₂)
+| e5 : ∀ {n m} r (v₁ v₂ : vecterm L m), proof n (v₁ ≡̇ v₂ ⟶ formula.app r v₁ ⟶ formula.app r v₂)
+| GE : ∀ {n p}, proof (n + 1) p → proof n (∏ p)
+| MP : ∀ {n p q}, proof n (p ⟶ q) → proof n p → proof n q
 | AX : ∀ {n} p, proof n p
 
 inductive proof : ℕ → formula L → Type
-| p1 : ∀ {n} p q, proof n (p →̇ q →̇ p)
-| p2 : ∀ {n} p q r, proof n ((p →̇ q →̇ r) →̇ (p →̇ q) →̇ p →̇ r)
-| p3 : ∀ {n} p q, proof n ((¬̇p →̇ ¬̇q) →̇ q →̇ p)
-| q1 : ∀ {n} p t, proof n (∀̇ p →̇ p.rew ι[0 ⇝ t])
-| q2 : ∀ {n} p q, proof n (∀̇ (p →̇ q) →̇ ∀̇ p →̇∀̇ q)
-| q3 : ∀ {n} p, proof n (p →̇ ∀̇ (p^1))
-| e1 : ∀ {n} t, proof n (t =̇ t)
-| e2 : ∀ {n} t₁ t₂, proof n (t₁ =̇ t₂ →̇ t₂ =̇ t₁)
-| e3 : ∀ {n} t₁ t₂ t₃, proof n (t₁ =̇ t₂ →̇ t₂ =̇ t₃ →̇ t₁ =̇ t₃)
-| e4 : ∀ {n m} f (v₁ v₂ : vecterm L m), proof n (v₁ ≡̇ v₂ →̇ vecterm.app f v₁ =̇ vecterm.app f v₂)
-| e5 : ∀ {n m} r (v₁ v₂ : vecterm L m), proof n (v₁ ≡̇ v₂ →̇ formula.app r v₁ →̇ formula.app r v₂)
-| GE : ∀ {n p}, proof (n + 1) p → proof n (∀̇ p)
-| MP : ∀ {n p q}, proof n (p →̇ q) → proof n p → proof n q
+| p1 : ∀ {n} p q, proof n (p ⟶ q ⟶ p)
+| p2 : ∀ {n} p q r, proof n ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r)
+| p3 : ∀ {n} p q, proof n ((⁻p ⟶ ⁻q) ⟶ q ⟶ p)
+| q1 : ∀ {n} p t, proof n (∏ p ⟶ p.rew ι[0 ⇝ t])
+| q2 : ∀ {n} p q, proof n (∏ (p ⟶ q) ⟶ ∏ p ⟶∏ q)
+| q3 : ∀ {n} p, proof n (p ⟶ ∏ (p^1))
+| e1 : ∀ {n} t, proof n (t ≃ t)
+| e2 : ∀ {n} t₁ t₂, proof n (t₁ ≃ t₂ ⟶ t₂ ≃ t₁)
+| e3 : ∀ {n} t₁ t₂ t₃, proof n (t₁ ≃ t₂ ⟶ t₂ ≃ t₃ ⟶ t₁ ≃ t₃)
+| e4 : ∀ {n m} f (v₁ v₂ : vecterm L m), proof n (v₁ ≡̇ v₂ ⟶ vecterm.app f v₁ ≃ vecterm.app f v₂)
+| e5 : ∀ {n m} r (v₁ v₂ : vecterm L m), proof n (v₁ ≡̇ v₂ ⟶ formula.app r v₁ ⟶ formula.app r v₂)
+| GE : ∀ {n p}, proof (n + 1) p → proof n (∏ p)
+| MP : ∀ {n p q}, proof n (p ⟶ q) → proof n p → proof n q
 | AX : ∀ {n} p, proof n p
 
 variables [primcodable (formula L)]
@@ -63,7 +63,7 @@ def proof.wellformed (T : theory L) [prm : ∀ i : ℕ, primrec_theory (T^i)] :
 | []                        := ff
 | (indicator.mp i p q :: b) := 
     let n := list.find_index (λ x : indicator L, x.conseq = (i, q)) b,
-        m := list.find_index (λ x : indicator L, x.conseq = (i, q →̇ p)) b in
+        m := list.find_index (λ x : indicator L, x.conseq = (i, q ⟶ p)) b in
     proof.wellformed (list.drop n b) && proof.wellformed (list.drop m b)
 | (indicator.ge i p :: b) :=
     let n := list.find_index (λ x : indicator L, x.conseq = (i + 1, p)) b in
@@ -103,22 +103,22 @@ def proof.encode : ∀ {n} {p : formula L}, proof n p → ℕ
 | n p (proof.AX q)           := bit1 $ bit1 (encode q)
 
 inductive provable' (T : theory L) : ℕ → formula L → Prop
-| GE : ∀ {n p}, provable' (n + 1) p → provable' n (∀̇ p)
-| MP : ∀ {n p q}, provable' n (p →̇ q) → provable' n p → provable' n q
+| GE : ∀ {n p}, provable' (n + 1) p → provable' n (∏ p)
+| MP : ∀ {n p q}, provable' n (p ⟶ q) → provable' n p → provable' n q
 | AX : ∀ {n p}, p ∈ T → provable' n (p^n)
-| p1 : ∀ {n p q}, provable' n (p →̇ q →̇ p)
-| p2 : ∀ {n p q r}, provable' n ((p →̇ q →̇ r) →̇ (p →̇ q) →̇ p →̇ r)
-| p3 : ∀ {n p q}, provable' n ((¬̇p →̇ ¬̇q) →̇ q →̇ p)
-| q1 : ∀ {n p t}, provable' n (∀̇ p →̇ p.rew ι[0 ⇝ t])
-| q2 : ∀ {n p q}, provable' n (∀̇ (p →̇ q) →̇ ∀̇ p →̇∀̇ q)
-| q3 : ∀ {n p}, provable' n (p →̇ ∀̇ (p^1))
-| e1 : ∀ {n t}, provable' n (t =̇ t)
-| e2 : ∀ {n t₁ t₂}, provable' n (t₁ =̇ t₂ →̇ t₂ =̇ t₁)
-| e3 : ∀ {n t₁ t₂ t₃}, provable' n (t₁ =̇ t₂ →̇ t₂ =̇ t₃ →̇ t₁ =̇ t₃)
+| p1 : ∀ {n p q}, provable' n (p ⟶ q ⟶ p)
+| p2 : ∀ {n p q r}, provable' n ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r)
+| p3 : ∀ {n p q}, provable' n ((⁻p ⟶ ⁻q) ⟶ q ⟶ p)
+| q1 : ∀ {n p t}, provable' n (∏ p ⟶ p.rew ι[0 ⇝ t])
+| q2 : ∀ {n p q}, provable' n (∏ (p ⟶ q) ⟶ ∏ p ⟶∏ q)
+| q3 : ∀ {n p}, provable' n (p ⟶ ∏ (p^1))
+| e1 : ∀ {n t}, provable' n (t ≃ t)
+| e2 : ∀ {n t₁ t₂}, provable' n (t₁ ≃ t₂ ⟶ t₂ ≃ t₁)
+| e3 : ∀ {n t₁ t₂ t₃}, provable' n (t₁ ≃ t₂ ⟶ t₂ ≃ t₃ ⟶ t₁ ≃ t₃)
 | e4 : ∀ {n m} {v₁ v₂ : vecterm L m} {f : L.fn (m+1)},
-    provable' n (v₁ ≡̇ v₂ →̇ vecterm.app f v₁ =̇ vecterm.app f v₂)
+    provable' n (v₁ ≡̇ v₂ ⟶ vecterm.app f v₁ ≃ vecterm.app f v₂)
 | e5 : ∀ {n m} {v₁ v₂ : vecterm L m} {r : L.pr (m+1)},
-    provable' n (v₁ ≡̇ v₂ →̇ formula.app r v₁ →̇ formula.app r v₂)
+    provable' n (v₁ ≡̇ v₂ ⟶ formula.app r v₁ ⟶ formula.app r v₂)
 
 lemma proof_completeness (p : formula L) (n : ℕ) : provable' T n p → ∃ (b : proof n p), b.wellformed T = tt :=
 begin

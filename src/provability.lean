@@ -1,4 +1,4 @@
-import lib
+import lib order.bounded_order
 
 universe u
 
@@ -204,7 +204,6 @@ lemma equiv_symm {p q : F} : p ⟷ q ∈ P → q ⟷ p ∈ P := by { simp[iff_eq
 lemma equiv_trans {p q r : F} : p ⟷ q ∈ P → q ⟷ r ∈ P → p ⟷ r ∈ P :=
 by { simp[iff_equiv], intros hpq hqp hqr hrq, exact ⟨impl_trans hpq hqr, impl_trans hrq hqp⟩ }
 
-
 variables (P)
 
 @[reducible] def equiv (p q : F) : Prop := p ⟷ q ∈ P
@@ -339,7 +338,7 @@ protected def lift_on {φ : Sort*} (p : lindenbaum P) (f : F → φ)
 protected lemma lift_on_eq {φ : Sort*} (p : F) (f : F → φ)
   (h : ∀ p q, p ⟷ q ∈ P → f p = f q) : classical_logic.lindenbaum.lift_on ⟦p⟧ᶜ f h = f p := rfl
 
-@[elab_as_eliminator, reducible]
+@[elab_as_eliminator, reducible, simp]
 protected def lift_on₂ {φ : Sort*} (p₁ p₂ : lindenbaum P) (f : F → F → φ)
   (h : ∀ p₁ p₂ q₁ q₂, p₁ ⟷ q₁ ∈ P → p₂ ⟷ q₂ ∈ P → f p₁ p₂ = f q₁ q₂) : φ :=
 quotient.lift_on₂' p₁ p₂ f h
@@ -420,17 +419,27 @@ instance : distrib_lattice (lindenbaum P) :=
 instance : has_compl (lindenbaum P) := ⟨λ p, classical_logic.lindenbaum.lift_on p (λ p, ⟦⁻p⟧ᶜ)
     (λ p q h, by { simp[-iff_equiv], exact equiv_neg_of_equiv h })⟩
 
+lemma le_def (p q : F) : (to_quo p : lindenbaum P) ≤ to_quo q ↔ p ⟶ q ∈ P := by refl
+
 lemma neg_def (p : F) : (to_quo p)ᶜ = ⟦⁻p⟧ᶜ := rfl
 
 lemma inf_def (p q : F) : to_quo p ⊓ to_quo q = ⟦p ⊓ q⟧ᶜ := rfl
 
 lemma sup_def (p q : F) : to_quo p ⊔ to_quo q = ⟦p ⊔ q⟧ᶜ := rfl
 
---instance : bounded_order (lindenbaum P) :=
-
-
 instance : boolean_algebra (lindenbaum P) :=
-{ ..lindenbaum.distrib_lattice }
+boolean_algebra.of_core
+{ top := ⟦⊤⟧ᶜ,
+  bot := ⟦⊥⟧ᶜ,
+  le_top := λ p, by induction p using classical_logic.lindenbaum.ind_on; simp[le_def],
+  bot_le := λ p, by induction p using classical_logic.lindenbaum.ind_on; simp[le_def],
+  compl := has_compl.compl,
+  inf_compl_le_bot := λ p,
+  by { induction p using classical_logic.lindenbaum.ind_on, simp[bounded_order.bot],
+       refine explosion_hyp (show p ⊓ ⁻p ⟶ p ∈ P, by simp) (by simp) },
+  top_le_sup_compl := λ p, 
+  by { induction p using classical_logic.lindenbaum.ind_on, simp[bounded_order.top, or_def P, le_def, sup_def, neg_def] },
+  ..lindenbaum.distrib_lattice }
 
 end lindenbaum
 
@@ -481,7 +490,7 @@ local infixl ` ⨀ `:90 := axiomatic_classical_logic'.modus_ponens
 
 @[simp] lemma iff_and {p q : F} : T ⊢ p ⊓ q ↔ (T ⊢ p ∧ T ⊢ q) := iff_and
 
-@[simp] lemma iff_equiv {p q : F} : T ⊢ p ⟷ q ↔ (T ⊢ p ⟶ q ∧ T ⊢ q ⟶ p) := iff_equiv
+lemma iff_equiv {p q : F} : T ⊢ p ⟷ q ↔ (T ⊢ p ⟶ q ∧ T ⊢ q ⟶ p) := iff_equiv
 
 @[simp] lemma equiv_refl (p : F) : T ⊢ p ⟷ p := equiv_refl p
 
@@ -525,7 +534,7 @@ lemma neg_impl_iff_and {p q : F} : T ⊢ ⁻(p ⟶ q) ↔ T ⊢ p ⊓ ⁻q := ne
 
 variables (T)
 
-def equiv : F → F → Prop := equiv ((⊢) T)
+@[reducible] def equiv : F → F → Prop := equiv ((⊢) T)
 
 end axiomatic_classical_logic'
 
@@ -545,6 +554,8 @@ weakening (show T ⊆ T +{ p }, by { intros x h, simp[h] }) h
 theorem deduction {p q} : (T +{ p } ⊢ q) ↔ (T ⊢ p ⟶ q) :=
 ⟨deduction', λ h, by { have : T +{ p } ⊢ p ⟶ q, simp[h], exact this ⨀ (by simp) }⟩
 
+
+@[simp]
 lemma axiom_and {p₁ p₂ q : F} : T +{ p₁ ⊓ p₂ } ⊢ q ↔ T +{ p₁ } +{ p₂ } ⊢ q :=
 ⟨λ h,
  by { have lmm₁ : T +{ p₁ } +{ p₂ } ⊢ p₁ ⊓ p₂, by simp[axiomatic_classical_logic'.iff_and],
@@ -557,6 +568,16 @@ lemma axiom_and {p₁ p₂ q : F} : T +{ p₁ ⊓ p₂ } ⊢ q ↔ T +{ p₁ } +
 
 lemma raa {p} (q) (h₁ : T+{p} ⊢ q) (h₂ : T+{p} ⊢ ⁻q) : T ⊢ ⁻p :=
 neg_hyp (deduction.mp (explosion h₁ h₂))
+
+variables (T)
+
+@[reducible] def lindenbaum := lindenbaum ((⊢) T)
+
+namespace lindenbaum
+
+instance : boolean_algebra (lindenbaum T) := lindenbaum.boolean_algebra
+
+end lindenbaum
 
 end axiomatic_classical_logic
 

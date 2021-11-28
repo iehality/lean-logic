@@ -7,16 +7,16 @@ variables {L : language.{u}}
 
 def theory.sf (T : theory L) : theory L := {p | ∃ q : formula L, q ∈ T ∧ p = q^1}
 
-prefix `⇑`:max := theory.sf
+prefix `⤊`:max := theory.sf
 
 @[reducible] def theory.sf_itr (T : theory L) : ℕ → theory L
 | 0     := T
-| (n+1) := ⇑(theory.sf_itr n)
+| (n+1) := ⤊(theory.sf_itr n)
 
 instance sf_itr_pow : has_pow (theory L) ℕ := ⟨theory.sf_itr⟩
 
 @[simp] lemma theory.sf_itr_0 (T : theory L) : T^0 = T := rfl
-lemma theory.sf_itr_succ (T : theory L) (n) : T^(n+1) = ⇑(T^n) := rfl
+lemma theory.sf_itr_succ (T : theory L) (n) : T^(n+1) = ⤊(T^n) := rfl
 
 lemma theory.pow_add (T : theory L) (i j : ℕ) : (T^i)^j = T^(i + j) :=
 by { induction j with j IH; simp[theory.sf_itr_succ, ←nat.add_one, ←add_assoc], simp[IH] }
@@ -34,11 +34,11 @@ def ordered_p (T : theory L) : Prop := ∀ (p : formula L), p ∈ T → p^1 ∈ 
 
 class ordered (T : theory L) := (ordered : ordered_p T)
 
-lemma oedered_p_theory_sf (T : theory L) : ordered_p T → ordered_p ⇑T := λ h p hyp,
+lemma oedered_p_theory_sf (T : theory L) : ordered_p T → ordered_p ⤊T := λ h p hyp,
 by { rcases hyp with ⟨p', hyp_p, rfl⟩, refine ⟨p'^1, _, rfl⟩, exact h _ hyp_p }
 
 instance ordered_theory_sf {T : theory L} [od : ordered T] :
-  ordered ⇑T := ⟨oedered_p_theory_sf _ od.ordered⟩
+  ordered ⤊T := ⟨oedered_p_theory_sf _ od.ordered⟩
 
 instance ordered_theory_sf_itr {T : theory L} [od : ordered T] : ∀ n : ℕ, ordered (T^n)
 | 0 := od
@@ -91,14 +91,14 @@ begin
     simp[formula.pow_add, formula.nested_rew, nat.succ_add_eq_succ_add, ←add_assoc] }
 end
 
-lemma ordered_inclusion (T : theory L) [ordered T] : ⇑T ⊆ T := λ p h,
+lemma ordered_inclusion (T : theory L) [ordered T] : ⤊T ⊆ T := λ p h,
 by { rcases h with ⟨p, hyp, rfl⟩, exact ordered.ordered _ hyp }
 
 lemma proper_theory_sf_itr {n : ℕ} {T : theory L} (pp : proper_at n T) : ∀ m,
   proper_at (n+m) (T^m)
 | 0     := by { simp, exact @pp }
 | (m+1) := λ p s h, by { rcases h with ⟨p, hyp_p, rfl⟩, rw ←add_assoc,
-     show (p^1).rew ((s^(n + m))^1) ∈ ⇑(T^m), simp[←formula.pow_rew_distrib],
+     show (p^1).rew ((s^(n + m))^1) ∈ ⤊(T^m), simp[←formula.pow_rew_distrib],
      refine ⟨p.rew (s^(n+m)), proper_theory_sf_itr m _ s hyp_p, rfl⟩ }
 
 instance properc_theory_sf_itr {T : theory L} [pp : proper 0 T] {n} :
@@ -107,12 +107,12 @@ instance properc_theory_sf_itr {T : theory L} [pp : proper 0 T] {n} :
 lemma closed_proper {T : theory L} [cl : closed_theory T] : proper_at 0 T :=
 λ p s h, by { simp[@closed_theory.cl _ _ cl _ h], exact h }
 
-@[simp] lemma closed_theory_sf_eq {T : theory L} [cl : closed_theory T] : ⇑T = T :=
+@[simp] lemma closed_theory_sf_eq {T : theory L} [cl : closed_theory T] : ⤊T = T :=
 by { ext p, refine ⟨λ hyp, _, λ hyp, _⟩, rcases hyp with ⟨p, hyp_p, rfl⟩,
      simp[closed_theory.cl hyp_p, hyp_p],
      rw ← (formula.sentence_sf (closed_theory.cl hyp)), refine ⟨p, hyp, rfl⟩ }
 
-lemma sf_dsb (T : theory L) (p : formula L) : ⇑T +{ p^1 } = ⇑(T +{ p }) :=
+lemma sf_dsb (T : theory L) (p : formula L) : ⤊T +{ p^1 } = ⤊(T +{ p }) :=
 begin
   ext x, split; intros h,
   { cases h with hx, refine ⟨p, by simp, hx⟩,

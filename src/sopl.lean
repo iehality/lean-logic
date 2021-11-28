@@ -1,13 +1,10 @@
-import tactic lib
 
-universe u
 
-namespace sopl
+example : 1 + 1 = 2 := by refl
 
-structure language : Type (u+1) :=
-(fn : ℕ → Type u)
-(pr : ℕ → Type u)
 
-variables (L : language.{u})
 
-end sopl
+
+
+
+
