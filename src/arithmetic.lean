@@ -76,9 +76,9 @@ begin
   { exact var _ },
   cases f,
   case langf.zero { simp[finitary.zero_eq v], exact zero },
-  case langf.succ { rw (show v = fin[v 0], by simp), exact succ (IH 0) },
-  case langf.add  { rw (show v = fin[v 0, v 1], by simp), exact add (IH 0) (IH 1) },
-  case langf.mul  { rw (show v = fin[v 0, v 1], by simp), exact mul (IH 0) (IH 1) }
+  case langf.succ { rw (show v = fin[v 0], by simp[finitary.fin1_eq]), exact succ (IH 0) },
+  case langf.add  { rw (show v = fin[v 0, v 1], by simp[finitary.fin2_eq]), exact add (IH 0) (IH 1) },
+  case langf.mul  { rw (show v = fin[v 0, v 1], by simp[finitary.fin2_eq]), exact mul (IH 0) (IH 1) }
 end
 
 @[elab_as_eliminator] 

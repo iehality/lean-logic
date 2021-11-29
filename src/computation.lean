@@ -93,9 +93,10 @@ inductive Prim : theory (LA + LC)
 | comp {m n} : ∀ (c : pcode n) (cs : fin n → pcode m),
     Prim ∏[m] (Ḟ (pcode.comp c cs) (λ j, #j) ≃ Ḟ c (λ i, Ḟ (cs i) (λ j, #j)))
 | prec_z {n} : ∀ (c₀ : pcode n) (c₁ : pcode (n + 2)),
-    Prim ∏[n] (Ḟ (pcode.prec c₀ c₁) ((λ j, #j) ::ᶠ Ż) ≃ Ḟ c₀ (λ j, #j))
+    Prim ∏[n] (Ḟ (pcode.prec c₀ c₁) (Ż ᶠ:: (λ j, #j)) ≃ Ḟ c₀ (λ j, #j))
 | prec_s {n} : ∀ (c₀ : pcode n) (c₁ : pcode (n + 2)),
-    Prim ∏[n+2] (Ḟ (pcode.prec c₀ c₁) ((λ i, #(i + 1)) ::ᶠ Ṡ #0) ≃ Ḟ c₁ ((λ j, #j) ::ᶠ Ḟ (pcode.prec c₀ c₁) (λ j, #j)))
+    Prim ∏[n+1] (Ḟ (pcode.prec c₀ c₁) (Ṡ #0 ᶠ:: (λ i, #(i + 1))) ≃
+    Ḟ c₁ (#0 ᶠ:: Ḟ (pcode.prec c₀ c₁) (λ j, #j) ᶠ:: (λ j, #j)))
 
 theorem complete' (T : theory LA) [extend 𝐐 T] {i} (f : vector ℕ i → ℕ) (h : nat.primrec' f) :
 ∃ c : pcode i, ∀ n : vector ℕ i, Prim ⊢ Ḟ c (λ i, numeral (n.nth i)) ≃ (numeral (f n)) :=
@@ -144,23 +145,28 @@ begin
     rcases IHg with ⟨cg, IHg⟩,
     refine ⟨pcode.prec cf cg, _⟩, intros v, 
     simp at*,
-    cases C : v.head with n; simp[C],
-    { have := provable.nfal_subst'_finitary (by_axiom (Prim.prec_z cf cg)),
-      have := provable.nfal_subst'_finitary (by_axiom (Prim.prec_z cf cg))  (λ i, numeral (v.nth i)),
+    induction C : v.head with s IH generalizing v; simp[C],
+    { sorry /-
+    have := provable.nfal_subst'_finitary (by_axiom (Prim.prec_z cf cg)),
+      have := provable.nfal_subst'_finitary (by_axiom (Prim.prec_z cf cg))  (λ i, numeral (v.tail.nth i)),
       simp[symbol.fn₁, show ∀ i : fin n, ↑i < n, by intros i; exact i.property,
-           show ∀ i : fin n, ↑i < n + 1, by intros i; exact nat.lt.step i.property, finitary.cons] at this,
-          
-      have : (λ (i : fin (n + 1)),
-  term.rew (λ (x : ℕ), dite (x < n) (λ (h : x < n), (numeral (v.nth ⟨x, _⟩))) (λ (h : ¬x < n), #(x - n)))
-    (ite (↑i < n) #↑i Ż)) = (λ (i : fin (n + 1)), (numeral (v.nth i))),
-      { ext i, have C₂ : ↑i < n ∨ ↑i = n, from lt_or_eq_of_le (nat.lt_succ_iff.mp i.property),
-      cases C₂; simp[C₂] , { rcases i with ⟨i, _⟩, simp at C₂, rcases C₂ with rfl, simp[show v.nth ⟨i, i_property⟩ = v.head, by refl]  }  }
-
-       }
+           show ∀ i : fin n, ↑i < n + 1, by intros i; exact nat.lt.step i.property, finitary.cons'] at this,
+      have : Prim ⊢ Ḟ (cf.prec cg) (λ i, numeral (v.nth i)) ≃ Ḟ cf (λ i, numeral (v.tail.nth i)),
+      { refine cast _ this, congr, 
+        { ext ⟨i, i_lt⟩,cases i with i; simp[C],
+          { simp [term.arity0_rew (show (Ż : term (LA + LC)).arity = 0, by refl)], refl },
+          { simp[show i < n, from nat.succ_lt_succ_iff.mp i_lt] } },
+        { ext ⟨i, i_p⟩, simp[vector.tail_nth] } },
+      calc Ḟ (cf.prec cg) (λ i, numeral (v.nth i)) ≃[Prim] Ḟ cf (λ i, numeral (v.tail.nth i)) : this
+                                               ... ≃[Prim] numeral (f v.tail) : IHf v.tail
+    -/
+     },
+     {  }
+    
    }
 end
 
-
+example {n i : ℕ} : i + 1 < n + 1 → i < n := by { exact nat.succ_lt_succ_iff.mp }
 
 end prec
 end arithmetic

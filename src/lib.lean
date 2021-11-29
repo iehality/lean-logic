@@ -108,13 +108,23 @@ lemma head_tail : ∀ {n} (v : dvector α (n+1)), v.head ::ᵈ v.tail = v
 end dvector
 
 namespace vector
+variables {α : Type*} {n : ℕ}
+
+lemma vedtor_nth_eq  : ∀ (v : vector α (n + 1)) {p}, v.nth ⟨n, p⟩ = v.head
+| ⟨ [], h ⟩ p := by { simp at h, contradiction }
+| ⟨ (a :: v), h ⟩ p := by { simp[nth, head], simp at h,  }
+
+lemma tail_nth : ∀ (v : vector α (n + 1)) (i : fin n), v.tail.nth i = v.nth ⟨i + 1, by simp; exact i.property⟩
+| ⟨ [], h ⟩ i := by simp[tail, nth]
+| ⟨ (a :: v), h ⟩ p := by { simp[tail, nth], refl }
 
 end vector
 
 def finitary (α : Type*) (n : ℕ) := fin n → α
 
 namespace fin
-#check nat.cases
+
+
 
 def add' {n} (i : fin n) : fin (n + 1) := ⟨i, nat.lt.step i.property⟩
 
@@ -182,12 +192,23 @@ protected def subset {n₁ n₂} (f₁ : finitary α n₁) (f₂ : finitary α n
 
 def cons {n} (f : finitary α n) (a : α) : finitary α (n + 1) := λ i, if h : ↑i < n then f ⟨i, h⟩ else a
 
+@[simp] def cons' {n} (a : α) (f : finitary α n) : finitary α (n + 1)
+| ⟨0, h⟩ := a
+| ⟨i + 1, h⟩ := f ⟨i, nat.succ_lt_succ_iff.mp h⟩
+
 infixl ` ::ᶠ `:60  := finitary.cons
+
+infixr ` ᶠ:: `:60  := finitary.cons'
 
 @[simp] lemma cons_app0 {n} (f : finitary α n) (a : α) : (f ::ᶠ a) ⟨n, lt_add_one n⟩ = a := by simp[finitary.cons]
 
 @[simp] lemma cons_app1 {n} (f : finitary α n) (a : α) (i : fin n) : (f ::ᶠ a) i.add' = f i :=
 by { simp[finitary.cons, fin.add'], intros h, exfalso, exact nat.lt_le_antisymm i.property h }
+
+@[simp] lemma cons'_app0 {n} (f : finitary α n) (a : α) : (a ᶠ:: f) 0 = a := rfl
+
+@[simp] lemma cons'_app1 {n} (f : finitary α n) (a : α) (i : fin n) {h} : (a ᶠ:: f) ⟨i + 1, h⟩ = f i :=
+by simp
 
 def nil : finitary α 0 := λ i, by { exfalso, exact i.val.not_lt_zero i.property }
 
@@ -195,9 +216,16 @@ instance : has_emptyc (finitary α 0) := ⟨nil⟩
 
 notation `fin[` l:(foldl `, ` (h t, finitary.cons t h) ∅ `]`) := l
 
+notation `fin'[` l:(foldl `, ` (t h, finitary.cons t h) ∅ `]`) := l
+
 def tail {n} (f : finitary α (n + 1)) : finitary α n := λ i, f ⟨i, nat.lt.step i.property⟩
 
 def head {n} (f : finitary α (n + 1)) : α := f ⟨n, lt_add_one n⟩
+
+def tail' {n} (f : finitary α (n + 1)) : finitary α n := λ i, f ⟨i + 1, by simp; exact i.property⟩
+
+def head' {n} (f : finitary α (n + 1)) : α := f 0
+
 
 lemma tail_cons_head {n} (f : finitary α (n + 1)) : f.tail ::ᶠ f.head = f :=
 funext (λ i, by { simp[cons, tail, head],
@@ -468,4 +496,3 @@ section classical
 attribute [instance, priority 0] classical.prop_decidable
 
 end classical
-
