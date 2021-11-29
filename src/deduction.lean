@@ -195,6 +195,101 @@ instance : axiomatic_classical_logic (formula L) :=
     cases h; simp* at* },
   weakening := @weakening' L }
 
+@[elab_as_eliminator]
+theorem rec' {T : theory L} (C : ℕ → formula L → Prop)
+  (GE : ∀ {i} {p : formula L} (b : T^(i + 1) ⊢ p), C (i + 1) p → C i (∏₁ p))
+  (MP : ∀ {i} {p q : formula L} (b₁ : T^i ⊢ p ⟶ q) (b₂ : T^i ⊢ p), C i (p ⟶ q) → C i p → C i q)
+  (AX : ∀ {i} {p : formula L} (mem : p ∈ T^i), C i p)
+  (p1 : ∀ {i} {p q : formula L}, C i (p ⟶ q ⟶ p))
+  (p2 : ∀ {i} {p q r : formula L}, C i ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r))
+  (p3 : ∀ {i} {p q : formula L}, C i ((⁻p ⟶ ⁻q) ⟶ q ⟶ p))
+  (q1 : ∀ {i} {p : formula L} {t : term L}, C i (∏₁ p ⟶ p.rew ι[0 ⇝ t]))
+  (q2 : ∀ {i} {p q : formula L}, C i (∏₁ (p ⟶ q) ⟶ ∏₁ p ⟶∏₁ q))
+  (q3 : ∀ {i} {p : formula L}, C i (p ⟶ ∏₁ (p^1)))
+  (e1 : ∀ {i}, C i (∏₁ #0 ≃₁ #0))
+  (e2 : ∀ {i}, C i (∏₁ ∏₁ (#0 ≃₁ #1 ⟶ #1 ≃₁ #0)))
+  (e3 : ∀ {i}, C i (∏₁ ∏₁ ∏₁ (#0 ≃₁ #1 ⟶ #1 ≃₁ #2 ⟶ #0 ≃₁ #2)))
+  (e4 : ∀ {i} {m} {f : L.fn m}, C i (eq_axiom4 f))
+  (e5 : ∀ {i} {m} {r : L.pr m}, C i (eq_axiom5 r))
+  : ∀ {i : ℕ} {p : formula L} (b : T^i ⊢ p), C i p :=
+begin
+  suffices :
+    ∀ {p : formula L} {U : theory L} (b : U ⊢ p) {i : ℕ} (ss : U ⊆ T^i),  C i p,
+  { intros i p b, refine this b (by refl) },
+  intros p U b,
+  induction b,
+  case provable.GE : U p b IH
+  { intros i ss,
+    have ss' : ⤊U ⊆ T ^ (i + 1), { rintros _ ⟨q, mem, rfl⟩, simp[theory.sf_itr_succ], refine ⟨q, ss mem, rfl⟩ },
+    have : C (i + 1) p, from @IH (i + 1) ss',
+    refine GE (weakening b ss') this },
+  case provable.MP : U p q b₁ b₂ IH₁ IH₂
+  { intros i ss, refine MP (weakening b₁ ss) (weakening b₂ ss) (IH₁ ss) (IH₂ ss) },
+  case provable.AX : U p mem
+  { intros i ss, refine AX (ss mem) },
+  { refine λ i ss, p1 },
+  { refine λ i ss, p2 },
+  { refine λ i ss, p3 },
+  { refine λ i ss, q1 },
+  { refine λ i ss, q2 },
+  { refine λ i ss, q3 },
+  { refine λ i ss, e1 },
+  { refine λ i ss, e2 },
+  { refine λ i ss, e3 },
+  { refine λ i ss, e4 },
+  { refine λ i ss, e5 }
+end
+
+#check @provable.rec_on
+
+@[elab_as_eliminator]
+theorem rec_on' {T : theory L} {C : ℕ → formula L → Prop} {i : ℕ} {p : formula L} (b : T^i ⊢ p)
+  (GE : ∀ {i} {p : formula L} (b : T^(i + 1) ⊢ p), C (i + 1) p → C i (∏₁ p))
+  (MP : ∀ {i} {p q : formula L} (b₁ : T^i ⊢ p ⟶ q) (b₂ : T^i ⊢ p), C i (p ⟶ q) → C i p → C i q)
+  (AX : ∀ {i} {p : formula L} (mem : p ∈ T^i), C i p)
+  (p1 : ∀ {i} {p q : formula L}, C i (p ⟶ q ⟶ p))
+  (p2 : ∀ {i} {p q r : formula L}, C i ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r))
+  (p3 : ∀ {i} {p q : formula L}, C i ((⁻p ⟶ ⁻q) ⟶ q ⟶ p))
+  (q1 : ∀ {i} {p : formula L} {t : term L}, C i (∏₁ p ⟶ p.rew ι[0 ⇝ t]))
+  (q2 : ∀ {i} {p q : formula L}, C i (∏₁ (p ⟶ q) ⟶ ∏₁ p ⟶∏₁ q))
+  (q3 : ∀ {i} {p : formula L}, C i (p ⟶ ∏₁ (p^1)))
+  (e1 : ∀ {i}, C i (∏₁ #0 ≃₁ #0))
+  (e2 : ∀ {i}, C i (∏₁ ∏₁ (#0 ≃₁ #1 ⟶ #1 ≃₁ #0)))
+  (e3 : ∀ {i}, C i (∏₁ ∏₁ ∏₁ (#0 ≃₁ #1 ⟶ #1 ≃₁ #2 ⟶ #0 ≃₁ #2)))
+  (e4 : ∀ {i} {m} {f : L.fn m}, C i (eq_axiom4 f))
+  (e5 : ∀ {i} {m} {r : L.pr m}, C i (eq_axiom5 r)) :
+ C i p :=
+begin
+  suffices :
+    ∀ {p : formula L} {U : theory L} (b : U ⊢ p) {i : ℕ} (ss : U ⊆ T^i),  C i p,
+  { refine this b (by refl) },
+  intros p U b,
+  induction b,
+  case provable.GE : U p b IH
+  { intros i ss,
+    have ss' : ⤊U ⊆ T ^ (i + 1), { rintros _ ⟨q, mem, rfl⟩, simp[theory.sf_itr_succ], refine ⟨q, ss mem, rfl⟩ },
+    have : C (i + 1) p, from @IH (i + 1) ss',
+    refine GE (weakening b ss') this },
+  case provable.MP : U p q b₁ b₂ IH₁ IH₂
+  { intros i ss, refine MP (weakening b₁ ss) (weakening b₂ ss) (IH₁ ss) (IH₂ ss) },
+  case provable.AX : U p mem
+  { intros i ss, refine AX (ss mem) },
+  { refine λ i ss, p1 },
+  { refine λ i ss, p2 },
+  { refine λ i ss, p3 },
+  { refine λ i ss, q1 },
+  { refine λ i ss, q2 },
+  { refine λ i ss, q3 },
+  { refine λ i ss, e1 },
+  { refine λ i ss, e2 },
+  { refine λ i ss, e3 },
+  { refine λ i ss, e4 },
+  { refine λ i ss, e5 }
+end
+
+#check @provable.rec_on
+#check @provable.rec_on'
+
 theorem proof_compact : ∀ {T : ℕ → theory L}, (∀ s, T s ⊆ T (s+1)) →
   ∀ {p}, {p | ∃ s, T s p} ⊢ p → ∃ s, T s ⊢ p :=
 begin
