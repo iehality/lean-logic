@@ -8,7 +8,7 @@ local infix ` ≃₁ `:80 := ((≃) : term L → term L → formula L)
 local prefix `∏₁ `:64 := (has_univ_quantifier.univ : formula L → formula L)
 local prefix `∐₁ `:64 := (has_exists_quantifier.ex : formula L → formula L)
 
-variables [primcodable (formula L)] [decidable_eq (formula L)]
+variables [decidable_eq (formula L)]
 
 @[simp] def formula.arrow : formula L → option (formula L × formula L)
 | (p ⟶ q) := some (p, q)
@@ -19,17 +19,15 @@ by { cases p; simp[show ∀ x y : term L, (x ≃ y : formula L).arrow = none, fr
       show ∀ p : formula L, (⁻p).arrow = none, from λ _, rfl,
       show ∀ p : formula L, (∏ p : formula L).arrow = none, from λ _, rfl], rintros rfl, simp* }
 
-inductive proof (L : language.{0}) : ℕ → Type
-| root {n} : formula L → proof n
-| ge {n} : proof (n + 1)  → proof n
-| mp {n} : proof n → proof n → proof n
+inductive proof (L : language.{0}) : Type
+| root : formula L → proof
+| ge : proof → proof
+| mp : proof → proof → proof
 
-#check (>>)
-
-@[simp] def proof.conseq : ∀ {n}, proof L n → option (formula L)
-| n (proof.root p) := some p
-| n (proof.ge φ)   := φ.conseq.map (λ p, ∏ p)
-| n (proof.mp φ ψ) :=
+@[simp] def proof.conseq : proof L → option (formula L)
+| (proof.root p) := some p
+| (proof.ge φ)   := φ.conseq.map (λ p, ∏ p)
+| (proof.mp φ ψ) :=
     if (φ.conseq >>= formula.arrow).map prod.fst = ψ.conseq then (φ.conseq >>= formula.arrow).map prod.snd 
     else ψ.conseq
 
@@ -47,14 +45,12 @@ inductive formula.is_axiom (T : theory L) (i : ℕ) : formula L → Prop
 | e5 {n} {r : L.pr n} : formula.is_axiom (eq_axiom5 r)
 | by_axiom {p} : p ∈ T^i → formula.is_axiom p
 
-@[simp] def proof.proper : ∀ (T : theory L) {i}, proof L i → Prop
-| T i (proof.root p) := p.is_axiom T i
-| T i (proof.ge φ)   := φ.proper T
-| T i (proof.mp φ ψ) := (φ.proper T) ∧ (ψ.proper T) 
+@[simp] def proof.proper (T : theory L) : ℕ → proof L → Prop
+| i (proof.root p) := p.is_axiom T i
+| i (proof.ge φ)   := φ.proper (i + 1)
+| i (proof.mp φ ψ) := (φ.proper i) ∧ (ψ.proper i) 
 
-def proof.of (T : theory L) (p : formula L) (i : ℕ) (φ : proof L i) : Prop := φ.proper T ∧ φ.conseq = some p
-
-#check provable.rec'
+def proof.of (T : theory L) (i : ℕ) (p : formula L) (φ : proof L) : Prop := φ.proper T i ∧ φ.conseq = some p
 
 variables {T : theory L} {i : ℕ}
 
@@ -64,12 +60,12 @@ begin
   { exact provable.AX (by simp*) }
 end
 
-lemma proof.sound {T : theory L} {i} {p} {φ} : proof.of T p i φ → T^i ⊢ p :=
+lemma proof.sound {T : theory L} {i} {p} {φ} : proof.of T i p φ → T^i ⊢ p :=
 begin
-  induction φ generalizing p; simp[proof.of],
+  induction φ generalizing p i; simp[proof.of],
   case root : i p { rintros h rfl, exact provable_of_is_axiom h },
-  case ge : i φ IH { rintros proper ψ conseq rfl, exact provable.generalize (IH ⟨proper, conseq⟩) },
-  case mp : i φ ψ IHφ IHψ
+  case ge : φ IH p { rintros proper q conseq rfl, exact provable.generalize (IH ⟨proper, conseq⟩) },
+  case mp : φ ψ IHφ IHψ
     { cases φ_conseq : φ.conseq with cφ; cases ψ_conseq : ψ.conseq with cψ; simp[φ_conseq, ψ_conseq], 
       { rintros pφ pψ rfl, exact IHψ ⟨pψ, ψ_conseq⟩ },
       { intros pφ pψ, simp[show (∀ (a b a_1 : formula L), cφ = a_1 → ¬a_1.arrow = some (a, b)) ↔ cφ.arrow = none,
@@ -85,7 +81,7 @@ begin
             rintros rfl, exact IHψ ⟨pψ, ψ_conseq⟩ } } } }
 end
 
-lemma proof.complete (T : theory L) {i} (p : formula L) : T^i ⊢ p ↔ ∃ φ, proof.of T p i φ :=
+lemma proof.complete (T : theory L) {i} (p : formula L) : T^i ⊢ p ↔ ∃ φ, proof.of T i p φ :=
 ⟨λ h,
 begin
   apply fopl.provable.rec_on' h,
@@ -106,5 +102,25 @@ begin
   { intros i m p, refine ⟨proof.root (eq_axiom5 p), _, _⟩; simp, exact formula.is_axiom.e5 }
 end, λ ⟨φ, h⟩, proof.sound h⟩
 
+
+namespace proof
+open nat
+
+variables [primcodable (formula L)]
+
+def encode_pcode : proof L → ℕ
+| (root p) := bit0 $ encode p
+| (ge φ)   := bit1 $ bit0 $ encode_pcode φ
+| (mp φ ψ) := bit1 $ bit1 $ nat.mkpair (encode_pcode φ) (encode_pcode φ)
+
+def of_nat_pcode : ℕ → option (proof L)
+| n :=
+match n.bodd, n.div2.bodd with
+| ff, _  := (decode (formula L) n).map root
+| tt, ff := by {  }
+| tt, tt := by {  } 
+end
+
+end proof
 
 end fopl

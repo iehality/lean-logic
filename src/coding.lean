@@ -30,17 +30,19 @@ end nat
 
 namespace fopl
 variables {L : language.{u}} [∀ n, encodable (L.fn n)] [∀ n, encodable (L.pr n)]
-/- inductive vecterm (L : language.{u}) : ℕ → Type u
-| nil {} : vecterm 0
-| cons   : ∀ {n : ℕ}, vecterm 1 → vecterm n → vecterm (n+1)
-| var {} : ℕ → vecterm 1
-| app    : ∀ {n : ℕ}, L.fn n → vecterm n → vecterm 1 -/
+/- 
+inductive term (L : language.{u}) : Type u
+| var {} : ℕ → term
+| app    : ∀ {n : ℕ}, L.fn n → (fin n → term) → term
 
---def vecterm.encode [∀ n, denumerable (L.fn n)] : ∀ {n}, vecterm L n → ℕ
---| _ vecterm.nil        := 0
---| _ (vecterm.cons a v) := (bit0 $ bit0 $ nat.mkpair a.encode v.encode) + 1
---| _ (#n)               := (bit0 $ bit1 n) + 1
---| _ (vecterm.app f v)  := (bit1 $ nat.mkpair (encodable.encode f) v.encode) + 1
+-/
+
+
+def term.encode : term L → ℕ
+| (#x) := bit0 x
+| (@term.app _ n r v) := nat.mkpair (encode r) (encode (λ x, term.encode (v x)))
+
+
 
 def vecterm.encode : ∀ {n}, vecterm L n → ℕ
 | _ (vecterm.cons a v)     := (a.encode.mkpair v.encode)

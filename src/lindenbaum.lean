@@ -11,7 +11,7 @@ local prefix `∏₁ `:64 := (has_univ_quantifier.univ : formula L → formula L
 
 local prefix `∐₁ `:64 := (has_exists_quantifier.ex : formula L → formula L)
 
-notation t` ≃[`T :80`] `u:50 := term.equiv T t u
+notation t` ≃[`:50 T :50`] `:0 u:50 := term.equiv T t u
 
 @[symm] lemma term.equiv_refl (T : theory L) (t : term L) : t ≃[T] t := by simp[term.equiv]
 
