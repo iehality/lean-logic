@@ -93,7 +93,7 @@ def symbol.pr {n} (p : L.pr n) : finitary (Herbrand T i) n → Prop :=
   $ λ v₁ v₂ eqs, by simp[of_eq_of]; 
   exact ⟨λ h, provable.predicate_of_equiv p h eqs, λ h, provable.predicate_of_equiv p h (λ i, provable.eq_symm (eqs i))⟩
 
-def model (T : theory L) : model L := ⟨Herbrand T 0, ⟦#0⟧ᴴ, @symbol.fn _ T 0, @symbol.pr _ T 0⟩
+def model (T : theory L) : model L := ⟨Herbrand T 0, ⟨⟦#0⟧ᴴ⟩, @symbol.fn _ T 0, @symbol.pr _ T 0⟩
 notation `𝔗[`T`]` := model T
 
 protected theorem provable_iff {t₁ t₂} : T^i ⊢ t₁ ≃ t₂ ↔ (⟦t₁⟧ᴴ : Herbrand T i) = ⟦t₂⟧ᴴ := by simp[of_eq_of]

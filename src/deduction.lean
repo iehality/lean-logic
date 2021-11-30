@@ -754,6 +754,9 @@ equiv_neg_of_equiv (equiv_univ_of_equiv (equiv_neg_of_equiv h))
 lemma ex_of_equiv {p₁ p₂} (h : T ⊢ ∐ p₁) (hp : ⤊T ⊢ p₁ ⟷ p₂) : T ⊢ ∐ p₂ :=
 (classical_logic.iff_equiv.mp (equiv_ex_of_equiv hp)).1 ⨀ h
 
+@[simp] lemma extend {T₀ T : theory L} [extend T₀ T] {p : formula L} (h : T₀ ⊢ p) : T ⊢ p :=
+weakening h extend.ss
+
 end provable
 
 lemma weakening_le {T U : theory L} : T ⊆ U → T ≤ U := λ hyp p h, weakening hyp h

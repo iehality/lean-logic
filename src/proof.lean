@@ -52,6 +52,9 @@ inductive formula.is_axiom (T : theory L) (i : ℕ) : formula L → Prop
 
 def proof.of (T : theory L) (i : ℕ) (p : formula L) (φ : proof L) : Prop := φ.proper T i ∧ φ.conseq = some p
 
+
+namespace proof
+open nat
 variables {T : theory L} {i : ℕ}
 
 lemma provable_of_is_axiom {p} (h : is_axiom T i p) : T^i ⊢ p :=
@@ -60,7 +63,7 @@ begin
   { exact provable.AX (by simp*) }
 end
 
-lemma proof.sound {T : theory L} {i} {p} {φ} : proof.of T i p φ → T^i ⊢ p :=
+lemma sound {T : theory L} {i} {p} {φ} : proof.of T i p φ → T^i ⊢ p :=
 begin
   induction φ generalizing p i; simp[proof.of],
   case root : i p { rintros h rfl, exact provable_of_is_axiom h },
@@ -81,46 +84,84 @@ begin
             rintros rfl, exact IHψ ⟨pψ, ψ_conseq⟩ } } } }
 end
 
-lemma proof.complete (T : theory L) {i} (p : formula L) : T^i ⊢ p ↔ ∃ φ, proof.of T i p φ :=
+lemma complete {T : theory L} {i} (p : formula L) : T^i ⊢ p ↔ ∃ φ, of T i p φ :=
 ⟨λ h,
 begin
   apply fopl.provable.rec_on' h,
   { rintros i p _ ⟨φ, φ_proper, φ_conseq⟩, refine ⟨φ.ge, _, _⟩; simp* },
   { rintros i p q _ _ ⟨φ, φ_proper, φ_conseq⟩ ⟨ψ, ψ_proper, ψ_conseq⟩,
     refine ⟨φ.mp ψ, _, _⟩; simp[*, (>>=)] },
-  { intros i p _, refine ⟨proof.root p, _, _⟩; simp, exact formula.is_axiom.by_axiom mem },
-  { intros i p q, refine ⟨proof.root (p ⟶ q ⟶ p), _, _⟩; simp, exact formula.is_axiom.p1 },
-  { intros i p q r, refine ⟨proof.root ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r), _, _⟩; simp, exact formula.is_axiom.p2 },
-  { intros i p q, refine ⟨proof.root ((⁻p ⟶ ⁻q) ⟶ q ⟶ p), _, _⟩; simp, exact formula.is_axiom.p3 },
-  { intros i p t, refine ⟨proof.root (∏ p ⟶ formula.rew ι[0 ⇝ t] p), _, _⟩; simp, exact formula.is_axiom.q1 },
-  { intros i p q, refine ⟨proof.root (∏ (p ⟶ q) ⟶ ∏ p ⟶ ∏ q), _, _⟩; simp, exact formula.is_axiom.q2 },
-  { intros i p, refine ⟨proof.root (p ⟶ ∏ p ^ 1), _, _⟩; simp, exact formula.is_axiom.q3 },
-  { intros i, refine ⟨proof.root (∏₁ #0 ≃₁ #0), _, _⟩; simp, exact formula.is_axiom.e1 },
-  { intros i, refine ⟨proof.root (∏₁ ∏₁ (#0 ≃₁ #1 ⟶ #1 ≃₁ #0)), _, _⟩; simp, exact formula.is_axiom.e2 },
-  { intros i, refine ⟨proof.root (∏₁ ∏₁ ∏₁ (#0 ≃₁ #1 ⟶ #1 ≃₁ #2 ⟶ #0 ≃₁ #2)), _, _⟩; simp, exact formula.is_axiom.e3 },
-  { intros i m f, refine ⟨proof.root (eq_axiom4 f), _, _⟩; simp, exact formula.is_axiom.e4 },
-  { intros i m p, refine ⟨proof.root (eq_axiom5 p), _, _⟩; simp, exact formula.is_axiom.e5 }
-end, λ ⟨φ, h⟩, proof.sound h⟩
-
-
-namespace proof
-open nat
+  { intros i p _, refine ⟨root p, _, _⟩; simp, exact formula.is_axiom.by_axiom mem },
+  { intros i p q, refine ⟨root (p ⟶ q ⟶ p), _, _⟩; simp, exact formula.is_axiom.p1 },
+  { intros i p q r, refine ⟨root ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r), _, _⟩; simp, exact formula.is_axiom.p2 },
+  { intros i p q, refine ⟨root ((⁻p ⟶ ⁻q) ⟶ q ⟶ p), _, _⟩; simp, exact formula.is_axiom.p3 },
+  { intros i p t, refine ⟨root (∏ p ⟶ formula.rew ι[0 ⇝ t] p), _, _⟩; simp, exact formula.is_axiom.q1 },
+  { intros i p q, refine ⟨root (∏ (p ⟶ q) ⟶ ∏ p ⟶ ∏ q), _, _⟩; simp, exact formula.is_axiom.q2 },
+  { intros i p, refine ⟨root (p ⟶ ∏ p ^ 1), _, _⟩; simp, exact formula.is_axiom.q3 },
+  { intros i, refine ⟨root (∏₁ #0 ≃₁ #0), _, _⟩; simp, exact formula.is_axiom.e1 },
+  { intros i, refine ⟨root (∏₁ ∏₁ (#0 ≃₁ #1 ⟶ #1 ≃₁ #0)), _, _⟩; simp, exact formula.is_axiom.e2 },
+  { intros i, refine ⟨root (∏₁ ∏₁ ∏₁ (#0 ≃₁ #1 ⟶ #1 ≃₁ #2 ⟶ #0 ≃₁ #2)), _, _⟩; simp, exact formula.is_axiom.e3 },
+  { intros i m f, refine ⟨root (eq_axiom4 f), _, _⟩; simp, exact formula.is_axiom.e4 },
+  { intros i m p, refine ⟨root (eq_axiom5 p), _, _⟩; simp, exact formula.is_axiom.e5 }
+end, λ ⟨φ, h⟩, sound h⟩
 
 variables [primcodable (formula L)]
 
-def encode_pcode : proof L → ℕ
-| (root p) := bit0 $ encode p
-| (ge φ)   := bit1 $ bit0 $ encode_pcode φ
-| (mp φ ψ) := bit1 $ bit1 $ nat.mkpair (encode_pcode φ) (encode_pcode φ)
+@[simp] def encode_pcode : proof L → ℕ
+| (root p) := (bit0 $ encode p) + 1
+| (ge φ)   := (bit1 $ bit0 $ encode_pcode φ) + 1
+| (mp φ ψ) := (bit1 $ bit1 $ nat.mkpair (encode_pcode φ) (encode_pcode ψ)) + 1
 
-def of_nat_pcode : ℕ → option (proof L)
-| n :=
-match n.bodd, n.div2.bodd with
-| ff, _  := (decode (formula L) n).map root
-| tt, ff := by {  }
-| tt, tt := by {  } 
-end
+@[simp] def decode_pcode : ℕ → option (proof L)
+| 0       := none
+| (n + 1) :=
+    have div4 : n.div2.div2 ≤ n :=
+      by { simp[nat.div2_val], exact le_trans (nat.div_le_self (n / 2) 2) (nat.div_le_self n 2) },
+    have n.div2.div2 < n + 1, from nat.lt_succ_iff.mpr div4,
+    have n.div2.div2.unpair.1 < n + 1, 
+      from nat.lt_succ_iff.mpr (le_trans (nat.unpair_left_le n.div2.div2) div4),
+    have n.div2.div2.unpair.2 < n + 1, 
+      from nat.lt_succ_iff.mpr (le_trans (nat.unpair_right_le n.div2.div2) div4),
+    match n.bodd, n.div2.bodd with
+    | ff, _  := (decode (formula L) n.div2).map root
+    | tt, ff := (decode_pcode n.div2.div2).map proof.ge
+    | tt, tt := proof.mp <$> (decode_pcode n.div2.div2.unpair.1) <*> (decode_pcode n.div2.div2.unpair.2)
+    end
+
+instance : encodable (proof L) :=
+{ encode := encode_pcode,
+  decode := decode_pcode,
+  encodek := by { intros φ, induction φ; simp[encode_pcode, decode_pcode, *] } }
+
+noncomputable def of_n (T : theory L) (p : ℕ) (s : ℕ) : ℕ :=
+  encode
+  ( do p ← decode (formula L) p,
+       φ ← decode (proof L) s,
+    some (to_bool (proof.of T 0 p φ)))
+
+lemma of_n_complete (p : formula L) :
+  T ⊢ p ↔ ∃ s, of_n T (encode p) s = encode (some tt) :=
+by { have : T ⊢ p ↔ ∃ φ, of T 0 p φ, rw[show T = T^0, by simp], from complete p,
+     simp[this, of_n],
+     split,
+     { rintros ⟨φ, of⟩, refine ⟨encode φ, _⟩, simp[of] },
+     { rintros ⟨s, of⟩, cases C : decode (proof L) s with φ; simp[C] at of,
+       { contradiction },
+       { refine ⟨φ, _⟩, by_cases C₂ : fopl.proof.of T 0 p φ; simp[C₂] at of ⊢, { contradiction } } } }
 
 end proof
+
+variables [primcodable (formula L)] [primcodable (proof L)]
+
+class primrec_theory (T : theory L) :=
+(prim : primrec₂ (λ p φ, proof.of_n T p φ))
+
+variables {T : theory L} [primrec_theory T]
+
+#eval encode (some tt)
+
+
+
+
 
 end fopl

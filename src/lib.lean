@@ -232,15 +232,15 @@ instance : has_emptyc (finitary α 0) := ⟨nil⟩
 
 notation `fin[` l:(foldl `, ` (h t, finitary.cons t h) ∅ `]`) := l
 
-notation `fin'[` l:(foldl `, ` (t h, finitary.cons t h) ∅ `]`) := l
+notation `fin'[` l:(foldr `, ` (t h, finitary.cons' t h) ∅ `]`) := l
+
+#check fin'[(0 : ℕ), (8 : ℕ)]
 
 def tail {n} (f : finitary α (n + 1)) : finitary α n := λ i, f ⟨i, nat.lt.step i.property⟩
 
 def head {n} (f : finitary α (n + 1)) : α := f ⟨n, lt_add_one n⟩
 
-def tail' {n} (f : finitary α (n + 1)) : finitary α n := λ i, f ⟨i + 1, by simp; exact i.property⟩
-
-def head' {n} (f : finitary α (n + 1)) : α := f 0
+def tail' {n} (f : finitary α (n + 1)) : finitary α n := λ i, f i.succ
 
 
 lemma tail_cons_head {n} (f : finitary α (n + 1)) : f.tail ::ᶠ f.head = f :=
@@ -254,8 +254,6 @@ funext (λ i, by { simp[cons, tail, head],
 funext (λ i, by { have := i.property, exfalso, exact i.val.not_lt_zero this })
 
 @[simp] lemma zero_eq' (f : fin 0 → α) : f = (∅ : finitary α 0) := zero_eq f
-
-lemma fin1_eq_head (f : finitary α 1) : f 0 = f.head := by refl
 
 lemma fin1_eq (f : finitary α 1) : fin[f 0] = f :=
 funext (λ i, by { rcases i with ⟨i, i_p⟩, cases i; simp[cons], exfalso, simp[←nat.add_one] at*, exact i_p })
@@ -275,6 +273,43 @@ funext (λ i, by { rcases i with ⟨i, i_p⟩, cases i; simp[cons], cases i, { s
   (λ i : fin (n + 1), F $ (a ᶠ:: f) i) = (F a ᶠ:: λ i, F (f i)) :=
 by { funext i, rcases i with ⟨i, h⟩, cases i; simp }
 
+@[simp] lemma cons_app_0 (a : α) {n} (f : finitary α n) :
+  (a ᶠ:: f) 0 = a :=
+by simp
+
+@[simp] lemma cons_tail' (a : α) {n} (f : finitary α n) :
+  (a ᶠ:: f).tail' = f :=
+by simp[tail']
+
+lemma app_0_cons'_tail'_refl {n} (f : finitary α (n + 1)) : (f 0) ᶠ:: f.tail' = f :=
+funext (λ ⟨i, h⟩, by { rcases i; simp, refl })
+
+@[simp] lemma of_fn_nil :
+  of_fn (∅ : finitary α 0) = vector.nil :=
+by { ext i, exfalso, exact i.val.not_lt_zero i.property }
+
+@[simp] lemma of_fn_cons (a : α) {n} (f : finitary α n) :
+  of_fn (a ᶠ:: f) = a ::ᵥ (of_fn f) :=
+by { ext i, rcases i with ⟨i, i_lt⟩, cases i; simp }
+
+@[simp] lemma nth_cons (a : α) {n} (v : vector α n) :
+  (a ::ᵥ v).nth = a ᶠ:: v.nth :=
+by { ext i, rcases i with ⟨i, i_lt⟩, cases i; simp }
+
+@[simp] lemma of_fn_nth_refl {n} (v : vector α n) :
+  of_fn v.nth = v := by ext i; simp
+
+@[simp] lemma nth_of_fn_refl {n} (f : finitary α n) :
+  (of_fn f).nth = f := by ext i; simp
+
+lemma app_0_nth_eq_head {n} (v : vector α (n + 1)) :
+  v.nth 0 = v.head := by simp
+
+@[simp] lemma head_eq_head {n} (f : finitary α (n + 1)) :
+  (of_fn f).head = f 0 := by simp
+
+lemma pi_fin0_eq_empty (f : fin 0 → α) : f = (∅ : finitary α 0) :=
+zero_eq f
 
 instance [primcodable α] (n : ℕ) : primcodable (finitary α n) :=
 primcodable.fin_arrow

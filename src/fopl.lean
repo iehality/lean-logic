@@ -519,6 +519,13 @@ instance {L₁ L₂ : language.{u}} : has_coe (theory L₁) (theory (L₁ + L₂
 @[simp] lemma add_tr_v1_app {n} (f : L₁.fn n) (v : finitary (term L₁) n) :
   ((app f v : term L₁) : term (L₁ + L₂)) = app (f : (L₁ + L₂).fn n) (λ i, (v i : term (L₁ + L₂))) := rfl
 
+#check @term.app L 
+
+@[simp] lemma add_tr_v1_arity : ∀ t : term L₁, (t : term (L₁ + L₂)).arity = t.arity
+| (#x) := rfl
+| (@term.app L n f v) := by simp[λ i, (add_tr_v1_arity (v i))]
+
+
 end language
 
 end fopl

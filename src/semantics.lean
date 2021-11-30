@@ -7,7 +7,7 @@ open dvector
 
 structure model (L : language.{u}) :=
 (dom : Type u)
-(one : dom)
+(inhabited : inhabited dom)
 (fn : ∀ {n}, L.fn n → (fin n → dom) → dom)
 (pr : ∀ {n}, L.pr n → (fin n → dom) → Prop)
 
@@ -19,7 +19,7 @@ local infix ` ≃₁ `:80 := ((≃) : term L → term L → formula L)
 local prefix `∏₁ `:64 := (has_univ_quantifier.univ : formula L → formula L)
 local prefix `∐₁ `:64 := (has_exists_quantifier.ex : formula L → formula L)
 
-instance (M : model L) : inhabited M.dom := ⟨M.one⟩
+instance (M : model L) : inhabited M.dom := M.inhabited
 
 @[simp] def term.val (e : ℕ → |M|) : term L → |M|
 | (#x)           := e x
@@ -69,6 +69,29 @@ by { rcases hyp_p with ⟨p, hyp_p', rfl⟩, simp[formula.pow_eq, rew_val_iff],
 
 @[simp] lemma models_ex {p : formula L} {e : ℕ → |M|} : (∐₁ p).val e ↔ ∃ d, p.val (d ⌢ e) :=
 by simp[has_exists_quantifier.ex, formula.ex, models, rew_val_iff]
+
+lemma models_univs {p : formula L} {e : ℕ → |M|} {n} :
+  (∏[n] p).val e ↔ ∀ d : finitary (|M|) n, p.val (λ i, if h : i < n then d ⟨i, h⟩ else e (i - n)) :=
+begin
+  induction n with n IH generalizing e; simp,
+  { refine ⟨λ h _, h, λ h, h ∅⟩ },
+  { simp[IH], split,
+    { intros h D, refine cast _ (h D.head D.tail), congr, funext i, simp[concat, slide'],
+      have C : i < n ∨ i = n ∨ n < i, exact trichotomous i n,
+      cases C,
+      { simp[C, nat.lt.step C, finitary.tail] }, rcases C with (rfl | C),
+      { simp[←nat.add_one], refl },
+      { simp[show ¬i < n, from asymm C, show ¬i < n.succ, by omega, C, ←nat.add_one,
+             show i - n - 1 = i - (n + 1), from tsub_tsub i n 1] } },
+    { intros h d D, refine cast _ (h (D ::ᶠ d)), congr, funext i, simp[concat, slide'],
+      have C : i < n ∨ i = n ∨ n < i, exact trichotomous i n,
+      cases C,
+      { simp[C, nat.lt.step C, finitary.cons] }, rcases C with (rfl | C), 
+      { simp[←nat.add_one] },
+      { simp[show ¬i < n, from asymm C, show ¬i < n.succ, by omega, C, ←nat.add_one,
+             show i - n - 1 = i - (n + 1), from tsub_tsub i n 1] } } }
+end
+
 
 @[simp] lemma models_and {p q : formula L} {e : ℕ → |M|} : (p ⊓ q).val e ↔ (p.val e ∧ q.val e) :=
 by simp[has_inf.inf, formula.and]
@@ -171,8 +194,8 @@ lemma eval_eq : ∀ {t : term L} {e₁ e₂ : ℕ → |M|},
 | (#n)               _  _  eqs := by simp at *; refine eqs _ _; simp
 | (@term.app _ n f v)  e₁ e₂ eqs := by { simp at *, congr, funext i, refine @eval_eq (v i) _ _ (λ n eqn, _),
   have : (v i).arity ≤ finitary.Max 0 (λ i, (v i).arity), from finitary.Max_le 0 (λ i, (v i).arity) i,
-  refine eqs n (lt_of_lt_of_le eqn this) } 
-
+  refine eqs n (lt_of_lt_of_le eqn this) }
+  
 lemma eval_iff : ∀ {p : formula L} {e₁ e₂ : ℕ → |M|},
   (∀ n, n < p.arity → e₁ n = e₂ n) → (M ⊧[e₁] p ↔ M ⊧[e₂] p)
 | (@formula.app _ n p v) e₁ e₂ eqs := by { simp[sentence] at*,
