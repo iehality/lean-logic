@@ -220,4 +220,7 @@ lemma eval_sentence_iff {p : formula L} {e : ℕ → |M|} (a : sentence p) : M �
  simp[sentence] at*, rw[a] at h, exact nat.not_lt_zero n h},
  λ h, h e⟩
 
+class theory_of_model (M : model L) (T : theory L) :=
+(models : M ⊧ₜₕ T)
+
 end fopl

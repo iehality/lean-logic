@@ -6,6 +6,7 @@ import
   data.pfun
   deduction semantics lindenbaum arithmetic
   proof
+  coding
 
 open encodable denumerable part classical_logic axiomatic_classical_logic axiomatic_classical_logic'
 
@@ -92,7 +93,7 @@ local infix ` ≃₁ `:80 := ((≃) : term (LA + LC) → term (LA + LC) → form
 local prefix `∏₁ `:64 := (has_univ_quantifier.univ : formula (LA + LC) → formula (LA + LC))
 local prefix `∐₁ `:64 := (has_exists_quantifier.ex : formula (LA + LC) → formula (LA + LC))
 
-namespace prec
+namespace prim
 open LC vector
 
  def symbol.fn₁ {n} (c : pcode n) : finitary (term (LA + LC)) n → term (LA + LC) :=
@@ -203,8 +204,6 @@ begin
              cases i with i; cases i with i; simp } } }
 end
 
-
-
 @[simp] def prim_fn : ∀ {n}, (LA + LC).fn n → finitary ℕ n → ℕ
 | _ (sum.inl *Z) v := 0
 | _ (sum.inl *S) v := v 0 + 1
@@ -222,7 +221,7 @@ def prim_standard : model (LA + LC) := {
     end }
 
 notation `ℙ` := prim_standard
-#check ℙ
+
 namespace prim_standard
 
 @[simp] lemma dom_eq : |ℙ| = ℕ := rfl
@@ -254,13 +253,15 @@ theorem Prim_consistent : theory.consistent Prim := model_consistent prim_standa
 
 variables {L : language.{0}} [primcodable (formula L)] [primcodable (proof L)]
   
-
 @[reducible] def goedel_number (p : formula L) : ℕ := encode p
 
 notation `⌜` p `⌝` := goedel_number p
 
-theorem Prim_complete_provability {T : theory L} [primrec_theory T] : ∃ c : pcode 2,
-  ∀ p : formula L, T ⊢ p ↔ Prim ⊢ ∐ Ḟ c fin'[⌜p⌝˙, #0] ≃₁ 2˙ :=
+variables {P : theory (LA + LC)} [extend Prim P] [theory_of_model ℙ P]
+  {T : theory L} [primrec_theory T]
+
+theorem Prim_complete_provability : ∃ c : pcode 2, ∀ p,
+  T ⊢ p ↔ P ⊢ ∐ Ḟ c ‹⌜p⌝˙, #0› ≃₁ 2˙ :=
 begin
   let pr : vector ℕ 2 → ℕ := λ v, proof.of_n T (v.nth 0) (v.nth 1),
   have : primrec pr,
@@ -272,16 +273,17 @@ begin
   { simp [proof.of_n_complete, pr], refl },
   split,
   { intros h,
+    suffices : Prim ⊢ ∐ Ḟ c ‹⌜p⌝˙, #0› ≃ 2˙, { exact provable.extend this },
     rcases pr_iff.mp h with ⟨s, pr_eq⟩, 
-    have : Prim ⊢ Ḟ c fin'[(encode p)˙, s˙] ≃ Ṡ Ṡ Ż,
-    { have := Prim_complete c fin'[encode p, s],
+    have : Prim ⊢ Ḟ c ‹⌜p⌝˙, s˙› ≃ Ṡ Ṡ Ż,
+    { have := Prim_complete c ‹⌜p⌝, s›,
       simp[pcode.eval_fin, c_eval_eq_pr, pr_eq] at this,
       exact cast (by { congr, exact finitary.zero_eq _ }) this },
     refine provable.use s˙ _, simp,
     refine cast (by { congr, exact eq.symm (finitary.zero_eq _) }) this },
   { intros h, 
-    have : ℙ ⊧ ∐ Ḟ c fin'[⌜p⌝˙, #0] ≃ 2˙, from soundness h prim_standard.models_Prim,
-    have : ∃ s : ℕ, c.eval_fin fin'[⌜p⌝, s] = 2,
+    have : ℙ ⊧ ∐ Ḟ c ‹⌜p⌝˙, #0› ≃ 2˙, from soundness h theory_of_model.models,
+    have : ∃ s : ℕ, c.eval_fin ‹⌜p⌝, s› = 2,
     { have := this (default _),
       simp[symbol.fn₁, symbol.zero, symbol.succ, show 1 + 1 = 2, by simp] at this, 
       refine cast _ this, congr },
@@ -289,23 +291,34 @@ begin
     refine pr_iff.mpr ⟨s, _⟩, simp[pr, pcode.eval_fin, c_eval_eq_pr] at hs ⊢, exact hs }
 end
 
-noncomputable def prov_index (T : theory L) [primrec_theory T] : pcode 2 :=
-classical.some (@Prim_complete_provability _ _ _ T _)
+variables (P) (T)
 
-lemma prov_index_spec {T : theory L} [primrec_theory T] : ∀ p : formula L,
-  T ⊢ p ↔ Prim ⊢ ∐ Ḟ (prov_index T) fin'[⌜p⌝˙, #0] ≃₁ 2˙ :=
-classical.some_spec (@Prim_complete_provability _ _ _ T _) 
+noncomputable def prov_index : pcode 2 :=
+classical.some (@Prim_complete_provability _ _ _ P _ _ T _)
 
-noncomputable def Prov (T : theory L) [primrec_theory T] (t : term (LA + LC)) : formula (LA + LC) :=
-∐ Ḟ (prov_index T) fin'[t, #0] ≃₁ 2˙
+noncomputable def Prov (t : term (LA + LC)) : formula (LA + LC) :=
+∐ Ḟ (prov_index P T) ‹t, #0› ≃₁ 2˙
 
-lemma Prov_spec {T : theory L} [primrec_theory T] : ∀ p : formula L,
-  T ⊢ p ↔ Prim ⊢ Prov T ⌜p⌝˙ :=
+variables {P} {T}
+
+lemma prov_index_spec : ∀ p : formula L,
+  T ⊢ p ↔ P ⊢ ∐ Ḟ (prov_index P T) ‹⌜p⌝˙, #0› ≃₁ 2˙ :=
+classical.some_spec (@Prim_complete_provability _ _ _ P _ _ T _)
+
+lemma Prov_spec : ∀ p : formula L,
+  T ⊢ p ↔ P ⊢ Prov P T ⌜p⌝˙ :=
 prov_index_spec
 
-example {n i : ℕ} : i + 1 < n + 1 → i < n := by { exact nat.succ_lt_succ_iff.mp }
+end prim
 
-end prec
+namespace prim_incompleteness
+variables {L : language.{0}} [primcodable (formula L)] [primcodable (proof L)]
+
+def Γ (p : formula L) (t : term L) : formula L := p.rew ι[0 ⇝ t]
+
+
+end prim_incompleteness
+
 end arithmetic
 
 end fopl

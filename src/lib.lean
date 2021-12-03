@@ -202,7 +202,7 @@ protected def subset {n₁ n₂} (f₁ : finitary α n₁) (f₂ : finitary α n
 
 def cons {n} (f : finitary α n) (a : α) : finitary α (n + 1) := λ i, if h : ↑i < n then f ⟨i, h⟩ else a
 
-@[simp] def cons' {n} (a : α) (f : finitary α n) : finitary α (n + 1)
+@[simp] def cons' {n} (a : α) (f : finitary α n) : finitary α n.succ
 | ⟨0, h⟩ := a
 | ⟨i + 1, h⟩ := f ⟨i, nat.succ_lt_succ_iff.mp h⟩
 
@@ -232,9 +232,7 @@ instance : has_emptyc (finitary α 0) := ⟨nil⟩
 
 notation `fin[` l:(foldl `, ` (h t, finitary.cons t h) ∅ `]`) := l
 
-notation `fin'[` l:(foldr `, ` (t h, finitary.cons' t h) ∅ `]`) := l
-
-#check fin'[(0 : ℕ), (8 : ℕ)]
+notation `‹` l:(foldr `, ` (t h, finitary.cons' t h) ∅ `›`) := l
 
 def tail {n} (f : finitary α (n + 1)) : finitary α n := λ i, f ⟨i, nat.lt.step i.property⟩
 
