@@ -12,8 +12,6 @@ open encodable denumerable part classical_logic axiomatic_classical_logic axioma
 
 open vector
 
-#check @nat.rec
-
 namespace fopl
 
 namespace arithmetic
@@ -78,7 +76,7 @@ by funext f; simp[eval_fin, eval]
 
 @[simp] lemma eval_fin_prec {n} (cf : pcode n) (cg : pcode (n + 2)) :
   eval_fin (pcode.prec cf cg) =
-  (λ f, (f 0).elim (eval_fin cf f.tail') (λ y IH, eval_fin cg (y ᶠ:: IH ᶠ:: f.tail'))) :=
+  (λ f, (f 0).elim (eval_fin cf f.tail) (λ y IH, eval_fin cg (y ::ᶠ IH ::ᶠ f.tail))) :=
 by {funext f; simp[eval_fin, eval], congr }
 
 end pcode
@@ -89,7 +87,7 @@ end LC
 
 def LC : language := ⟨LC.pcode, LC.langp⟩
 
-local infix ` ≃₁ `:80 := ((≃) : term (LA + LC) → term (LA + LC) → formula (LA + LC))
+local infix ` ≃₁ `:50 := ((≃) : term (LA + LC) → term (LA + LC) → formula (LA + LC))
 local prefix `∏₁ `:64 := (has_univ_quantifier.univ : formula (LA + LC) → formula (LA + LC))
 local prefix `∐₁ `:64 := (has_exists_quantifier.ex : formula (LA + LC) → formula (LA + LC))
 
@@ -101,53 +99,23 @@ open LC vector
 
 prefix `Ḟ `:max := symbol.fn₁
 
-def symbol.zero : term (LA + LC) := term.app (sum.inl *Z) finitary.nil
-notation `Ż` := symbol.zero
-
-def symbol.succ : term (LA + LC) → term (LA + LC) := λ x, term.app (sum.inl *S) fin[x]
-prefix `Ṡ `:max := symbol.succ
-
-@[simp] lemma zero_eq : ((Ż : term LA) : term (LA + LC)) = Ż :=
-by unfold_coes; simp[(symbol.zero), arithmetic.symbol.zero]
-
-@[simp] lemma succ_eq (t : term LA) : ((Ṡ t : term LA) : term (LA + LC)) = Ṡ t :=
-by unfold_coes; simp[(symbol.succ), arithmetic.symbol.succ]; refl
-
-@[simp] lemma zero_rew (s : ℕ → term (LA + LC)) : term.rew s Ż = Ż := by simp[symbol.zero]
-
-@[simp] lemma succ_rew (t : term (LA + LC)) (s : ℕ → term (LA + LC)) : term.rew s (Ṡ t) = Ṡ (t.rew s) :=
-by simp[symbol.succ]
-
 @[simp] lemma fn_rew {n} (c : pcode n) (v : finitary (term (LA + LC)) n) (s : ℕ → term (LA + LC)) :
   term.rew s (Ḟ c v) = Ḟ c (λ i, term.rew s (v i)) :=
 by simp[symbol.fn₁]
-@[simp] lemma numeral0 : (numeral 0 : term (LA + LC)) = Ż :=
-by { simp[numeral] }
 
 def numeral' : ℕ → term (LA + LC) := λ n, numeral n
 
-local notation n`˙`:1200 := numeral' n
-
-@[simp] lemma numeral_eq (n) : (numeral n : term (LA + LC)) = n˙ := rfl
-
-@[simp] lemma numeral0_eq : 0˙ = Ż := by { simp [numeral', symbol.zero, -numeral_eq, numeral] }
-
-@[simp] lemma numeral_succ_eq (n : ℕ) : (n + 1)˙ = Ṡ n˙ := by { simp [numeral', symbol.succ, -numeral_eq, numeral], refl }
-
-@[simp] lemma numeral_arity0 (n : ℕ) : (n˙).arity = 0 :=
-by {simp [numeral', -numeral_eq],  exact numeral_arity0 n }
-
 inductive Prim : theory (LA + LC)
-| zero   : Prim (Ḟ pcode.zero ∅ ≃ Ż)
-| succ   : Prim ∏ (Ḟ pcode.succ fin[#0] ≃₁ Ṡ #0)
+| zero                : Prim (Ḟ pcode.zero ∅ ≃ 0)
+| succ                : Prim ∏₁ (Ḟ pcode.succ ‹#0› ≃₁ Succ #0)
 | nth {n} (i : fin n) : Prim ∏[n] (Ḟ (pcode.nth i) (λ j, #j) ≃ #i)
-| comp {m n} : ∀ (c : pcode n) (cs : fin n → pcode m),
+| comp {m n}          : ∀ (c : pcode n) (cs : fin n → pcode m),
     Prim ∏[m] (Ḟ (pcode.comp c cs) (λ j, #j) ≃ Ḟ c (λ i, Ḟ (cs i) (λ j, #j)))
-| prec_z {n} : ∀ (c₀ : pcode n) (c₁ : pcode (n + 2)),
-    Prim ∏[n] (Ḟ (pcode.prec c₀ c₁) (Ż ᶠ:: (λ j, #j)) ≃ Ḟ c₀ (λ j, #j))
-| prec_s {n} : ∀ (c₀ : pcode n) (c₁ : pcode (n + 2)),
-    Prim ∏[n+1] (Ḟ (pcode.prec c₀ c₁) (Ṡ #0 ᶠ:: (λ i, #(i + 1))) ≃
-    Ḟ c₁ (#0 ᶠ:: Ḟ (pcode.prec c₀ c₁) (λ j, #j) ᶠ:: (λ j, #(j+1))))
+| prec_z {n}          : ∀ (c₀ : pcode n) (c₁ : pcode (n + 2)),
+    Prim ∏[n] (Ḟ (pcode.prec c₀ c₁) (0 ::ᶠ (λ j, #j)) ≃ Ḟ c₀ (λ j, #j))
+| prec_s {n}          : ∀ (c₀ : pcode n) (c₁ : pcode (n + 2)),
+    Prim ∏[n+1] (Ḟ (pcode.prec c₀ c₁) (Succ #0 ::ᶠ (λ i, #(i + 1))) ≃
+      Ḟ c₁ (#0 ::ᶠ Ḟ (pcode.prec c₀ c₁) (λ j, #j) ::ᶠ (λ j, #(j+1))))
 
 theorem Prim_complete {i} (c : pcode i) :
   ∀ n : finitary ℕ i, Prim ⊢ Ḟ c (λ i, (n i)˙) ≃ (c.eval_fin n)˙ := λ v,
@@ -158,8 +126,8 @@ begin
     refine by_axiom Prim.zero },
   case succ { 
     simp[pcode.eval], 
-    have : Prim ⊢ formula.rew ι[0 ⇝ (v 0)˙] (Ḟ pcode.succ fin[#0] ≃ Ṡ #0),
-      from (by_axiom Prim.succ) ⊚ (v 0)˙, simp[symbol.succ, term.rew] at this, 
+    have : Prim ⊢ formula.rew ι[0 ⇝ (v 0)˙] (Ḟ pcode.succ ‹#0› ≃ Succ #0),
+      from (by_axiom Prim.succ) ⊚ (v 0)˙, simp at this, 
     simp[show ∀ i, v i = v 0, by intros i; { simp[show i = 0, by simp] }], exact this },
   case nth : m i { simp[pcode.eval],
     have := provable.nfal_subst'_finitary (by_axiom (Prim.nth i)) (λ i, (v i)˙),
@@ -175,41 +143,41 @@ begin
   case prec : n cf cg IHf IHg { 
     simp at*,
     induction C : (v 0) with s IH generalizing v; simp[C],
-    { have := provable.nfal_subst'_finitary (by_axiom (Prim.prec_z cf cg))  (λ i, numeral (v.tail' i)),
+    { have := provable.nfal_subst'_finitary (by_axiom (Prim.prec_z cf cg))  (λ i, numeral (v.tail i)),
       simp at this,
       calc
-        Ḟ (cf.prec cg) (λ i, (v i)˙) ≃[Prim] Ḟ cf (λ i, (v.tail' i)˙)
-      : by { refine cast _ this, congr, { funext i, rcases i with ⟨i, h⟩, cases i; simp[C, finitary.tail'] } }
+        Ḟ (cf.prec cg) (λ i, (v i)˙) ≃[Prim] Ḟ cf (λ i, (v.tail i)˙)
+      : by { refine cast _ this, congr, { funext i, rcases i with ⟨i, h⟩, cases i; simp[C, finitary.tail, numeral], } }
 
-                                 ... ≃[Prim] (cf.eval_fin v.tail')˙
-      : IHf v.tail' },
-    { let I : ℕ := nat.elim (cf.eval_fin v.tail') (λ (y IH : ℕ), cg.eval_fin (y ᶠ:: IH ᶠ:: v.tail')) s,
-      have IH' : Prim ⊢ Ḟ (cf.prec cg) (s˙ ᶠ:: λ i, (v.tail' i)˙) ≃ I˙,
-      { have := IH (s ᶠ:: v.tail') (by simp), simp at this, exact this },
+                                 ... ≃[Prim] (cf.eval_fin v.tail)˙
+      : IHf v.tail },
+    { let I : ℕ := nat.elim (cf.eval_fin v.tail) (λ (y IH : ℕ), cg.eval_fin (y ::ᶠ IH ::ᶠ v.tail)) s,
+      have IH' : Prim ⊢ Ḟ (cf.prec cg) (s˙ ::ᶠ λ i, (v.tail i)˙) ≃ I˙,
+      { have := IH (s ::ᶠ v.tail) (by simp), simp at this, exact this },
 
       calc          Ḟ (cf.prec cg) (λ i, (v i)˙)
-                  = Ḟ (cf.prec cg) (Ṡ s˙ ᶠ:: λ i, (v.tail' i)˙) 
-      : by { congr, rw [←finitary.app_0_cons'_tail'_refl (λ i, (v i)˙)], simp[C, finitary.tail'] }
+                  = Ḟ (cf.prec cg) (Succ s˙ ::ᶠ λ i, (v.tail i)˙) 
+      : by { congr, rw [←finitary.app_0_cons_tail_refl (λ i, (v i)˙)], simp[C, finitary.tail, numeral] }
       
-        ... ≃[Prim] Ḟ cg (s˙ ᶠ:: Ḟ (cf.prec cg) (s˙ ᶠ:: λ i, (v.tail' i)˙) ᶠ:: λ i, (v.tail' i)˙)
+        ... ≃[Prim] Ḟ cg (s˙ ::ᶠ Ḟ (cf.prec cg) (s˙ ::ᶠ λ i, (v.tail i)˙) ::ᶠ λ i, (v.tail i)˙)
       : by { have := provable.nfal_subst'_finitary (by_axiom (Prim.prec_s cf cg))
-             (s˙ ᶠ:: (λ i, (v.tail' i)˙)), simp[succ_rew] at this, exact this }
+             (s˙ ::ᶠ (λ i, (v.tail i)˙)), simp at this, exact this }
       
-        ... ≃[Prim] Ḟ cg (s˙ ᶠ:: I˙ ᶠ:: λ i, (v.tail' i)˙)
+        ... ≃[Prim] Ḟ cg (s˙ ::ᶠ I˙ ::ᶠ λ i, (v.tail i)˙)
       : by { refine (provable.function_ext' _ _ _) ⨀ (provable.conjunction' _), intros i,
              rcases i with ⟨i, lt_i⟩, cases i with i; cases i with i; simp, exact IH' }
 
-        ... ≃[Prim] (cg.eval_fin (s ᶠ:: I ᶠ:: v.tail'))˙ 
-      : by { refine cast _ (IHg (s ᶠ:: I ᶠ:: v.tail')), congr, funext i, rcases i with ⟨i, h⟩,
+        ... ≃[Prim] (cg.eval_fin (s ::ᶠ I ::ᶠ v.tail))˙ 
+      : by { refine cast _ (IHg (s ::ᶠ I ::ᶠ v.tail)), congr, funext i, rcases i with ⟨i, h⟩,
              cases i with i; cases i with i; simp } } }
 end
 
 @[simp] def prim_fn : ∀ {n}, (LA + LC).fn n → finitary ℕ n → ℕ
-| _ (sum.inl *Z) v := 0
-| _ (sum.inl *S) v := v 0 + 1
-| _ (sum.inl *+) v := v 0 + v 1
-| _ (sum.inl *×) v := v 0 * v 1
-| _ (sum.inr c)  v := pcode.eval_fin c v
+| _ (sum.inl langf.zero) v := 0
+| _ (sum.inl langf.succ) v := v 0 + 1
+| _ (sum.inl langf.add)  v := v 0 + v 1
+| _ (sum.inl langf.mul)  v := v 0 * v 1
+| _ (sum.inr c)          v := pcode.eval_fin c v
 
 def prim_standard : model (LA + LC) := {
   dom := ℕ,
@@ -226,26 +194,27 @@ namespace prim_standard
 
 @[simp] lemma dom_eq : |ℙ| = ℕ := rfl
 
-@[simp] lemma zero_eq (v : finitary ℕ 0) : prim_standard.fn (sum.inl *Z) v = (0 : ℕ) := rfl
+@[simp] lemma zero_eq (v : finitary ℕ 0) : prim_standard.fn has_zero_symbol.zero v = (0 : ℕ) := rfl
 
-@[simp] lemma succ_eq (v : finitary ℕ 1) : prim_standard.fn (sum.inl *S) v = (v 0 + 1 : ℕ) := rfl
+@[simp] lemma succ_eq (v : finitary ℕ 1) : prim_standard.fn has_succ_symbol.succ v = (v 0 + 1 : ℕ) := rfl
 
-@[simp] lemma add_eq (v : finitary ℕ 2) : prim_standard.fn (sum.inl *+) v = (v 0 + v 1 : ℕ) := rfl
+@[simp] lemma add_eq (v : finitary ℕ 2) : prim_standard.fn has_add_symbol.add v = (v 0 + v 1 : ℕ) := rfl
 
-@[simp] lemma mul_eq (v : finitary ℕ 2) : prim_standard.fn (sum.inl *×) v = (v 0 * v 1 : ℕ) := rfl
+@[simp] lemma mul_eq (v : finitary ℕ 2) : prim_standard.fn has_mul_symbol.mul v = (v 0 * v 1 : ℕ) := rfl
 
-@[simp] lemma le_eq (v : finitary ℕ 2) : prim_standard.pr (sum.inl *≤) v ↔ (v 0 : ℕ) ≤ v 1 := by refl
+@[simp] lemma le_eq (v : finitary ℕ 2) : prim_standard.pr has_le_symbol.le v ↔ (v 0 : ℕ) ≤ v 1 := by refl
 
-@[simp] lemma prim_standard.fn_eq : prim_standard.fn = @prim_fn := rfl
+lemma prim_standard.fn_eq : prim_standard.fn = @prim_fn := rfl
 
 @[simp] lemma fun_eq {n} (c : pcode n) (v : finitary ℕ n) :
-  prim_standard.fn (sum.inr c) v = pcode.eval_fin c v := by { cases c; simp* }
+  prim_standard.fn (sum.inr c) v = pcode.eval_fin c v := by { cases c; simp[*, prim_standard.fn_eq] }
 
 theorem models_Prim : ℙ ⊧ₜₕ Prim := λ p h e,
-by cases h; simp[symbol.fn₁, symbol.zero, symbol.succ, models_univs, finitary.tail']
+by {cases h; simp[symbol.fn₁, models_univs],
+     { intros, congr; simp[finitary.tail] } }
 
-@[simp] lemma numeral_eval (n : ℕ) (e : ℕ → |ℙ|) : term.val e n˙ = n :=
-by { induction n with n IH; simp[symbol.zero, symbol.succ], { simp[IH] } }
+@[simp] lemma numeral_eval (n : ℕ) (e : ℕ → |ℙ|) : term.val e (n˙) = n :=
+by { induction n with n IH; simp[numeral, *] }
 
 end prim_standard
 
@@ -261,7 +230,7 @@ variables {P : theory (LA + LC)} [extend Prim P] [theory_of_model ℙ P]
   {T : theory L} [primrec_theory T]
 
 theorem Prim_complete_provability : ∃ c : pcode 2, ∀ p,
-  T ⊢ p ↔ P ⊢ ∐ Ḟ c ‹⌜p⌝˙, #0› ≃₁ 2˙ :=
+  T ⊢ p ↔ P ⊢ ∐ (Ḟ c ‹⌜p⌝˙, #0› ≃₁ 2˙) :=
 begin
   let pr : vector ℕ 2 → ℕ := λ v, proof.of_n T (v.nth 0) (v.nth 1),
   have : primrec pr,
@@ -273,19 +242,19 @@ begin
   { simp [proof.of_n_complete, pr], refl },
   split,
   { intros h,
-    suffices : Prim ⊢ ∐ Ḟ c ‹⌜p⌝˙, #0› ≃ 2˙, { exact provable.extend this },
+    suffices : Prim ⊢ ∐ (Ḟ c ‹⌜p⌝˙, #0› ≃ 2˙), { exact provable.extend this },
     rcases pr_iff.mp h with ⟨s, pr_eq⟩, 
-    have : Prim ⊢ Ḟ c ‹⌜p⌝˙, s˙› ≃ Ṡ Ṡ Ż,
+    have : Prim ⊢ Ḟ c ‹⌜p⌝˙, s˙› ≃ Succ Succ 0,
     { have := Prim_complete c ‹⌜p⌝, s›,
       simp[pcode.eval_fin, c_eval_eq_pr, pr_eq] at this,
-      exact cast (by { congr, exact finitary.zero_eq _ }) this },
-    refine provable.use s˙ _, simp,
-    refine cast (by { congr, exact eq.symm (finitary.zero_eq _) }) this },
+      exact cast (by { congr, ext; simp }) this },
+    refine provable.use (s˙) _, simp,
+    refine cast (by { congr; ext; simp }) this },
   { intros h, 
-    have : ℙ ⊧ ∐ Ḟ c ‹⌜p⌝˙, #0› ≃ 2˙, from soundness h theory_of_model.models,
+    have : ℙ ⊧ ∐ (Ḟ c ‹⌜p⌝˙, #0› ≃ 2˙), from soundness h theory_of_model.models,
     have : ∃ s : ℕ, c.eval_fin ‹⌜p⌝, s› = 2,
     { have := this (default _),
-      simp[symbol.fn₁, symbol.zero, symbol.succ, show 1 + 1 = 2, by simp] at this, 
+      simp[symbol.fn₁, show 1 + 1 = 2, by simp] at this, 
       refine cast _ this, congr },
     rcases this with ⟨s, hs⟩,
     refine pr_iff.mpr ⟨s, _⟩, simp[pr, pcode.eval_fin, c_eval_eq_pr] at hs ⊢, exact hs }
@@ -297,16 +266,16 @@ noncomputable def prov_index : pcode 2 :=
 classical.some (@Prim_complete_provability _ _ _ P _ _ T _)
 
 noncomputable def Prov (t : term (LA + LC)) : formula (LA + LC) :=
-∐ Ḟ (prov_index P T) ‹t, #0› ≃₁ 2˙
+∐ (Ḟ (prov_index P T) ‹t, #0› ≃₁ 2˙)
 
 variables {P} {T}
 
 lemma prov_index_spec : ∀ p : formula L,
-  T ⊢ p ↔ P ⊢ ∐ Ḟ (prov_index P T) ‹⌜p⌝˙, #0› ≃₁ 2˙ :=
+  T ⊢ p ↔ P ⊢ ∐ (Ḟ (prov_index P T) ‹⌜p⌝˙, #0› ≃₁ 2˙) :=
 classical.some_spec (@Prim_complete_provability _ _ _ P _ _ T _)
 
 lemma Prov_spec : ∀ p : formula L,
-  T ⊢ p ↔ P ⊢ Prov P T ⌜p⌝˙ :=
+  T ⊢ p ↔ P ⊢ Prov P T (⌜p⌝˙) :=
 prov_index_spec
 
 end prim

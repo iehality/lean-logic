@@ -130,11 +130,9 @@ def finitary (α : Type*) (n : ℕ) := fin n → α
 
 namespace fin
 
-
-
 def add' {n} (i : fin n) : fin (n + 1) := ⟨i, nat.lt.step i.property⟩
 
-lemma cases' {n} (i : fin (n + 1)) : (∃ i' : fin n, i = add' i') ∨ i = ⟨n, lt_add_one n⟩ :=
+lemma cases_inv {n} (i : fin (n + 1)) : (∃ i' : fin n, i = add' i') ∨ i = ⟨n, lt_add_one n⟩ :=
 by { have : ↑i < n ∨ ↑i = n, exact nat.lt_succ_iff_lt_or_eq.mp i.property, cases this,
      { left, refine ⟨⟨i, this⟩, fin.eq_of_veq _⟩, simp[add'] },
      { right, apply fin.eq_of_veq, simp[this] } }
@@ -200,49 +198,47 @@ by { induction n with n IH; simp[has_mem.mem, finitary.mem],
 
 protected def subset {n₁ n₂} (f₁ : finitary α n₁) (f₂ : finitary α n₂) := ∀ ⦃a : α⦄, a ∈ f₁ → a ∈ f₂
 
-def cons {n} (f : finitary α n) (a : α) : finitary α (n + 1) := λ i, if h : ↑i < n then f ⟨i, h⟩ else a
+def cons_inv {n} (f : finitary α n) (a : α) : finitary α (n + 1) := λ i, if h : ↑i < n then f ⟨i, h⟩ else a
 
-@[simp] def cons' {n} (a : α) (f : finitary α n) : finitary α n.succ
+@[simp] def cons {n} (a : α) (f : finitary α n) : finitary α n.succ
 | ⟨0, h⟩ := a
 | ⟨i + 1, h⟩ := f ⟨i, nat.succ_lt_succ_iff.mp h⟩
 
-infixl ` ::ᶠ `:60  := finitary.cons
+infixl ` ᶠ:: `:60  := finitary.cons_inv
 
-infixr ` ᶠ:: `:60  := finitary.cons'
+infixr ` ::ᶠ `:60  := finitary.cons
 
-@[simp] lemma cons_app0 {n} (f : finitary α n) (a : α) : (f ::ᶠ a) ⟨n, lt_add_one n⟩ = a := by simp[finitary.cons]
+@[simp] lemma cons_inv_app0 {n} (f : finitary α n) (a : α) : (f ᶠ:: a) ⟨n, lt_add_one n⟩ = a := by simp[finitary.cons_inv]
 
-@[simp] lemma cons_app1 {n} (f : finitary α n) (a : α) (i : fin n) : (f ::ᶠ a) i.add' = f i :=
-by { simp[finitary.cons, fin.add'] }
+@[simp] lemma cons_inv_app1 {n} (f : finitary α n) (a : α) (i : fin n) : (f ᶠ:: a) i.add' = f i :=
+by { simp[finitary.cons_inv, fin.add'] }
 
-@[simp] lemma cons'_app0 {n} (f : finitary α n) (a : α) : (a ᶠ:: f) 0 = a := rfl
+@[simp] lemma cons_app_0 {n} (f : finitary α n) (a : α) : (a ::ᶠ f) 0 = a := rfl
 
-@[simp] lemma cons'_app1 {n} (f : finitary α n) (a : α) (i : fin n) {h} : (a ᶠ:: f) ⟨i + 1, h⟩ = f i :=
+@[simp] lemma cons_app_succ {n} (f : finitary α n) (a : α) (i : fin n) {h} : (a ::ᶠ f) ⟨i + 1, h⟩ = f i :=
 by simp
 
-@[simp] lemma cons'_app_eq_succ (a : α) {n} (f : finitary α n) (i : fin n) :
-  (a ᶠ:: f) i.succ = f i := by simp[show i.succ = ⟨i + 1, nat.succ_lt_succ i.property⟩, from fin.ext (by simp)]
+@[simp] lemma cons_app_eq_succ (a : α) {n} (f : finitary α n) (i : fin n) :
+  (a ::ᶠ f) i.succ = f i := by simp[show i.succ = ⟨i + 1, nat.succ_lt_succ i.property⟩, from fin.ext (by simp)]
 
-@[simp] lemma cons'_app_eq_1 (a : α) {n} (f : finitary α (n + 1)) :
-  (a ᶠ:: f) 1 = f 0 := cons'_app_eq_succ a f 0
+@[simp] lemma cons_app_eq_1 (a : α) {n} (f : finitary α (n + 1)) :
+  (a ::ᶠ f) 1 = f 0 := cons_app_eq_succ a f 0
 
 def nil : finitary α 0 := λ i, by { exfalso, exact i.val.not_lt_zero i.property }
 
 instance : has_emptyc (finitary α 0) := ⟨nil⟩
 
-notation `fin[` l:(foldl `, ` (h t, finitary.cons t h) ∅ `]`) := l
+notation `‹` l:(foldr `, ` (t h, finitary.cons t h) finitary.nil `›`) := l
 
-notation `‹` l:(foldr `, ` (t h, finitary.cons' t h) ∅ `›`) := l
+def tail_inv {n} (f : finitary α (n + 1)) : finitary α n := λ i, f ⟨i, nat.lt.step i.property⟩
 
-def tail {n} (f : finitary α (n + 1)) : finitary α n := λ i, f ⟨i, nat.lt.step i.property⟩
+def head_inv {n} (f : finitary α (n + 1)) : α := f ⟨n, lt_add_one n⟩
 
-def head {n} (f : finitary α (n + 1)) : α := f ⟨n, lt_add_one n⟩
-
-def tail' {n} (f : finitary α (n + 1)) : finitary α n := λ i, f i.succ
+def tail {n} (f : finitary α (n + 1)) : finitary α n := λ i, f i.succ
 
 
-lemma tail_cons_head {n} (f : finitary α (n + 1)) : f.tail ::ᶠ f.head = f :=
-funext (λ i, by { simp[cons, tail, head],
+lemma tail_inv_cons_inv_head {n} (f : finitary α (n + 1)) : f.tail_inv ᶠ:: f.head_inv = f :=
+funext (λ i, by { simp[cons_inv, tail_inv, head_inv],
   intros h,
   congr, apply fin.eq_of_veq, simp,
   have : ↑i ≤ n, from fin.is_le i,
@@ -253,45 +249,57 @@ funext (λ i, by { have := i.property, exfalso, exact i.val.not_lt_zero this })
 
 @[simp] lemma zero_eq' (f : fin 0 → α) : f = (∅ : finitary α 0) := zero_eq f
 
+/-
+lemma fin_2_eq (f : finitary α 1) : fin[f 0] = f :=
+funext (λ i, by { rcases i with ⟨i, i_p⟩, cases i; simp[cons_inv], exfalso, simp[←nat.add_one] at*, exact i_p })
+
+
 lemma fin1_eq (f : finitary α 1) : fin[f 0] = f :=
-funext (λ i, by { rcases i with ⟨i, i_p⟩, cases i; simp[cons], exfalso, simp[←nat.add_one] at*, exact i_p })
+funext (λ i, by { rcases i with ⟨i, i_p⟩, cases i; simp[cons_inv], exfalso, simp[←nat.add_one] at*, exact i_p })
 
 lemma fin2_eq (f : finitary α 2) : fin[f 0, f 1] = f :=
-funext (λ i, by { rcases i with ⟨i, i_p⟩, cases i; simp[cons], cases i, { simp },
+funext (λ i, by { rcases i with ⟨i, i_p⟩, cases i; simp[cons_inv], cases i, { simp },
   exfalso, simp[←nat.add_one] at i_p, exact i_p })
+-/
 
-@[simp] lemma fin1_app_eq (a : α) (i : fin 1) : (fin[a] : finitary α 1) i = a := rfl
+@[ext] lemma fin_0_ext (f g : finitary α 0) : f = g :=
+funext (λ i, by { rcases i with ⟨i, h⟩, exfalso, exact nat.not_lt_zero i h })
 
-@[simp] lemma cons_app_eq_0 (a : α) {n} (f : finitary α n) :
-  (a ᶠ:: f) 0 = a := rfl
+@[ext] lemma fin_1_ext {f g : finitary α 1} (h : f 0 = g 0) : f = g :=
+funext (λ i, by { rcases i with ⟨i, hi⟩, rcases nat.lt_one_iff.mp hi with rfl, simp[h] })
 
+@[ext] lemma fin_2_ext {f g : finitary α 2} (h0 : f 0 = g 0) (h1 : f 1 = g 1) : f = g :=
+funext (λ i, by { rcases i with ⟨i, hi⟩,
+  cases i, { simp[h0] }, cases i, { simp[h1] },
+  { exfalso, simp[←nat.add_one, add_assoc] at hi, contradiction  } })
 
+@[simp] lemma fin_1_app_eq (a : α) (i : fin 1) : ‹a› i = a :=
+by { rcases i with ⟨i, h⟩, rcases nat.lt_one_iff.mp h with rfl, simp }
+
+@[simp] lemma cons_inv_app_eq_0 (a : α) {n} (f : finitary α n) :
+  (a ::ᶠ f) 0 = a := rfl
 
 @[simp] lemma app_cons (a : α) {n} (f : finitary α n) (F : α → β) :
-  (λ i : fin (n + 1), F $ (a ᶠ:: f) i) = (F a ᶠ:: λ i, F (f i)) :=
+  (λ i : fin (n + 1), F $ (a ::ᶠ f) i) = (F a ::ᶠ λ i, F (f i)) :=
 by { funext i, rcases i with ⟨i, h⟩, cases i; simp }
 
-@[simp] lemma cons_app_0 (a : α) {n} (f : finitary α n) :
-  (a ᶠ:: f) 0 = a :=
-by simp
+@[simp] lemma cons_tail (a : α) {n} (f : finitary α n) :
+  (a ::ᶠ f).tail = f :=
+by simp[tail]
 
-@[simp] lemma cons_tail' (a : α) {n} (f : finitary α n) :
-  (a ᶠ:: f).tail' = f :=
-by simp[tail']
-
-lemma app_0_cons'_tail'_refl {n} (f : finitary α (n + 1)) : (f 0) ᶠ:: f.tail' = f :=
+lemma app_0_cons_tail_refl {n} (f : finitary α (n + 1)) : (f 0) ::ᶠ f.tail = f :=
 funext (λ ⟨i, h⟩, by { rcases i; simp, refl })
 
-@[simp] lemma of_fn_nil :
-  of_fn (∅ : finitary α 0) = vector.nil :=
+@[simp] lemma of_fn_nil (f : finitary α 0) :
+  of_fn f = vector.nil :=
 by { ext i, exfalso, exact i.val.not_lt_zero i.property }
 
 @[simp] lemma of_fn_cons (a : α) {n} (f : finitary α n) :
-  of_fn (a ᶠ:: f) = a ::ᵥ (of_fn f) :=
+  of_fn (a ::ᶠ f) = a ::ᵥ (of_fn f) :=
 by { ext i, rcases i with ⟨i, i_lt⟩, cases i; simp }
 
 @[simp] lemma nth_cons (a : α) {n} (v : vector α n) :
-  (a ::ᵥ v).nth = a ᶠ:: v.nth :=
+  (a ::ᵥ v).nth = a ::ᶠ v.nth :=
 by { ext i, rcases i with ⟨i, i_lt⟩, cases i; simp }
 
 @[simp] lemma of_fn_nth_refl {n} (v : vector α n) :
@@ -459,19 +467,51 @@ by { induction n with n IH; simp[quotient.lift_on_finitary],
      simp[IH], congr, funext i,
      have : ↑i < n ∨ ↑i = n, exact nat.lt_succ_iff_lt_or_eq.mp i.property, cases this; simp[this], simp[←this] }
 
+@[simp]
+protected lemma lift_on_finitary_0_eq {s : setoid α} {φ} (f : finitary α 0 → φ)
+  (h : ∀ v₁ v₂ : finitary α 0, (∀ n, setoid.r (v₁ n) (v₂ n)) → f v₁ = f v₂) (n : finitary (quotient s) 0) :
+  quotient.lift_on_finitary n f h = f finitary.nil :=
+by simp[quotient.lift_on_finitary]
+
+@[simp]
+protected lemma lift_on_finitary_1_eq {s : setoid α} {φ} (a : α) (f : finitary α 1 → φ)
+  (h : ∀ v₁ v₂ : finitary α 1, (∀ n, setoid.r (v₁ n) (v₂ n)) → f v₁ = f v₂) :
+  quotient.lift_on_finitary ‹⟦a⟧› f h = f ‹a› :=
+by { rw[show ‹⟦a⟧› = (λ x : fin 1, ⟦a⟧), by { refine finitary.fin_1_ext _; simp }],
+     refine quotient.lift_on_finitary_eq ‹a› f h}
+
+@[simp]
+protected lemma lift_on_finitary_2_eq {s : setoid α} {φ} (a b : α) (f : finitary α 2 → φ)
+  (h : ∀ v₁ v₂ : finitary α 2, (∀ n, setoid.r (v₁ n) (v₂ n)) → f v₁ = f v₂) :
+  quotient.lift_on_finitary ‹⟦a⟧, ⟦b⟧› f h = f ‹a, b› :=
+by { rw[show ‹⟦a⟧, ⟦b⟧› = (λ x : fin 2, ⟦‹a, b› x⟧), by { refine finitary.fin_2_ext _ _; simp }],
+     refine quotient.lift_on_finitary_eq ‹a, b› f h }
+
 end quotient
+
+@[notation_class] class has_succ (α : Sort*) := (succ : α → α)
+
+prefix `Succ `:85 := has_succ.succ
 
 @[notation_class] class has_eq (α : Sort*) (β : Sort*) := (eq : α → α → β)
 
-infix ` ≃ `:80 := has_eq.eq
+infix ` ≃ `:50 := has_eq.eq
+
+@[notation_class] class has_preceq (α : Sort*) (β : Sort*) := (preceq : α → α → β)
+
+infix ` ⩽ `:50 := has_preceq.preceq
+
+@[notation_class] class has_elem (α : Sort*) (β : Sort*) := (elem : α → α → β)
+
+infix ` ∊ `:50 := has_elem.elem
 
 @[notation_class] class has_negation (α : Sort*) := (neg : α → α)
 
 prefix `⁻`:75 := has_negation.neg
 
-@[reducible] def has_eq.ineq {α : Sort*} {β : Sort*} [has_eq α β] [has_negation β] (a b : α) : β := ⁻a ≃ b
+@[reducible] def has_eq.ineq {α : Sort*} {β : Sort*} [has_eq α β] [has_negation β] (a b : α) : β := ⁻(a ≃ b)
 
-infix ` ≄ `:80 := has_eq.ineq
+infix ` ≄ `:50 := has_eq.ineq
 
 @[notation_class] class has_arrow (α : Sort*) := (arrow : α → α → α)
 
@@ -489,7 +529,7 @@ prefix `∐ `:64 := has_exists_quantifier.ex
 
 @[notation_class] class has_turnstile (α : Sort*) := (turnstile : set α → α → Prop)
 
-infix ` ⊢ `:55 := has_turnstile.turnstile
+infix ` ⊢ `:45 := has_turnstile.turnstile
 
 def has_arrow.lrarrow {α : Type*} [has_arrow α] [has_inf α] (a b : α) : α := (a ⟶ b) ⊓ (b ⟶ a)
 

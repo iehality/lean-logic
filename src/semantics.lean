@@ -63,6 +63,13 @@ lemma rew_val_iff : ∀ (s : ℕ → term L) (p : formula L) (e : ℕ → |M|),
 @[simp] lemma pow_val_concat_iff : ∀ (p : formula L) (e : ℕ → |M|) d, (p^1).val (d ⌢ e) = p.val e :=
 by simp[formula.pow_eq, rew_val_iff]
 
+@[simp] lemma model_zero_val [has_zero_symbol L] {e : ℕ → |M|} : (0 : term L).val e = M.fn has_zero_symbol.zero finitary.nil :=
+by simp[has_zero.zero]; congr
+
+@[simp] lemma model_succ_val [has_succ_symbol L] (t : term L) {e : ℕ → |M|} :
+  (Succ t).val e = M.fn has_succ_symbol.succ ‹t.val e› :=
+by simp[has_succ.succ]; congr; ext; simp
+
 private lemma modelsth_sf {T} : M ⊧ₜₕ T → M ⊧ₜₕ ⤊T := λ h p hyp_p e,
 by { rcases hyp_p with ⟨p, hyp_p', rfl⟩, simp[formula.pow_eq, rew_val_iff],
      refine h _ hyp_p' _ }
@@ -76,22 +83,21 @@ begin
   induction n with n IH generalizing e; simp,
   { refine ⟨λ h _, h, λ h, h ∅⟩ },
   { simp[IH], split,
-    { intros h D, refine cast _ (h D.head D.tail), congr, funext i, simp[concat, slide'],
+    { intros h D, refine cast _ (h D.head_inv D.tail_inv), congr, funext i, simp[concat, slide'],
       have C : i < n ∨ i = n ∨ n < i, exact trichotomous i n,
       cases C,
-      { simp[C, nat.lt.step C, finitary.tail] }, rcases C with (rfl | C),
+      { simp[C, nat.lt.step C, finitary.tail_inv] }, rcases C with (rfl | C),
       { simp[←nat.add_one], refl },
       { simp[show ¬i < n, from asymm C, show ¬i < n.succ, by omega, C, ←nat.add_one,
              show i - n - 1 = i - (n + 1), from tsub_tsub i n 1] } },
-    { intros h d D, refine cast _ (h (D ::ᶠ d)), congr, funext i, simp[concat, slide'],
+    { intros h d D, refine cast _ (h (D ᶠ:: d)), congr, funext i, simp[concat, slide'],
       have C : i < n ∨ i = n ∨ n < i, exact trichotomous i n,
       cases C,
-      { simp[C, nat.lt.step C, finitary.cons] }, rcases C with (rfl | C), 
+      { simp[C, nat.lt.step C, finitary.cons_inv] }, rcases C with (rfl | C), 
       { simp[←nat.add_one] },
       { simp[show ¬i < n, from asymm C, show ¬i < n.succ, by omega, C, ←nat.add_one,
              show i - n - 1 = i - (n + 1), from tsub_tsub i n 1] } } }
 end
-
 
 @[simp] lemma models_and {p q : formula L} {e : ℕ → |M|} : (p ⊓ q).val e ↔ (p.val e ∧ q.val e) :=
 by simp[has_inf.inf, formula.and]

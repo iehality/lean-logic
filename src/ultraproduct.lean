@@ -36,13 +36,11 @@ def ult (𝔄 : I → model L) (F : ultrafilter I) : setoid (Π i, |𝔄 i|) := 
 def Ult (𝔄 : I → model L) (F : ultrafilter I) : Type* :=
 quotient (ult 𝔄 F: setoid (Π i, |𝔄 i|))
 
-#check @Ult
-
 def to_quotient {𝔄 : I → model L} {F : ultrafilter I} (u : Π i, |𝔄 i|) : Ult 𝔄 F := quotient.mk' u
 
 notation `⟦`u`⟧*` :max := to_quotient u
 
-instance : inhabited (Ult 𝔄 F) := ⟨⟦λ i, (𝔄 i).one⟧*⟩
+instance : inhabited (Ult 𝔄 F) := ⟨⟦λ i, default _⟧*⟩
 
 namespace Ult
 
@@ -92,12 +90,12 @@ begin
   induction n with n IH,
   { have : {i : I | (λ x, v₁ x i) = (λ x, v₂ x i)} = set.univ,
     { ext i, simp }, rw this, exact F.univ_sets },
-  { have ss : {i | v₁.head i = v₂.head i} ∩ {i | (λ x, v₁.tail x i) = (λ x, v₂.tail x i)} ⊆ {i : I | (λ x, v₁ x i) = (λ x, v₂ x i)},
-    { intros i hi, rw [←finitary.tail_cons_head v₁, ←finitary.tail_cons_head v₂], simp at*,
-      funext x, cases fin.cases' x with h h,
-      { rcases h with ⟨x', rfl⟩, simp, exact (@congr_fun _ _ _ _ hi.2) x' },
-      { rcases h with rfl, simp[hi.1] } },
-    have : {i | v₁.head i = v₂.head i} ∩ {i | (λ x, v₁.tail x i) = (λ x, v₂.tail x i)} ∈ F,
+  { have ss : {i | v₁ 0 i = v₂ 0 i} ∩ {i | (λ x, v₁.tail x i) = (λ x, v₂.tail x i)} ⊆ {i : I | (λ x, v₁ x i) = (λ x, v₂ x i)},
+    { intros i hi, simp[finitary.tail] at*,
+      funext x, refine fin.cases _ _ x,
+      { exact hi.1 },
+      { intros j, have := congr_fun hi.2 j, simp at this, exact this } },
+    have : {i | v₁ 0 i = v₂ 0 i} ∩ {i | (λ x, v₁.tail x i) = (λ x, v₂.tail x i)} ∈ F,
       from (F.inter_sets (h _) (@IH v₁.tail v₂.tail (λ x, h _))),
     refine F.sets_of_superset this ss }
 end
@@ -131,7 +129,7 @@ def product_pr (n) (p : L.pr n) : finitary (Ult 𝔄 F) n → Prop :=
 λ v, fopl.Ult.lift_on_finitary F v (λ v, {i | (𝔄 i).pr p (λ x, v x i)} ∈ F) $ λ u₁ u₂ eqn,
 by { simp, exact pr_equiv F eqn p }
 
-def product (𝔄 : I → model L) (F : ultrafilter I) : model L := ⟨Ult 𝔄 F, default _, product_fn F, product_pr F⟩
+def product (𝔄 : I → model L) (F : ultrafilter I) : model L := ⟨Ult 𝔄 F, ⟨default _⟩, product_fn F, product_pr F⟩
 notation `ℿ `𝔄` ⫽ `F:90 := product 𝔄 F
 
 variables {F}
@@ -148,7 +146,6 @@ begin
   rcases classical.skolem.mp this with ⟨u, hu⟩,
   refine ⟨u, _⟩, exact F.sets_of_superset h hu
 end
-#check quotient.lift_on_vec_eq
 
 lemma model_fn_eq {n} (f : L.fn n) : (ℿ 𝔄 ⫽ F).fn f = product_fn F _ f := rfl
 
