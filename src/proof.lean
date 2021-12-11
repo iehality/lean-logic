@@ -149,6 +149,8 @@ by { have : T ⊢ p ↔ ∃ φ, of T 0 p φ, rw[show T = T^0, by simp], from com
        { contradiction },
        { refine ⟨φ, _⟩, by_cases C₂ : fopl.proof.of T 0 p φ; simp[C₂] at of ⊢, { contradiction } } } }
 
+
+
 end proof
 
 variables [primcodable (formula L)] [primcodable (proof L)]

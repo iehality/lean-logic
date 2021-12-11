@@ -148,7 +148,7 @@ lemma and_inply_of_imply_left {p₁ p₂ q : F} (h : p₁ ⟶ q ∈ P) : p₁ �
 lemma and_inply_of_imply_right {p₁ p₂ q : F} (h : p₂ ⟶ q ∈ P) : p₁ ⊓ p₂ ⟶ q ∈ P :=
 (show (p₂ ⟶ q) ⟶ p₁ ⊓ p₂ ⟶ q ∈ P, by simp) ⨀ h
 
-@[simp] lemma iff_and {p q : F} : (p ⊓ q ∈ P) ↔ (p ∈ P ∧ q ∈ P) :=
+@[simp] lemma iff_and_p {p q : F} : (p ⊓ q ∈ P) ↔ (p ∈ P ∧ q ∈ P) :=
 ⟨λ h, by { split,
    { exact modus_ponens (show p ⊓ q ⟶ p ∈ P, by simp) h },
    { exact modus_ponens (show p ⊓ q ⟶ q ∈ P, by simp) h } },
@@ -157,12 +157,12 @@ lemma and_inply_of_imply_right {p₁ p₂ q : F} (h : p₂ ⟶ q ∈ P) : p₁ �
    have : q ⟶ ⁻(p ⟶ ⁻q) ∈ P, from impl_trans (dni _) (contrapose.mpr this),
    exact modus_ponens this h₂ }⟩
 
-@[simp] lemma iff_equiv {p q : F} : (p ⟷ q ∈ P) ↔ (p ⟶ q ∈ P ∧ q ⟶ p ∈ P) :=
-by simp[lrarrow_def, iff_and]
+@[simp] lemma iff_equiv_p {p q : F} : (p ⟷ q ∈ P) ↔ (p ⟶ q ∈ P ∧ q ⟶ p ∈ P) :=
+by simp[lrarrow_def, iff_and_p]
 
 lemma equiv_imply_of_equiv {p₁ q₁ p₂ q₂ : F} (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : (p₁ ⟶ q₁) ⟷ (p₂ ⟶ q₂) ∈ P :=
 begin
-  simp[iff_equiv] at*, split,
+  simp[iff_equiv_p] at*, split,
   { have : (p₁ ⟶ q₁) ⟶ p₂ ⟶ q₁ ∈ P, from (show (p₁ ⟶ q₁) ⟶ p₂ ⟶ p₁ ⟶ q₁ ∈ P, by simp) ⨀₂ (by simp[hp]),
     exact (show (p₁ ⟶ q₁) ⟶ p₂ ⟶ q₁ ⟶ q₂ ∈ P, by simp[hq]) ⨀₂ this },
   { have : (p₂ ⟶ q₂) ⟶ p₁ ⟶ q₂ ∈ P, from (show (p₂ ⟶ q₂) ⟶ p₁ ⟶ p₂ ⟶ q₂ ∈ P, by simp) ⨀₂ (by simp[hp]),
@@ -170,39 +170,39 @@ begin
 end
 
 lemma imply_of_equiv {p₁ q₁ p₂ q₂ : F} (h : p₁ ⟶ q₁ ∈ P) (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₂ ⟶ q₂ ∈ P :=
-by { have : (p₁ ⟶ q₁) ⟶ p₂ ⟶ q₂ ∈ P ∧ (p₂ ⟶ q₂) ⟶ p₁ ⟶ q₁ ∈ P, from iff_equiv.mp (equiv_imply_of_equiv hp hq),
+by { have : (p₁ ⟶ q₁) ⟶ p₂ ⟶ q₂ ∈ P ∧ (p₂ ⟶ q₂) ⟶ p₁ ⟶ q₁ ∈ P, from iff_equiv_p.mp (equiv_imply_of_equiv hp hq),
      exact this.1 ⨀ h }
 
 lemma equiv_neg_of_equiv {p₁ p₂ : F} (hp : p₁ ⟷ p₂ ∈ P) : ⁻p₁ ⟷ ⁻p₂ ∈ P :=
-by simp[iff_equiv, contrapose] at*; simp[hp]
+by simp[iff_equiv_p, contrapose] at*; simp[hp]
 
 lemma neg_of_equiv {p₁ p₂ : F} (h : ⁻p₁ ∈ P) (hp : p₁ ⟷ p₂ ∈ P) : ⁻p₂ ∈ P :=
-by { have : ⁻p₁ ⟶ ⁻p₂ ∈ P, from (iff_equiv.mp (equiv_neg_of_equiv hp)).1, exact this ⨀ h }
+by { have : ⁻p₁ ⟶ ⁻p₂ ∈ P, from (iff_equiv_p.mp (equiv_neg_of_equiv hp)).1, exact this ⨀ h }
 
 lemma equiv_and_of_equiv {p₁ q₁ p₂ q₂: F} (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₁ ⊓ q₁ ⟷ p₂ ⊓ q₂ ∈ P :=
 by { simp only [and_def P], refine equiv_neg_of_equiv (equiv_imply_of_equiv hp (equiv_neg_of_equiv hq)) }
 
 lemma and_of_equiv {p₁ q₁ p₂ q₂: F} (h : p₁ ⊓ q₁ ∈ P) (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₂ ⊓ q₂ ∈ P :=
-by { have : p₁ ⊓ q₁ ⟶ p₂ ⊓ q₂ ∈ P, from (iff_equiv.mp (equiv_and_of_equiv hp hq)).1, exact this ⨀ h }
+by { have : p₁ ⊓ q₁ ⟶ p₂ ⊓ q₂ ∈ P, from (iff_equiv_p.mp (equiv_and_of_equiv hp hq)).1, exact this ⨀ h }
 
 lemma equiv_or_of_equiv {p₁ q₁ p₂ q₂: F} (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₁ ⊔ q₁ ⟷ p₂ ⊔ q₂ ∈ P :=
 by { simp only [or_def P], refine (equiv_imply_of_equiv (equiv_neg_of_equiv hp) hq) }
 
 lemma or_of_equiv {p₁ q₁ p₂ q₂: F} (h : p₁ ⊔ q₁ ∈ P) (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₂ ⊔ q₂ ∈ P :=
-by { have : p₁ ⊔ q₁ ⟶ p₂ ⊔ q₂ ∈ P, from (iff_equiv.mp (equiv_or_of_equiv hp hq)).1, exact this ⨀ h }
+by { have : p₁ ⊔ q₁ ⟶ p₂ ⊔ q₂ ∈ P, from (iff_equiv_p.mp (equiv_or_of_equiv hp hq)).1, exact this ⨀ h }
 
 lemma equiv_equiv_of_equiv {p₁ q₁ p₂ q₂: F} (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : (p₁ ⟷ q₁) ⟷ (p₂ ⟷ q₂) ∈ P :=
 by { refine (equiv_and_of_equiv (equiv_imply_of_equiv hp hq) (equiv_imply_of_equiv hq hp)) }
 
 lemma equiv_of_equiv {p₁ q₁ p₂ q₂: F} (h : p₁ ⟷ q₁ ∈ P) (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₂ ⟷ q₂ ∈ P :=
-by { have : (p₁ ⟷ q₁) ⟶ (p₂ ⟷ q₂) ∈ P, from (iff_equiv.mp (equiv_equiv_of_equiv hp hq)).1, exact this ⨀ h }
+by { have : (p₁ ⟷ q₁) ⟶ (p₂ ⟷ q₂) ∈ P, from (iff_equiv_p.mp (equiv_equiv_of_equiv hp hq)).1, exact this ⨀ h }
 
-@[simp] lemma equiv_refl (p : F) : p ⟷ p ∈ P := by simp[iff_equiv]
+@[simp] lemma equiv_refl (p : F) : p ⟷ p ∈ P := by simp[iff_equiv_p]
 
-lemma equiv_symm {p q : F} : p ⟷ q ∈ P → q ⟷ p ∈ P := by { simp[iff_equiv], intros, simp* }
+lemma equiv_symm {p q : F} : p ⟷ q ∈ P → q ⟷ p ∈ P := by { simp[iff_equiv_p], intros, simp* }
 
 lemma equiv_trans {p q r : F} : p ⟷ q ∈ P → q ⟷ r ∈ P → p ⟷ r ∈ P :=
-by { simp[iff_equiv], intros hpq hqp hqr hrq, exact ⟨impl_trans hpq hqr, impl_trans hrq hqp⟩ }
+by { simp[iff_equiv_p], intros hpq hqp hqr hrq, exact ⟨impl_trans hpq hqr, impl_trans hrq hqp⟩ }
 
 variables (P)
 
@@ -213,32 +213,32 @@ theorem equiv_equivalence : equivalence (equiv P) :=
 
 variables {P}
 
-@[simp] lemma iff_dn_refl_right (p : F) : p ⟷ ⁻⁻p ∈ P := by simp[iff_equiv]
+@[simp] lemma iff_dn_refl_right (p : F) : p ⟷ ⁻⁻p ∈ P := by simp[iff_equiv_p]
 
-@[simp] lemma iff_dn_refl_left (p : F) : ⁻⁻p ⟷ p ∈ P := by simp[iff_equiv]
+@[simp] lemma iff_dn_refl_left (p : F) : ⁻⁻p ⟷ p ∈ P := by simp[iff_equiv_p]
 
 @[simp] lemma contraposition_inv (p q : F) : (p ⟶ q) ⟶ (⁻q ⟶ ⁻p) ∈ P :=
 by { have : (⁻⁻p ⟶ ⁻⁻q) ⟶ ⁻q ⟶ ⁻p ∈ P, simp, 
      refine imply_of_equiv this (equiv_imply_of_equiv _ _) _; simp }
 
 @[simp] lemma contraposition_iff (p q : F) : (p ⟶ q) ⟷ (⁻q ⟶ ⁻p) ∈ P :=
-by simp[iff_equiv]
+by simp[iff_equiv_p]
 
 @[simp] lemma contraposition_iff_inv (p q : F) : (⁻p ⟶ ⁻q) ⟷ (q ⟶ p) ∈ P :=
-by simp[iff_equiv]
+by simp[iff_equiv_p]
 
 @[simp] lemma neg_hyp' (p : F) : (p ⟶ ⁻p) ⟶ ⁻p ∈ P :=
 begin
   have : (p ⟶ ⁻p) ⟶ p ⟶ ⁻(p ⟶ ⁻p) ∈ P,
   { have lmm₁ : (p ⟶ ⁻p) ⟶ p ⟶ p ∈ P, { simp }, exact explosion_hyp₂ lmm₁ (by simp) },
   have : (p ⟶ ⁻p) ⟶ ⁻⁻(p ⟶ ⁻p) ⟶ ⁻p ∈ P,
-  { refine imply_of_equiv this _ _; simp[iff_equiv] },
+  { refine imply_of_equiv this _ _; simp[iff_equiv_p] },
   exact this ⨀₁ (show (p ⟶ ⁻p) ⟶ ⁻⁻(p ⟶ ⁻p) ∈ P, by simp)
 end
 
 @[simp] lemma neg_iff (p : F) : ⁻p ⟷ (p ⟶ ⊥) ∈ P :=
 begin
-  simp[iff_equiv], split,
+  simp[iff_equiv_p], split,
   { exact explosion_hyp₂ (show ⁻p ⟶ p ⟶ p ∈ P, by simp) (show ⁻p ⟶ p ⟶ ⁻p ∈ P, by simp) },
   { have : (p ⟶ ⊥) ⟶ p ⟶ ⁻p ∈ P,
       from explosion_hyp₂ (show (p ⟶ ⊥) ⟶ p ⟶ ⊤ ∈ P, by simp) (show (p ⟶ ⊥) ⟶ p ⟶ ⁻⊤ ∈ P, by simp[bot_eq P]),
@@ -248,12 +248,15 @@ end
 @[simp] lemma neg_impl_equiv_and (p q : F) : ⁻(p ⟶ q) ⟷ p ⊓ ⁻q ∈ P :=
 by simp only [and_def P]; refine (equiv_neg_of_equiv (equiv_imply_of_equiv _ _)); simp
 
-lemma neg_impl_iff_and {p q : F} : (⁻(p ⟶ q) ∈ P) ↔ (p ⊓ ⁻q ∈ P) :=
+lemma neg_impl_iff_and_p {p q : F} : (⁻(p ⟶ q) ∈ P) ↔ (p ⊓ ⁻q ∈ P) :=
 begin
   simp [and_def P], split; intros h,
   { refine neg_of_equiv h (equiv_imply_of_equiv _ _); simp },
   { refine neg_of_equiv h (equiv_imply_of_equiv _ _); simp }
 end
+
+@[simp] lemma impl_iff_and_p {p q : F} : (p ⟶ q) ⟷ (⁻p ⊔ q) ∈ P :=
+by {simp [or_def P, -iff_equiv_p], refine equiv_imply_of_equiv _ _; simp }
 
 @[simp] lemma equiv_symm_and (p q : F) : p ⊓ q ⟷ q ⊓ p ∈ P :=
 by { simp only [and_def P], refine equiv_neg_of_equiv _,
@@ -312,6 +315,9 @@ begin
         (show (⁻p ⟶ q) ⊓ (⁻p ⟶ r) ⟶ (⁻p ⟶ r) ∈ P, by simp)
 end
 
+lemma case_of_p {p q r : F} (hpq : p ⊔ q ∈ P) (hpr : p ⟶ r ∈ P) (hqr : q ⟶ r ∈ P) : r ∈ P :=
+(show (p ⟶ r) ⟶ (q ⟶ r) ⟶ p ⊔ q ⟶ r ∈ P, by simp) ⨀ hpr ⨀ hqr ⨀ hpq
+
 variables (P)
 
 def lindenbaum := quotient (⟨equiv P, equiv_equivalence P⟩ : setoid F)
@@ -322,7 +328,7 @@ def to_quo (p : F) : lindenbaum P := quotient.mk' p
 
 #check @to_quo _ _ _ _ _ _ _ P _
 
-local notation `⟦` p `⟧ᶜ` := @to_quo _ _ _ _ _ _ _ P _ p
+local notation `⟦` p `⟧ᴾ` := to_quo p
 
 namespace lindenbaum
 
@@ -336,7 +342,7 @@ protected def lift_on {φ : Sort*} (p : lindenbaum P) (f : F → φ)
 
 @[simp]
 protected lemma lift_on_eq {φ : Sort*} (p : F) (f : F → φ)
-  (h : ∀ p q, p ⟷ q ∈ P → f p = f q) : classical_logic.lindenbaum.lift_on ⟦p⟧ᶜ f h = f p := rfl
+  (h : ∀ p q, p ⟷ q ∈ P → f p = f q) : classical_logic.lindenbaum.lift_on ⟦p⟧ᴾ f h = f p := rfl
 
 @[elab_as_eliminator, reducible, simp]
 protected def lift_on₂ {φ : Sort*} (p₁ p₂ : lindenbaum P) (f : F → F → φ)
@@ -346,7 +352,7 @@ quotient.lift_on₂' p₁ p₂ f h
 @[simp]
 protected lemma lift_on₂_eq {φ : Sort*} (p₁ p₂ : F) (f : F → F → φ)
   (h : ∀ p₁ p₂ q₁ q₂, p₁ ⟷ q₁ ∈ P → p₂ ⟷ q₂ ∈ P → f p₁ p₂ = f q₁ q₂)  :
-classical_logic.lindenbaum.lift_on₂ ⟦p₁⟧ᶜ ⟦p₂⟧ᶜ f h = f p₁ p₂ := rfl
+classical_logic.lindenbaum.lift_on₂ ⟦p₁⟧ᴾ ⟦p₂⟧ᴾ f h = f p₁ p₂ := rfl
 
 @[elab_as_eliminator, reducible]
 protected def lift_on_finitary {φ : Sort*} {n : ℕ} (v : finitary (lindenbaum P) n) (f : finitary F n → φ)
@@ -356,11 +362,11 @@ quotient.lift_on_finitary v f h
 @[simp]
 protected lemma lift_on_finitary_eq {φ : Sort*} {n : ℕ} (v : finitary F n) (f : finitary F n → φ)
   (h : ∀ v₁ v₂ : finitary F n, (∀ n, v₁ n ⟷ v₂ n ∈ P) → f v₁ = f v₂) :
-classical_logic.lindenbaum.lift_on_finitary (λ x, ⟦v x⟧ᶜ) f h = f v :=
+classical_logic.lindenbaum.lift_on_finitary (λ x, ⟦v x⟧ᴾ) f h = f v :=
 quotient.lift_on_finitary_eq v f h
 
 @[simp]
-lemma of_eq_of {p q : F} : ⟦p⟧ᶜ = ⟦q⟧ᶜ ↔ p ⟷ q ∈ P :=
+lemma of_eq_of {p q : F} : (⟦p⟧ᴾ : lindenbaum P) = ⟦q⟧ᴾ ↔ p ⟷ q ∈ P :=
 by simp[to_quo, equiv, quotient.eq']
 
 instance : distrib_lattice (lindenbaum P) :=
@@ -377,10 +383,10 @@ instance : distrib_lattice (lindenbaum P) :=
   by { induction p₁ using classical_logic.lindenbaum.ind_on,
        induction p₂ using classical_logic.lindenbaum.ind_on,
        simp[has_le.le], intros h₁ h₂, simp* },
-  inf := λ p₁ p₂, classical_logic.lindenbaum.lift_on₂ p₁ p₂ (λ p₁ p₂, ⟦p₁ ⊓ p₂⟧ᶜ)
-    (λ p₁ p₂ q₁ q₂ h₁ h₂, by { simp[-iff_equiv], exact equiv_and_of_equiv h₁ h₂ }),
-  sup := λ p₁ p₂, classical_logic.lindenbaum.lift_on₂ p₁ p₂ (λ p₁ p₂, ⟦p₁ ⊔ p₂⟧ᶜ)
-    (λ p₁ p₂ q₁ q₂ h₁ h₂, by { simp[-iff_equiv], exact equiv_or_of_equiv h₁ h₂ }),
+  inf := λ p₁ p₂, classical_logic.lindenbaum.lift_on₂ p₁ p₂ (λ p₁ p₂, (⟦p₁ ⊓ p₂⟧ᴾ : lindenbaum P))
+    (λ p₁ p₂ q₁ q₂ h₁ h₂, by { simp[-iff_equiv_p], exact equiv_and_of_equiv h₁ h₂ }),
+  sup := λ p₁ p₂, classical_logic.lindenbaum.lift_on₂ p₁ p₂ (λ p₁ p₂, (⟦p₁ ⊔ p₂⟧ᴾ : lindenbaum P))
+    (λ p₁ p₂ q₁ q₂ h₁ h₂, by { simp[-iff_equiv_p], exact equiv_or_of_equiv h₁ h₂ }),
   le_sup_left := λ p q,
   by { induction p using classical_logic.lindenbaum.ind_on,
        induction q using classical_logic.lindenbaum.ind_on,
@@ -416,21 +422,21 @@ instance : distrib_lattice (lindenbaum P) :=
        simp[has_le.le, preorder.le, partial_order.le, semilattice_inf.le,
          has_sup.sup, semilattice_sup.sup, has_inf.inf, semilattice_inf.inf] } }
 
-instance : has_compl (lindenbaum P) := ⟨λ p, classical_logic.lindenbaum.lift_on p (λ p, ⟦⁻p⟧ᶜ)
-    (λ p q h, by { simp[-iff_equiv], exact equiv_neg_of_equiv h })⟩
+instance : has_compl (lindenbaum P) := ⟨λ p, classical_logic.lindenbaum.lift_on p (λ p, (⟦⁻p⟧ᴾ : lindenbaum P))
+    (λ p q h, by { simp[-iff_equiv_p], exact equiv_neg_of_equiv h })⟩
 
-lemma le_def (p q : F) : (to_quo p : lindenbaum P) ≤ to_quo q ↔ p ⟶ q ∈ P := by refl
+lemma le_def (p q : F) : (⟦p⟧ᴾ : lindenbaum P) ≤ ⟦q⟧ᴾ ↔ p ⟶ q ∈ P := by refl
 
-lemma neg_def (p : F) : (to_quo p)ᶜ = ⟦⁻p⟧ᶜ := rfl
+lemma neg_def (p : F) : (⟦p⟧ᴾ : lindenbaum P)ᶜ = ⟦⁻p⟧ᴾ := rfl
 
-lemma inf_def (p q : F) : to_quo p ⊓ to_quo q = ⟦p ⊓ q⟧ᶜ := rfl
+lemma inf_def (p q : F) : ⟦p⟧ᴾ ⊓ ⟦q⟧ᴾ = (⟦p ⊓ q⟧ᴾ : lindenbaum P) := rfl
 
-lemma sup_def (p q : F) : to_quo p ⊔ to_quo q = ⟦p ⊔ q⟧ᶜ := rfl
+lemma sup_def (p q : F) : ⟦p⟧ᴾ ⊔ ⟦q⟧ᴾ = (⟦p ⊔ q⟧ᴾ : lindenbaum P) := rfl
 
 instance : boolean_algebra (lindenbaum P) :=
 boolean_algebra.of_core
-{ top := ⟦⊤⟧ᶜ,
-  bot := ⟦⊥⟧ᶜ,
+{ top := ⟦⊤⟧ᴾ,
+  bot := ⟦⊥⟧ᴾ,
   le_top := λ p, by induction p using classical_logic.lindenbaum.ind_on; simp[le_def],
   bot_le := λ p, by induction p using classical_logic.lindenbaum.ind_on; simp[le_def],
   compl := has_compl.compl,
@@ -438,7 +444,8 @@ boolean_algebra.of_core
   by { induction p using classical_logic.lindenbaum.ind_on, simp[bounded_order.bot],
        refine explosion_hyp (show p ⊓ ⁻p ⟶ p ∈ P, by simp) (by simp) },
   top_le_sup_compl := λ p, 
-  by { induction p using classical_logic.lindenbaum.ind_on, simp[bounded_order.top, or_def P, le_def, sup_def, neg_def] },
+  by { induction p using classical_logic.lindenbaum.ind_on, 
+       simp[bounded_order.top, or_def P, le_def, sup_def, neg_def] },
   ..lindenbaum.distrib_lattice }
 
 end lindenbaum
@@ -488,9 +495,9 @@ local infixl ` ⨀ `:90 := axiomatic_classical_logic'.modus_ponens
 
 @[simp] lemma and_right (p q : F) : T ⊢ p ⊓ q ⟶ q := and_right p q
 
-@[simp] lemma iff_and {p q : F} : T ⊢ p ⊓ q ↔ (T ⊢ p ∧ T ⊢ q) := iff_and
+@[simp] lemma iff_and {p q : F} : T ⊢ p ⊓ q ↔ (T ⊢ p ∧ T ⊢ q) := iff_and_p
 
-lemma iff_equiv {p q : F} : T ⊢ p ⟷ q ↔ (T ⊢ p ⟶ q ∧ T ⊢ q ⟶ p) := iff_equiv
+lemma iff_equiv {p q : F} : T ⊢ p ⟷ q ↔ (T ⊢ p ⟶ q ∧ T ⊢ q ⟶ p) := iff_equiv_p
 
 @[simp] lemma equiv_refl (p : F) : T ⊢ p ⟷ p := equiv_refl p
 
@@ -510,7 +517,9 @@ lemma iff_equiv {p q : F} : T ⊢ p ⟷ q ↔ (T ⊢ p ⟶ q ∧ T ⊢ q ⟶ p) 
 
 @[simp] lemma neg_impl_equiv_and (p q : F) : T ⊢ ⁻(p ⟶ q) ⟷ p ⊓ ⁻q := neg_impl_equiv_and p q
 
-lemma neg_impl_iff_and {p q : F} : T ⊢ ⁻(p ⟶ q) ↔ T ⊢ p ⊓ ⁻q := neg_impl_iff_and
+lemma neg_impl_iff_and {p q : F} : T ⊢ ⁻(p ⟶ q) ↔ T ⊢ p ⊓ ⁻q := neg_impl_iff_and_p
+
+@[simp] lemma impl_iff_and {p q : F} : T ⊢ (p ⟶ q) ⟷ (⁻p ⊔ q) := impl_iff_and_p
 
 @[simp] lemma equiv_symm_and (p q : F) : T ⊢ p ⊓ q ⟷ q ⊓ p := equiv_symm_and p q
 
@@ -530,7 +539,12 @@ lemma neg_impl_iff_and {p q : F} : T ⊢ ⁻(p ⟶ q) ↔ T ⊢ p ⊓ ⁻q := ne
 
 @[simp] lemma or_imply (p q r : F) : T ⊢ (p ⟶ r) ⟶ (q ⟶ r) ⟶ p ⊔ q ⟶ r := or_imply p q r
 
+lemma case_of_ax {p q r : F} (hpq : T ⊢ p ⊔ q) (hpr : T ⊢ p ⟶ r) (hqr : T ⊢ q ⟶ r) : T ⊢ r :=
+case_of_p hpq hpr hqr
+
 @[simp] lemma insert (p) : T +{ p } ⊢ p := by_axiom (by simp)
+
+lemma by_axiom' {T : set F} {p : F} : T p → T ⊢ p := by_axiom
 
 variables (T)
 
@@ -553,7 +567,6 @@ weakening (show T ⊆ T +{ p }, by { intros x h, simp[h] }) h
 
 theorem deduction {p q} : (T +{ p } ⊢ q) ↔ (T ⊢ p ⟶ q) :=
 ⟨deduction', λ h, by { have : T +{ p } ⊢ p ⟶ q, simp[h], exact this ⨀ (by simp) }⟩
-
 
 @[simp]
 lemma axiom_and {p₁ p₂ q : F} : T +{ p₁ ⊓ p₂ } ⊢ q ↔ T +{ p₁ } +{ p₂ } ⊢ q :=

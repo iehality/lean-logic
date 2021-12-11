@@ -25,7 +25,7 @@ class closed_theory (T : theory L) := (cl : ∀ {p}, p ∈ T → sentence p)
 
 def proper_at (n : ℕ) (T : theory L) : Prop := ∀ (p : formula L) (s), p ∈ T → p.rew (s^n) ∈ T
 
-def proper'_at (n : ℕ) (T : theory L) : Prop := ∀ (p : formula L) (s : ℕ → term L),
+def proper_theory'_at (n : ℕ) (T : theory L) : Prop := ∀ (p : formula L) (s : ℕ → term L),
   p ∈ T → p.rew (λ x, if x < n then #x else s (x - n)) ∈ T
 
 def ordered_p (T : theory L) : Prop := ∀ (p : formula L), p ∈ T → p^1 ∈ T
@@ -42,23 +42,23 @@ instance ordered_theory_sf_itr {T : theory L} [od : ordered T] : ∀ n : ℕ, or
 | 0 := od
 | (n+1) := @fopl.ordered_theory_sf _ _  (ordered_theory_sf_itr n)
 
-class proper (n : ℕ) (T : theory L) := (proper : proper_at n T)
+class proper_theory (T : theory L) := (proper : proper_at 0 T)
 
-instance ordered_proper {T : theory L} [pp : proper 0 T] : ordered T :=
-⟨λ p h, by { have := pp.proper, exact this _ (λ x, #(x+1)) h }⟩
+instance ordered_proper {T : theory L} [proper_theory T] : ordered T :=
+⟨λ p h, proper_theory.proper _ (λ x, #(x+1)) h⟩
 
-lemma proper.proper0 {T : theory L} [proper 0 T] :
-  ∀ {p : formula L} {s}, p ∈ T → p.rew s ∈ T := @proper.proper _ 0 T _
+lemma proper_theory.proper0 {T : theory L} [proper_theory T] :
+  ∀ {p : formula L} {s}, p ∈ T → p.rew s ∈ T := @proper_theory.proper _ T _
 
 instance : closed_theory (∅ : theory L) := ⟨λ _ h, by exfalso; exact h⟩
 
-instance (n) : proper n (∅ : theory L) := ⟨λ _ _ h, by exfalso; exact h⟩
+instance : proper_theory (∅ : theory L) := ⟨λ _ _ h, by exfalso; exact h⟩
 
-instance (n) : proper n (set.univ : theory L) := ⟨λ p s h, by simp⟩
+instance : proper_theory (set.univ : theory L) := ⟨λ p s h, by simp⟩
 
 def openform : theory L := {p | p.Open = tt}
 
-instance (n) : proper n (openform : theory L) :=
+instance : proper_theory (openform : theory L) :=
 ⟨λ p s h, by { induction p; simp[openform] at*; simp* at* }⟩
 
 lemma theory_sf_itr_eq {T : theory L} : ∀ {i : ℕ},
@@ -74,7 +74,7 @@ lemma sentence_mem_theory_sf_itr {T : theory L} {p : formula L} (a : sentence p)
 by { have : p.rew (λ x, #(x+n)) = p, exact formula.sentence_rew a _, rw ←this,
      simp[theory_sf_itr_eq], refine ⟨p, h, rfl⟩ }
 
-lemma proper_sf_inclusion (T : theory L) [proper 0 T] : ∀ {n m : ℕ} (h : n ≤ m),
+lemma proper_sf_inclusion (T : theory L) [proper_theory T] : ∀ {n m : ℕ} (h : n ≤ m),
   T^m ⊆ T^n :=
 begin
   suffices : ∀ {n m : ℕ}, T^(n+m) ⊆ T^n,
@@ -84,7 +84,7 @@ begin
   intros n m p h,
   induction m with m IH, { exact h },
   { suffices : p ∈ T^(n + m), from IH this, simp[theory_sf_itr_eq] at h ⊢, rcases h with ⟨q, h, rfl⟩,
-    have : q^1 ∈ T, from @proper.proper _ 0 T _ _ (λ x, #(x + 1)) h,
+    have : q^1 ∈ T, from @proper_theory.proper _ T _ _ (λ x, #(x + 1)) h,
     refine ⟨q^1, this, _⟩,
     simp[formula.pow_add, formula.nested_rew, nat.succ_add_eq_succ_add, ←add_assoc] }
 end
@@ -99,14 +99,19 @@ lemma proper_theory_sf_itr {n : ℕ} {T : theory L} (pp : proper_at n T) : ∀ m
      show (p^1).rew ((s^(n + m))^1) ∈ ⤊(T^m), simp[←formula.pow_rew_distrib],
      refine ⟨p.rew (s^(n+m)), proper_theory_sf_itr m _ s hyp_p, rfl⟩ }
 
-instance properc_theory_sf_itr {T : theory L} [pp : proper 0 T] {n} :
-  proper n (T^n) := ⟨by { have := proper_theory_sf_itr pp.proper n, simp* at* }⟩  
+lemma properc_theory_sf_itr {T : theory L} [pp : proper_theory T] {n} :
+  proper_at n (T^n) := by { have := proper_theory_sf_itr pp.proper n, simp at this, exact this, }
 
 lemma closed_proper {T : theory L} [cl : closed_theory T] : proper_at 0 T :=
 λ p s h, by { simp[@closed_theory.cl _ _ cl _ h], exact h }
 
 @[simp] lemma closed_theory_sf_eq {T : theory L} [cl : closed_theory T] : ⤊T = T :=
 by { ext p, refine ⟨λ hyp, _, λ hyp, _⟩, rcases hyp with ⟨p, hyp_p, rfl⟩,
+     simp[closed_theory.cl hyp_p, hyp_p],
+     rw ← (formula.sentence_sf (closed_theory.cl hyp)), refine ⟨p, hyp, rfl⟩ }
+
+@[simp] lemma closed_pow_eq (T : theory L) [cl : closed_theory T] (i : ℕ) : T^i = T :=
+by { ext p, simp[theory_sf_itr_eq], refine ⟨λ hyp, _, λ hyp, _⟩, rcases hyp with ⟨p, hyp_p, rfl⟩,
      simp[closed_theory.cl hyp_p, hyp_p],
      rw ← (formula.sentence_sf (closed_theory.cl hyp)), refine ⟨p, hyp, rfl⟩ }
 
