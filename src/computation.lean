@@ -103,8 +103,6 @@ prefix `Ḟ `:max := symbol.fn₁
   term.rew s (Ḟ c v) = Ḟ c (λ i, term.rew s (v i)) :=
 by simp[symbol.fn₁]
 
-def numeral' : ℕ → term (LA + LC) := λ n, numeral n
-
 inductive Prim : theory (LA + LC)
 | zero                : Prim (Ḟ pcode.zero ∅ ≃ 0)
 | succ                : Prim ∏₁ (Ḟ pcode.succ ‹#0› ≃₁ Succ #0)
@@ -229,54 +227,67 @@ notation `⌜` p `⌝` := goedel_number p
 variables {P : theory (LA + LC)} [extend Prim P] [theory_of_model ℙ P]
   {T : theory L} [primrec_theory T]
 
-theorem Prim_complete_provability : ∃ c : pcode 2, ∀ p,
-  T ⊢ p ↔ P ⊢ ∐ (Ḟ c ‹⌜p⌝˙, #0› ≃₁ 2˙) :=
+
+
+variables (T)
+
+lemma proof_of_n_index : ∃ c : pcode 2, c.eval_fin = (λ v : finitary ℕ 2, proof.of_n T (v 0) (v 1)) :=
 begin
   let pr : vector ℕ 2 → ℕ := λ v, proof.of_n T (v.nth 0) (v.nth 1),
   have : primrec pr,
     from primrec_theory.prim.comp (primrec.vector_nth.comp primrec.id (primrec.const 0))
       (primrec.vector_nth.comp primrec.id (primrec.const 1)),
   rcases pcode.exists_pcode.mp (nat.primrec'.of_prim this) with ⟨c, c_eval_eq_pr⟩,
-  refine ⟨c, λ p, _⟩,
-  have pr_iff : T ⊢ p ↔ ∃ s, pr (⌜p⌝ ::ᵥ s ::ᵥ vector.nil) = 2,
-  { simp [proof.of_n_complete, pr], refl },
+  refine ⟨c, _⟩, ext v, simp[pcode.eval_fin, c_eval_eq_pr, pr], refl
+end
+
+noncomputable def is_proof_index : pcode 2 := classical.some (proof_of_n_index T)
+
+lemma is_proof_index_spec : (is_proof_index T).eval_fin = (λ v : finitary ℕ 2, proof.of_n T (v 0) (v 1)) :=
+classical.some_spec (proof_of_n_index T)
+
+variables {T}
+
+theorem Prim_complete_provability (p) :
+  T ⊢ p ↔ P ⊢ ∐ (Ḟ (is_proof_index T) ‹⌜p⌝˙, #0› ≃₁ 2˙) :=
+begin
+  have pr_iff : T ⊢ p ↔ ∃ s, proof.of_n T ⌜p⌝ s = 2,
+  { simp [proof.of_n_complete] },
   split,
   { intros h,
-    suffices : Prim ⊢ ∐ (Ḟ c ‹⌜p⌝˙, #0› ≃ 2˙), { exact provable.extend this },
+    suffices : Prim ⊢ ∐ (Ḟ (is_proof_index T) ‹⌜p⌝˙, #0› ≃ 2˙), { exact provable.extend this },
     rcases pr_iff.mp h with ⟨s, pr_eq⟩, 
-    have : Prim ⊢ Ḟ c ‹⌜p⌝˙, s˙› ≃ Succ Succ 0,
-    { have := Prim_complete c ‹⌜p⌝, s›,
-      simp[pcode.eval_fin, c_eval_eq_pr, pr_eq] at this,
-      exact cast (by { congr, ext; simp }) this },
+    have : Prim ⊢ Ḟ (is_proof_index T) ‹⌜p⌝˙, s˙› ≃ 2˙,
+    { have := Prim_complete (is_proof_index T) ‹⌜p⌝, s›,
+      simp[is_proof_index_spec, pr_eq] at this,
+      exact cast (by { congr,  refine finitary.fin_1_ext (by refl) }) this },
     refine provable.use (s˙) _, simp,
     refine cast (by { congr; ext; simp }) this },
   { intros h, 
-    have : ℙ ⊧ ∐ (Ḟ c ‹⌜p⌝˙, #0› ≃ 2˙), from soundness h theory_of_model.models,
-    have : ∃ s : ℕ, c.eval_fin ‹⌜p⌝, s› = 2,
+    have : ℙ ⊧ ∐ (Ḟ (is_proof_index T) ‹⌜p⌝˙, #0› ≃ 2˙), from soundness h theory_of_model.models,
+    have : ∃ s : ℕ, (is_proof_index T).eval_fin ‹⌜p⌝, s› = 2,
     { have := this (default _),
       simp[symbol.fn₁, show 1 + 1 = 2, by simp] at this, 
       refine cast _ this, congr },
     rcases this with ⟨s, hs⟩,
-    refine pr_iff.mpr ⟨s, _⟩, simp[pr, pcode.eval_fin, c_eval_eq_pr] at hs ⊢, exact hs }
+    refine pr_iff.mpr ⟨s, _⟩, simp[is_proof_index_spec] at hs ⊢, exact hs }
 end
 
-variables (P) (T)
+variables (T)
 
-noncomputable def prov_index : pcode 2 :=
-classical.some (@Prim_complete_provability _ _ _ P _ _ T _)
+noncomputable def Prov (t : term (LA + LC)) : formula (LA + LC) := ∐ (Ḟ (is_proof_index T) ‹t, #0› ≃₁ 2˙)
 
-noncomputable def Prov (t : term (LA + LC)) : formula (LA + LC) :=
-∐ (Ḟ (prov_index P T) ‹t, #0› ≃₁ 2˙)
+variables {T}
 
-variables {P} {T}
+lemma Prov_spec (p : formula L) :
+  T ⊢ p ↔ P ⊢ Prov T (⌜p⌝˙) :=
+Prim_complete_provability p
 
-lemma prov_index_spec : ∀ p : formula L,
-  T ⊢ p ↔ P ⊢ ∐ (Ḟ (prov_index P T) ‹⌜p⌝˙, #0› ≃₁ 2˙) :=
-classical.some_spec (@Prim_complete_provability _ _ _ P _ _ T _)
-
-lemma Prov_spec : ∀ p : formula L,
-  T ⊢ p ↔ P ⊢ Prov P T (⌜p⌝˙) :=
-prov_index_spec
+lemma provable_K (p q : formula L) : P ⊢ Prov T (⌜p ⟶ q⌝˙) ⟶ Prov T (⌜p⌝˙) ⟶ Prov T (⌜q⌝˙) :=
+begin
+  simp[Prov],
+  
+end
 
 end prim
 

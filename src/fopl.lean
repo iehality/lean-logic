@@ -126,6 +126,12 @@ instance : has_bot (formula L) := ⟨formula.bot⟩
 
 @[simp] lemma formula.neg.inj' (p q : formula L) : ⁻p = ⁻q ↔ p = q := ⟨formula.neg.inj, congr_arg _⟩
 
+@[simp] lemma formula.and.inj' (p₁ q₁ p₂ q₂ : formula L) : p₁ ⊓ p₂ = q₁ ⊓ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
+by simp[has_inf.inf, formula.and]
+
+@[simp] lemma formula.or.inj' (p₁ q₁ p₂ q₂ : formula L) : p₁ ⊔ p₂ = q₁ ⊔ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
+by simp[has_sup.sup, formula.or]
+
 @[simp] lemma formula.fal.inj' (p q : formula L) : (∏ p : formula L) = ∏ q ↔ p = q := ⟨formula.fal.inj, congr_arg _⟩
 
 @[simp] lemma formula.ex.inj' (p q : formula L) : (∐ p : formula L) = ∐ q ↔ p = q := by simp[has_exists_quantifier.ex, formula.ex]
@@ -405,7 +411,7 @@ by simp[finitary.cons, finitary.Max]
   (❴p❵ v).arity = max (v 0).arity (v 1).arity :=
 by simp[finitary.Max, finitary.cons, fin.add']; exact max_comm _ _
 
-@[simp] lemma le_arity [has_le_symbol L] (t u : term L) : (t ⩽ u : formula L).arity = max t.arity u.arity :=
+@[simp] lemma le_arity [has_le_symbol L] (t u : term L) : (t ≼ u : formula L).arity = max t.arity u.arity :=
 by unfold has_preceq.preceq; simp
 
 @[simp] lemma mem_arity [has_mem_symbol L] (t u : term L) : (t ∊ u : formula L).arity = max t.arity u.arity :=
@@ -429,7 +435,7 @@ by simp; ext; simp
 by simp; ext; simp
 
 @[simp] lemma le_rew [has_le_symbol L] (t u : term L) (s : ℕ → term L) :
-  (t ⩽ u : formula L).rew s = (t.rew s ⩽ u.rew s) :=
+  (t ≼ u : formula L).rew s = (t.rew s ≼ u.rew s) :=
 by unfold has_preceq.preceq; simp
 
 @[simp] lemma mem_rew [has_mem_symbol L] (t u : term L) (s : ℕ → term L) :
@@ -473,7 +479,7 @@ by simp[pow_eq]; refl
 by simp[pow_eq]; refl
 
 @[simp] lemma le_pow [has_le_symbol L] (t u : term L) (i : ℕ) :
-  (t ⩽ u : formula L)^i = (t^i ⩽ u^i) :=
+  (t ≼ u : formula L)^i = (t^i ≼ u^i) :=
 by simp[pow_eq]; refl
 
 @[simp] lemma mem_pow [has_mem_symbol L] (t u : term L) (i : ℕ) :
@@ -663,7 +669,7 @@ by { unfold has_add.add, unfold_coes, simp, split, { refl }, { ext; simp } }
 by { unfold has_mul.mul, unfold_coes, simp, split, { refl }, { ext; simp } }
 
 @[simp] lemma add_tr_v1_le [has_le_symbol L₁] (t u : term L₁) :
-  ((t ⩽ u : formula L₁) : formula (L₁ + L₂)) = ((t : term (L₁ + L₂)) ⩽ u) :=
+  ((t ≼ u : formula L₁) : formula (L₁ + L₂)) = ((t : term (L₁ + L₂)) ≼ u) :=
 by { unfold has_preceq.preceq, unfold_coes, simp[translation.tr_pr], split,
      { refl }, { ext; simp } }
 
