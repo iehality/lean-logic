@@ -113,19 +113,18 @@ instance [has_add_symbol L] : has_add (Herbrand T i) := ⟨λ h₁ h₂, functio
 
 instance [has_mul_symbol L] : has_mul (Herbrand T i) := ⟨λ h₁ h₂, function has_mul_symbol.mul ‹h₁, h₂›⟩
 
-
-def symbol.pr {n} (p : L.pr n) : finitary (Herbrand T i) n → Prop :=
+def predicate {n} (p : L.pr n) : finitary (Herbrand T i) n → Prop :=
 λ v, fopl.Herbrand.lift_on_finitary v (λ u : finitary (term L) n, T^i ⊢ formula.app p u) 
   $ λ v₁ v₂ eqs, by simp[of_eq_of]; 
   exact ⟨λ h, provable.predicate_of_equiv p h eqs, λ h, provable.predicate_of_equiv p h (λ i, provable.eq_symm (eqs i))⟩
 
-def model (T : theory L) : model L := ⟨Herbrand T 0, ⟨⟦#0⟧ᴴ⟩, @function _ T 0, @symbol.pr _ T 0⟩
+def model (T : theory L) : model L := ⟨Herbrand T 0, ⟨⟦#0⟧ᴴ⟩, @function _ T 0, @predicate _ T 0⟩
 
 notation `𝔗[`T`]` := model T
 
-protected theorem eq_of_provable_equiv {t₁ t₂} : T^i ⊢ t₁ ≃ t₂ ↔ (⟦t₁⟧ᴴ : Herbrand T i) = ⟦t₂⟧ᴴ := by simp[of_eq_of]
+theorem eq_of_provable_equiv {t₁ t₂} : T^i ⊢ t₁ ≃ t₂ ↔ (⟦t₁⟧ᴴ : Herbrand T i) = ⟦t₂⟧ᴴ := by simp[of_eq_of]
 
-protected theorem eq_of_provable_equiv_0 {t₁ t₂} : T ⊢ t₁ ≃ t₂ ↔ (⟦t₁⟧ᴴ : Herbrand T 0) = ⟦t₂⟧ᴴ := by simp[of_eq_of]
+theorem eq_of_provable_equiv_0 {t₁ t₂} : T ⊢ t₁ ≃ t₂ ↔ (⟦t₁⟧ᴴ : Herbrand T 0) = ⟦t₂⟧ᴴ := by simp[of_eq_of]
 
 theorem constant_term (c : L.fn 0) (v : finitary (term L) 0):
   (⟦❨c❩ v⟧ᴴ : Herbrand T i) = function c finitary.nil := by simp[function, show v = finitary.nil, by ext; simp]
@@ -444,6 +443,10 @@ lemma prenex_ex_or_left {l : Lindenbaum T (i+1)} {k : Lindenbaum T i} :
   (∐ l) ⊔ k = ∐ (l ⊔ k.pow) :=
 by rw ← compl_inj_iff; simp[-compl_inj_iff, prenex_ex_neg, prenex_fal_and_left]
 
+lemma prenex_ex_and_left {l : Lindenbaum T (i+1)} {k : Lindenbaum T i} :
+  (∐ l) ⊓ k = ∐ (l ⊓ k.pow) :=
+by rw ← compl_inj_iff; simp[-compl_inj_iff, prenex_ex_neg, prenex_fal_or_left]
+
 namespace proper
 
 variables [proper_theory T]
@@ -642,11 +645,23 @@ open classical_logic axiomatic_classical_logic' Herbrand Lindenbaum
 
 variables {T}
 
-@[simp] lemma imply_ex_equiv_fal_imply (p q : formula L) : T ⊢ ((∐ p) ⟶ q) ⟷ ∏ (p ⟶ q^1) :=
-begin
-  refine Lindenbaum.eq_of_provable_equiv_0.mpr _,
-  simp[prenex_fal_or_left, prenex_fal_neg, prenex_ex_neg],
-end
+@[simp] lemma ex_imply_equiv_fal_imply (p q : formula L) : T ⊢ ((∐ p) ⟶ q) ⟷ ∏ (p ⟶ q^1) :=
+Lindenbaum.eq_of_provable_equiv_0.mpr
+  (by simp[prenex_fal_or_left, prenex_fal_neg, prenex_ex_neg])
+
+@[simp] lemma fal_imply_equiv_ex_imply (p q : formula L) : T ⊢ ((∏ p) ⟶ q) ⟷ ∐ (p ⟶ q^1) :=
+Lindenbaum.eq_of_provable_equiv_0.mpr
+  (by simp[prenex_ex_or_left, prenex_fal_neg, prenex_ex_neg])
+
+lemma pnf_imply_ex_iff_fal_imply₁ (p q : formula L) : T ⊢ ((∐ p) ⟶ q) ↔ T ⊢ ∏ (p ⟶ q^1) :=
+by { have : T ⊢ ∐ p ⟶ q ⟷ ∏ (p ⟶ q ^ 1), { simp },
+     simp[iff_equiv] at this,
+     refine ⟨λ h, this.1 ⨀ h, λ h, this.2 ⨀ h⟩ }
+
+lemma pnf_imply_fal_iff_ex_imply₁ (p q : formula L) : T ⊢ ((∏ p) ⟶ q) ↔ T ⊢ ∐ (p ⟶ q^1) :=
+by { have : T ⊢ ∏ p ⟶ q ⟷ ∐ (p ⟶ q ^ 1), { simp },
+     simp[iff_equiv] at this,
+     refine ⟨λ h, this.1 ⨀ h, λ h, this.2 ⨀ h⟩ }
 
 lemma imply_ex_of_fal_imply {p q : formula L} (h : T ⊢ ∏ (p ⟶ q^1)) : T ⊢ (∐ p) ⟶ q :=
 by { have : T ⊢ ((∐ p) ⟶ q) ⟷ ∏ (p ⟶ q^1), { simp },

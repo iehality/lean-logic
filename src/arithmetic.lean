@@ -1,4 +1,4 @@
-import deduction semantics lindenbaum predicate
+import deduction semantics lindenbaum class_of_formulae
 
 namespace fopl
 
@@ -27,6 +27,10 @@ local infix ` ≃₁ `:50 := ((≃) : term LA → term LA → formula LA)
 local prefix `#`:max := @term.var LA
 local prefix `∏₁ `:64 := (has_univ_quantifier.univ : formula LA → formula LA)
 local prefix `∐₁ `:64 := (has_exists_quantifier.ex : formula LA → formula LA)
+
+@[reducible] def LA.lt (t u : term LA) : formula LA := ∃₁ x, t + Succ x ≃ u
+
+instance : has_prec (term LA) (formula LA) := ⟨LA.lt⟩
 
 variables (s : ℕ → term LA)
 
@@ -82,18 +86,24 @@ inductive robinson : theory LA
 
 notation `𝐐` := robinson
 
-def peano_induction (p : formula LA) : formula LA :=
-p.rew ι[0 ⇝ 0] ⊓ ∏ ((p^1).rew ι[1 ⇝ #0] ⟶ (p^1).rew ι[1 ⇝ Succ #0]) ⟶ ∏ p
+def succ_induction (p : formula LA) : formula LA :=
+p.rew (0 ⌢ ι) ⊓ ∏ (p ⟶ p.rew ((Succ #0) ⌢ (λ x, #(x+1)))) ⟶ ∏ p
+
+def order_induction (p : formula LA) : formula LA :=
+(∀₁ x, ((∀₁ y ≺ᵇ x, p.rew ι-{1}) ⟶ p)) ⟶ ∀₁ x, p
+
+def collection_axiom (p : formula LA) : formula LA :=
+∀₁ u, (∀₁ x ≼ᵇ u, ∃₁ y, p.rew ι-{2}) ⟶ (∃₁ v, ∀₁ x ≼ᵇ u, ∃₁ y ≼ᵇ v, p.rew ι-{2}-{2})
 
 instance : closed_theory 𝐐 := ⟨λ p h,
   by cases h; simp[sentence, lrarrow_def, formula.ex, formula.and, fal_fn, ex_fn]⟩
 
 instance : proper_theory 𝐐 := ⟨λ p s h, by { cases h; simp[fal_fn, ex_fn]; exact h }⟩
 
-inductive bounded_peano (C : set (formula LA)) : theory LA
-| q   : ∀ {p}, p ∈ 𝐐 → bounded_peano p
-| ind : ∀ {p : formula LA}, p ∈ C → bounded_peano (peano_induction p)
+def bounded_peano (C : set (formula LA)) : theory LA := 𝐐 ∪ succ_induction '' C
 prefix `𝐈`:max := bounded_peano
+
+
 
 @[reducible] def peano : theory LA := 𝐈(set.univ)
 notation `𝐏𝐀` := peano
@@ -102,26 +112,23 @@ instance {C : set (formula LA)} [proper_theory C] : proper_theory 𝐈C := ⟨λ
 begin
   simp, cases h with _ h p hyp,
   { have : p.rew s ∈ 𝐐, from proper_theory.proper0 h,
-    exact bounded_peano.q this },
-  { simp,
-    have : (p.rew ι[0 ⇝ 0]).rew s = (p.rew (s^1)).rew ι[0 ⇝ 0],
+    exact or.inl this },
+  { rcases h with ⟨p, mem, rfl⟩,
+    simp[fal_fn, succ_induction],
+    have : (p.rew (0 ⌢ ι)).rew s = (p.rew (s^1)).rew (0 ⌢ ι),
     { simp[formula.nested_rew], congr, ext x, cases x; simp }, simp[this],
-    have : ((p^1).rew ι[1 ⇝ #0]).rew (s^1) = ((p.rew (s^1))^1).rew (ι[1 ⇝ #0]),
+    have : (p.rew ((Succ #0) ⌢ (λ x, #(x+1)))).rew (s^1) = (p.rew (s^1)).rew ((Succ #0) ⌢ (λ x, #(x+1))),
     { simp[formula.pow_rew_distrib, formula.pow_eq, formula.nested_rew, rewriting_sf_itr.pow_eq'],
       congr, funext x, cases x; simp[←nat.add_one, term.pow_eq] }, simp[this],
-    have : ((p^1).rew ι[1 ⇝ Succ #0]).rew (s^1) = ((p.rew (s^1))^1).rew (ι[1 ⇝ Succ #0]),
-    { simp[formula.pow_rew_distrib, formula.pow_eq, formula.nested_rew, rewriting_sf_itr.pow_eq'],
-      congr, funext x, cases x; simp[←nat.add_one, term.pow_eq] }, simp[this],
-    have : p.rew (s^1) ∈ C, from proper_theory.proper0 hyp,
-    have := bounded_peano.ind this, exact this } end⟩
+    have : p.rew (s^1) ∈ C, from proper_theory.proper0 mem,
+    have := set.mem_image_of_mem succ_induction this, exact or.inr this } end⟩
 
-lemma Q_bd_peano (C) : 𝐐 ⊆ 𝐈C := λ p, bounded_peano.q
+lemma Q_bd_peano (C) : 𝐐 ⊆ 𝐈C := by simp[bounded_peano]
 
 instance (C : theory LA) : extend 𝐐 𝐈C := ⟨λ p h, weakening (Q_bd_peano _) h⟩
 
-lemma bd_peano_subset {C D : set (formula LA)} : C ⊆ D → 𝐈C ⊆ 𝐈D := λ h p hyp_p,
-by { cases hyp_p with _ hyp_p p hyp_p2,
-     exact bounded_peano.q hyp_p, refine bounded_peano.ind (h hyp_p2) }
+lemma bd_peano_subset {C D : set (formula LA)} : C ⊆ D → 𝐈C ⊆ 𝐈D := λ h,
+by { simp[bounded_peano,h], }
 
 namespace hierarchy
 
@@ -279,7 +286,6 @@ begin
   simp, exact this
 end
 
-
 lemma mul_eq_zero : 𝐐 ⊢ ∀₁ x y, (x * y ≃ 0) ⟶ (x ≃ 0) ⊔ (y ≃ 0) :=
 begin
   refine generalize (generalize _), simp[fal_fn], 
@@ -303,7 +309,7 @@ end
 
 
 #check T
-/--/
+
 @[simp] lemma le_refl [proper_theory T] {h : Herbrand T i} :
   (h ≼ h : Lindenbaum T i) = ⊤ :=
 by { simp[le_iff],
@@ -334,12 +340,12 @@ lemma Ind_mem (p : formula LA) : Ind (⟦p⟧ᴸ : Lindenbaum 𝐈C 1) → (⟦p
 begin
   simp[Ind], 
   intros p0 h eqn, 
-  have : 𝐈C ⊢ peano_induction p0,
+  have : 𝐈C ⊢ succ_induction p0,
   {have := provable.AX (bounded_peano.ind h), exact this },
   simp[@Lindenbaum.provable_top_iff0] at *,
   have eqn : classical_logic.to_quo p = classical_logic.to_quo p0, from equiv_eq_top_iff.mp eqn,
   have : (⟦peano_induction p⟧ᴸ : Lindenbaum 𝐈C 0) = ⟦peano_induction p0⟧ᴸ,
-  { simp[peano_induction, Lindenbaum.pow_eq, Lindenbaum.subst_eq, eqn], },
+  { simp[succ_induction, Lindenbaum.pow_eq, Lindenbaum.subst_eq, eqn], },
   simp*
 end
 
@@ -352,7 +358,7 @@ begin
   induction l using fopl.Lindenbaum.ind_on with p,
   have P := (provable_top_iff0.mpr (Ind_mem _ h)),
   have trn : (0 : Herbrand 𝐈C 0) ⊳ ⟦p⟧ᴸ ⊓ ∏ ((♯0 ⊳ pow ⟦p⟧ᴸ)ᶜ ⊔ (Succ ♯0) ⊳ pow ⟦p⟧ᴸ) ≤ ∏ ⟦p⟧ᴸ,
-  { simp[peano_induction, Lindenbaum.subst_eq, Lindenbaum.pow_eq, compl_sup_iff_le,
+  { simp[succ_induction, Lindenbaum.subst_eq, Lindenbaum.pow_eq, compl_sup_iff_le,
     le_of_provable_imply_0, Herbrand.var_eq] at P, refine P },
   have succ' : m ≤ ∏ ((♯0 ⊳ pow ⟦p⟧ᴸ)ᶜ ⊔ (Succ ♯0) ⊳ pow ⟦p⟧ᴸ),
     from Lindenbaum.proper.pow_le_le_fal succ,
@@ -369,7 +375,7 @@ begin
   induction l using fopl.Lindenbaum.ind_on with p,
   have P := (provable_top_iff0.mpr (Ind_mem _ h)),
   have : (0 : Herbrand 𝐈C 0) ⊳ ⟦p⟧ᴸ ⊓ ∏ ((♯0 ⊳ pow ⟦p⟧ᴸ)ᶜ ⊔ (Succ ♯0) ⊳ pow ⟦p⟧ᴸ) ≤ ∏ ⟦p⟧ᴸ,
-  { simp[peano_induction, Lindenbaum.subst_eq, Lindenbaum.pow_eq, compl_sup_iff_le,
+  { simp[succ_induction, Lindenbaum.subst_eq, Lindenbaum.pow_eq, compl_sup_iff_le,
     le_of_provable_imply_0, Herbrand.var_eq] at P, exact P },
   simp[zero, succ] at this,
   have eqn : (♯0 ⊳ pow ⟦p⟧ᴸ)ᶜ ⊔ (Succ ♯0) ⊳ pow ⟦p⟧ᴸ = ⊤,

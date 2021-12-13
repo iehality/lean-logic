@@ -155,16 +155,16 @@ def conjunction : list (formula L) → formula L
 
 @[reducible] def ι : ℕ → term L := term.var
 
-def slide' {α : Type*} (s : ℕ → α) (a : α) (n : ℕ) : ℕ → α :=
+def slide {α : Type*} (s : ℕ → α) (a : α) (n : ℕ) : ℕ → α :=
 λ x, if x < n then s x else if n < x then s (x - 1) else a
-notation s `[`:1200 n ` ⇝ `:95 t `]`:0 := slide' s t n
+notation s `[`:1200 n ` ⇝ `:95 t `]`:0 := slide s t n
 
-@[simp] lemma slide_eq {α : Type*} (s : ℕ → α) (a : α) (n) : s [n ⇝ a] n = a := by simp[slide']
+@[simp] lemma slide_eq {α : Type*} (s : ℕ → α) (a : α) (n) : s[n ⇝ a] n = a := by simp[slide]
 
-@[simp] lemma slide_lt {α : Type*} (s : ℕ → α) (a : α) (n m) (h : m < n) : s [n ⇝ a] m = s m := by simp[slide', h]
+@[simp] lemma slide_lt {α : Type*} (s : ℕ → α) (a : α) (n m) (h : m < n) : s[n ⇝ a] m = s m := by simp[slide, h]
 
-@[simp] lemma slide_gt {α : Type*} (s : ℕ → α) (a : α) (n m) (h : n < m) : s [n ⇝ a] m = s (m - 1) :=
-by {simp[slide', h], intros hh, exfalso, exact nat.lt_asymm h hh }
+@[simp] lemma slide_gt {α : Type*} (s : ℕ → α) (a : α) (n m) (h : n < m) : s[n ⇝ a] m = s (m - 1) :=
+by {simp[slide, h], intros hh, exfalso, exact nat.lt_asymm h hh }
 
 def concat {α : Type*} (s : ℕ → α) (a : α) : ℕ → α := s [0 ⇝ a]
 notation a ` ⌢ `:90 s := concat s a
@@ -177,6 +177,17 @@ lemma slide_perm (i : ℕ) (t : term L) : ∀ n, ∃ m, ι[i ⇝ t] m = #n := λ
 by { have C : n < i ∨ i ≤ n, exact lt_or_ge n i,
      cases C, refine ⟨n, by simp[C]⟩, 
      refine ⟨n + 1, _⟩, simp[nat.lt_succ_iff.mpr C] }
+
+def discard {α : Type*} (s : ℕ → α) (n : ℕ) : ℕ → α :=
+λ x, if x < n then s x else s (x + 1)
+
+notation s `-{`:1200 n `}`:0 := discard s n
+
+@[simp] lemma discard_of_lt {α : Type*} (s : ℕ → α) {m n} (h : m < n) :
+ s-{n} m = s m := by simp[discard, h]
+
+@[simp] lemma discard_of_le {α : Type*} (s : ℕ → α) {m n} (h : n ≤ m) :
+ s-{n} m = s (m + 1) := by {simp[discard, h],  intros hlt, exfalso, exact nat.lt_le_antisymm hlt h }
 
 namespace term
 
@@ -377,7 +388,7 @@ by simp[has_bot.bot, formula.bot]
 @[simp] lemma formula.ex_arity (p : formula L) : (∐ p : formula L).arity = p.arity - 1 :=
 by simp[has_exists_quantifier.ex, formula.ex]
 
-lemma subst_pow (t : term L) (n i : ℕ) : ι[n ⇝ t]^i = ι[n + i ⇝ t^i] :=
+lemma subst_pow (s : ℕ → term L) (t : term L) (n i : ℕ) : ι[n ⇝ t]^i = ι[n + i ⇝ t^i] :=
 begin
   induction i with i IH, { simp }, funext x,
   cases x; simp[←nat.add_one, ←add_assoc, IH],
@@ -385,11 +396,6 @@ begin
     cases T, { simp[T], }, cases T; simp[T, pow_add, term.pow_add],
     { have : 0 < x, exact pos_of_gt T, congr, exact (nat.pos_succ this).symm} }
 end
-
-lemma slide'_perm (t : term L) (k) : ∀ n, ∃ m, ι[k ⇝ t] m = #n := λ n,
-by { have T : n < k ∨ k ≤ n, exact lt_or_ge _ _,
-     cases T, refine ⟨n, by simp[T]⟩,
-     { refine ⟨n + 1, _⟩, simp[show k < n + 1, from nat.lt_succ_iff.mpr T] }, }
 
 lemma term.pow_rew_distrib (t : term L) (s : ℕ → term L) (i : ℕ): (t.rew s)^i = (t^i).rew (s^i) :=
 by { induction i with i IH generalizong s i, { simp, },
@@ -564,16 +570,16 @@ lemma total_rew_inv :
 | s h (⁻p)           := by rcases total_rew_inv s h p with ⟨q, e_q⟩; refine ⟨⁻q, by simp*⟩
 | s h (∏₁ p)         := by rcases total_rew_inv _ (rewriting_sf_perm h) p with ⟨q, e_q⟩; refine ⟨∏q, by simp[e_q]⟩
 
-@[simp] def Open : formula L → bool
-| (❴p❵ v) := tt
-| (t ≃₁ u)   := tt
-| (p ⟶ q)  := p.Open && q.Open
-| (⁻p)      := p.Open
-| (∏₁ p)    := ff
+@[simp] def is_open : formula L → bool
+| (❴p❵ v)  := tt
+| (t ≃₁ u) := tt
+| (p ⟶ q) := p.is_open && q.is_open
+| (⁻p)     := p.is_open
+| (∏₁ p)   := ff
 
-@[simp] lemma op.and (p q : formula L) : (p ⊓ q).Open = p.Open && q.Open := rfl
+@[simp] lemma op.and (p q : formula L) : (p ⊓ q).is_open = p.is_open && q.is_open := rfl
 
-@[simp] lemma op.or (p q : formula L) : (p ⊔ q).Open = p.Open && q.Open := rfl
+@[simp] lemma op.or (p q : formula L) : (p ⊔ q).is_open = p.is_open && q.is_open := rfl
 
 @[simp] lemma nfal_arity : ∀ (n) (p : formula L), (nfal p n).arity = p.arity - n
 | 0     p := by simp[formula.arity]
