@@ -85,6 +85,8 @@ instance : has_le (theory L) := ⟨theory.le⟩
 
 class extend (T₀ T : theory L) := (le : T₀ ≤ T)
 
+instance extend_refl (T : theory L) : extend T T := ⟨λ p h, h⟩
+
 def theory.th (T : theory L) : theory L := {p | T ⊢ p}
 
 lemma ss_le {U : ℕ → theory L} (hyp : ∀ s, U s ⊆ U (s+1)) : ∀ {s₁ s₂}, s₁ ≤ s₂ → U s₁ ⊆ U s₂ :=
@@ -599,7 +601,7 @@ neg_of_equiv h (show T ⊢ (t ≃ u) ⟷ (u ≃ t), by {
     simp[iff_equiv, *] })
 
 lemma function_ext' {n} (f : L.fn n) (v₁ v₂ : finitary (term L) n) :
-  T ⊢ conjunction' n (λ i, v₁ i ≃ v₂ i) ⟶ (term.app f v₁ ≃ term.app f v₂) :=
+  T ⊢ (⋀ i, v₁ i ≃ v₂ i) ⟶ (term.app f v₁ ≃ term.app f v₂) :=
 begin
   let s : ℕ → term L :=
     (λ x, if h₁ : x < n then v₁ ⟨x, h₁⟩ else
@@ -619,7 +621,7 @@ begin
 end
 
 lemma predicate_ext' {n} (r : L.pr n) (v₁ v₂ : finitary (term L) n) :
-  T ⊢ conjunction' n (λ i, v₁ i ≃ v₂ i) ⟶ formula.app r v₁ ⟶ formula.app r v₂ :=
+  T ⊢ (⋀ i, v₁ i ≃ v₂ i) ⟶ formula.app r v₁ ⟶ formula.app r v₂ :=
 begin
   let s : ℕ → term L :=
     (λ x, if h₁ : x < n then v₁ ⟨x, h₁⟩ else
@@ -780,16 +782,35 @@ equiv_neg_of_equiv (equiv_univ_of_equiv (equiv_neg_of_equiv h))
 lemma ex_of_equiv {p₁ p₂} (h : T ⊢ ∐ p₁) (hp : ⤊T ⊢ p₁ ⟷ p₂) : T ⊢ ∐ p₂ :=
 (iff_equiv.mp (equiv_ex_of_equiv hp)).1 ⨀ h
 
-lemma extend_of_inclusion {T₁ T₂ : theory L} (ss : T₁ ⊆ T₂) : extend T₁ T₂ :=
-⟨λ p h, by exact weakening h ss⟩
-
-instance (p : formula L) : extend T (T +{p}) := ⟨λ q h, by simp[h]⟩
-instance extend_ax₂ (p q : formula L) : extend T (T +{ p }+{ q }) := ⟨λ _ h, by simp[h]⟩
-
 @[simp] lemma extend {T₀ T : theory L} [extend T₀ T] {p : formula L} (h : T₀ ⊢ p) : T ⊢ p :=
 extend.le h
 
 end provable
+
+variables {T : theory L}
+
+lemma extend_of_inclusion {T₁ T₂ : theory L} (ss : T₁ ⊆ T₂) : extend T₁ T₂ :=
+⟨λ p h, by exact provable.weakening h ss⟩
+
+instance (p : formula L) : extend T (T +{p}) := ⟨λ q h, by simp[h]⟩
+
+instance extend_ax₂ (p q : formula L) : extend T (T +{ p }+{ q }) := ⟨λ _ h, by simp[h]⟩
+
+lemma proper_theory_union (T₁ T₂ : theory L) (h₁ : proper_theory T₁) (h₂ : proper_theory T₂) :
+  proper_at 0 (T₁ ∪ T₂) :=
+λ p s h, by { cases h,
+  { refine or.inl (proper_theory.proper p s h) },
+  { refine or.inr (proper_theory.proper p s h) } }
+
+def proper_schema (F : formula L → formula L) : Prop := ∃ i : ℕ, ∀ p s, (F p).rew s = F (p.rew (s^i))
+
+lemma proper_image_of_proper_schema (C : theory L) [proper_theory C]
+  {F : formula L → formula L} (h : proper_schema F) : proper_at 0 (F '' C) :=
+λ p s mem, begin
+    rcases mem with ⟨p, mem, rfl⟩,
+    rcases h with ⟨i, h⟩,
+    simp[h], refine ⟨p.rew (s^i), by simp[mem], rfl⟩
+end
 
 lemma weakening_le {T U : theory L} : T ⊆ U → T ≤ U := λ hyp p h, weakening hyp h
 

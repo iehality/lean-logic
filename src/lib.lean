@@ -493,6 +493,10 @@ end quotient
 
 prefix `Succ `:85 := has_succ.succ
 
+def numeral {α : Type*} [has_zero α] [has_succ α] : ℕ → α
+| 0       := 0
+| (n + 1) := Succ (numeral n)
+
 @[notation_class] class has_eq (α : Sort*) (β : Sort*) := (eq : α → α → β)
 
 infix ` ≃ `:50 := has_eq.eq
@@ -595,6 +599,18 @@ class axiomatic_classical_logic
 @[notation_class] class has_double_turnstile (α : Sort*) (β : Sort*) (γ : Sort*) := (double_turnstile : α → β → γ)
 
 infix ` ⊧ ` :55 := has_double_turnstile.double_turnstile
+
+@[simp] def inf_conjunction {α : Type*} [has_top α] [has_inf α] : ∀ n, (fin n → α) → α
+| 0 _        := ⊤
+| (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊓ inf_conjunction n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
+
+notation `⋀*` binders `, ` r:(scoped p, inf_conjunction _ p) := r
+
+@[simp] def sup_disjunction {α : Type*} [has_bot α] [has_sup α] : ∀ n, (fin n → α) → α
+| 0 _        := ⊥
+| (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊔ sup_disjunction n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
+
+notation `⋁*` binders `, ` r:(scoped p, sup_disjunction _ p) := r
 
 instance : has_arrow Prop := ⟨(→)⟩
 

@@ -105,10 +105,6 @@ instance [has_zero_symbol L] : has_zero (Herbrand T i) := ⟨function has_zero_s
 
 instance [has_succ_symbol L] : has_succ (Herbrand T i) := ⟨λ h, function has_succ_symbol.succ ‹h›⟩
 
-@[simp] def Numeral [has_zero_symbol L] [has_succ_symbol L] : ℕ → Herbrand T i
-| 0       := 0
-| (n + 1) := Succ (Numeral n)
-
 instance [has_add_symbol L] : has_add (Herbrand T i) := ⟨λ h₁ h₂, function has_add_symbol.add ‹h₁, h₂›⟩
 
 instance [has_mul_symbol L] : has_mul (Herbrand T i) := ⟨λ h₁ h₂, function has_mul_symbol.mul ‹h₁, h₂›⟩
@@ -135,8 +131,8 @@ theorem constant_term (c : L.fn 0) (v : finitary (term L) 0):
 @[simp] theorem succ_eq_succ [has_succ_symbol L] (t : term L) :
   (⟦Succ t⟧ᴴ : Herbrand T i) = Succ ⟦t⟧ᴴ := by unfold has_succ.succ; simp[function]
 
-@[simp] theorem numeral_eq_Numeral [has_zero_symbol L] [has_succ_symbol L] (n : ℕ) :
-  (⟦(n˙ : term L)⟧ᴴ : Herbrand T i) = Numeral n :=
+@[simp] theorem numeral_eq_numeral [has_zero_symbol L] [has_succ_symbol L] (n : ℕ) :
+  (⟦(n˙ : term L)⟧ᴴ : Herbrand T i) = numeral n :=
 by induction n; simp[*,numeral]
 
 @[simp] theorem add_eq_add [has_add_symbol L] (t u : term L) :
@@ -165,7 +161,7 @@ by { induction h using fopl.Herbrand.ind_on,
      simp[pow, ←succ_eq_succ _, -succ_eq_succ] }
 
 @[simp] theorem numeral_pow [has_zero_symbol L] [has_succ_symbol L] (n : ℕ) :
-  (Numeral n : Herbrand T i).pow = Numeral n :=
+  (numeral n : Herbrand T i).pow = numeral n :=
 by induction n; simp[*,numeral, succ_pow]
 
 theorem add_pow [has_add_symbol L] (h₁ h₂ : Herbrand T i) :
@@ -341,7 +337,7 @@ lemma exist_def (p : formula L) : (∐ (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lin
 by { induction h using fopl.Herbrand.ind_on;
      rw [←equal_eq, ←top_eq], simp [-equal_eq, -top_eq, axiomatic_classical_logic'.iff_equiv] }
 
-@[simp] lemma equal_symm (h₁ h₂ : Herbrand T i) : (h₁ ≃ᴸ h₂) = (h₂ ≃ h₁) :=
+lemma equal_symm (h₁ h₂ : Herbrand T i) : (h₁ ≃ᴸ h₂) = (h₂ ≃ h₁) :=
 by { induction h₁ using fopl.Herbrand.ind_on,
      induction h₂ using fopl.Herbrand.ind_on,
      rw [←equal_eq, ←equal_eq], simp [-equal_eq, axiomatic_classical_logic'.iff_equiv],
@@ -574,7 +570,7 @@ by { induction l using classical_logic.lindenbaum.ind_on,
      simp[univ_def, pow_def, var_def, -univ_eq, -pow_eq, -var_eq, subst_sf_L,
           formula.pow_eq, formula.nested_rew, rewriting_sf_itr.pow_eq'],
      have : (λ x, ite (x = 0) #x #(x - 1 + 1 + 1) : ℕ → term L) = (λ x, ι[(1 + 1) ⇝ #0] (x + 1 + 1)),
-     { funext x, simp[slide', ι], cases x; simp[← nat.add_one] },
+     { funext x, simp[slide, ι], cases x; simp[← nat.add_one] },
      simp [this] }
 
 end proper
@@ -636,12 +632,15 @@ by simp [eq_top_of_provable]
 theorem eq_neg_of_provable_neg_0 {p} : T ⊢ ⁻p ↔ (⟦p⟧ᴸ : Lindenbaum T 0) = ⊥ :=
 @eq_neg_of_provable_neg _ T 0 p
 
+@[simp] lemma by_axiom (t u : term L) : (⟦t⟧ᴴ : Herbrand (T +{t ≃ u}) 0) = ⟦u⟧ᴴ :=
+Herbrand.eq_of_provable_equiv_0.mp (show T +{t ≃ u} ⊢ t ≃ u, by simp)
+
 end Lindenbaum
 
 lemma Lindenbaum.theory (C : theory L) (i : ℕ) : set (Lindenbaum T i) := {l | ∃ p, p ∈ C ∧ l = ⟦p⟧ᴸ}
 
 namespace provable
-open classical_logic axiomatic_classical_logic' Herbrand Lindenbaum
+open classical_logic axiomatic_classical_logic axiomatic_classical_logic' Herbrand Lindenbaum
 
 variables {T}
 
@@ -668,6 +667,41 @@ by { have : T ⊢ ((∐ p) ⟶ q) ⟷ ∏ (p ⟶ q^1), { simp },
      simp[iff_equiv] at this,
      exact this.2 ⨀ h }
 
+@[simp] lemma succ_ext [has_succ_symbol L] (t₁ t₂ : term L) :
+  T ⊢ (t₁ ≃ t₂) ⟶ (Succ t₁ ≃ Succ t₂) :=
+begin
+  refine deduction.mp _,
+  simp[eq_of_provable_equiv_0]
+end
+
+@[simp] lemma add_ext [has_add_symbol L] (t₁ t₂ u₁ u₂ : term L) :
+  T ⊢ (t₁ ≃ t₂) ⊓ (u₁ ≃ u₂) ⟶ (t₁ + u₁ ≃ t₂ + u₂) :=
+begin
+  refine deduction.mp _,
+  simp[eq_of_provable_equiv_0],
+  have : (⟦t₁⟧ᴴ : Herbrand (T +{ (t₁ ≃ t₂) ⊓ (u₁ ≃ u₂) }) 0) = ⟦t₂⟧ᴴ,
+  from eq_of_provable_equiv_0.mp (by simp),
+    have : (⟦u₁⟧ᴴ : Herbrand (T +{ (t₁ ≃ t₂) ⊓ (u₁ ≃ u₂) }) 0) = ⟦u₂⟧ᴴ,
+  from eq_of_provable_equiv_0.mp (by simp),
+  simp*
+end
+
+
 end provable
+
+namespace Lindenbaum
+
+@[simp] lemma and_ext [has_add_symbol L] (t₁ t₂ u₁ u₂ : Herbrand T i) :
+  (t₁ ≃ t₂ : Lindenbaum T i) ⊓ (u₁ ≃ u₂) ≤ (t₁ + u₁ ≃ t₂ + u₂) :=
+begin
+  induction t₁ using fopl.Herbrand.ind_on,
+  induction t₂ using fopl.Herbrand.ind_on,
+  induction u₁ using fopl.Herbrand.ind_on,
+  induction u₂ using fopl.Herbrand.ind_on,
+  have : T^i ⊢ (t₁ ≃ t₂) ⊓ (u₁ ≃ u₂) ⟶ (t₁ + u₁ ≃ t₂ + u₂), { simp },
+  have := le_of_provable_imply.mp this, simp at this, exact this
+end
+
+end Lindenbaum 
 
 end fopl

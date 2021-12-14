@@ -42,7 +42,11 @@ instance ordered_theory_sf_itr {T : theory L} [od : ordered T] : ∀ n : ℕ, or
 | 0 := od
 | (n+1) := @fopl.ordered_theory_sf _ _  (ordered_theory_sf_itr n)
 
-class proper_theory (T : theory L) := (proper : proper_at 0 T)
+-- 自由変項の書き換えによって変化しない論理式の集合
+class proper_theory (T : theory L) := (proper : ∀ (p : formula L) (s), p ∈ T → p.rew s ∈ T)
+
+@[simp] lemma proper_theory.rew_mem {T : theory L} [proper_theory T] {p : formula L} (h : p ∈ T) {s} :
+  p.rew s ∈ T := proper_theory.proper p s h
 
 instance ordered_proper {T : theory L} [proper_theory T] : ordered T :=
 ⟨λ p h, proper_theory.proper _ (λ x, #(x+1)) h⟩
@@ -56,7 +60,7 @@ instance : proper_theory (∅ : theory L) := ⟨λ _ _ h, by exfalso; exact h⟩
 
 instance : proper_theory (set.univ : theory L) := ⟨λ p s h, by simp⟩
 
-def openform : theory L := {p | p.Open = tt}
+def openform : theory L := {p | p.is_open = tt}
 
 instance : proper_theory (openform : theory L) :=
 ⟨λ p s h, by { induction p; simp[openform] at*; simp* at* }⟩
@@ -99,8 +103,9 @@ lemma proper_theory_sf_itr {n : ℕ} {T : theory L} (pp : proper_at n T) : ∀ m
      show (p^1).rew ((s^(n + m))^1) ∈ ⤊(T^m), simp[←formula.pow_rew_distrib],
      refine ⟨p.rew (s^(n+m)), proper_theory_sf_itr m _ s hyp_p, rfl⟩ }
 
-lemma properc_theory_sf_itr {T : theory L} [pp : proper_theory T] {n} :
-  proper_at n (T^n) := by { have := proper_theory_sf_itr pp.proper n, simp at this, exact this, }
+lemma properc_theory_sf_itr {T : theory L} [proper_theory T] {n} :
+  proper_at n (T^n) :=
+by { have := proper_theory_sf_itr (show proper_at 0 T, from proper_theory.proper) n, simp at this, exact this}
 
 lemma closed_proper {T : theory L} [cl : closed_theory T] : proper_at 0 T :=
 λ p s h, by { simp[@closed_theory.cl _ _ cl _ h], exact h }

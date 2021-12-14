@@ -160,6 +160,9 @@ lemma and_inply_of_imply_right {p₁ p₂ q : F} (h : p₂ ⟶ q ∈ P) : p₁ �
 @[simp] lemma iff_equiv_p {p q : F} : (p ⟷ q ∈ P) ↔ (p ⟶ q ∈ P ∧ q ⟶ p ∈ P) :=
 by simp[lrarrow_def, iff_and_p]
 
+lemma of_equiv_p {p₁ p₂ : F} (h : p₁ ∈ P) (hp : p₁ ⟷ p₂ ∈ P) : p₂ ∈ P :=
+by { simp[iff_equiv_p] at hp, refine hp.1 ⨀ h }
+
 lemma equiv_imply_of_equiv {p₁ q₁ p₂ q₂ : F} (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : (p₁ ⟶ q₁) ⟷ (p₂ ⟶ q₂) ∈ P :=
 begin
   simp[iff_equiv_p] at*, split,
@@ -499,6 +502,8 @@ local infixl ` ⨀ `:90 := axiomatic_classical_logic'.modus_ponens
 
 lemma iff_equiv {p q : F} : T ⊢ p ⟷ q ↔ (T ⊢ p ⟶ q ∧ T ⊢ q ⟶ p) := iff_equiv_p
 
+lemma equiv_symm_a {p q : F} : T ⊢ p ⟷ q → T ⊢ q ⟷ p := equiv_symm
+
 @[simp] lemma equiv_refl (p : F) : T ⊢ p ⟷ p := equiv_refl p
 
 @[simp] lemma iff_dn_refl_right (p : F) : T ⊢ p ⟷ ⁻⁻p := iff_dn_refl_right p
@@ -518,6 +523,8 @@ lemma iff_equiv {p q : F} : T ⊢ p ⟷ q ↔ (T ⊢ p ⟶ q ∧ T ⊢ q ⟶ p) 
 @[simp] lemma neg_impl_equiv_and (p q : F) : T ⊢ ⁻(p ⟶ q) ⟷ p ⊓ ⁻q := neg_impl_equiv_and p q
 
 lemma neg_impl_iff_and {p q : F} : T ⊢ ⁻(p ⟶ q) ↔ T ⊢ p ⊓ ⁻q := neg_impl_iff_and_p
+
+lemma of_equiv {p₁ p₂ : F} (h : T ⊢ p₁) (hp : T ⊢ p₁ ⟷ p₂) : T ⊢ p₂ := of_equiv_p h hp
 
 @[simp] lemma impl_iff_and {p q : F} : T ⊢ (p ⟶ q) ⟷ (⁻p ⊔ q) := impl_iff_and_p
 

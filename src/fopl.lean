@@ -44,10 +44,6 @@ instance [has_add_symbol L] : has_add (term L) := ⟨λ t u, term.app has_add_sy
 
 instance [has_mul_symbol L] : has_mul (term L) := ⟨λ t u, term.app has_mul_symbol.mul ‹t, u›⟩
 
-def numeral [has_zero_symbol L] [has_succ_symbol L] : ℕ → term L
-| 0       := 0
-| (n + 1) := Succ (numeral n)
-
 postfix `˙`:max := numeral
 
 variables (L)
@@ -148,6 +144,15 @@ by { induction i with i IH; simp, exact IH }
 @[simp] def conjunction' : ∀ n, (fin n → formula L) → formula L
 | 0 _        := ⊤
 | (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊓ conjunction' n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
+
+notation `⋀` binders `, ` r:(scoped p, conjunction' _ p) := r
+
+@[simp] def disjunction' : ∀ n, (fin n → formula L) → formula L
+| 0 _        := ⊥
+| (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊔ disjunction' n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
+
+notation `⋁` binders `, ` r:(scoped p, disjunction' _ p) := r
+
 
 def conjunction : list (formula L) → formula L
 | []        := ⊤
@@ -379,6 +384,9 @@ by simp[has_inf.inf, formula.and]
 @[simp] lemma formula.or_arity (p q : formula L) : (p ⊔ q).arity = max p.arity q.arity :=
 by simp[has_sup.sup, formula.or]
 
+@[simp] lemma formula.iff_arity (p q : formula L) : (p ⟷ q).arity = max p.arity q.arity :=
+by {simp[lrarrow_def], exact le_total _ _ }
+
 @[simp] lemma formula.top_arity : (⊤ : formula L).arity = 0 :=
 by simp[has_top.top, formula.top]
 
@@ -388,7 +396,7 @@ by simp[has_bot.bot, formula.bot]
 @[simp] lemma formula.ex_arity (p : formula L) : (∐ p : formula L).arity = p.arity - 1 :=
 by simp[has_exists_quantifier.ex, formula.ex]
 
-lemma subst_pow (s : ℕ → term L) (t : term L) (n i : ℕ) : ι[n ⇝ t]^i = ι[n + i ⇝ t^i] :=
+lemma subst_pow (t : term L) (n i : ℕ) : ι[n ⇝ t]^i = ι[n + i ⇝ t^i] :=
 begin
   induction i with i IH, { simp }, funext x,
   cases x; simp[←nat.add_one, ←add_assoc, IH],
@@ -463,8 +471,13 @@ by { induction p; try {simp[rew]}; try {simp*},
      have : ι^1 = ι,
      { funext n, cases n, rw[@rewriting_sf_0 L], simp }, rw[this], simp* }
 
-@[simp] lemma conjunction'_rew {n} (P : finitary (formula L) n) (s) : (conjunction' n P).rew s = conjunction' n (λ i, (P i).rew s) :=
-by { induction n with n IH; simp, simp[IH] }
+@[simp] lemma conjunction'_rew {n} (P : finitary (formula L) n) (s) :
+  (conjunction' n P).rew s = conjunction' n (λ i, (P i).rew s) :=
+by { induction n with n IH; simp* }
+
+@[simp] lemma disjunction'_rew {n} (P : finitary (formula L) n) (s) :
+  (disjunction' n P).rew s = disjunction' n (λ i, (P i).rew s) :=
+by { induction n with n IH; simp* }
 
 instance : has_pow (formula L) ℕ := ⟨λ p i, p.rew (λ x, #(x + i))⟩
 

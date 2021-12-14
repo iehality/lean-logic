@@ -243,19 +243,21 @@ instance is_pi_proper (n) : proper_theory (is_pi n : theory L) := ⟨(sigma_pi_p
 
 end formula
 
-def arithmetical_sigma (T : theory L) (n : ℕ) (p : formula L) : Prop :=
-∃ q, T ⊢ p ⟷ q ∧ q.is_sigma n
+def arithmetical_sigma (T : theory L) (n : ℕ) : theory L :=
+λ p, ∃ q, T ⊢ p ⟷ q ∧ q.is_sigma n
 
-notation p ` ∈_𝜮`:60 n ` in ` T :60 := arithmetical_sigma T n p
+notation `𝜮`:60 n ` in ` T :60 := arithmetical_sigma T n
 
-def arithmetical_pi (T : theory L) (n : ℕ) (p : formula L) : Prop :=
-∃ q, T ⊢ p ⟷ q ∧ q.is_pi n
+def arithmetical_pi (T : theory L) (n : ℕ) : theory L :=
+λ p, ∃ q, T ⊢ p ⟷ q ∧ q.is_pi n
 
-notation p ` ∈_𝜫`:60 n ` in ` T :60 := arithmetical_pi T n p
+notation `𝜫`:60 n ` in ` T :60 := arithmetical_pi T n
 
-def arithmetical_delta (T : theory L) (n : ℕ) (p : formula L) : Prop :=
-p ∈_𝜮n in T ∧ p ∈_𝜫n in T
+def arithmetical_delta (T : theory L) (n : ℕ) : theory L :=
+λ p, p ∈ 𝜮n in T ∧ p ∈ 𝜫n in T
 
-notation p ` ∈_𝜟`:60 n ` in ` T :60 := arithmetical_delta T n p
+notation `𝜟`:60 n ` in ` T :60 := arithmetical_delta T n
+
+
 
 end fopl
