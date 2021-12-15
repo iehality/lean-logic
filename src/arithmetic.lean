@@ -125,9 +125,6 @@ lemma Q_bd_peano (C) : 𝐐 ⊆ 𝐈C := by simp[succ_induction_axiom]
 
 instance (C : theory LA) : extend 𝐐 𝐈C := ⟨λ p h, weakening (Q_bd_peano _) h⟩
 
-lemma bd_peano_subset {C D : set (formula LA)} : C ⊆ D → 𝐈C ⊆ 𝐈D := λ h,
-by { simp[succ_induction_axiom,h], }
-
 namespace Q_model
 
 end Q_model
@@ -243,9 +240,9 @@ by { have := (by_axiom robinson.q8) ⊚ t ⊚ u, simp[fal_fn, ex_fn, ←term.pow
 @[simp] lemma add_eq_zero : 𝐐 ⊢ ∀₁ x y, (x + y ≃ 0) ⟶ (x ≃ 0) ⊓ (y ≃ 0) :=
 begin
   refine generalize (generalize _), simp[fal_fn], 
-  have lmm₁ : 𝐐 ⊢ (#0 ≃ 0) ⟶ (#1 + #0 ≃ 0) ⟶ (#1 ≃ 0) ⊓ (#0 ≃ 0),
+  have lmm₁ : 𝐐^2 ⊢ (#0 ≃ 0) ⟶ (#1 + #0 ≃ 0) ⟶ (#1 ≃ 0) ⊓ (#0 ≃ 0),
   { refine (deduction.mp _),
-    simp [Lindenbaum.le_of_provable_imply_0] },
+    simp [Lindenbaum.le_of_provable_imply_0], },
   have lmm₂ : 𝐐 ⊢ (∃₁ y, #1 ≃ Succ y) ⟶ (#1 + #0 ≃ 0) ⟶ (#1 ≃ 0) ⊓ (#0 ≃ 0),
   { refine imply_ex_of_fal_imply (generalize (deduction.mp _)), simp,
     simp [Lindenbaum.le_of_provable_imply_0] },
@@ -300,18 +297,6 @@ begin
   { refine deduction.mp (use 0 _), simp[ι, Herbrand.eq_of_provable_equiv_0] }
 end
 
-@[simp] lemma le_succ_equiv_eq_zero (n : ℕ) : 𝐐 ⊢ ∀₁ x, (x ≼ (n + 1)˙) ⟷ ((x ≃ (n + 1)˙) ⊔ (x ≼ n˙)) :=
-begin
-  refine generalize _, simp[fal_fn],
-  suffices : 𝐐 ⊢ ∐ (#0 + #1 ≃ (n + 1)˙) ⟷ (#0 ≃ (n + 1)˙) ⊔ ∐ (#0 + #1 ≃ n˙),
-  { have lmm := le_iff #0 0, simp at lmm,
-    exact equiv_symm (equiv_trans (equiv_symm this) (equiv_symm lmm)) },
-  simp[iff_equiv], split,
-  { simp[pnf_imply_ex_iff_fal_imply₁], refine generalize _, simp,
-    simp[Lindenbaum.le_of_provable_imply_0] },
-  { refine deduction.mp (use 0 _), simp[ι, Herbrand.eq_of_provable_equiv_0] }
-end
-
 @[simp] lemma Lindenbaum.le_zero_eq_eq_zero (h : Herbrand T i) : (h ≼ 0 : Lindenbaum T i) = (h ≃ 0) :=
 begin
   induction h using fopl.Herbrand.ind_on,
@@ -323,7 +308,6 @@ end
 
 lemma le_numeral_iff (n : ℕ) : 𝐐 ⊢ ∏₁ ((#0 ≼ n˙) ⟷ ⋁ i : fin (n+1), #0 ≃ (i : ℕ)˙) :=
 begin
-  
   induction n with n IH,
   { refine generalize _, simp[Lindenbaum.eq_top_of_provable_0], exact Lindenbaum.le_zero_eq_eq_zero _ _ _ },
   { refine generalize _, simp at IH ⊢, 

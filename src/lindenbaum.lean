@@ -443,6 +443,15 @@ lemma prenex_ex_and_left {l : Lindenbaum T (i+1)} {k : Lindenbaum T i} :
   (∐ l) ⊓ k = ∐ (l ⊓ k.pow) :=
 by rw ← compl_inj_iff; simp[-compl_inj_iff, prenex_ex_neg, prenex_fal_or_left]
 
+lemma or_neg_comm (l : Lindenbaum T i) (k : Lindenbaum T i) :
+  l ⊔ kᶜ = kᶜ ⊔ l := sup_comm
+
+lemma or_fal_comm (l : Lindenbaum T i) (k : Lindenbaum T (i + 1)) :
+  l ⊔ (∏ k) = (∏ k) ⊔ l := sup_comm
+
+lemma or_ex_comm (l : Lindenbaum T i) (k : Lindenbaum T (i + 1)) :
+  l ⊔ (∐ k) = (∐ k) ⊔ l := sup_comm
+
 namespace proper
 
 variables [proper_theory T]
@@ -635,6 +644,9 @@ theorem eq_neg_of_provable_neg_0 {p} : T ⊢ ⁻p ↔ (⟦p⟧ᴸ : Lindenbaum T
 @[simp] lemma by_axiom (t u : term L) : (⟦t⟧ᴴ : Herbrand (T +{t ≃ u}) 0) = ⟦u⟧ᴴ :=
 Herbrand.eq_of_provable_equiv_0.mp (show T +{t ≃ u} ⊢ t ≃ u, by simp)
 
+@[simp] lemma by_axiom' (t u : term L) (h : T ⊢ t ≃ u) : (⟦t⟧ᴴ : Herbrand T 0) = ⟦u⟧ᴴ :=
+Herbrand.eq_of_provable_equiv_0.mp h
+
 end Lindenbaum
 
 lemma Lindenbaum.theory (C : theory L) (i : ℕ) : set (Lindenbaum T i) := {l | ∃ p, p ∈ C ∧ l = ⟦p⟧ᴸ}
@@ -651,6 +663,16 @@ Lindenbaum.eq_of_provable_equiv_0.mpr
 @[simp] lemma fal_imply_equiv_ex_imply (p q : formula L) : T ⊢ ((∏ p) ⟶ q) ⟷ ∐ (p ⟶ q^1) :=
 Lindenbaum.eq_of_provable_equiv_0.mpr
   (by simp[prenex_ex_or_left, prenex_fal_neg, prenex_ex_neg])
+
+@[simp] lemma imply_ex_equiv_ex_imply (p q : formula L) : T ⊢ (p ⟶ ∐ q) ⟷ ∐ (p^1 ⟶ q) :=
+Lindenbaum.eq_of_provable_equiv_0.mpr
+  (by { simp[prenex_ex_or_left, prenex_fal_neg, prenex_ex_neg, or_ex_comm], 
+    rw [show to_quo q ⊔ (pow (to_quo p))ᶜ = (pow (to_quo p))ᶜ ⊔ to_quo q, from sup_comm] })
+
+@[simp] lemma imply_fal_equiv_fal_imply (p q : formula L) : T ⊢ (p ⟶ ∏ q) ⟷ ∏ (p^1 ⟶ q) :=
+Lindenbaum.eq_of_provable_equiv_0.mpr
+  (by { simp[prenex_fal_or_left, prenex_fal_neg, prenex_ex_neg, or_fal_comm], 
+    rw [show to_quo q ⊔ (pow (to_quo p))ᶜ = (pow (to_quo p))ᶜ ⊔ to_quo q, from sup_comm] })
 
 lemma pnf_imply_ex_iff_fal_imply₁ (p q : formula L) : T ⊢ ((∐ p) ⟶ q) ↔ T ⊢ ∏ (p ⟶ q^1) :=
 by { have : T ⊢ ∐ p ⟶ q ⟷ ∏ (p ⟶ q ^ 1), { simp },
@@ -678,10 +700,8 @@ end
   T ⊢ (t₁ ≃ t₂) ⊓ (u₁ ≃ u₂) ⟶ (t₁ + u₁ ≃ t₂ + u₂) :=
 begin
   refine deduction.mp _,
-  simp[eq_of_provable_equiv_0],
-  have : (⟦t₁⟧ᴴ : Herbrand (T +{ (t₁ ≃ t₂) ⊓ (u₁ ≃ u₂) }) 0) = ⟦t₂⟧ᴴ,
-  from eq_of_provable_equiv_0.mp (by simp),
-    have : (⟦u₁⟧ᴴ : Herbrand (T +{ (t₁ ≃ t₂) ⊓ (u₁ ≃ u₂) }) 0) = ⟦u₂⟧ᴴ,
+  simp[eq_of_provable_equiv_0, axiom_and],
+  have : (⟦t₁⟧ᴴ : Herbrand (T +{ (t₁ ≃ t₂) }+{ (u₁ ≃ u₂) }) 0) = ⟦t₂⟧ᴴ,
   from eq_of_provable_equiv_0.mp (by simp),
   simp*
 end

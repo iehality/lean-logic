@@ -202,17 +202,27 @@ by { have : (p₁ ⟷ q₁) ⟶ (p₂ ⟷ q₂) ∈ P, from (iff_equiv_p.mp (equ
 
 @[simp] lemma equiv_refl (p : F) : p ⟷ p ∈ P := by simp[iff_equiv_p]
 
-lemma equiv_symm {p q : F} : p ⟷ q ∈ P → q ⟷ p ∈ P := by { simp[iff_equiv_p], intros, simp* }
+@[symm] lemma equiv_symm {p q : F} : p ⟷ q ∈ P → q ⟷ p ∈ P := by { simp[iff_equiv_p], intros, simp* }
 
-lemma equiv_trans {p q r : F} : p ⟷ q ∈ P → q ⟷ r ∈ P → p ⟷ r ∈ P :=
+@[trans] lemma equiv_trans {p q r : F} : p ⟷ q ∈ P → q ⟷ r ∈ P → p ⟷ r ∈ P :=
 by { simp[iff_equiv_p], intros hpq hqp hqr hrq, exact ⟨impl_trans hpq hqr, impl_trans hrq hqp⟩ }
 
 variables (P)
 
 @[reducible] def equiv (p q : F) : Prop := p ⟷ q ∈ P
 
+variables {P}
+
+@[refl, simp] lemma equiv.refl (p : F) : equiv P p p := equiv_refl p
+
+@[symm] lemma equiv.symm {p q : F} : equiv P p q → equiv P q p := equiv_symm
+
+@[trans] lemma equiv.trans {p q r : F} : equiv P p q → equiv P q r → equiv P p r := equiv_trans
+
+variables (P)
+
 theorem equiv_equivalence : equivalence (equiv P) :=
-⟨equiv_refl, @equiv_symm _ _ _ _ _ _ _ _ _, @equiv_trans _ _ _ _ _ _ _ _ _⟩
+⟨equiv.refl, @equiv.symm _ _ _ _ _ _ _ _ _, @equiv.trans _ _ _ _ _ _ _ _ _⟩
 
 variables {P}
 
@@ -592,6 +602,10 @@ neg_hyp (deduction.mp (explosion h₁ h₂))
 variables (T)
 
 @[reducible] def lindenbaum := lindenbaum ((⊢) T)
+
+notation p ` ≈[`:50 T :50 `] `:0 q:50 := classical_logic.equiv ((⊢) T) p q
+
+#check ⊤ ≈[T] ⊥
 
 namespace lindenbaum
 

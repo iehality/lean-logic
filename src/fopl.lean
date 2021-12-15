@@ -65,7 +65,7 @@ instance [has_le_symbol L] : has_preceq (term L) (formula L) := ⟨λ t u, formu
 
 instance [has_mem_symbol L] : has_elem (term L) (formula L) := ⟨λ t u, formula.app has_mem_symbol.mem ‹t, u›⟩
 
-attribute [pattern]  has_eq.eq has_negation.neg has_arrow.arrow has_univ_quantifier.univ
+attribute [pattern]  has_eq.eq has_negation.neg has_arrow.arrow has_univ_quantifier.univ has_exists_quantifier.ex
 
 instance : has_arrow (formula L) := ⟨formula.imply⟩
 
@@ -515,6 +515,12 @@ by simp[pow_eq]; refl
 lemma fal_pow (p : formula L) (i : ℕ) : (∏₁ p)^i = ∏ p.rew (#0 ⌢ λ x, #(x + i + 1)) :=
 by simp[formula.pow_eq, rewriting_sf_itr.pow_eq]
 
+lemma fal_pow_discard (p : formula L) : (∏₁ p)^1 = ∏ p.rew ι-{1} :=
+by {simp[formula.pow_eq, rewriting_sf_itr.pow_eq, discard], congr, funext x, cases x; simp }
+
+lemma ex_pow_discard (p : formula L) : (∐₁ p)^1 = ∐ p.rew ι-{1} :=
+by {simp[formula.pow_eq, rewriting_sf_itr.pow_eq, discard], congr, funext x, cases x; simp }
+
 lemma nfal_pow (p : formula L) (n i : ℕ) :
   (nfal p n)^i = nfal (p.rew (λ x, if x < n then #x else #(x + i))) n :=
 by { simp[formula.pow_eq, rewriting_sf_itr.pow_eq'], congr, funext x,
@@ -593,6 +599,17 @@ lemma total_rew_inv :
 @[simp] lemma op.and (p q : formula L) : (p ⊓ q).is_open = p.is_open && q.is_open := rfl
 
 @[simp] lemma op.or (p q : formula L) : (p ⊔ q).is_open = p.is_open && q.is_open := rfl
+
+@[simp] def is_open_rew : ∀ {p : formula L} {s}, (p.rew s).is_open ↔ p.is_open
+| (❴p❵ v)  s := by simp
+| (t ≃₁ u) s := by simp
+| (p ⟶ q) s := by simp[@is_open_rew p s, @is_open_rew q s]
+| (⁻p)     s := by simp[@is_open_rew p s]
+| (∏₁ p)  s := by simp
+
+@[simp] def is_open_pow : ∀ {p : formula L} {i : ℕ}, (p^i).is_open ↔ p.is_open :=
+by simp[pow_eq]
+
 
 @[simp] lemma nfal_arity : ∀ (n) (p : formula L), (nfal p n).arity = p.arity - n
 | 0     p := by simp[formula.arity]

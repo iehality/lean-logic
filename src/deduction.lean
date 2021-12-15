@@ -121,7 +121,7 @@ lemma generalize {p : formula L} (h : ⤊T ⊢ p) : T ⊢ ∏ p := provable.GE h
 @[simp] lemma predicate_ext {n} (r : L.pr n) : T ⊢ eq_axiom5 r := provable.e5
 
 lemma GE_cl {T : theory L} [closed_theory T] {p} (h : T ⊢ p) : T ⊢ ∏ p :=
-by { apply provable.GE, simp[h], exact h }
+by { apply provable.GE, simp[closed_theory_sf_eq, h], exact h }
 
 lemma GE_itr : ∀ {n p}, T^n ⊢ p → T ⊢ ∏[n] p
 | 0     p h := by simp* at*
@@ -457,7 +457,7 @@ begin
 end
 
 lemma pow_of_cl [cl : closed_theory T] {p : formula L} {i : ℕ} : T ⊢ p → T^i ⊢ p :=
-by simp
+by simp[closed_theory_pow_eq]
 
 lemma pp_prove_rew {n} (pp : proper_at n T) :
   ∀ {p : formula L}, T ⊢ p → ∀ s, T ⊢ p.rew (s^n) :=

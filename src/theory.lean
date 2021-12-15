@@ -114,8 +114,7 @@ lemma closed_proper {T : theory L} [cl : closed_theory T] : proper_at 0 T :=
 by { ext p, refine ⟨λ hyp, _, λ hyp, _⟩, rcases hyp with ⟨p, hyp_p, rfl⟩,
      simp[closed_theory.cl hyp_p, hyp_p],
      rw ← (formula.sentence_sf (closed_theory.cl hyp)), refine ⟨p, hyp, rfl⟩ }
-
-@[simp] lemma closed_pow_eq (T : theory L) [cl : closed_theory T] (i : ℕ) : T^i = T :=
+@[simp] lemma closed_theory_pow_eq (T : theory L) [cl : closed_theory T] (i : ℕ) : T^i = T :=
 by { ext p, simp[theory_sf_itr_eq], refine ⟨λ hyp, _, λ hyp, _⟩, rcases hyp with ⟨p, hyp_p, rfl⟩,
      simp[closed_theory.cl hyp_p, hyp_p],
      rw ← (formula.sentence_sf (closed_theory.cl hyp)), refine ⟨p, hyp, rfl⟩ }
