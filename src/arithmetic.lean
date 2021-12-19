@@ -13,7 +13,6 @@ inductive langf : ℕ → Type
 
 inductive langp : ℕ → Type
 | le : langp 2
-notation `*≤` := langp.le
 
 @[reducible] def LA : language := ⟨langf, langp⟩
 
@@ -22,6 +21,22 @@ instance : has_succ_symbol LA := ⟨langf.succ⟩
 instance : has_add_symbol LA := ⟨langf.add⟩
 instance : has_mul_symbol LA := ⟨langf.mul⟩
 instance : has_le_symbol LA := ⟨langp.le⟩
+
+def LA_fn_to_string : ∀ n, LA.fn n → string
+| 0 := λ c, by { exact "0" }
+| 1 := λ c, by { exact "S" }
+| 2 := λ c, by { cases c, { exact " + " }, { exact " * " } }
+| (n + 3) := λ c, by cases c
+
+instance : ∀ n, has_to_string (LA.fn n) := λ n, ⟨LA_fn_to_string n⟩
+
+def LA_pr_to_string : ∀ n, LA.pr n → string
+| 0 := λ c, by cases c
+| 1 := λ c, by cases c
+| 2 := λ c, by { cases c, exact " ≤ " }
+| (n + 3) := λ c, by cases c
+
+instance : ∀ n, has_to_string (LA.pr n) := λ n, ⟨LA_pr_to_string n⟩
 
 local infix ` ≃₁ `:50 := ((≃) : term LA → term LA → formula LA)
 local prefix `#`:max := @term.var LA

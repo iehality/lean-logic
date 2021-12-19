@@ -7,10 +7,6 @@ variables {L : language.{u}} (T : theory L) (i : ℕ)
 
 local infix ` ≃₁ `:80 := ((≃) : term L → term L → formula L)
 
-local prefix `∏₁ `:64 := (has_univ_quantifier.univ : formula L → formula L)
-
-local prefix `∐₁ `:64 := (has_exists_quantifier.ex : formula L → formula L)
-
 notation t` ≃[`:50 T :50`] `:0 u:50 := term.equiv T t u
 
 @[symm] lemma term.equiv_refl (T : theory L) (t : term L) : t ≃[T] t := by simp[term.equiv]
@@ -317,21 +313,21 @@ def univ : Lindenbaum T (i+1) → Lindenbaum T i :=
 λ p, classical_logic.lindenbaum.lift_on p (λ p, (⟦∏ p⟧ᴸ : Lindenbaum T i)) $
 λ p₁ p₂ hyp, by simp at hyp ⊢; exact equiv_univ_of_equiv hyp
 
-instance : has_univ_quantifier (Lindenbaum T (i + 1)) (Lindenbaum T i) := ⟨univ⟩
+instance : has_univ_quantifier' (Lindenbaum T (i + 1)) (Lindenbaum T i) := ⟨univ⟩
 
-@[simp] lemma univ_eq (p : formula L) : ⟦∏ p⟧ᴸ = (∏ (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) := rfl
+@[simp] lemma univ_eq (p : formula L) : ⟦∏ p⟧ᴸ = (∏' (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) := rfl
 
-lemma univ_def (p : formula L) : (∏ (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⟦∏ p⟧ᴸ := rfl
+lemma univ_def (p : formula L) : (∏' (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⟦∏ p⟧ᴸ := rfl
 
 def exist : Lindenbaum T (i+1) → Lindenbaum T i :=
 λ p, classical_logic.lindenbaum.lift_on p (λ p, (⟦∐ p⟧ᴸ : Lindenbaum T i)) $
 λ p₁ p₂ hyp, by simp at hyp ⊢; exact equiv_ex_of_equiv hyp
 
-instance : has_exists_quantifier (Lindenbaum T (i + 1)) (Lindenbaum T i) := ⟨exist⟩
+instance : has_exists_quantifier' (Lindenbaum T (i + 1)) (Lindenbaum T i) := ⟨exist⟩
 
-@[simp] lemma exist_eq (p : formula L) : ⟦∐ p⟧ᴸ = (∐ (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) := rfl
+@[simp] lemma exist_eq (p : formula L) : ⟦∐ p⟧ᴸ = (∐' (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) := rfl
 
-lemma exist_def (p : formula L) : (∐ (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⟦∐ p⟧ᴸ := rfl
+lemma exist_def (p : formula L) : (∐' (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⟦∐ p⟧ᴸ := rfl
 
 @[simp] lemma equal_refl {h : Herbrand T i}  : h ≃ᴸ h = ⊤ :=
 by { induction h using fopl.Herbrand.ind_on;
@@ -374,22 +370,22 @@ by { induction l using classical_logic.lindenbaum.ind_on,
      induction m using classical_logic.lindenbaum.ind_on,
      simp[inf_def, pow_def, -pow_eq, -and_eq] }
 
-@[simp] lemma prod_top : (∏ (⊤ : Lindenbaum T (i+1)) : Lindenbaum T i) = ⊤ :=
+@[simp] lemma prod_top : (∏' (⊤ : Lindenbaum T (i+1)) : Lindenbaum T i) = ⊤ :=
 by { simp only [←top_eq, ←univ_eq],
      simp[-top_eq, -univ_eq, axiomatic_classical_logic'.iff_equiv],
      apply provable.generalize, simp }
 
-lemma prenex_ex_neg (l : Lindenbaum T (i+1)) : (∐ l : Lindenbaum T i)ᶜ = ∏ lᶜ :=
+lemma prenex_ex_neg (l : Lindenbaum T (i+1)) : (∐' l : Lindenbaum T i)ᶜ = ∏' lᶜ :=
 by { induction l using classical_logic.lindenbaum.ind_on,
      simp only [neg_def, exist_def, univ_def],
      simp[-neg_eq, -exist_eq, -univ_eq, -axiomatic_classical_logic'.iff_equiv,
           has_exists_quantifier.ex, formula.ex] }
 
-lemma prenex_fal_neg (l : Lindenbaum T (i+1)) : (∏ l : Lindenbaum T i)ᶜ = ∐ lᶜ :=
+lemma prenex_fal_neg (l : Lindenbaum T (i+1)) : (∏' l : Lindenbaum T i)ᶜ = ∐' lᶜ :=
 by { have := prenex_ex_neg lᶜ, simp[-prenex_ex_neg] at this, simp[←this] }
 
 lemma prenex_fal_or_left {l : Lindenbaum T (i+1)} {k : Lindenbaum T i} :
-  (∏ l) ⊔ k = ∏ l ⊔ k.pow :=
+  (∏' l) ⊔ k = ∏' l ⊔ k.pow :=
 begin
   induction l using classical_logic.lindenbaum.ind_on with p,
   induction k using classical_logic.lindenbaum.ind_on with q,
@@ -413,12 +409,12 @@ begin
 end
 
 lemma prenex_fal_or_right {l : Lindenbaum T i} {k : Lindenbaum T (i+1)} :
-  l ⊔ ∏ k = ∏ (l.pow ⊔ k) :=
-by simp[show l ⊔ (∏ k) = (∏ k) ⊔ l, from sup_comm, prenex_fal_or_left,
+  l ⊔ ∏' k = ∏' (l.pow ⊔ k) :=
+by simp[show l ⊔ (∏' k) = (∏' k) ⊔ l, from sup_comm, prenex_fal_or_left,
         show k ⊔ l.pow = l.pow ⊔ k, from sup_comm]
 
 lemma prenex_fal_and_left {l : Lindenbaum T (i+1)} {k : Lindenbaum T i} :
-  (∏ l) ⊓ k = ∏ l ⊓ k.pow :=
+  (∏' l) ⊓ k = ∏' l ⊓ k.pow :=
 begin
   induction l using classical_logic.lindenbaum.ind_on,
   induction k using classical_logic.lindenbaum.ind_on,
@@ -436,21 +432,21 @@ begin
 end
 
 lemma prenex_ex_or_left {l : Lindenbaum T (i+1)} {k : Lindenbaum T i} :
-  (∐ l) ⊔ k = ∐ (l ⊔ k.pow) :=
+  (∐' l) ⊔ k = ∐' (l ⊔ k.pow) :=
 by rw ← compl_inj_iff; simp[-compl_inj_iff, prenex_ex_neg, prenex_fal_and_left]
 
 lemma prenex_ex_and_left {l : Lindenbaum T (i+1)} {k : Lindenbaum T i} :
-  (∐ l) ⊓ k = ∐ (l ⊓ k.pow) :=
+  (∐' l) ⊓ k = ∐' (l ⊓ k.pow) :=
 by rw ← compl_inj_iff; simp[-compl_inj_iff, prenex_ex_neg, prenex_fal_or_left]
 
 lemma or_neg_comm (l : Lindenbaum T i) (k : Lindenbaum T i) :
   l ⊔ kᶜ = kᶜ ⊔ l := sup_comm
 
 lemma or_fal_comm (l : Lindenbaum T i) (k : Lindenbaum T (i + 1)) :
-  l ⊔ (∏ k) = (∏ k) ⊔ l := sup_comm
+  l ⊔ (∏' k) = (∏' k) ⊔ l := sup_comm
 
 lemma or_ex_comm (l : Lindenbaum T i) (k : Lindenbaum T (i + 1)) :
-  l ⊔ (∐ k) = (∐ k) ⊔ l := sup_comm
+  l ⊔ (∐' k) = (∐' k) ⊔ l := sup_comm
 
 namespace proper
 
@@ -473,7 +469,7 @@ def subst_sf_L : Herbrand T i → Lindenbaum T (i+1) → Lindenbaum T i :=
   { refine hyp } }
 infixr ` ⊳ `:90  := subst_sf_L
 
-lemma fal_le_subst (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : ∏ (♯0 ⊳ l.pow) ≤ h ⊳ l :=
+lemma fal_le_subst (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : ∏' (♯0 ⊳ l.pow) ≤ h ⊳ l :=
 begin
   induction l using classical_logic.lindenbaum.ind_on with p, 
   induction h using fopl.Herbrand.ind_on with t,
@@ -488,7 +484,7 @@ begin
   exact this,
 end
 
-lemma fal_le_subst0 (l : Lindenbaum T 1) (h) : ∏ l ≤ (h ⊳ l) :=
+lemma fal_le_subst0 (l : Lindenbaum T 1) (h) : ∏' l ≤ (h ⊳ l) :=
 begin
   induction l using classical_logic.lindenbaum.ind_on with p, 
   induction h using fopl.Herbrand.ind_on with t, 
@@ -496,7 +492,7 @@ begin
   simp[-univ_eq, subst_sf_L, classical_logic.lindenbaum.le_def],
 end
 
-lemma subst_sf_L_le_ex (l : Lindenbaum T 1) (h) : h ⊳ l ≤ ∐ l :=
+lemma subst_sf_L_le_ex (l : Lindenbaum T 1) (h) : h ⊳ l ≤ ∐' l :=
 begin
   induction l using classical_logic.lindenbaum.ind_on, 
   induction h using fopl.Herbrand.ind_on,
@@ -507,7 +503,7 @@ begin
 end
 
 lemma le_fal_le_fal {l m : Lindenbaum T (i + 1)} :
-  l ≤ m → (∏ l : Lindenbaum T i) ≤ ∏ m :=
+  l ≤ m → (∏' l : Lindenbaum T i) ≤ ∏' m :=
 begin
   induction l using classical_logic.lindenbaum.ind_on, 
   induction m using classical_logic.lindenbaum.ind_on, 
@@ -515,14 +511,14 @@ begin
   { intros h, refine provable.q2.MP (GE h) },
 end
 
-@[simp] lemma dummy_fal (l : Lindenbaum T i) : ∏ pow l = l :=
+@[simp] lemma dummy_fal (l : Lindenbaum T i) : ∏' pow l = l :=
 by { symmetry,
      induction l using classical_logic.lindenbaum.ind_on,
      simp only [←univ_eq, ←pow_eq], simp[-univ_eq, -pow_eq],
      exact @provable.dummy_fal_quantifir _ (T^i) l }
 
 lemma pow_le_le_fal {l : Lindenbaum T i} {m : Lindenbaum T (i + 1)} :
-  l.pow ≤ m → l ≤ ∏ m :=
+  l.pow ≤ m → l ≤ ∏' m :=
 by { have := @le_fal_le_fal _ _ _ _ l.pow m, simp at this, exact this }
 
 @[simp] lemma subst_sf_L_compl (h : Herbrand T i) (l : Lindenbaum T (i+1)) :
@@ -551,13 +547,13 @@ by { induction h₁ using fopl.Herbrand.ind_on, induction h₂ using fopl.Herbra
      simp[-equal_eq, subst_sf_L, Herbrand.proper.subst_sf_H, Herbrand.proper.subst_sf_H_aux, equal_def] }
 
 @[simp] lemma subst_sf_L_fal (h : Herbrand T i) (l : Lindenbaum T (i+2)) :
-  h ⊳ ∏ l = ∏ (h.pow ⊳ l) :=
+  h ⊳ ∏' l = ∏' (h.pow ⊳ l) :=
 by { induction l using classical_logic.lindenbaum.ind_on,
      induction h using fopl.Herbrand.ind_on,
      simp[subst_sf_L, univ_def, Herbrand.pow_def, -univ_eq, -Herbrand.pow_eq, subst_pow] }
 
 @[simp] lemma subst_sf_L_ex (h : Herbrand T i) (l : Lindenbaum T (i+2)) :
-  h ⊳ ∐ l = ∐ (h.pow ⊳ l) :=
+  h ⊳ ∐' l = ∐' (h.pow ⊳ l) :=
 by { induction l using classical_logic.lindenbaum.ind_on,
      induction h using fopl.Herbrand.ind_on,
      simp[subst_sf_L, exist_def, Herbrand.pow_def, -exist_eq, -Herbrand.pow_eq, subst_pow] }
@@ -566,15 +562,15 @@ lemma subst_sf_L_sentence (h : Herbrand T i) {p : formula L} (a : sentence p) :
   h ⊳ (⟦p⟧ᴸ : Lindenbaum T (i+1)) = ⟦p⟧ᴸ :=
 by { induction h using fopl.Herbrand.ind_on, simp[subst_sf_L, Lindenbaum.of_eq_of, a] }
 
-lemma ex_subst_le (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : h ⊳ l ≤ ∐ (♯0 ⊳ l.pow) :=
+lemma ex_subst_le (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : h ⊳ l ≤ ∐' (♯0 ⊳ l.pow) :=
 begin
-  suffices : (∐ (♯0 ⊳ pow l))ᶜ ≤ (h ⊳ l)ᶜ,
+  suffices : (∐' (♯0 ⊳ pow l))ᶜ ≤ (h ⊳ l)ᶜ,
   { exact compl_le_compl_iff_le.mp this },
   simp[prenex_ex_neg, -compl_le_compl_iff_le], 
   have := fal_le_subst lᶜ h, simp at this, exact this
 end
 
-@[simp] lemma pow_fal1 (l : Lindenbaum T 1) : pow (∏ l : Lindenbaum T 0) = ∏ (♯0 ⊳ pow (pow l)) :=
+@[simp] lemma pow_fal1 (l : Lindenbaum T 1) : pow (∏' l : Lindenbaum T 0) = ∏' (♯0 ⊳ pow (pow l)) :=
 by { induction l using classical_logic.lindenbaum.ind_on, 
      simp[univ_def, pow_def, var_def, -univ_eq, -pow_eq, -var_eq, subst_sf_L,
           formula.pow_eq, formula.nested_rew, rewriting_sf_itr.pow_eq'],
@@ -595,11 +591,11 @@ by { induction l using classical_logic.lindenbaum.ind_on,
      simp[top_def, -top_eq, show ⁻l ⊔ m = ⁻⁻l ⟶ m, by refl, axiomatic_classical_logic'.iff_equiv,
           neg_def, -neg_eq, sup_def, -or_eq, lindenbaum.le_def], }
 
-@[simp] lemma fal_top_top : (∏ (⊤ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⊤ :=
+@[simp] lemma fal_top_top : (∏' (⊤ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⊤ :=
 by { simp[top_def, -top_eq, axiomatic_classical_logic'.iff_equiv, univ_def, -univ_eq],
      refine generalize (by simp) }
 
-@[simp] lemma ex_top_top : (∐ (⊤ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⊤ :=
+@[simp] lemma ex_top_top : (∐' (⊤ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⊤ :=
 by { simp[top_def, -top_eq, axiomatic_classical_logic'.iff_equiv, exist_def, -exist_eq],
      refine provable.use #0 (by simp) }
 
