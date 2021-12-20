@@ -1,4 +1,4 @@
-import deduction model data.equiv.encodable.basic
+import deduction pnf data.equiv.encodable.basic arithmetic
 open encodable
 
 universes u
@@ -6,21 +6,133 @@ universes u
 namespace fopl
 variables {L : language.{u}} 
 
-inductive language_fn (L : language.{u}) : ℕ → Type u
-| sk : ∀ (p : formula L), language_fn p.arity
-| old : ∀ {n}, L.fn n → language_fn n
+local notation `𝚷` := bool.tt
 
-def language.skolemize (L : language) : language := ⟨language_fn L, L.pr⟩
+local notation `𝚺` := bool.ff
 
-@[simp] lemma skolemize_fn : L.skolemize.fn = language_fn L := rfl
+namespace language
 
-def vecterm.corresp : ∀ {n}, vecterm L n → vecterm L.skolemize n
-| _ (vecterm.cons a v) := vecterm.cons a.corresp v.corresp
-| _ (#n)               := #n
-| _ (vecterm.const c)  := vecterm.const (language_fn.old c)
-| _ (vecterm.app f v)  := vecterm.app (language_fn.old f) v.corresp
+inductive skolemize.char (L : language.{u}) : ℕ → Type u
+| sk : ∀ (p : pnf L) (n : ℕ), skolemize.char n
 
-instance (n) : has_coe (vecterm L n) (vecterm L.skolemize n) := ⟨vecterm.corresp⟩
+def skolemize (L : language) : language := L + ⟨skolemize.char L, L.pr⟩
+
+namespace skolemize
+
+instance : translation L L.skolemize := language.has_add.add.fopl.translation
+
+@[simp] lemma iff_open (p : formula L) : (tr[p] : formula L.skolemize).is_open ↔ p.is_open :=
+language.add_open p
+
+@[simp] lemma translation_eq : ∀ (Q : list bool) (p : formula L) (h),
+  tr[(⟨Q, p, h⟩ : pnf L).to_formula] = (⟨Q, tr[p], by simp[h]⟩ : pnf L.skolemize).to_formula
+| []       p h := by simp
+| (𝚷 :: Q) p h := by simp[translation_eq Q p h]
+| (𝚺 :: Q) p h := by simp[translation_eq Q p h]
+
+def Sk (p : pnf L) (n : ℕ) : finitary (term L.skolemize) n → term L.skolemize :=
+term.app (sum.inr $ skolemize.char.sk p n)
+
+@[simp] lemma skolemize.skolem_fn_rew (p : pnf L) (n) (v : finitary (term L.skolemize) n) (s : ℕ → term L.skolemize) :
+  term.rew s (Sk p n v) = Sk p n (λ i, term.rew s (v i)) :=
+by simp[Sk]
+
+@[simp] def skseq (p : pnf L) : fin (p.rank + 1) → ℕ → term L.skolemize
+| ⟨0,     _⟩ := ι
+| ⟨n + 1, h⟩ :=
+    match p.quantifier.nth_le n (by simp at h; exact h) with
+    | 𝚷 := (skseq ⟨n, by { simp at h ⊢; exact nat.lt.step h }⟩)^1
+    | 𝚺 := Sk p n (λ i, skseq ⟨n, by { simp at h ⊢; exact nat.lt.step h }⟩ i) ⌢ 
+    skseq ⟨n, by { simp at h ⊢; exact nat.lt.step h }⟩
+    end
+
+/-
+@[simp] def skseq (p : pnf L) : list bool → ℕ → ℕ → term L.skolemize
+| Q        0       := ι
+| []       (n + 1) := ι
+| (𝚷 :: Q) (n + 1) := (skseq Q n)^1
+| (𝚺 :: Q) (n + 1) := Sk p (p.rank - Q.length - 1) (λ i, skseq Q n i) ⌢ skseq Q n
+-/
+
+@[simp] def skolemize_core : Π (p : pnf L) (n : fin (p.rank + 1)), pnf L.skolemize
+| ⟨Q, p, h⟩ n := ⟨Q.drop n, tr[p], by simp[h]⟩
+
+def skolemize (p : pnf L) (n : fin (p.rank + 1)) : pnf L.skolemize :=
+(skolemize_core p n).rew (skseq p n)
+
+@[simp] lemma skseq_zero (p : pnf L) : skseq p 0 = ι :=
+by simp [show (0 : fin (p.rank + 1)) = ⟨0, by simp⟩, from rfl, -fin.mk_zero]
+
+@[simp] lemma skolemize_zero : ∀ (p : pnf L), (skolemize p 0).to_formula = tr[p.to_formula]
+| ⟨Q, p, h⟩ := by simp[skolemize, pnf.to_formula, skseq]
+
+lemma skseq_succ_of_pi : ∀ (p : pnf L) (s : fin p.rank)
+  (eq_pi : p.quantifier.nth_le s s.property = 𝚷),
+  skseq p s.succ = (skseq p (fin.cast_succ s))^1
+| ⟨𝚷 :: Q, p, h⟩ ⟨0,     lt⟩ eq_pi := by simp
+| ⟨𝚺 :: Q, p, h⟩ ⟨0,     lt⟩ eq_pi := by { simp at eq_pi, contradiction }
+| ⟨𝚷 :: Q, p, h⟩ ⟨s + 1, lt⟩ eq_pi := by { simp at eq_pi ⊢, simp[eq_pi] }
+| ⟨𝚺 :: Q, p, h⟩ ⟨s + 1, lt⟩ eq_pi := by { simp at eq_pi ⊢, simp[eq_pi] }
+
+lemma skseq_succ_of_sigma : ∀ (p : pnf L) (s : fin p.rank)
+  (eq_sigma : p.quantifier.nth_le s s.property = 𝚺),
+  skseq p s.succ = (Sk p s (λ i, skseq p (fin.cast_succ s) i)) ⌢ skseq p (fin.cast_succ s)
+| ⟨𝚷 :: Q, p, h⟩ ⟨0,     lt⟩ eq_sigma := by { simp at eq_sigma, contradiction }
+| ⟨𝚺 :: Q, p, h⟩ ⟨0,     lt⟩ eq_sigma := by { simp, refl }
+| ⟨𝚷 :: Q, p, h⟩ ⟨s + 1, lt⟩ eq_sigma := by { simp at eq_sigma ⊢, simp[eq_sigma], refl }
+| ⟨𝚺 :: Q, p, h⟩ ⟨s + 1, lt⟩ eq_sigma := by { simp at eq_sigma ⊢, simp[eq_sigma], refl }
+
+lemma skolemize_succ_of_pi : ∀ (p : pnf L)
+  (s : fin p.rank) (eq_pi : p.quantifier.nth_le s s.property = 𝚷),
+  ∏ skolemize p s.succ = skolemize p s
+| ⟨Q, p, h⟩ s eq_pi :=
+begin
+  have : list.drop s Q = 𝚷 :: list.drop (s + 1) Q,
+  { rw [←eq_pi], from list.drop_eq_nth_le_cons s.property },
+  simp [skolemize, this, pnf.rew_fal, skseq_succ_of_pi ⟨Q, p, h⟩ s eq_pi]
+end
+
+lemma skolemize_succ_of_sigma : ∀ (p : pnf L)
+  (s : fin p.rank) (eq_sigma : p.quantifier.nth_le s s.property = 𝚺),
+  ∃ p' : pnf L.skolemize, skolemize p s = ∐ p' ∧
+    skolemize p s.succ = p'.rew ι[0 ⇝ Sk p s (λ i, skseq p (fin.cast_succ s) i)]
+| ⟨Q, p, h⟩ s eq_sigma :=
+begin
+  have : list.drop s Q = 𝚺 :: list.drop (s + 1) Q,
+  { rw [←eq_sigma], from list.drop_eq_nth_le_cons s.property },
+  simp [skolemize, this, pnf.rew_ex, pnf.nested_rew, skseq_succ_of_sigma ⟨Q, p, h⟩ s eq_sigma]
+end
+
+
+instance [∀ n, has_to_string (L.fn n)] : ∀ n, has_to_string (L.skolemize.fn n) := λ n,
+⟨λ c, by { cases c, { exact has_to_string.to_string c }, { exact "Sk[" ++ has_to_string.to_string n ++ "]" } }⟩
+
+instance [∀ n, has_to_string (L.pr n)] : ∀ n, has_to_string (L.skolemize.pr n) := λ n,
+⟨λ c, by { cases c, { exact has_to_string.to_string c }, { exact "" } }⟩
+
+def skolem_axiom (p : pnf L) (s : fin (p.rank + 1)) : formula L.skolemize :=
+(skolemize_core p s : formula L.skolemize) ⟶ skolemize_core p s.succ
+
+end skolemize
+
+end language
+
+open language.skolemize
+
+def formula.skolemize (p : formula L) : formula L.skolemize := skolemize p.to_pnf 0
+
+def Skolemize (T : theory L) : theory L.skolemize:= formula.skolemize '' T
+
+open arithmetic
+
+#eval to_string (skolemize (∀₁ x, ∃₁ y, ∀₁ z, ∃₁ v, (x ≃ 0) ⟶ (y ≃ 0) ⟶ (z ≃ 0) ⟶ (v ≃ 0)
+  : formula LA).to_pnf (fin.last _)).to_formula
+
+def term.skolem_corresp : term L → term L.skolemize
+| (#n) := #n
+| (term.app f v) := (term.app (sum.inl f) (λ i, (v i).skolem_corresp))
+
+
 
 def formula.corresp : formula L → formula L.skolemize
 | (formula.const c) := formula.const c

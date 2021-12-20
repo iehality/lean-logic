@@ -320,6 +320,49 @@ zero_eq f
 instance [primcodable α] (n : ℕ) : primcodable (finitary α n) :=
 primcodable.fin_arrow
 
+instance [has_to_string α] (n) : has_to_string (finitary α n) :=
+⟨λ f, by { exact "(" ++ list.to_string_aux tt (of_fn f).val ++ ")" }⟩
+
+@[simp, reducible] def to_total [inhabited α] {n} (f : finitary α n) : ℕ → α :=
+λ x, if h : x < n then f ⟨x, h⟩ else default _
+
+@[simp, reducible] def of_total {n} (f : ℕ → α) : finitary α n := λ i, f i
+
+@[simp] def of_option : Π {n}, finitary (option α) n → option (finitary α n)
+| 0       f := some finitary.nil
+| (n + 1) f := (f 0).bind (λ a, (@of_option n f.tail).map (λ v, a ::ᶠ v))
+
+@[simp] lemma of_option_some : ∀ {n} (v : finitary α n), of_option (λ i, some (v i)) = some v
+| 0       v := by { simp, ext }
+| (n + 1) v := by { simp[@of_option_some n, tail], refine app_0_cons_tail_refl _ }
+
+lemma of_option_eq_some_iff : ∀ {n} {v : finitary (option α) n} {v'},
+  of_option v = some v' ↔ ∀ i, v i = some (v' i)
+| 0       v v' := by { simp[show v' = nil, by ext],
+    intros i, have := i.property, exfalso, exact i.val.not_lt_zero this }
+| (n + 1) v v' := by { simp[@of_option_eq_some_iff _ v.tail], split,
+    { rintros ⟨a, v0_eq, v', h, rfl⟩ ⟨i, i_lt⟩, rw ←app_0_cons_tail_refl v, 
+      cases i; simp* },
+    { intros h, refine ⟨v' 0, by simp[h], v'.tail, by simp[tail, h], by simp[app_0_cons_tail_refl]⟩ } }
+
+lemma of_option_eq_none_iff : ∀ {n} (v : finitary (option α) n),
+  of_option v = none ↔ ∃ i, v i = none
+| 0       v := by { simp, intros x, have := x.property, exfalso, exact x.val.not_lt_zero this }
+| (n + 1) v := by { 
+    have IH := of_option_eq_none_iff v.tail,
+    simp, intros,
+    split,
+    { intros h, 
+      cases C₁ : (v 0) with a, { refine ⟨0, C₁⟩ },
+      cases C₂ : v.tail.of_option with v', { rcases IH.mp C₂ with ⟨i, h⟩, refine ⟨i.succ, h⟩ },
+      have := h (a ::ᶠ v') a C₁ v' C₂ rfl, contradiction },
+    { rintros ⟨⟨i, i_lt⟩, eqn⟩ w a eqn_a w' eqn_w' rfl, 
+      cases i,
+      { simp[eqn_a] at eqn, contradiction },
+      { have :v.tail ⟨i, _⟩ = some (w' ⟨i, _⟩), 
+        from of_option_eq_some_iff.mp eqn_w' ⟨i, (by { simp[←nat.add_one] at i_lt, exact i_lt })⟩,
+        simp[tail, eqn] at this, contradiction } } }
+
 end finitary
 
 namespace encodable
@@ -527,13 +570,21 @@ infixr ` ⟶ `:60 := has_arrow.arrow
 
 @[notation_class] class has_lrarrow (α : Sort*) := (lrarrow : α → α → α)
 
-@[notation_class] class has_univ_quantifier (α : Sort*) (β : Sort*):= (univ : α → β)
+@[notation_class] class has_univ_quantifier (α : Sort*) := (univ : α → α)
 
 prefix `∏ `:64 := has_univ_quantifier.univ
 
-@[notation_class] class has_exists_quantifier (α : Sort*) (β : Sort*) := (ex : α → β)
+@[notation_class] class has_exists_quantifier (α : Sort*) := (ex : α → α)
 
 prefix `∐ `:64 := has_exists_quantifier.ex
+
+@[notation_class] class has_univ_quantifier' (α : Sort*) (β : Sort*):= (univ : α → β)
+
+prefix `∏' `:64 := has_univ_quantifier'.univ
+
+@[notation_class] class has_exists_quantifier' (α : Sort*) (β : Sort*) := (ex : α → β)
+
+prefix `∐' `:64 := has_exists_quantifier'.ex
 
 @[notation_class] class has_turnstile (α : Sort*) := (turnstile : set α → α → Prop)
 
