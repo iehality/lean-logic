@@ -7,7 +7,6 @@ namespace fopl
 variables {L : language.{u}} {I : Type u} [inhabited I] (F : ultrafilter I) {𝔄 : I → model L}
 
 local infix ` ≃₁ `:80 := ((≃) : term L → term L → formula L)
-local prefix `∏₁ `:64 := (has_univ_quantifier.univ : formula L → formula L)
 
 def uequiv : (Π i, |𝔄 i|) → (Π i, |𝔄 i|) → Prop :=
 λ u₁ u₂, {i | u₁ i = u₂ i} ∈ F
@@ -168,6 +167,7 @@ by simp[models_pr_iff_lmm, model_pr_eq, product_pr]
 -- Łoś's theorem
 theorem fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|),
   ℿ 𝔄 ⫽ F ⊧[λ n, ⟦λ i, e i n⟧*] p ↔ {i | 𝔄 i ⊧[e i] p} ∈ F
+| ⊤                 _ := by { simp, exact F.univ_sets }
 | (formula.app p v) e := models_pr_iff p _ _
 | (t₁ ≃₁ t₂)      e := by simp[models_pr_iff_lmm]; refl
 | (p ⟶ q)       e := by { simp[fundamental_param p, fundamental_param q],
@@ -185,7 +185,7 @@ theorem fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|),
       { intros i hi, simp at*, refine hi.2 hi.1 },
       exact filter.mp_mem h₂ h₁ } }
 | (⁻p)          e := by { simp[fundamental_param p], exact ultrafilter.eventually_not.symm }
-| (∏₁ p)          e := by { simp, 
+| (∏ p)          e := by { simp, 
     calc
       (∀ u, ℿ 𝔄 ⫽ F ⊧[u ⌢ λ n, ⟦λ i, e i n⟧*] p)
           ↔ (∀ (u : Π i, |𝔄 i|), ℿ 𝔄 ⫽ F ⊧[λ n, ⟦λ i, (λ i, (u i) ⌢ (e i)) i n⟧*] p) :

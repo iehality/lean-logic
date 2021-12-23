@@ -111,6 +111,7 @@ def formula_to_string [has_to_string (term L)] [∀ n, has_to_string (L.pr n)] :
 
 instance [has_to_string (term L)] [∀ n, has_to_string (L.pr n)] : has_to_string (formula L) := ⟨formula_to_string L⟩
 
+@[simp] lemma formula.top_eq : @formula.verum L = (⊤) := rfl
 @[simp] lemma formula.imply_eq : @formula.imply L = (⟶) := rfl
 @[simp] lemma formula.equal_eq : @formula.equal L = (≃) := rfl
 @[simp] lemma formula.neg_eq : @formula.neg L = has_negation.neg := rfl
@@ -157,6 +158,20 @@ by simp[has_sup.sup, formula.or]
 @[simp] lemma formula.ex.inj' (p q : formula L) : (∐ p : formula L) = ∐ q ↔ p = q := 
 by simp[has_exists_quantifier.ex, formula.ex]
 
+@[simp] lemma formula.verum_ne_predicate {n} (r : L.pr n) (v : finitary (term L) n) :
+ ⊤ ≠ formula.app r v.
+
+@[simp] lemma formula.verum_ne_equal (t u : term L) : (⊤ : formula L) ≠ (t ≃ u).
+
+@[simp] lemma formula.verum_ne_imply (p q : formula L) : ⊤ ≠ (p ⟶ q).
+
+@[simp] lemma formula.verum_ne_neg (p : formula L) : ⊤ ≠ ⁻p.
+
+@[simp] lemma formula.verum_ne_fal (p : formula L) : ⊤ ≠ ∏ p.
+
+@[simp] lemma formula.predicate_ne_verum {n} (r : L.pr n) (v : finitary (term L) n) :
+  formula.app r v ≠ ⊤.
+
 @[simp] lemma formula.predicate_ne_equal {n} (r : L.pr n) (v : finitary (term L) n) (t u : term L) :
   formula.app r v ≠ (t ≃ u).
 
@@ -168,6 +183,9 @@ by simp[has_exists_quantifier.ex, formula.ex]
 
 @[simp] lemma formula.predicate_ne_fal {n} (r : L.pr n) (v : finitary (term L) n) (p : formula L) :
   formula.app r v ≠ ∏ p.
+
+@[simp] lemma formula.equal_ne_verum (t u : term L) :
+  (t ≃ u : formula L) ≠ ⊤.
 
 @[simp] lemma formula.equal_ne_predivate (t u : term L) {n} (r : L.pr n) (v : finitary (term L) n) :
   (t ≃ u) ≠ formula.app r v.
@@ -181,6 +199,9 @@ by simp[has_exists_quantifier.ex, formula.ex]
 @[simp] lemma formula.equal_ne_fal (t u : term L) (p : formula L) :
   (t ≃ u : formula L) ≠ ∏ p.
 
+@[simp] lemma formula.imply_ne_verum (p q : formula L) :
+  p ⟶ q ≠ ⊤.
+
 @[simp] lemma formula.imply_ne_predicate (p q : formula L) {n} (r : L.pr n) (v : finitary (term L) n) :
   p ⟶ q ≠ formula.app r v.
 
@@ -191,15 +212,19 @@ by simp[has_exists_quantifier.ex, formula.ex]
 
 @[simp] lemma formula.imply_ne_fal (p q r : formula L) : p ⟶ q ≠ ∏ r.
 
-@[simp] lemma formula.neg_ne_predicate (p : formula L) {n} (r : L.pr n) (v : finitary (term L) n) :
-  ⁻p ≠ formula.app r v.
+@[simp] lemma formula.neg_ne_verum (p : formula L) : ⁻p ≠ ⊤.
 
-@[simp] lemma formula.neg_ne_equal (p : formula L) (t u : term L) :
-  ⁻p ≠ (t ≃ u).
+@[simp] lemma formula.neg_ne_predicate (p : formula L) {n} (r : L.pr n) (v : finitary (term L) n) :
+ ⁻p ≠ formula.app r v.
+
+@[simp] lemma formula.neg_ne_equal (p : formula L) (t u : term L) : ⁻p ≠ (t ≃ u).
 
 @[simp] lemma formula.neg_ne_imply (p q r : formula L) : ⁻p ≠ (q ⟶ r).
 
 @[simp] lemma formula.neg_ne_fal (p q : formula L) : ⁻p ≠ ∏ q.
+
+@[simp] lemma formula.fal_ne_verum (p : formula L) :
+  ∏ p ≠ ⊤.
 
 @[simp] lemma formula.fal_ne_predicate (p : formula L) {n} (r : L.pr n) (v : finitary (term L) n) :
   ∏ p ≠ formula.app r v.
@@ -558,7 +583,6 @@ by { induction i with i IH generalizing s, { simp },
 
 @[simp] lemma rew_ι (p : formula L) : p.rew ι = p :=
 by { induction p; try { simp[rew] }; try {simp*},
-     { show rew ι ⊤ = ⊤, simp },
      have : ι^1 = ι,
      { funext n, cases n, rw[@rewriting_sf_0 L], simp }, rw[this], simp* }
 
