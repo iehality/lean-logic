@@ -13,7 +13,7 @@ def eq_axiom4 {n} (f : L.fn n) : formula L :=
 def eq_axiom5 {n} (r : L.pr n) : formula L :=
   ∏[2*n] (conjunction' n (λ i, #i ≃₁ #(n + i)) ⟶ formula.app r (λ i, #i) ⟶ formula.app r (λ i, #(n + i)))
 
-lemma eq_axiom4_sentence {n} {f : L.fn n} :
+@[simp] lemma eq_axiom4_sentence {n} {f : L.fn n} :
   sentence (eq_axiom4 f) :=
 by { simp[sentence, eq_axiom4],
      cases n, { simp },
@@ -24,7 +24,7 @@ by { simp[sentence, eq_axiom4],
      simp only [lmm₁ n.succ n, lmm₂, ← nat.add_one],
      simp[max_add_add_left (n + 1) 0 (n + 1), two_mul, add_assoc] }
 
-lemma eq_axiom5_sentence {n} {r : L.pr n} :
+@[simp] lemma eq_axiom5_sentence {n} {r : L.pr n} :
   sentence (eq_axiom5 r) :=
 by { simp[sentence, eq_axiom5],
      cases n, { simp },

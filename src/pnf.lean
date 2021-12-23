@@ -33,9 +33,9 @@ def fal : pnf L → pnf L
 def ex : pnf L → pnf L
 | ⟨Q, p, h⟩ := ⟨𝚺 :: Q, p, h⟩
 
-instance : has_univ_quantifier (pnf L) (pnf L) := ⟨pnf.fal⟩
+instance : has_univ_quantifier (pnf L) := ⟨pnf.fal⟩
 
-instance : has_exists_quantifier (pnf L) (pnf L) := ⟨pnf.ex⟩
+instance : has_exists_quantifier (pnf L) := ⟨pnf.ex⟩
 
 @[simp] lemma fal_eq (Q : list bool) (p : formula L) (h) : (∏ (⟨Q, p, h⟩ : pnf L) : pnf L) = ⟨𝚷 :: Q, p, h⟩ := rfl
 
@@ -255,46 +255,5 @@ lemma equiv_normalize : ∀ (p : formula L) {T : theory L},  T ⊢ p ⟷ p.norma
 | (∏₁ p)           T := by { simp[formula.normalize], refine provable.equiv_univ_of_equiv (equiv_normalize p) }
 
 def formula.rank (p : formula L) : ℕ := p.to_pnf.rank
-
-variables (L)
-
-structure strong_pnf : Type u := 
-(univ_quantifier : ℕ)
-(exists_quantifier : ℕ)
-(p : formula L)
-(openform : p.is_open)
-
-variables {L}
-
-namespace strong_pnf
-
-def fal : strong_pnf L → strong_pnf L
-| ⟨i, j, p, h⟩ := ⟨i + 1, j, p, h⟩
-
-def ex : strong_pnf L → strong_pnf L
-| ⟨i, j, p, h⟩ := ⟨i, j + 1, p, h⟩
-
-instance : has_univ_quantifier (strong_pnf L) (strong_pnf L) := ⟨fal⟩
-
-instance : has_exists_quantifier (strong_pnf L) (strong_pnf L) := ⟨ex⟩
-
-@[simp] lemma fal_eq (i j : ℕ) (p : formula L) (h) :
-  (∏ (⟨i, j, p, h⟩ : strong_pnf L) : strong_pnf L) = ⟨i + 1, j, p, h⟩ := rfl
-
-@[simp] lemma ex_eq (i j : ℕ) (p : formula L) (h) :
-  (∐ (⟨i, j, p, h⟩ : strong_pnf L) : strong_pnf L) = ⟨i, j + 1, p, h⟩ := rfl
-
-@[simp] def rank (p : strong_pnf L) : ℕ := p.univ_quantifier + p.exists_quantifier
-
-def rew_open (s : ℕ → term L) : strong_pnf L → strong_pnf L
-| ⟨i, j, p, h⟩ := ⟨i, j, p.rew s, by simp[h]⟩
-
-@[simp] def to_formula : strong_pnf L → formula L
-| ⟨0,     0,     p, h⟩ := p
-| ⟨n + 1, m,     p, h⟩ := ∏ to_formula ⟨n, m, p, h⟩
-| ⟨0,     m + 1, p, h⟩ := ∐ to_formula ⟨0, m, p, h⟩
-
-
-end strong_pnf
 
 end fopl
