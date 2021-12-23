@@ -39,6 +39,7 @@ inductive provable : theory L → formula L → Prop
 | GE : ∀ {T p}, provable ⤊T p → provable T (∏ p)
 | MP : ∀ {T p q}, provable T (p ⟶ q) → provable T p → provable T q
 | AX : ∀ {T p}, p ∈ T → provable T p
+| p0 : ∀ {T}, provable T ⊤
 | p1 : ∀ {T p q}, provable T (p ⟶ q ⟶ p)
 | p2 : ∀ {T p q r}, provable T ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r)
 | p3 : ∀ {T p q}, provable T ((⁻p ⟶ ⁻q) ⟶ q ⟶ p)
@@ -58,8 +59,8 @@ instance : axiomatic_classical_logic' (formula L) :=
     imply₁ := @provable.p1 L T, 
     imply₂ := @provable.p2 L T,
     contraposition := @provable.p3 L T,
-    provable_top := by { simp[has_top.top, formula.top], refine provable.e1 },
-    bot_eq := by simp[has_bot.bot, formula.bot],
+    provable_top := by { simp, refine provable.p0 },
+    bot_eq := by { unfold has_bot.bot },
     and_def := λ p q, rfl,
     or_def := λ p q, rfl },
   by_axiom := @provable.AX L }
@@ -209,6 +210,7 @@ theorem rec' {T : theory L} (C : ℕ → formula L → Prop)
   (GE : ∀ {i} {p : formula L} (b : T^(i + 1) ⊢ p), C (i + 1) p → C i (∏ p))
   (MP : ∀ {i} {p q : formula L} (b₁ : T^i ⊢ p ⟶ q) (b₂ : T^i ⊢ p), C i (p ⟶ q) → C i p → C i q)
   (AX : ∀ {i} {p : formula L} (mem : p ∈ T^i), C i p)
+  (p0 : ∀ {i}, C i ⊤)
   (p1 : ∀ {i} {p q : formula L}, C i (p ⟶ q ⟶ p))
   (p2 : ∀ {i} {p q r : formula L}, C i ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r))
   (p3 : ∀ {i} {p q : formula L}, C i ((⁻p ⟶ ⁻q) ⟶ q ⟶ p))
@@ -236,6 +238,7 @@ begin
   { intros i ss, refine MP (weakening b₁ ss) (weakening b₂ ss) (IH₁ ss) (IH₂ ss) },
   case provable.AX : U p mem
   { intros i ss, refine AX (ss mem) },
+  { refine λ i ss, p0 },
   { refine λ i ss, p1 },
   { refine λ i ss, p2 },
   { refine λ i ss, p3 },
@@ -254,6 +257,7 @@ theorem rec_on' {T : theory L} {C : ℕ → formula L → Prop} {i : ℕ} {p : f
   (GE : ∀ {i} {p : formula L} (b : T^(i + 1) ⊢ p), C (i + 1) p → C i (∏ p))
   (MP : ∀ {i} {p q : formula L} (b₁ : T^i ⊢ p ⟶ q) (b₂ : T^i ⊢ p), C i (p ⟶ q) → C i p → C i q)
   (AX : ∀ {i} {p : formula L} (mem : p ∈ T^i), C i p)
+  (p0 : ∀ {i}, C i ⊤)
   (p1 : ∀ {i} {p q : formula L}, C i (p ⟶ q ⟶ p))
   (p2 : ∀ {i} {p q r : formula L}, C i ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r))
   (p3 : ∀ {i} {p q : formula L}, C i ((⁻p ⟶ ⁻q) ⟶ q ⟶ p))
@@ -281,6 +285,7 @@ begin
   { intros i ss, refine MP (weakening b₁ ss) (weakening b₂ ss) (IH₁ ss) (IH₂ ss) },
   case provable.AX : U p mem
   { intros i ss, refine AX (ss mem) },
+  { refine λ i ss, p0 },
   { refine λ i ss, p1 },
   { refine λ i ss, p2 },
   { refine λ i ss, p3 },
@@ -334,9 +339,9 @@ begin
   { refine λ _ _ _, ⟨0, by simp⟩ },
   { refine λ _ _ _, ⟨0, by simp⟩ },
   { refine λ _ _ _, ⟨0, by simp⟩ },
+  { refine λ _ _ _, ⟨0, by simp⟩ },
   { refine λ _ _ _, ⟨0, by simp⟩ }
 end
-
 
 lemma conjunction'_mem {n : ℕ} {P : finitary (formula L) n} :
   ∀ {p}, p ∈ P → T ⊢ conjunction' n P ⟶ p :=
@@ -418,6 +423,7 @@ begin
   { refine ⟨[], _⟩, simp },
   { refine ⟨[], _⟩, simp },
   { refine ⟨[], _⟩, simp },
+  { refine ⟨[], _⟩, simp },
   { refine ⟨[], _⟩, simp }
 end
 
@@ -444,6 +450,7 @@ begin
   { intros cl s, simp[formula.rew, @closed_theory_sf_eq _ _ cl] at*, refine (IH₁ cl _).MP (IH₂ cl _) },
   case AX : T p hyp
   { intros cl s, simp[@closed_theory.cl _ _ cl _ hyp], exact AX hyp },
+  { simp },
   { simp },
   { simp },
   { simp },
@@ -479,6 +486,7 @@ begin
   { intros n pp s, refine (IH₁ @pp _).MP (IH₂ @pp _) },
   case AX : T p hyp
   { intros n pp s, refine AX (pp _ _ hyp) },
+  { simp },
   { simp },
   { simp },
   { simp },
@@ -665,6 +673,7 @@ lemma equal_rew_iff {s₁ s₂ : ℕ → term L} (eqn : ∀ n, T ⊢ s₁ n ≃ 
   T ⊢ p.rew s₁ ⟷ p.rew s₂ :=
 begin
   induction p generalizing T s₁ s₂,
+  case verum { simp[show (formula.verum : formula L) = ⊤, from rfl] },
   case app : n p v { intros, simp[axiomatic_classical_logic'.iff_equiv],
     suffices : ∀ (s₁ s₂ : ℕ → term L) (h : ∀ (n : ℕ), T ⊢ s₁ n ≃ s₂ n), T ⊢ formula.app p (λ i, (v i).rew s₁) ⟶ formula.app p (λ i, (v i).rew s₂),
     { refine ⟨this _ _ eqn, this s₂ s₁ (λ x, eq_symm (eqn x))⟩ },

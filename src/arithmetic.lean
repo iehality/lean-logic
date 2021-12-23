@@ -213,7 +213,7 @@ by { induction h₁ using fopl.Herbrand.ind_on, induction h₂ using fopl.Herbra
      have := Herbrand.eq_of_provable_equiv.mp (this ⊚ h₁ ⊚ h₂), simp at this, exact this }
 
 lemma le_iff {h₁ h₂ : Herbrand T i} :
-  (h₁ ≼ h₂ : Lindenbaum T i) = ∐ (♯0 + h₁.pow ≃ h₂.pow : Lindenbaum T (i + 1)) :=
+  (h₁ ≼ h₂ : Lindenbaum T i) = ∐' (♯0 + h₁.pow ≃ h₂.pow : Lindenbaum T (i + 1)) :=
 by { induction h₁ using fopl.Herbrand.ind_on,
      induction h₂ using fopl.Herbrand.ind_on,
      have : T^i ⊢ ∏ ∏ ((#1 ≼ #0) ⟷ ∐ (#0 + #2 ≃ #1)),
@@ -255,7 +255,7 @@ by { have := (by_axiom robinson.q8) ⊚ t ⊚ u, simp[fal_fn, ex_fn, ←term.pow
 @[simp] lemma add_eq_zero : 𝐐 ⊢ ∀₁ x y, (x + y ≃ 0) ⟶ (x ≃ 0) ⊓ (y ≃ 0) :=
 begin
   refine generalize (generalize _), simp[fal_fn], 
-  have lmm₁ : 𝐐^2 ⊢ (#0 ≃ 0) ⟶ (#1 + #0 ≃ 0) ⟶ (#1 ≃ 0) ⊓ (#0 ≃ 0),
+  have lmm₁ : 𝐐 ⊢ (#0 ≃ 0) ⟶ (#1 + #0 ≃ 0) ⟶ (#1 ≃ 0) ⊓ (#0 ≃ 0),
   { refine (deduction.mp _),
     simp [Lindenbaum.le_of_provable_imply_0], },
   have lmm₂ : 𝐐 ⊢ (∃₁ y, #1 ≃ Succ y) ⟶ (#1 + #0 ≃ 0) ⟶ (#1 ≃ 0) ⊓ (#0 ≃ 0),
