@@ -83,8 +83,6 @@ attribute [pattern]  has_eq.eq has_negation.neg has_arrow.arrow has_univ_quantif
 
 instance : has_top (formula L) := ⟨formula.verum⟩
 
-
-
 instance : has_arrow (formula L) := ⟨formula.imply⟩
 
 instance : has_eq (term L) (formula L) := ⟨formula.equal⟩

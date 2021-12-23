@@ -1,4 +1,4 @@
-import deduction semantics lindenbaum class_of_formulae
+import deduction semantics lindenbaum class_of_formulae translation
 
 namespace fopl
 

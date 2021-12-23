@@ -128,20 +128,4 @@ begin
     refine or.inr ⟨q, hq, rfl⟩ }
 end
 
-namespace language
-variables {L₁ L₂ : language.{u}}
-
-@[simp] lemma theory_coe_pow {T : theory L₁} {i : ℕ} :
-  (↑T : theory (L₁ + L₂))^i = ↑(T^i) := 
-begin
-  ext p,
-  simp[theory_sf_itr_eq, mem_coe_iff], split,
-  { rintros ⟨p', ⟨p₁, mem, rfl⟩, rfl⟩,
-    refine ⟨p₁^i, ⟨p₁, mem, rfl⟩, by simp⟩ },
-  { rintros ⟨_, ⟨p₁, mem, rfl⟩, rfl⟩, 
-    refine ⟨p₁, ⟨p₁, mem, rfl⟩, by simp⟩ } 
-end
-
-end language
-
 end fopl

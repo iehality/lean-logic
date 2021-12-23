@@ -84,6 +84,7 @@ by simp[bex_le, term.pow_rew_distrib]
 | _  := none
 
 @[simp] def quantifier_fn_aux : ℕ → (term L → formula L) → formula L → formula L
+| s f ⊤        := ⊤
 | s f (p ⟶ q) := quantifier_fn_aux s (λ t, (f t).binary_inv.iget.1) p ⟶ quantifier_fn_aux s (λ t, (f t).binary_inv.iget.2) q
 | s f ⁻p       := ⁻quantifier_fn_aux s (λ t, (f t).unary_inv.iget) p
 | s f (∏₁ p)  := ∏ quantifier_fn_aux (s + 1) (λ t, (f t).unary_inv.iget) p
@@ -173,6 +174,7 @@ variables [has_le_symbol L]
 namespace formula
 
 inductive bounded : theory L
+| verum : bounded ⊤
 | predicate {n} {p : L.pr n} {v} : bounded (❴p❵ v)
 | equal {t u : term L} : bounded (t ≃ u)
 | imply {p q} : bounded p → bounded q → bounded (p ⟶ q)
@@ -180,7 +182,7 @@ inductive bounded : theory L
 | bfal {t} {p} : bounded p → bounded ∏{≼ t} p
 | bex  {t} {p} : bounded p → bounded ∐{≼ t} p
 
-attribute [simp] bounded.predicate bounded.equal bounded.neg
+attribute [simp] bounded.verum bounded.predicate bounded.equal bounded.neg
 
 @[simp] lemma bounded_imply_iff (p q : formula L) : bounded (p ⟶ q) ↔ bounded p ∧ bounded q :=
 ⟨λ h, by { cases h, simp* }, λ ⟨hp, hq⟩, bounded.imply hp hq⟩
@@ -188,6 +190,7 @@ attribute [simp] bounded.predicate bounded.equal bounded.neg
 lemma bounded_of_open {p : formula L} (h : p.is_open) : bounded p :=
 begin
   induction p,
+  case verum { simp },
   case app { simp },
   case equal { simp },
   case imply : p q IHp IHq { simp at h, exact bounded.imply (IHp h.1) (IHq h.2) },

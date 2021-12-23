@@ -17,7 +17,7 @@ variables [decidable_eq (formula L)]
 lemma arrow_eq {p : formula L} {v} : p.arrow = some v → p = v.1 ⟶ v.2 :=
 by { cases p; simp[show ∀ x y : term L, (x ≃ y : formula L).arrow = none, from λ _ _, rfl,
       show ∀ p : formula L, (⁻p).arrow = none, from λ _, rfl,
-      show ∀ p : formula L, (∏ p : formula L).arrow = none, from λ _, rfl], rintros rfl, simp* }
+      show ∀ p : formula L, (∏ p : formula L).arrow = none, from λ _, rfl], intros h, simp[←h] }
 
 inductive proof (L : language.{0}) : Type
 | root : formula L → proof
