@@ -65,6 +65,10 @@ instance : axiomatic_classical_logic' (formula L) :=
     or_def := λ p q, rfl },
   by_axiom := @provable.AX L }
 
+def provable_theory (T Γ : theory L) : Prop := ∀ p ∈ Γ, T ⊢ p
+
+infix ` ⊢ₜₕ `:45 := provable_theory
+
 open axiomatic_classical_logic' axiomatic_classical_logic classical_logic
 
 infixl ` ⨀ `:90 := axiomatic_classical_logic'.modus_ponens
@@ -731,12 +735,29 @@ begin
     { simp[C] } }
 end
 
-lemma rew_of_eq {t : term L} {n : ℕ}
+lemma rew_of_eq (t : term L) (n : ℕ)
   (eqn : T ⊢ #n ≃ t) {p : formula L} (h : T ⊢ p.rew (λ x, if x = n then t else #x)) :
   T ⊢ p :=
 by have := iff_rew_of_eq eqn p; simp[iff_equiv] at this;
    exact this.2 ⨀ h
 
+lemma specialize_iff {t : term L} (p : formula L) :
+  T ⊢ p.rew ι[0 ⇝ t] ⟷ ∏ ((#0 ≃ t^1) ⟶ p) :=
+begin
+  simp[axiomatic_classical_logic'.iff_equiv], split,
+  { refine deduction.mp (generalize (deduction.mp _)),
+    simp[←sf_dsb],
+    have : (p.rew ι[0 ⇝ t])^1 = p.rew (λ x, if x = 0 then t^1 else #x),
+    { simp[formula.pow_rew_distrib, formula.pow_eq, formula.nested_rew],
+      congr, funext x, cases x; simp, refl },
+    rw this,
+    refine rew_of_eq (t^1) 0 (by simp) (by simp) },
+  { refine deduction.mp _,
+    have : T +{ ∏ ((#0 ≃ t^1) ⟶ p) } ⊢ (t ≃ t) ⟶ formula.rew ι[0 ⇝ t] p,
+    { have := (show T +{ ∏ ((#0 ≃ (t^1)) ⟶ p) } ⊢ ∏ ((#0 ≃ (t^1)) ⟶ p), by simp) ⊚ t,
+      simp at this, exact this },
+    exact this ⨀ (by simp) }
+end
 
 lemma dummy_fal_quantifir (p) : T ⊢ p ⟷ ∏ p^1 :=
 by { have : T ⊢ ∏ (p^1) ⟶ (p^1).rew ι[0 ⇝ #0], from provable.q1, simp[*, axiomatic_classical_logic'.iff_equiv] at * }
@@ -801,6 +822,14 @@ lemma ex_of_equiv {p₁ p₂} (h : T ⊢ ∐ p₁) (hp : ⤊T ⊢ p₁ ⟷ p₂)
 
 @[simp] lemma extend {T₀ T : theory L} [extend T₀ T] {p : formula L} (h : T₀ ⊢ p) : T ⊢ p :=
 extend.le h
+
+variables (T)
+
+@[simp] lemma provable_theory_refl : T ⊢ₜₕ T := λ p mem, by_axiom mem
+
+variables {T}
+
+lemma provable_theory_weakening {U : theory L} (h : T ⊆ U) : U ⊢ₜₕ T := λ p mem, by_axiom (h mem)
 
 end provable
 

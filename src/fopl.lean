@@ -133,8 +133,6 @@ def formula.ex (p : formula L) : formula L := ⁻∏⁻p
 
 instance : has_exists_quantifier (formula L) := ⟨formula.ex⟩
 
-local prefix `∐₁ `:64 := (has_exists_quantifier.ex : formula L → formula L)
-
 lemma formula.ex_eq (p : formula L) : (∐ p) = ⁻∏⁻p := rfl
 
 @[simp] lemma formula.equal.inj' (t₁ u₁ t₂ u₂ : term L) : (t₁ ≃ t₂ : formula L) = (u₁ ≃ u₂) ↔ t₁ = u₁ ∧ t₂ = u₂ :=
@@ -259,7 +257,6 @@ notation `⋀` binders `, ` r:(scoped p, conjunction' _ p) := r
 
 notation `⋁` binders `, ` r:(scoped p, disjunction' _ p) := r
 
-
 def conjunction : list (formula L) → formula L
 | []        := ⊤
 | (p :: ps) := p ⊓ conjunction ps
@@ -306,6 +303,8 @@ namespace term
 | (#x)      := s x
 | (❨f❩ v) := ❨f❩ (λ i, (v i).rew)
 
+@[reducible] def rew_var (s : ℕ → ℕ) : term L → term L := λ t, t.rew (λ x, #(s x))
+
 @[simp] lemma constant_rew (c : L.fn 0) (s : ℕ → term L) {v : finitary (term L) 0} : (app c v).rew s = app c finitary.nil :=
 by simp
 
@@ -343,7 +342,7 @@ lemma pow_eq (v : term L) (i : ℕ) : v^i = v.rew (λ x, #(x + i)) := rfl
 
 @[simp] lemma var_pow (n i : ℕ) : (#n : term L)^i = #(n + i) := rfl
 
-@[simp] lemma app_pow {n} (f : L.fn n) (v : fin n → term L) (i : ℕ) : (❨f❩ v)^i = ❨f❩ (v^i) := rfl
+@[simp] lemma app_pow {n} (f : L.fn n) (v : fin n → (term L)) (i : ℕ) : (❨f❩ v)^i = ❨f❩ (v^i) := rfl
 
 @[simp] lemma unary_pow (f : L.fn 1) (v : finitary (term L) 1) (i : ℕ) :
   (app f v)^ i = app f ‹(v 0)^i› :=
@@ -367,6 +366,29 @@ by simp[pow_eq]
 
 @[simp] lemma mul_pow [has_mul_symbol L] (t u : term L) (i : ℕ) : (t * u : term L)^i = t^i * u^i :=
 by simp[pow_eq]
+
+@[simp] lemma rew_var_inj_of_inj :
+  ∀ {t u : term L} {s : ℕ → ℕ} (I : function.injective s),
+  t.rew_var s = u.rew_var s ↔ t = u
+| #x               #y               s I := by { simp[rew_var], exact ⟨@I x y, congr_arg (λ (x : ℕ), s x)⟩ }
+| #x               (term.app f v)   s I := by simp[rew_var]
+| (term.app f v)   #x               s I := by simp[rew_var]
+| (term.app f₁ v₁) (term.app f₂ v₂) s I :=
+    begin
+      simp[rew_var], rintros rfl rfl, simp, split,
+      { intros h, funext j,
+        have : (v₁ j).rew_var s = (v₂ j).rew_var s,
+        { have := congr_fun h j, simp at this, exact this },
+        exact (@rew_var_inj_of_inj (v₁ j) (v₂ j) s I).mp this },
+      { rintros rfl, simp }
+    end
+
+@[simp] lemma pow_inj : ∀ {t u : term L} {i : ℕ}, t^i = u^i ↔ t = u :=
+λ t u i, by { simp[has_pow.pow], refine rew_var_inj_of_inj (λ x y, by simp) }
+
+@[simp] lemma finitary_pow_inj {n} {v w : fin n → term L} {i : ℕ} : v^i = w^i ↔ v = w :=
+⟨λ h, funext (λ j, by { have := congr_fun h j, simp at this, exact this }),
+  by { rintros rfl, simp }⟩
 
 @[simp] def arity : term L → ℕ
 | (#n)    := n + 1
@@ -471,6 +493,13 @@ by { induction i with i IH generalizing s, { simp },
      cases x; simp[concat, ←nat.add_one],
      by_cases C : x < i; simp[C, term.pow_add] }
 
+@[simp] lemma rewriting_sf_itr.pow_app_lt (s : ℕ → term L) {i : ℕ} {x : ℕ} (h : x < i) :
+  (s^i $ x) = #x := by simp[rewriting_sf_itr.pow_eq', h]
+
+@[simp] lemma rewriting_sf_itr.pow_app_ge (s : ℕ → term L) {i : ℕ} {x : ℕ} (h : i ≤ x) :
+  (s^i $ x) = (s (x - i))^i :=
+by {simp[rewriting_sf_itr.pow_eq'], intros lt, exfalso, exact nat.lt_le_antisymm lt h}
+
 lemma rewriting_sf_perm {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n) : ∀ n, ∃ m, (s^1) m = #n :=
 λ n, by { cases n, refine ⟨0, by simp⟩,
           rcases h n with ⟨m, e_m⟩, refine ⟨m+1, _⟩, simp[e_m] }
@@ -550,6 +579,8 @@ by unfold has_elem.elem; simp
 | s (p ⟶ q)  := p.rew s ⟶ q.rew s
 | s (⁻p)      := ⁻(p.rew s)
 | s (∏ p)   := ∏ (p.rew (s^1))
+
+@[reducible] def rew_var (s : ℕ → ℕ) : formula L → formula L := λ p, p.rew (λ x, #(s x))
 
 @[simp] lemma constant_rew (p : L.pr 0) (s : ℕ → term L) {v : finitary (term L) 0} :
   (❴p❵ v).rew s = ❴p❵ finitary.nil :=
@@ -640,6 +671,8 @@ lemma nfal_pow (p : formula L) (n i : ℕ) :
 by { simp[formula.pow_eq, rewriting_sf_itr.pow_eq'], congr, funext x,
      by_cases C : x < n; simp[C], omega }
 
+
+
 lemma nested_rew : ∀ (p : formula L) (s₀ s₁),
   (p.rew s₀).rew s₁ = p.rew (λ x, (s₀ x).rew s₁)
 | ⊤         _ _ := by simp
@@ -706,6 +739,43 @@ lemma total_rew_inv :
 | s h (⁻p)           := by rcases total_rew_inv s h p with ⟨q, e_q⟩; refine ⟨⁻q, by simp*⟩
 | s h (∏ p)          := by rcases total_rew_inv _ (rewriting_sf_perm h) p with ⟨q, e_q⟩; refine ⟨∏q, by simp[e_q]⟩
 
+@[simp] lemma rew_var_inj_of_inj :
+  ∀ {p q : formula L} {s : ℕ → ℕ} (I : function.injective s),
+  p.rew_var s = q.rew_var s ↔ p = q
+| ⊤                   p                   s I := by {cases p; simp[rew_var], }
+| (formula.app p v)   ⊤                   s I := by simp[rew_var]
+| (formula.app p₁ v₁) (formula.app p₂ v₂) s I := by { simp[rew_var], rintros rfl rfl,
+    simp, split,
+    { intros h, funext i,
+      have : term.rew_var s (v₁ i) = term.rew_var s (v₂ i), from congr_fun h i,
+      exact (term.rew_var_inj_of_inj I).mp this },
+    { rintros rfl, simp } }
+| (formula.app p v)   (t ≃₁ u)            s I := by simp[rew_var]
+| (formula.app r v)   (p ⟶ q)             s I := by simp[rew_var]
+| (formula.app r v)   (⁻p)                s I := by simp[rew_var]
+| (formula.app r v)   (∏ p)               s I := by simp[rew_var, fal_pow]
+| (t ≃₁ u)            p                   s I := by cases p; simp[rew_var, fal_pow, I]
+| (p ⟶ q)             r                   s I :=
+    by cases r; simp[rew_var, fal_pow, @rew_var_inj_of_inj p _ s I, @rew_var_inj_of_inj q _ s I]
+| (⁻p)                q                   s I :=
+    by cases q; simp[rew_var, fal_pow, @rew_var_inj_of_inj p _ s I]
+| (∏ p)               ⊤                   s I := by simp[rew_var]
+| (∏ p)               (formula.app r v)   s I := by simp[rew_var]
+| (∏ p)               (t ≃₁ u)            s I := by simp[rew_var]
+| (∏ p)               (q ⟶ r)             s I := by simp[rew_var]
+| (∏ p)               (⁻q)                s I := by simp[rew_var]
+| (∏ p)               (∏ q)               s I := by {simp[rew_var, fal_pow], 
+    have : ∀ p : formula L, p.rew ((λ x, #(s x))^1) = p.rew_var (λ x, if x = 0 then 0 else s (x - 1) + 1),
+    { intros p, simp[rewriting_sf_itr.pow_eq', rew_var, nested_rew], congr, funext x, cases x; simp },
+    
+    have I' : function.injective (λ x, if x = 0 then 0 else s (x - 1) + 1),
+    { intros x y, cases x; cases y; simp,
+      { intros h, exfalso, exact (nat.succ_ne_zero _).symm h }, { exact (@I x y) } },
+    simp[this, @rew_var_inj_of_inj p q _ I'] }
+  
+@[simp] lemma pow_inj : ∀ {p q : formula L} {i : ℕ}, p^i = q^i ↔ p = q :=
+λ p q i, by { simp[has_pow.pow], refine rew_var_inj_of_inj (λ x y, by simp) }
+
 @[simp] def is_open : formula L → bool
 | ⊤          := tt
 | (❴p❵ v)  := tt
@@ -719,12 +789,12 @@ lemma total_rew_inv :
 @[simp] lemma op.or (p q : formula L) : (p ⊔ q).is_open = p.is_open && q.is_open := rfl
 
 @[simp] def is_open_rew : ∀ {p : formula L} {s}, (p.rew s).is_open ↔ p.is_open
-| ⊤        s   := by simp
+| ⊤        s := by simp
 | (❴p❵ v)  s := by simp
-| (t ≃₁ u) s   := by simp
-| (p ⟶ q) s    := by simp[@is_open_rew p s, @is_open_rew q s]
-| (⁻p)     s   := by simp[@is_open_rew p s]
-| (∏ p)  s     := by simp
+| (t ≃₁ u) s := by simp
+| (p ⟶ q) s  := by simp[@is_open_rew p s, @is_open_rew q s]
+| (⁻p)     s := by simp[@is_open_rew p s]
+| (∏ p)  s   := by simp
 
 @[simp] def is_open_pow : ∀ {p : formula L} {i : ℕ}, (p^i).is_open ↔ p.is_open :=
 by simp[pow_eq]
@@ -747,7 +817,13 @@ prefix `∏* `:64 := fal_complete
 lemma fal_complete_sentence (p : formula L) : sentence (∏* p) :=
 by simp[sentence, fal_complete]
 
-
 end formula
+
+namespace language
+
+class predicate (L : language.{u}) :=
+(fun_empty : ∀ n, is_empty (L.fn n))
+
+end language
 
 end fopl
