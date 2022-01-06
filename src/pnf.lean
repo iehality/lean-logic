@@ -146,6 +146,7 @@ end pnf
 namespace formula
 
 @[simp] def to_pnf : formula L → pnf L
+| ⊤         := ⟨[], ⊤, by simp⟩
 | (app p v) := ⟨[], app p v, by simp⟩
 | ((t : term L) ≃ u) := ⟨[], (t : term L) ≃ u, by simp⟩
 | (p ⟶ q) := (to_pnf p).imply (to_pnf q)
@@ -243,6 +244,7 @@ lemma equiv_normalize_neg : ∀ (p : pnf L) (T : theory L) , T ⊢ p.neg.to_form
 @[simp] lemma formula.open_is_open (p : formula L) : p.open.is_open := p.to_pnf.is_openform
 
 lemma equiv_normalize : ∀ (p : formula L) {T : theory L},  T ⊢ p ⟷ p.normalize
+| ⊤                 T := by simp[formula.normalize]
 | (formula.app p v) T := by simp[formula.normalize]
 | (t ≃₁ u)          T := by simp[formula.normalize]
 | (p ⟶ q)          T := by { simp[formula.normalize], 

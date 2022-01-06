@@ -16,6 +16,7 @@ prefix `⤊`:max := theory.sf
 instance sf_itr_pow : has_pow (theory L) ℕ := ⟨theory.sf_itr⟩
 
 @[simp] lemma theory.sf_itr_0 (T : theory L) : T^0 = T := rfl
+
 lemma theory.sf_itr_succ (T : theory L) (n) : T^(n+1) = ⤊(T^n) := rfl
 
 lemma theory.pow_add (T : theory L) (i j : ℕ) : (T^i)^j = T^(i + j) :=
@@ -127,5 +128,30 @@ begin
   { rcases h with ⟨q, hq, rfl⟩, rcases hq with (rfl | hq); simp,
     refine or.inr ⟨q, hq, rfl⟩ }
 end
+
+lemma sf_union (T U : theory L) : ⤊(T ∪ U) = ⤊T ∪ ⤊U :=
+begin
+  ext p, split,
+  { rintros ⟨p, (mem | mem), rfl⟩,
+    { refine or.inl _, refine ⟨p, mem, rfl⟩ },
+    { refine or.inr _, refine ⟨p, mem, rfl⟩ } },
+  { rintros (⟨p, mem, rfl⟩ | ⟨p, mem, rfl⟩),
+    { refine ⟨p, or.inl mem, rfl⟩ },
+    { refine ⟨p, or.inr mem, rfl⟩ } }
+end
+
+lemma pow_union (T U : theory L) (k : ℕ) : (T ∪ U)^k = T^k ∪ U^k :=
+by induction k with k IH; simp[←nat.add_one, theory.sf_itr_succ, sf_union, *]
+
+@[simp] lemma sf_ss {T U : theory L} : ⤊T ⊆ ⤊U ↔ T ⊆ U :=
+⟨λ h p mem, by {
+  have : p^1 ∈ ⤊T, from ⟨p, mem, rfl⟩,
+  rcases h this with ⟨q, h, eqn⟩, simp at eqn,
+  simp[eqn, h] },
+ λ h p, by { rintros ⟨p, mem, rfl⟩,
+  refine ⟨p, h mem, rfl⟩ }⟩
+
+@[simp] lemma pow_ss {T U : theory L} {i : ℕ} : T^i ⊆ U^i ↔ T ⊆ U :=
+by induction i with i; simp[←nat.add_one, theory.sf_itr_succ, *]
 
 end fopl

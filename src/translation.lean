@@ -6,7 +6,8 @@ namespace fopl
 open formula term
 
 namespace language
-variables {L₁ L₂ L₃ : language.{u}}
+variables {L L₁ L₂ L₃ : language.{u}}
+local infix ` ≃₀ `:50 := ((≃) : term L → term L → formula L)
 local infix ` ≃₁ `:50 := ((≃) : term L₁ → term L₁ → formula L₁)
 local infix ` ≃₂ `:50 := ((≃) : term L₂ → term L₂ → formula L₂)
 
@@ -163,17 +164,21 @@ structure term_formula_translation (L₁ : language.{u}) (L₂ : language.{u}) :
 (consistence : ∀ (t u : term L₁) (k),
   formula_tr k (t ≃ u : formula L₁) = (term_tr k t ≃ term_tr k u))
 
-namespace term_formula_translation
-
-end term_formula_translation
-
 class translation.conservative (τ : translation L₁ L₂) :=
-(specialize : ∀ (k) (p : formula L₁) (t : term L₁) (T : theory L₂), T ⊢ τ k (∏ p ⟶ p.rew ι[0 ⇝ t]))
-(eq_reflexivity : ∀ (k) (T : theory L₂), T ⊢ τ k (∏ (#0 ≃₁ #0)) )
-(eq_symmetry : ∀ (k) (T : theory L₂), T ⊢ τ k (∏ ∏ ((#0 ≃₁ #1) ⟶ (#1 ≃₁ #0))))
-(eq_transitive : ∀ (k) (T : theory L₂), T ⊢ τ k (∏ ∏ ∏ ((#0 ≃₁ #1) ⟶ (#1 ≃₁ #2) ⟶ (#0 ≃₁ #2))))
-(function_ext : ∀ (k) {n} (f : L₁.fn n) (T : theory L₂), T ⊢ τ k (eq_axiom4 f))
-(predicate_ext : ∀ (k) {n} (r : L₁.pr n) (T : theory L₂), T ⊢ τ k (eq_axiom5 r))
+(ax : ℕ → theory L₁ → theory L₂)
+(ax_ss : ∀ T k, tr_theory τ k T ⊆ ax k T)
+(specialize : ∀ (k) (p : formula L₁) (t : term L₁) (T : theory L₁) (i : ℕ), 
+  (ax k T)^i ⊢ τ (k + i) (∏ p ⟶ p.rew ι[0 ⇝ t]))
+(eq_reflexivity : ∀ (k) (T : theory L₁) (i : ℕ),
+  (ax k T)^i ⊢ τ (k + i) (∏ (#0 ≃₁ #0)))
+(eq_symmetry : ∀ (k) (T : theory L₁) (i : ℕ),
+  (ax k T)^i ⊢ τ (k + i) (∏ ∏ ((#0 ≃₁ #1) ⟶ (#1 ≃₁ #0))))
+(eq_transitive : ∀ (k) (T : theory L₁) (i : ℕ),
+  (ax k T)^i ⊢ τ (k + i) (∏ ∏ ∏ ((#0 ≃₁ #1) ⟶ (#1 ≃₁ #2) ⟶ (#0 ≃₁ #2))))
+(function_ext : ∀ (k) {n} (f : L₁.fn n) (T : theory L₁) (i : ℕ),
+  (ax k T)^i ⊢ τ (k + i) (eq_axiom4 f))
+(predicate_ext : ∀ (k) {n} (r : L₁.pr n) (T : theory L₁) (i : ℕ),
+  (ax k T)^i ⊢ τ (k + i) (eq_axiom5 r))
 
 namespace translation
 open provable axiomatic_classical_logic' translation.conservative
@@ -186,72 +191,63 @@ by { simp[theory_sf_itr_eq] at mem ⊢, rcases mem with ⟨q, mem, rfl⟩,
   refine ⟨τ i q, mem_theory_tr_of_mem mem, _⟩, simp[translation.map_pow'] }
 
 lemma provability_pow (T : theory L₁) (p : formula L₁) (i k : ℕ) :
-  T^i ⊢ p → (tr_theory τ k T)^i ⊢ τ (k + i) p :=
+   T^i ⊢ p → (ax τ k T)^i ⊢ τ (k + i) p :=
 begin
   refine provable.rec' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _,
-  { intros i p _ h, simp at h ⊢, simp[add_assoc],
+  { intros i p _ h, simp[add_assoc] at h ⊢,
     exact generalize h },
   { intros i p q _ _ hpq hp, simp at hpq,
     exact hpq ⨀ hp },
-  { intros i p mem, refine by_axiom (by simp[mem]) },
+  { intros i p mem,
+    suffices : (tr_theory τ k T)^i ⊢ τ (k + i) p,
+    { exact weakening this (by simp[ax_ss]) },
+    refine (by_axiom (by {simp[mem]})) },
   { intros, simp },
   { intros, simp },
   { intros, simp },
   { intros, simp },
-  { intros, exact specialize _ _ _ _ },
+  { intros, refine specialize _ _ _ _ _ },
   { intros, simp },
   { intros, simp[translation.map_pow'] },
-  { intros, exact eq_reflexivity _ _ },
-  { intros, exact eq_symmetry _ _ },
-  { intros, exact eq_transitive _ _ },
-  { intros, exact function_ext _ _ _ },
-  { intros, exact predicate_ext _ _ _ },
+  { intros, refine eq_reflexivity _ _ _ },
+  { intros, exact eq_symmetry _ _ _ },
+  { intros, exact eq_transitive _ _ _ },
+  { intros, exact function_ext _ _ _ _ },
+  { intros, exact predicate_ext _ _ _ _ },
 end
 
 lemma provability (T : theory L₁) (p : formula L₁) (k : ℕ) :
-  T ⊢ p → τ k '' T ⊢ τ k p :=
+  T ⊢ p → ax τ k T ⊢ τ k p :=
 by { have := provability_pow τ T p 0, simp at this, exact this k }
 
 lemma provability_tautology (p : formula L₁) (k : ℕ):
-  (∀ T, T ⊢ p) → ∀ T, T ⊢ τ k p := λ h T,
-by { have := provability τ ∅ p k (h ∅), simp at this, exact weakening this (by simp) }
+  (∀ T, T ⊢ p) → ∀ T, ax τ k T ⊢ τ k p := λ h T,
+provability τ T p k (h T)
 
 instance refl_conservative : conservative (refl L₁) :=
-{ specialize := by simp[translation.refl],
+{ ax := λ k T, tr_theory (refl L₁) k T,
+  ax_ss := by { intros, refl },
+  specialize := by simp[translation.refl],
   eq_reflexivity := by simp[translation.refl],
   eq_symmetry := by simp[translation.refl],
   eq_transitive := by simp[translation.refl],
-  function_ext := by simp[translation.refl],
-  predicate_ext := by simp[translation.refl] }
+  function_ext := by { intros,  simp[translation.refl] },
+  predicate_ext := by { intros, simp[translation.refl] } }
 
 instance shift_conservative (k : ℕ) : conservative (shift L₁ k) :=
-{ specialize := λ l p t T, by {simp[translation.shift], 
-    have : (p.rew ι[0 ⇝ t]).rew (λ x, ite (x < l) #x #(x + k)) = 
+{ ax := λ l T, tr_theory (shift L₁ k) l T,
+  ax_ss := by { intros, refl },
+  specialize := λ l p t T i, by {simp[translation.shift], 
+    have : ∀ l, (p.rew ι[0 ⇝ t]).rew (λ x, ite (x < l) #x #(x + k)) = 
       (p.rew (λ x, ite (x < l + 1) #x #(x + k))).rew ι[0 ⇝ (t.rew (λ x, ite (x < l) #x #(x + k)))],
-    { simp[formula.nested_rew], congr, funext x, cases x with x; simp[←nat.add_one],
+    { intros l, simp[formula.nested_rew], congr, funext x, cases x with x; simp[←nat.add_one],
       by_cases C : x < l; simp[C, show x + 1 + k = x + k + 1, by omega] },
     simp [this] },
   eq_reflexivity := by simp[translation.shift],
   eq_symmetry := by simp[translation.shift],
-  eq_transitive := λ l, by simp[translation.shift, show 2 < l + 1 + 1 + 1, by omega], 
-  function_ext := by simp[translation.shift],
-  predicate_ext := by simp[translation.shift] }
-
-instance comp_conservative
-  (τ₁₂ : translation L₁ L₂) (τ₂₃ : translation L₂ L₃) [conservative τ₁₂] [conservative τ₂₃] :
-  conservative (τ₁₂.comp τ₂₃) :=
-{ specialize :=
-    λ k p t T, (provability_tautology τ₂₃ _ k (conservative.specialize k p t) T : T ⊢ τ₂₃ k (τ₁₂ k _)),
-  eq_reflexivity :=
-    λ k T, (provability_tautology τ₂₃ _ k (conservative.eq_reflexivity k) T : T ⊢ τ₂₃ k (τ₁₂ k _)),
-  eq_symmetry :=
-    λ k T, (provability_tautology τ₂₃ _ k (conservative.eq_symmetry k) T : T ⊢ τ₂₃ k (τ₁₂ k _)),
-  eq_transitive :=
-    λ k T, (provability_tautology τ₂₃ _ k (conservative.eq_transitive k) T : T ⊢ τ₂₃ k (τ₁₂ k _)),
-  function_ext :=
-    λ k n f T, (provability_tautology τ₂₃ _ k (conservative.function_ext k f) T : T ⊢ τ₂₃ k (τ₁₂ k _)),
-  predicate_ext :=
-    λ k n f T, (provability_tautology τ₂₃ _ k (conservative.predicate_ext k f) T : T ⊢ τ₂₃ k (τ₁₂ k _)) }
+  eq_transitive := λ _ _ _, by simp[translation.shift, show ∀ l, 2 < l + 1 + 1 + 1, by omega], 
+  function_ext := λ _ _ _ _, by simp[translation.shift],
+  predicate_ext := λ _ _ _ _, by simp[translation.shift] }
 
 end translation
 
@@ -490,7 +486,7 @@ sum.inl.inj_iff
 | (formula.app r₁ v₁) (p ⟶ q)  := by simp
 | (formula.app r₁ v₁) ⁻p       := by simp
 | (formula.app r₁ v₁) (∏ p)    := by simp
-| ((t : term L₁) ≃ u) p        := by cases p; simp
+| (t ≃₁ u)            p        := by cases p; simp
 | (p ⟶ q)             r        := by cases r; simp[@formula_coe_inj p, @formula_coe_inj q]
 | (⁻p)                q        := by cases q; simp[@formula_coe_inj p]
 | (∏ p)               q        := by cases q; simp[@formula_coe_inj p]
@@ -503,17 +499,20 @@ lemma mem_coe_iff {T : theory L₁} {p : formula (L₁ + L₂)} :
 ⟨λ ⟨p₁, h, eqn⟩, ⟨p₁, h, eq.symm eqn⟩, by { rintros ⟨p₁, mem, rfl⟩, simp[mem] }⟩
 
 instance : translation.conservative (@formula_extention L₁ L₂) :=
-{ specialize := λ k p t T, by { simp, 
-    show T ⊢ ∏ ↑p ⟶ ↑(rew ι[0 ⇝ t] p),
+{ ax := λ k T, tr_theory (@formula_extention L₁ L₂) k T,
+  ax_ss := by { intros, refl },
+  specialize := λ k p t T i, by { simp, 
+    show (tr_theory formula_extention k T)^i ⊢ ∏ ↑p ⟶ ↑(rew ι[0 ⇝ t] p),
     have : (λ x, ↑(ι[0 ⇝ t] x) : ℕ → term (L₁ + L₂)) = ι[0 ⇝ t],
-    { funext x, cases x; simp }, simp[coe_formula_rew, this] },
+    { funext x, cases x; simp },
+    simp[coe_formula_rew, this] },
   eq_reflexivity := by simp[formula_extention],
   eq_symmetry := by simp[formula_extention],
   eq_transitive := by simp[formula_extention],
-  function_ext := λ k n f T, by { simp[eq_axiom4, app_formula_extention_eq],
-    exact (show T ⊢ eq_axiom4 (↑f : (L₁ + L₂).fn n), by simp) },
-  predicate_ext := λ k n f T, by { simp[eq_axiom5, app_formula_extention_eq],
-    exact (show T ⊢ eq_axiom5 (↑f : (L₁ + L₂).pr n), by simp) } }
+  function_ext := λ k n f T i, by { simp[eq_axiom4, app_formula_extention_eq],
+    exact (show _ ⊢ eq_axiom4 (↑f : (L₁ + L₂).fn n), by simp) },
+  predicate_ext := λ k n f T i, by { simp[eq_axiom5, app_formula_extention_eq],
+    exact (show _ ⊢ eq_axiom5 (↑f : (L₁ + L₂).pr n), by simp) } }
 
 lemma provability_pow {T : theory L₁} {p : formula L₁} {i : ℕ} :
   T^i ⊢ p → (↑T : theory (L₁ + L₂))^i ⊢ ↑p :=
@@ -524,8 +523,117 @@ lemma provability {T : theory L₁} {p : formula L₁} :
   T ⊢ p → (↑T : theory (L₁ + L₂)) ⊢ ↑p :=
 translation.provability formula_extention T p 0
 
+@[simp] lemma theory_coe_pow {T : theory L₁} {i : ℕ} :
+  (↑T : theory (L₁ + L₂))^i = ↑(T^i) := 
+begin
+  ext p,
+  simp[theory_sf_itr_eq, mem_coe_iff], split,
+  { rintros ⟨p', ⟨p₁, mem, rfl⟩, rfl⟩,
+    refine ⟨p₁^i, ⟨p₁, mem, rfl⟩, by simp⟩ },
+  { rintros ⟨_, ⟨p₁, mem, rfl⟩, rfl⟩, 
+    refine ⟨p₁, ⟨p₁, mem, rfl⟩, by simp⟩ } 
+end
+
 end extention
 
+def to_predicate (L : language.{u}) : language.{u} :=
+{ fn := λ _, pempty, pr := λ n, match n with | 0 := L.pr 0 | (n + 1) := L.pr (n + 1) ⊕ L.fn n end }
+
+instance (L : language.{u}) : predicate L.to_predicate :=
+{ fun_empty := λ n, ⟨λ f, by cases f⟩ }
+
+def pr.to_predicate : Π {n : ℕ} (p : L.pr n), L.to_predicate.pr n
+| 0       p := p
+| (n + 1) p := sum.inl p
+
+def fn.to_predicate {n} (f : L.fn n) : L.to_predicate.pr (n + 1) := sum.inr f
+
+namespace predicate
+local infix ` ≃ₚ `:50 := ((≃) : term L.to_predicate → term L.to_predicate → formula L.to_predicate)
+
+@[simp] def term_to_pformula : ℕ → term L → ℕ → formula L.to_predicate
+| X (#x)                k := #X ≃ₚ #(x + k)
+| X (@term.app _ n f v) k :=
+    ∏[n] ((⋀ i, term_to_pformula i (v i) (n + k)) ⟶ formula.app f.to_predicate (#(X + n) ::ᶠ ##))
+
+@[simp] def formula_to_pformula : formula L → formula L.to_predicate
+| ⊤                      := ⊤
+| (@formula.app _ n p v) := ∏[n] ((⋀ i, term_to_pformula i (v i) n) ⟶ formula.app p.to_predicate ##)
+| (t ≃₀ u)               := ∏ ∏ (term_to_pformula 0 t 2 ⊓ term_to_pformula 1 t 2 ⟶ (#0 ≃ₚ #1))
+| (p ⟶ q)                := formula_to_pformula p ⟶ formula_to_pformula q
+| (⁻p)                    := ⁻formula_to_pformula p
+| (∏ p)                  := ∏ formula_to_pformula p
+
+lemma term_to_pformula_rew_var : ∀ (t : term L) (k) (X) (lt : X < k) (s : ℕ → ℕ),
+  (term_to_pformula X t k).rew ((λ x, #(s x))^k) = term_to_pformula X (t.rew (λ x, #(s x))) k
+| (#n)                k X h s := by simp[h]
+| (@term.app _ n f v) k X h s := by { simp[h],
+  rw[rewriting_sf_itr.pow_add, show k + n = n + k, from add_comm _ _],
+  congr, funext i,
+  exact term_to_pformula_rew_var (v i) (n + k) i (nat.lt_add_right _ n k i.property) s }
+
+lemma formula_to_pformula_rew_var : ∀ (p : formula L) (s : ℕ → ℕ),
+  (formula_to_pformula p).rew (λ x, #(s x)) = formula_to_pformula (p.rew (λ x, #(s x)))
+| ⊤                      s := by simp
+| (@formula.app _ n r v) s := by simp[term_to_pformula_rew_var]
+| (t ≃₀ u)               s := by simp[rewriting_sf_itr.pow_add, term_to_pformula_rew_var]
+| (p ⟶ q)                s := by simp[formula_to_pformula_rew_var p, formula_to_pformula_rew_var q]
+| (⁻p)                   s := by simp[formula_to_pformula_rew_var p]
+| (∏ p)                  s := by { simp,
+    have eqn₁ : ((λ x, #(s x))^1 : ℕ → term L) = (λ x, #(if x = 0 then 0 else s (x - 1) + 1)),
+    { funext x, cases x; simp },
+    have eqn₂ : ((λ x, #(s x))^1 : ℕ → term L.to_predicate) = (λ x, #(if x = 0 then 0 else s (x - 1) + 1)),
+    { funext x, cases x; simp },
+    simp[fal_pow, eqn₁, eqn₂, formula_to_pformula_rew_var p] }
+
+inductive axm : theory L.to_predicate
+| trans : ∀ k X Y t, axm (term_to_pformula X t k ⟶ term_to_pformula Y t k ⟶ (#X ≃ₚ #Y))
+
+lemma term_to_pformula_rew : ∀
+  (t : term L) (k) (X) (lt : X < k) {n} (s : finitary (term L) n)
+  (T : theory L.to_predicate),
+  T ⊢ term_to_pformula X (t.rew (λ x, if h : x < n then s ⟨x, h⟩ else #x)) k ⟷
+      (∏[n] (⋀ i, term_to_pformula i (s i) n) ⟶ term_to_pformula (X + n) t k)
+| (#x)                k X h n s T := by { simp[h],
+    by_cases C : x < n; simp[C],
+    {  }
+     }
+| (@term.app _ m f v) k X h n s T := by { simp[h],
+  rw[rewriting_sf_itr.pow_add, show k + n = n + k, from add_comm _ _],
+  congr, funext i,
+  exact term_to_pformula_rew_var (v i) (n + k) i (nat.lt_add_right _ n k i.property) s }
+
+lemma formula_to_pformula_rew_var : ∀ (p : formula L) (s : ℕ → ℕ),
+  (formula_to_pformula p).rew (λ x, #(s x)) = formula_to_pformula (p.rew (λ x, #(s x)))
+| ⊤                      s := by simp
+| (@formula.app _ n r v) s := by simp[term_to_pformula_rew_var]
+| (t ≃₀ u)               s := by simp[rewriting_sf_itr.pow_add, term_to_pformula_rew_var]
+| (p ⟶ q)                s := by simp[formula_to_pformula_rew_var p, formula_to_pformula_rew_var q]
+| (⁻p)                   s := by simp[formula_to_pformula_rew_var p]
+| (∏ p)                  s := by { simp,
+    have eqn₁ : ((λ x, #(s x))^1 : ℕ → term L) = (λ x, #(if x = 0 then 0 else s (x - 1) + 1)),
+    { funext x, cases x; simp },
+    have eqn₂ : ((λ x, #(s x))^1 : ℕ → term L.to_predicate) = (λ x, #(if x = 0 then 0 else s (x - 1) + 1)),
+    { funext x, cases x; simp },
+    simp[fal_pow, eqn₁, eqn₂, formula_to_pformula_rew_var p] }
+
+variables (L)
+
+def predicatize : translation L L.to_predicate :=
+{ to_fun := λ _, formula_to_pformula,
+  map_verum := by simp,
+  map_imply := by simp,
+  map_neg   := by simp,
+  map_univ  := by simp,
+  map_pow   := λ p k, eq.symm (formula_to_pformula_rew_var p (λ x, x + 1)) }
+
+instance predicatize_conservative : (predicatize L).conservative :=
+{ ax := λ k T, tr_theory (predicatize L) k T,
+  ax_ss := by { intros, refl },
+  specialize := λ k p t T, by { simp, } }
+
+
+end predicate
 end language
 
 end fopl
