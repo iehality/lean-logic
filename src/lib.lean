@@ -236,6 +236,7 @@ def head_inv {n} (f : finitary α (n + 1)) : α := f ⟨n, lt_add_one n⟩
 
 def tail {n} (f : finitary α (n + 1)) : finitary α n := λ i, f i.succ
 
+postfix `ᶠ⁻¹`:80 := tail
 
 lemma tail_inv_cons_inv_head {n} (f : finitary α (n + 1)) : f.tail_inv ᶠ:: f.head_inv = f :=
 funext (λ i, by { simp[cons_inv, tail_inv, head_inv],
@@ -248,19 +249,6 @@ funext (λ i, by { simp[cons_inv, tail_inv, head_inv],
 funext (λ i, by { have := i.property, exfalso, exact i.val.not_lt_zero this })
 
 @[simp] lemma zero_eq' (f : fin 0 → α) : f = (∅ : finitary α 0) := zero_eq f
-
-/-
-lemma fin_2_eq (f : finitary α 1) : fin[f 0] = f :=
-funext (λ i, by { rcases i with ⟨i, i_p⟩, cases i; simp[cons_inv], exfalso, simp[←nat.add_one] at*, exact i_p })
-
-
-lemma fin1_eq (f : finitary α 1) : fin[f 0] = f :=
-funext (λ i, by { rcases i with ⟨i, i_p⟩, cases i; simp[cons_inv], exfalso, simp[←nat.add_one] at*, exact i_p })
-
-lemma fin2_eq (f : finitary α 2) : fin[f 0, f 1] = f :=
-funext (λ i, by { rcases i with ⟨i, i_p⟩, cases i; simp[cons_inv], cases i, { simp },
-  exfalso, simp[←nat.add_one] at i_p, exact i_p })
--/
 
 @[ext] lemma fin_0_ext (f g : finitary α 0) : f = g :=
 funext (λ i, by { rcases i with ⟨i, h⟩, exfalso, exact nat.not_lt_zero i h })
@@ -362,6 +350,15 @@ lemma of_option_eq_none_iff : ∀ {n} (v : finitary (option α) n),
       { have :v.tail ⟨i, _⟩ = some (w' ⟨i, _⟩), 
         from of_option_eq_some_iff.mp eqn_w' ⟨i, (by { simp[←nat.add_one] at i_lt, exact i_lt })⟩,
         simp[tail, eqn] at this, contradiction } } }
+
+def subst (a : α) {n} (f : finitary α (n + 1)) : finitary α (n + 1) := a ::ᶠ f.tail_inv
+
+infix ` ⌢ᶠ `:65 := subst
+
+lemma subst_app_zero (a : α) {n} (v : finitary α (n + 1)) : (a ⌢ᶠ v) 0 = a := by simp[subst]
+
+lemma subst_app_succ (a : α) {n} (v : finitary α (n + 1)) (m : fin n) : (a ⌢ᶠ v) m.succ = v m :=
+by { simp[subst, tail_inv], refl }
 
 end finitary
 
@@ -578,13 +575,13 @@ prefix `∏ `:64 := has_univ_quantifier.univ
 
 prefix `∐ `:64 := has_exists_quantifier.ex
 
-@[notation_class] class has_univ_quantifier' (α : Sort*) (β : Sort*):= (univ : α → β)
+@[notation_class] class has_univ_quantifier' (α : ℕ → Sort*) := (univ : Π {n}, α (n + 1) → α n)
 
-prefix `∏' `:64 := has_univ_quantifier'.univ
+prefix `𝚷 `:64 := has_univ_quantifier'.univ
 
-@[notation_class] class has_exists_quantifier' (α : Sort*) (β : Sort*) := (ex : α → β)
+@[notation_class] class has_exists_quantifier' (α : ℕ → Sort*) := (ex : Π {n}, α (n + 1) → α n)
 
-prefix `∐' `:64 := has_exists_quantifier'.ex
+prefix `𝚺 `:64 := has_exists_quantifier'.ex
 
 @[notation_class] class has_turnstile (α : Sort*) := (turnstile : set α → α → Prop)
 
@@ -611,6 +608,89 @@ by simp[set.insert]
 
 infix ` ⊧ ` :55 := has_double_turnstile.double_turnstile
 
+@[notation_class] class has_shift (C : ℕ → Sort*) :=
+(shift : Π {n}, C n → C (n + 1))
+
+@[reducible] def finitary' (T : ℕ → Type*) (n β : ℕ) := finitary (T β) n
+
+prefix `⤉`:max := has_shift.shift
+
+namespace has_shift
+variables {C : ℕ → Sort*} [has_shift C]
+
+@[simp] def shifts {n} (x : C n) : Π m, C (n + m)
+| 0       := x
+| (m + 1) := ⤉(shifts m)
+
+infix ` ↟ `:max := has_shift.shifts
+
+instance pi (α : Sort*) : has_shift (λ i, α → C i) := ⟨λ n f a, ⤉(f a)⟩
+
+variables {T : ℕ → Type*} [has_shift T] {β : ℕ}
+
+instance finitary (n) : has_shift (λ i, finitary (T i) n) := ⟨λ β v, (λ i, ⤉(v i))⟩
+
+lemma finitary_shifts_eq {T : ℕ → Type*} [has_shift T] {β : ℕ} {n} (v : finitary' T n β) (m) :
+  v ↟ m = (λ i, (v i) ↟ m) :=
+by { induction m with m IH; simp*, refl }
+
+@[simp] lemma finitary_shift_app {n} (v : finitary' T n β) (i : fin n) : (⤉v) i = ⤉(v i) := rfl
+
+@[simp] lemma finitary_shifts_app {n} (v : finitary' T n β) (i : fin n) (k) : (v ↟ k) i = (v i) ↟ k :=
+by { induction k with k IH; simp* }
+
+@[simp] lemma finitary_nil_eq :
+  (⤉finitary.nil : finitary' T 0 (β + 1)) = finitary.nil := by ext
+
+@[simp] lemma finitary_shifts_2_eq (t : T β) {n} (v : finitary' T n β) :
+  (⤉(t ::ᶠ v) : finitary' T (n + 1) (β + 1)) = ⤉t ::ᶠ ⤉v :=
+by {ext ⟨i, h⟩, induction i with i IH; simp }
+
+theorem heq_app_of_heq
+  {i j : ℕ} {a : C i} {b : C j} (h : a == b) : ⤉a == ⤉b :=
+by {  have := @heq.rec_on _ a, sorry }
+
+lemma shift_shifts {n} (a : C n) (m) : ⤉(a ↟ m) == ⤉a ↟ m :=
+by { induction m with m IH; simp, exact heq_app_of_heq IH }
+
+lemma shifts_add {n} (a : C n) (m) : ∀ l, a ↟ (m + l) == (a ↟ m) ↟ l
+| 0       := by { simp, congr }
+| (l + 1) := by { simp, rw[show m + (l + 1) = m + l + 1, by omega], simp,
+    refine heq_app_of_heq (shifts_add l) }
+
+end has_shift
+
+@[notation_class] class has_shift' (C : ℕ → Sort*) :=
+(shift' : Π {n}, C n → C (n + 1))
+
+prefix `⤉'`:max := has_shift'.shift'
+
+namespace has_shift'
+variables {C : ℕ → Sort*} [has_shift' C]
+
+@[simp] def shifts' {n} (x : C n) : Π m, C (n + m)
+| 0       := x
+| (m + 1) := ⤉'(shifts' m)
+
+infix ` ↟' `:max := has_shift'.shifts'
+
+instance pi (α : Sort*) : has_shift' (λ i, α → C i) := ⟨λ n f a, ⤉'(f a)⟩
+
+variables {T : ℕ → Type*} [has_shift' T] {β : ℕ}
+
+instance finitary (n) : has_shift' (λ i, finitary (T i) n) := ⟨λ β v, (λ i, ⤉'(v i))⟩
+
+lemma finitary_pow_eq {β : ℕ} {n} (v : finitary' T n β) (m) :
+  v ↟' m = (λ i, (v i) ↟' m) :=
+by { induction m with m IH; simp*, refl }
+
+@[simp] lemma pi_shift_app {n} (v : finitary' T n β) (i : fin n) : (⤉'v) i = ⤉'(v i) := rfl
+
+@[simp] lemma pi_shifts_app {n} (v : finitary' T n β) (i : fin n) (k) : (v ↟' k) i = (v i) ↟' k :=
+by { induction k with k IH; simp* }
+
+end has_shift'
+
 @[simp] def inf_conjunction {α : Type*} [has_top α] [has_inf α] : ∀ n, (fin n → α) → α
 | 0 _        := ⊤
 | (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊓ inf_conjunction n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
@@ -626,6 +706,12 @@ notation `⋁*` binders `, ` r:(scoped p, sup_disjunction _ p) := r
 instance : has_arrow Prop := ⟨(→)⟩
 
 instance : has_negation Prop := ⟨not⟩
+
+class prop_logic_language (F : Type*) extends
+  has_negation F, has_arrow F, has_inf F, has_sup F, has_top F, has_bot F
+
+instance prop_logic_language_of_symbols (F : Type*)
+  [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F] : prop_logic_language F := {}
 
 section classical
 attribute [instance, priority 0] classical.prop_decidable
