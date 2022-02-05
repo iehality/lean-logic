@@ -616,47 +616,43 @@ infix ` ⊧ ` :55 := has_double_turnstile.double_turnstile
 prefix `⤉`:max := has_shift.shift
 
 namespace has_shift
-variables {C : ℕ → Sort*} [has_shift C]
+variables {C : ℕ → Sort*} [has_shift C] {β : ℕ}
 
-@[simp] def shifts {n} (x : C n) : Π m, C (n + m)
+def shifts {n} (x : C n) : Π m, C (n + m)
 | 0       := x
 | (m + 1) := ⤉(shifts m)
 
 infix ` ↟ `:max := has_shift.shifts
 
+@[simp] lemma shifts_zero (a : C β) : a ↟ 0 = a := rfl
+
+lemma shifts_succ (a : C β) {s} : a ↟ (s + 1) = ⤉(a ↟ s) := rfl
+
+lemma shift_eq_shifts_one (a : C β) : ⤉a = a ↟ 1 := rfl
+
 instance pi (α : Sort*) : has_shift (λ i, α → C i) := ⟨λ n f a, ⤉(f a)⟩
 
-variables {T : ℕ → Type*} [has_shift T] {β : ℕ}
+variables {T : ℕ → Type*} [has_shift T]
 
 instance finitary (n) : has_shift (λ i, finitary (T i) n) := ⟨λ β v, (λ i, ⤉(v i))⟩
 
 lemma finitary_shifts_eq {T : ℕ → Type*} [has_shift T] {β : ℕ} {n} (v : finitary' T n β) (m) :
   v ↟ m = (λ i, (v i) ↟ m) :=
-by { induction m with m IH; simp*, refl }
+by { induction m with m IH; simp[*, shifts_succ], refl }
 
 @[simp] lemma finitary_shift_app {n} (v : finitary' T n β) (i : fin n) : (⤉v) i = ⤉(v i) := rfl
 
 @[simp] lemma finitary_shifts_app {n} (v : finitary' T n β) (i : fin n) (k) : (v ↟ k) i = (v i) ↟ k :=
-by { induction k with k IH; simp* }
+by { induction k with k IH; simp[*, shifts_succ] }
 
-@[simp] lemma finitary_nil_eq :
+@[simp] lemma shift_finitary_nil_eq :
   (⤉finitary.nil : finitary' T 0 (β + 1)) = finitary.nil := by ext
 
-@[simp] lemma finitary_shifts_2_eq (t : T β) {n} (v : finitary' T n β) :
+@[simp] lemma shift_finitary_cons_eq (t : T β) {n} (v : finitary' T n β) :
   (⤉(t ::ᶠ v) : finitary' T (n + 1) (β + 1)) = ⤉t ::ᶠ ⤉v :=
 by {ext ⟨i, h⟩, induction i with i IH; simp }
 
-theorem heq_app_of_heq
-  {i j : ℕ} {a : C i} {b : C j} (h : a == b) : ⤉a == ⤉b :=
-by {  have := @heq.rec_on _ a, sorry }
-
-lemma shift_shifts {n} (a : C n) (m) : ⤉(a ↟ m) == ⤉a ↟ m :=
-by { induction m with m IH; simp, exact heq_app_of_heq IH }
-
-lemma shifts_add {n} (a : C n) (m) : ∀ l, a ↟ (m + l) == (a ↟ m) ↟ l
-| 0       := by { simp, congr }
-| (l + 1) := by { simp, rw[show m + (l + 1) = m + l + 1, by omega], simp,
-    refine heq_app_of_heq (shifts_add l) }
+instance : has_shift fin := ⟨@fin.succ⟩
 
 end has_shift
 
