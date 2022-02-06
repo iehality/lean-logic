@@ -178,13 +178,13 @@ end
 @[simp] lemma and_inply_left {p₁ p₂ q : F} : (p₁ ⟶ q) ⟶ p₁ ⊓ p₂ ⟶ q ∈ P :=
 (show (p₁ ⟶ q) ⟶ p₁ ⊓ p₂ ⟶ p₁ ⟶ q ∈ P, by simp) ⨀₂ (show (p₁ ⟶ q) ⟶ p₁ ⊓ p₂ ⟶ p₁ ∈ P, by simp)
 
-lemma and_inply_of_imply_left {p₁ p₂ q : F} (h : p₁ ⟶ q ∈ P) : p₁ ⊓ p₂ ⟶ q ∈ P :=
+lemma and_imply_of_imply_left {p₁ p₂ q : F} (h : p₁ ⟶ q ∈ P) : p₁ ⊓ p₂ ⟶ q ∈ P :=
 (show (p₁ ⟶ q) ⟶ p₁ ⊓ p₂ ⟶ q ∈ P, by simp) ⨀ h
 
 @[simp] lemma and_imply_right {p₁ p₂ q : F} : (p₂ ⟶ q) ⟶ p₁ ⊓ p₂ ⟶ q ∈ P :=
 (show (p₂ ⟶ q) ⟶ p₁ ⊓ p₂ ⟶ p₂ ⟶ q ∈ P, by simp) ⨀₂ (show (p₂ ⟶ q) ⟶ p₁ ⊓ p₂ ⟶ p₂ ∈ P, by simp)
 
-lemma and_inply_of_imply_right {p₁ p₂ q : F} (h : p₂ ⟶ q ∈ P) : p₁ ⊓ p₂ ⟶ q ∈ P :=
+lemma and_imply_of_imply_right {p₁ p₂ q : F} (h : p₂ ⟶ q ∈ P) : p₁ ⊓ p₂ ⟶ q ∈ P :=
 (show (p₂ ⟶ q) ⟶ p₁ ⊓ p₂ ⟶ q ∈ P, by simp) ⨀ h
 
 @[simp] lemma iff_and_p {p q : F} : (p ⊓ q ∈ P) ↔ (p ∈ P ∧ q ∈ P) :=
@@ -523,7 +523,7 @@ local infixl ` ⨀ `:90 := axiomatic_classical_logic'.modus_ponens
 
 @[simp] lemma imply₂ (p q r) : T ⊢ (p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r := imply₂
 
-lemma imply_trans_a {p q r : F} : (T ⊢ p ⟶ q) → (T ⊢ q ⟶ r) → (T ⊢ p ⟶ r) :=
+lemma imply_trans {p q r : F} : (T ⊢ p ⟶ q) → (T ⊢ q ⟶ r) → (T ⊢ p ⟶ r) :=
 impl_trans
 
 @[simp] lemma contraposition (p q) : T ⊢ (⁻p ⟶ ⁻q) ⟶ q ⟶ p := contraposition
@@ -554,7 +554,7 @@ impl_trans
 
 lemma iff_equiv {p q : F} : T ⊢ p ⟷ q ↔ (T ⊢ p ⟶ q ∧ T ⊢ q ⟶ p) := iff_equiv_p
 
-lemma equiv_symm_a {p q : F} : T ⊢ p ⟷ q → T ⊢ q ⟷ p := equiv_symm
+lemma equiv_symm {p q : F} : T ⊢ p ⟷ q → T ⊢ q ⟷ p := equiv_symm
 
 @[simp] lemma equiv_refl (p : F) : T ⊢ p ⟷ p := equiv_refl p
 
@@ -597,6 +597,57 @@ lemma of_equiv {p₁ p₂ : F} (h : T ⊢ p₁) (hp : T ⊢ p₁ ⟷ p₂) : T �
 @[simp] lemma neg_or_equiv_and_neg (p q : F) : T ⊢ ⁻(p ⊔ q) ⟷ ⁻p ⊓ ⁻q := neg_or_equiv_and_neg p q
 
 @[simp] lemma or_imply (p q r : F) : T ⊢ (p ⟶ r) ⟶ (q ⟶ r) ⟶ p ⊔ q ⟶ r := or_imply p q r
+
+lemma contrapose {p q : F} : T ⊢ ⁻p ⟶ ⁻q ↔ T ⊢ q ⟶ p :=
+contrapose
+
+lemma and_imply_of_imply_left {p₁ p₂ q : F} (h : T ⊢ p₁ ⟶ q) : T ⊢ p₁ ⊓ p₂ ⟶ q :=
+and_imply_of_imply_left h
+
+lemma and_imply_of_imply_right {p₁ p₂ q : F} (h : T ⊢ p₂ ⟶ q) : T ⊢ p₁ ⊓ p₂ ⟶ q :=
+and_imply_of_imply_right h
+
+lemma of_equiv_p {p₁ p₂ : F} (h : T ⊢ p₁) (hp : T ⊢ p₁ ⟷ p₂) : T ⊢ p₂ :=
+of_equiv_p h hp
+
+lemma equiv_imply_of_equiv {p₁ q₁ p₂ q₂ : F} (hp : T ⊢ p₁ ⟷ p₂) (hq : T ⊢ q₁ ⟷ q₂) : T ⊢ (p₁ ⟶ q₁) ⟷ (p₂ ⟶ q₂) :=
+equiv_imply_of_equiv hp hq
+
+lemma imply_of_equiv {p₁ q₁ p₂ q₂ : F} (h : T ⊢ p₁ ⟶ q₁) (hp : T ⊢ p₁ ⟷ p₂) (hq : T ⊢ q₁ ⟷ q₂) : T ⊢ p₂ ⟶ q₂ :=
+imply_of_equiv h hp hq
+
+lemma equiv_neg_of_equiv {p₁ p₂ : F} (hp : T ⊢ p₁ ⟷ p₂) : T ⊢ ⁻p₁ ⟷ ⁻p₂ :=
+equiv_neg_of_equiv hp
+
+lemma neg_of_equiv {p₁ p₂ : F} (h : T ⊢ ⁻p₁) (hp : T ⊢ p₁ ⟷ p₂) : T ⊢ ⁻p₂ :=
+neg_of_equiv h hp
+
+/-
+lemma equiv_and_of_equiv {p₁ q₁ p₂ q₂: F} (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₁ ⊓ q₁ ⟷ p₂ ⊓ q₂ ∈ P :=
+by { simp only [and_def P], refine equiv_neg_of_equiv (equiv_imply_of_equiv hp (equiv_neg_of_equiv hq)) }
+
+lemma and_of_equiv {p₁ q₁ p₂ q₂: F} (h : p₁ ⊓ q₁ ∈ P) (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₂ ⊓ q₂ ∈ P :=
+by { have : p₁ ⊓ q₁ ⟶ p₂ ⊓ q₂ ∈ P, from (iff_equiv_p.mp (equiv_and_of_equiv hp hq)).1, exact this ⨀ h }
+
+lemma equiv_or_of_equiv {p₁ q₁ p₂ q₂: F} (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₁ ⊔ q₁ ⟷ p₂ ⊔ q₂ ∈ P :=
+by { simp only [or_def P], refine (equiv_imply_of_equiv (equiv_neg_of_equiv hp) hq) }
+
+lemma or_of_equiv {p₁ q₁ p₂ q₂: F} (h : p₁ ⊔ q₁ ∈ P) (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₂ ⊔ q₂ ∈ P :=
+by { have : p₁ ⊔ q₁ ⟶ p₂ ⊔ q₂ ∈ P, from (iff_equiv_p.mp (equiv_or_of_equiv hp hq)).1, exact this ⨀ h }
+
+lemma equiv_equiv_of_equiv {p₁ q₁ p₂ q₂: F} (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : (p₁ ⟷ q₁) ⟷ (p₂ ⟷ q₂) ∈ P :=
+by { refine (equiv_and_of_equiv (equiv_imply_of_equiv hp hq) (equiv_imply_of_equiv hq hp)) }
+
+lemma equiv_of_equiv {p₁ q₁ p₂ q₂: F} (h : p₁ ⟷ q₁ ∈ P) (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₂ ⟷ q₂ ∈ P :=
+by { have : (p₁ ⟷ q₁) ⟶ (p₂ ⟷ q₂) ∈ P, from (iff_equiv_p.mp (equiv_equiv_of_equiv hp hq)).1, exact this ⨀ h }
+
+@[simp] lemma equiv_refl (p : F) : p ⟷ p ∈ P := by simp[iff_equiv_p]
+
+@[symm] lemma equiv_symm {p q : F} : p ⟷ q ∈ P → q ⟷ p ∈ P := by { simp[iff_equiv_p], intros, simp* }
+
+@[trans] lemma equiv_trans {p q r : F} : p ⟷ q ∈ P → q ⟷ r ∈ P → p ⟷ r ∈ P :=
+by { simp[iff_equiv_p], intros hpq hqp hqr hrq, exact ⟨impl_trans hpq hqr, impl_trans hrq hqp⟩ }
+-/
 
 lemma case_of_ax {p q r : F} (hpq : T ⊢ p ⊔ q) (hpr : T ⊢ p ⟶ r) (hqr : T ⊢ q ⟶ r) : T ⊢ r :=
 case_of_p hpq hpr hqr

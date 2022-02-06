@@ -590,6 +590,10 @@ prefix `∐' `:64 := has_exists_quantifier'.ex
 
 infix ` ⊢ `:45 := has_turnstile.turnstile
 
+@[notation_class] class has_Longarrow (α : Sort*) := (Longarrow : set α → α → Type u)
+
+infix ` ⟹ `:45 := has_Longarrow.Longarrow
+
 def has_arrow.lrarrow {α : Type*} [has_arrow α] [has_inf α] (a b : α) : α := (a ⟶ b) ⊓ (b ⟶ a)
 
 infix ` ⟷ `:59 := has_arrow.lrarrow

@@ -1,6 +1,6 @@
 import fopl theory provability
 
-universe u
+universes u v
 
 namespace fopl
 variables {L : language.{u}}
@@ -35,41 +35,45 @@ by { simp[sentence, eq_axiom5],
      simp only [lmm₁ n.succ n, lmm₂, ← nat.add_one],
      simp[max_add_add_left (n + 1) 0 (n + 1), two_mul, add_assoc] }
 
-inductive provable : theory L → formula L → Prop
-| GE : ∀ {T p}, provable ⤊T p → provable T (∏ p)
-| MP : ∀ {T p q}, provable T (p ⟶ q) → provable T p → provable T q
-| AX : ∀ {T p}, p ∈ T → provable T p
-| p0 : ∀ {T}, provable T ⊤
-| p1 : ∀ {T p q}, provable T (p ⟶ q ⟶ p)
-| p2 : ∀ {T p q r}, provable T ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r)
-| p3 : ∀ {T p q}, provable T ((⁻p ⟶ ⁻q) ⟶ q ⟶ p)
-| q1 : ∀ {T p t}, provable T (∏ p ⟶ p.rew ι[0 ⇝ t])
-| q2 : ∀ {T p q}, provable T (∏ (p ⟶ q) ⟶ ∏ p ⟶ ∏ q)
-| q3 : ∀ {T p}, provable T (p ⟶ ∏ (p^1))
-| e1 : ∀ {T}, provable T ∏ (#0 ≃₁ #0)
-| e2 : ∀ {T}, provable T ∏ ∏ ((#0 ≃₁ #1) ⟶ (#1 ≃₁ #0))
-| e3 : ∀ {T}, provable T ∏ ∏ ∏ ((#0 ≃₁ #1) ⟶ (#1 ≃₁ #2) ⟶ (#0 ≃₁ #2))
-| e4 : ∀ {T n} {f : L.fn n}, provable T (eq_axiom4 f)
-| e5 : ∀ {T n} {r : L.pr n}, provable T (eq_axiom5 r)
+inductive proof : theory L → formula L → Type u
+| generalize : ∀ {T p}, proof ⤊T p → proof T (∏ p)
+| mdp : ∀ {T p q}, proof T (p ⟶ q) → proof T p → proof T q
+| by_axiom : ∀ {T p}, p ∈ T → proof T p
+| verum : ∀ {T}, proof T ⊤
+| imply₁ : ∀ {T p q}, proof T (p ⟶ q ⟶ p)
+| imply₂ : ∀ {T p q r}, proof T ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r)
+| contraposition : ∀ {T p q}, proof T ((⁻p ⟶ ⁻q) ⟶ q ⟶ p)
+| specialize : ∀ {T p t}, proof T (∏ p ⟶ p.rew ι[0 ⇝ t])
+| univ_K : ∀ {T p q}, proof T (∏ (p ⟶ q) ⟶ ∏ p ⟶ ∏ q)
+| dummy_univ : ∀ {T p}, proof T (p ⟶ ∏ (p^1))
+| eq_reflexivity : ∀ {T}, proof T ∏ (#0 ≃₁ #0)
+| eq_symmetry : ∀ {T}, proof T ∏ ∏ ((#0 ≃₁ #1) ⟶ (#1 ≃₁ #0))
+| eq_transitivity : ∀ {T}, proof T ∏ ∏ ∏ ((#0 ≃₁ #1) ⟶ (#1 ≃₁ #2) ⟶ (#0 ≃₁ #2))
+| function_ext : ∀ {T n} {f : L.fn n}, proof T (eq_axiom4 f)
+| predicate_ext : ∀ {T n} {r : L.pr n}, proof T (eq_axiom5 r)
+
+infix ` ⟹ `:45 := proof
+
+def provable (T : theory L) (p : formula L) : Prop := nonempty (T ⟹ p)
 
 instance : axiomatic_classical_logic' (formula L) :=
 { turnstile := provable,
   classical := λ T,
-  { modus_ponens := @provable.MP L T,
-    imply₁ := @provable.p1 L T, 
-    imply₂ := @provable.p2 L T,
-    contraposition := @provable.p3 L T,
-    provable_top := by { simp, refine provable.p0 },
+  { modus_ponens := λ p q ⟨bpq⟩ ⟨bp⟩, ⟨bpq.mdp bp⟩,
+    imply₁ := λ p q, ⟨proof.imply₁⟩, 
+    imply₂ := λ p q r, ⟨proof.imply₂⟩,
+    contraposition := λ p q, ⟨proof.contraposition⟩,
+    provable_top := ⟨proof.verum⟩,
     bot_eq := by { unfold has_bot.bot },
     and_def := λ p q, rfl,
     or_def := λ p q, rfl },
-  by_axiom := @provable.AX L }
+  by_axiom := λ T p mem, ⟨proof.by_axiom mem⟩ }
 
 def provable_theory (T Γ : theory L) : Prop := ∀ p ∈ Γ, T ⊢ p
 
 infix ` ⊢ₜₕ `:45 := provable_theory
 
-open axiomatic_classical_logic' axiomatic_classical_logic classical_logic
+open axiomatic_classical_logic' axiomatic_classical_logic
 
 infixl ` ⨀ `:90 := axiomatic_classical_logic'.modus_ponens
 
@@ -100,40 +104,113 @@ def formula.equiv (T : theory L) : formula L → formula L → Prop := equiv T
 
 def term.equiv (T : theory L) (t₁ t₂ : term L) : Prop := T ⊢ t₁ ≃₁ t₂
 
+namespace proof
+variables {T : theory L}
+
+def weakening {p} (h : T ⟹ p) : ∀ {U}, T ⊆ U → U ⟹ p :=
+begin
+  induction h with T p hyp_p IH T p q hyp_pq hyp_p IH₁ IH₂ T p hyp_p; try { simp },
+  { intros U hyp, refine generalize (IH (λ x h, _)), rcases h with ⟨p, hp, rfl⟩,
+    refine ⟨p, hyp hp, rfl⟩ },
+  { intros U hyp, exact (IH₁ hyp).mdp (IH₂ hyp) },
+  { intros U hyp, exact by_axiom (hyp hyp_p) },
+  { intros U ss, exact verum },
+  { intros U ss, exact imply₁ },
+  { intros U ss, exact imply₂ },
+  { intros U ss, exact contraposition },
+  { intros U ss, exact specialize },
+  { intros U ss, exact univ_K },
+  { intros U ss, exact dummy_univ },
+  { intros U ss, exact eq_reflexivity },
+  { intros U ss, exact eq_symmetry },
+  { intros U ss, exact eq_transitivity },
+  { intros U ss, exact function_ext },
+  { intros U ss, exact predicate_ext }
+end
+
+@[elab_as_eliminator]
+def rec'_on {T : theory L} (C : ℕ → formula L → Sort v) {i : ℕ} {p : formula L} (b : T^i ⟹ p)
+  (GE : ∀ {i} {p : formula L} (b : T^(i + 1) ⟹ p), C (i + 1) p → C i (∏ p))
+  (MP : ∀ {i} {p q : formula L} (b₁ : T^i ⟹ p ⟶ q) (b₂ : T^i ⟹ p), C i (p ⟶ q) → C i p → C i q)
+  (by_axiom : ∀ {i} {p : formula L} (mem : p ∈ T^i), C i p)
+  (p0 : ∀ {i}, C i ⊤)
+  (p1 : ∀ {i} {p q : formula L}, C i (p ⟶ q ⟶ p))
+  (p2 : ∀ {i} {p q r : formula L}, C i ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r))
+  (p3 : ∀ {i} {p q : formula L}, C i ((⁻p ⟶ ⁻q) ⟶ q ⟶ p))
+  (q1 : ∀ {i} {p : formula L} {t : term L}, C i (∏ p ⟶ p.rew ι[0 ⇝ t]))
+  (q2 : ∀ {i} {p q : formula L}, C i (∏ (p ⟶ q) ⟶ ∏ p ⟶∏ q))
+  (q3 : ∀ {i} {p : formula L}, C i (p ⟶ ∏ (p^1)))
+  (e1 : ∀ {i}, C i (∏ #0 ≃₁ #0))
+  (e2 : ∀ {i}, C i (∏ ∏ (#0 ≃₁ #1 ⟶ #1 ≃₁ #0)))
+  (e3 : ∀ {i}, C i (∏ ∏ ∏ (#0 ≃₁ #1 ⟶ #1 ≃₁ #2 ⟶ #0 ≃₁ #2)))
+  (e4 : ∀ {i} {m} {f : L.fn m}, C i (eq_axiom4 f))
+  (e5 : ∀ {i} {m} {r : L.pr m}, C i (eq_axiom5 r))
+  : C i p :=
+begin
+  suffices :
+    ∀ {p : formula L} {U : theory L} (b : U ⟹ p) {i : ℕ} (ss : U ⊆ T^i), C i p,
+  { refine this b (by refl) },
+  rintros p U b,
+  induction b,
+  case generalize : U p b IH
+  { intros i ss,
+    have ss' : ⤊U ⊆ T ^ (i + 1), { rintros _ ⟨q, mem, rfl⟩, simp[theory.sf_itr_succ], refine ⟨q, ss mem, rfl⟩ },
+    have : C (i + 1) p, from @IH (i + 1) ss',
+    refine GE (b.weakening ss') this },
+  case mdp : U p q b₁ b₂ IH₁ IH₂
+  { intros i ss, refine MP (weakening b₁ ss) (weakening b₂ ss) (IH₁ ss) (IH₂ ss) },
+  case by_axiom : U p mem
+  { intros i ss, refine by_axiom (ss mem) },
+  { refine λ i ss, p0 },
+  { refine λ i ss, p1 },
+  { refine λ i ss, p2 },
+  { refine λ i ss, p3 },
+  { refine λ i ss, q1 },
+  { refine λ i ss, q2 },
+  { refine λ i ss, q3 },
+  { refine λ i ss, e1 },
+  { refine λ i ss, e2 },
+  { refine λ i ss, e3 },
+  { refine λ i ss, e4 },
+  { refine λ i ss, e5 }
+end
+
+end proof
+
 namespace provable
 variables {T : theory L}
 
-lemma generalize {p : formula L} (h : ⤊T ⊢ p) : T ⊢ ∏ p := provable.GE h
+lemma generalize {p : formula L} (h : ⤊T ⊢ p) : T ⊢ ∏ p := by rcases h; exact ⟨h.generalize⟩
 
-@[simp] lemma specialize {p : formula L} (t) : T ⊢ ∏ p ⟶ p.rew ι[0 ⇝ t] := provable.q1
+@[simp] lemma specialize {p : formula L} (t) : T ⊢ ∏ p ⟶ p.rew ι[0 ⇝ t] := ⟨proof.specialize⟩
 
-@[simp] lemma univ_K (p q : formula L) : T ⊢ ∏ (p ⟶ q) ⟶ ∏ p ⟶∏ q := provable.q2
+@[simp] lemma univ_K (p q : formula L) : T ⊢ ∏ (p ⟶ q) ⟶ ∏ p ⟶∏ q := ⟨proof.univ_K⟩
 
-@[simp] lemma dummy_univ_quantifier (p : formula L) : T ⊢ p ⟶ ∏ (p^1) := provable.q3
+@[simp] lemma dummy_univ_quantifier (p : formula L) : T ⊢ p ⟶ ∏ (p^1) := ⟨proof.dummy_univ⟩
 
-@[simp] lemma eq_reflexivity : T ⊢ ∏ (#0 ≃₁ #0) := provable.e1
+@[simp] lemma eq_reflexivity : T ⊢ ∏ (#0 ≃₁ #0) := ⟨proof.eq_reflexivity⟩
 
-@[simp] lemma eq_symmetry : T ⊢ ∏ ∏ (#0 ≃₁ #1 ⟶ #1 ≃₁ #0) := provable.e2
+@[simp] lemma eq_symmetry : T ⊢ ∏ ∏ (#0 ≃₁ #1 ⟶ #1 ≃₁ #0) := ⟨proof.eq_symmetry⟩
 
-@[simp] lemma eq_transitive : T ⊢ ∏ ∏ ∏ (#0 ≃₁ #1 ⟶ #1 ≃₁ #2 ⟶ #0 ≃₁ #2) := provable.e3
+@[simp] lemma eq_transitivity : T ⊢ ∏ ∏ ∏ (#0 ≃₁ #1 ⟶ #1 ≃₁ #2 ⟶ #0 ≃₁ #2) := ⟨proof.eq_transitivity⟩
 
-@[simp] lemma function_ext {n} (f : L.fn n) : T ⊢ eq_axiom4 f := provable.e4
+@[simp] lemma function_ext {n} (f : L.fn n) : T ⊢ eq_axiom4 f := ⟨proof.function_ext⟩
 
-@[simp] lemma predicate_ext {n} (r : L.pr n) : T ⊢ eq_axiom5 r := provable.e5
+@[simp] lemma predicate_ext {n} (r : L.pr n) : T ⊢ eq_axiom5 r := ⟨proof.predicate_ext⟩
 
-lemma GE_cl [closed_theory T] {p} (h : T ⊢ p) : T ⊢ ∏ p :=
-by { apply provable.GE, simp[closed_theory_sf_eq, h], exact h }
+lemma generalize_of_closed [closed_theory T] {p} (h : T ⊢ p) : T ⊢ ∏ p :=
+by { apply generalize, simp[closed_theory_sf_eq, h] }
 
-lemma GE_itr : ∀ {n p}, T^n ⊢ p → T ⊢ ∏[n] p
+lemma generalize_itr : ∀ {n p}, T^n ⊢ p → T ⊢ ∏[n] p
 | 0     p h := by simp* at*
-| (n+1) p h := by { simp at*, have := GE_itr (GE h), simp* at* }
+| (n+1) p h := by { simp at*, have := generalize_itr (generalize h), simp* at* }
 
 lemma nfal_subst : ∀ (n) (p : formula L) (s : ℕ → term L),
   T ⊢ (∏[n] p) ⟶ p.rew (λ x, if x < n then s x else #(x-n))
 | 0     p s := by simp
 | (n+1) p s := by { simp,
     have lmm₁ : T ⊢ ∏ (∏[n] p) ⟶ nfal (p.rew $ ι[0 ⇝ s n]^n) n,
-    { have := @provable.q1 _ T (∏[n] p) (s n), simp[formula.nfal_rew] at this,
+    { have := @specialize _ T (∏[n] p) (s n), simp[formula.nfal_rew] at this,
       exact this },
     have s' := s,
     have lmm₂ := nfal_subst n (p.rew $ ι[0 ⇝ s n]^n) s,
@@ -147,10 +224,10 @@ lemma nfal_subst : ∀ (n) (p : formula L) (s : ℕ → term L),
         have eqn₂ : ¬x < n + 1, from not_lt.mpr (nat.succ_le_iff.mpr C),
         simp[C, eqn₁, eqn₂, nat.sub_sub, add_comm 1 n] } },
     simp[this] at lmm₂,
-    exact impl_trans lmm₁ lmm₂ }
+    exact imply_trans lmm₁ lmm₂ }
 
 lemma nfal_subst' {n} {p : formula L} (h : T ⊢ ∏[n] p ) (s : ℕ → term L) :
-  T ⊢ p.rew (λ x, if x < n then s x else #(x-n)) := (nfal_subst n p s).MP h
+  T ⊢ p.rew (λ x, if x < n then s x else #(x-n)) := (nfal_subst n p s) ⨀ h
 
 lemma nfal_subst'_finitary {n} {p : formula L} (h : T ⊢ ∏[n] p ) (s : finitary (term L) n) :
   T ⊢ p.rew (λ x, if h : x < n then s ⟨x, h⟩ else #(x-n)) :=
@@ -167,20 +244,15 @@ begin
   simp[eqn] at this, exact this
 end
 
-lemma weakening {p} (h : T ⊢ p) : ∀ {U}, T ⊆ U → U ⊢ p :=
-begin
-  induction h with T p hyp_p IH T p q hyp_pq hyp_p IH₁ IH₂ T p hyp_p; try { simp },
-  { intros U hyp, refine GE (IH (λ x h, _)), rcases h with ⟨p, hp, rfl⟩,
-    refine ⟨p, hyp hp, rfl⟩ },
-  { intros U hyp, exact (IH₁ hyp).MP (IH₂ hyp) },
-  { intros U hyp, exact AX (hyp hyp_p) },
-end
+lemma weakening {p} (h : T ⊢ p) {U} (ss : T ⊆ U) : U ⊢ p :=
+by rcases h; exact ⟨h.weakening ss⟩
 
 lemma weakening' {U : theory L} {p : formula L} : T ⊆ U → T ⊢ p → U ⊢ p := λ hi hp,
 weakening hp hi
 
 private lemma delete_imply {p} (h : T ⊢ p) : ∀ q, T \ {q} ⊢ q ⟶ p :=
 begin
+  rcases h,
   induction h with T p hyp_p IH T p₁ p₂ hyp_p₁₂ hyp_p₁ IH₁ IH₂ T p hyp_p;
     try { intros q, simp }; intros q,
   { have IH : ⤊T \ {q^1} ⊢ q^1 ⟶ p := IH (q^1),
@@ -188,18 +260,18 @@ begin
     have lmm₂ : T \ {q} ⊢ ∏ (q^1) ⟶ ∏ p,
     { suffices : T \ {q} ⊢ ∏ (q^1 ⟶ p),
       { have lmm : T \ {q} ⊢ ∏ (q^1 ⟶ p) ⟶ ∏ (q^1) ⟶ ∏ p, simp,
-        exact lmm.MP this },
-      refine GE (weakening IH (λ x h, _)), 
+        exact lmm ⨀ this },
+      refine generalize (weakening IH (λ x h, _)), 
       rcases h with ⟨h, neq⟩, rcases h with ⟨p', h', rfl⟩,
       refine ⟨p', ⟨h', λ c, _⟩, rfl⟩, simp at c,
       rw c at neq, exact neq rfl },
-    exact impl_trans lmm₁ lmm₂ },
+    exact imply_trans lmm₁ lmm₂ },
   { have : T \ {q} ⊢ (q ⟶ p₁ ⟶ p₂) ⟶ (q ⟶ p₁) ⟶ (q ⟶ p₂), simp, 
-    have : T \ {q} ⊢ (q ⟶ p₁) ⟶ q ⟶ p₂, from this.MP (IH₁ _),
-    exact this.MP (IH₂ _) },
+    have : T \ {q} ⊢ (q ⟶ p₁) ⟶ q ⟶ p₂, from this ⨀ (IH₁ _),
+    exact this ⨀ (IH₂ _) },
   { by_cases eqn : p = q,
     { simp[eqn] },
-    { have : T \ {q} ⊢ p, from AX ⟨hyp_p, eqn⟩,
+    { have : T \ {q} ⊢ p, from by_axiom ⟨hyp_p, eqn⟩,
       simp[this] } }
 end
 
@@ -210,57 +282,10 @@ instance : axiomatic_classical_logic (formula L) :=
   weakening := @weakening' L }
 
 @[elab_as_eliminator]
-theorem rec' {T : theory L} (C : ℕ → formula L → Prop)
-  (GE : ∀ {i} {p : formula L} (b : T^(i + 1) ⊢ p), C (i + 1) p → C i (∏ p))
-  (MP : ∀ {i} {p q : formula L} (b₁ : T^i ⊢ p ⟶ q) (b₂ : T^i ⊢ p), C i (p ⟶ q) → C i p → C i q)
-  (AX : ∀ {i} {p : formula L} (mem : p ∈ T^i), C i p)
-  (p0 : ∀ {i}, C i ⊤)
-  (p1 : ∀ {i} {p q : formula L}, C i (p ⟶ q ⟶ p))
-  (p2 : ∀ {i} {p q r : formula L}, C i ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r))
-  (p3 : ∀ {i} {p q : formula L}, C i ((⁻p ⟶ ⁻q) ⟶ q ⟶ p))
-  (q1 : ∀ {i} {p : formula L} {t : term L}, C i (∏ p ⟶ p.rew ι[0 ⇝ t]))
-  (q2 : ∀ {i} {p q : formula L}, C i (∏ (p ⟶ q) ⟶ ∏ p ⟶∏ q))
-  (q3 : ∀ {i} {p : formula L}, C i (p ⟶ ∏ (p^1)))
-  (e1 : ∀ {i}, C i (∏ #0 ≃₁ #0))
-  (e2 : ∀ {i}, C i (∏ ∏ (#0 ≃₁ #1 ⟶ #1 ≃₁ #0)))
-  (e3 : ∀ {i}, C i (∏ ∏ ∏ (#0 ≃₁ #1 ⟶ #1 ≃₁ #2 ⟶ #0 ≃₁ #2)))
-  (e4 : ∀ {i} {m} {f : L.fn m}, C i (eq_axiom4 f))
-  (e5 : ∀ {i} {m} {r : L.pr m}, C i (eq_axiom5 r))
-  : ∀ {i : ℕ} {p : formula L} (b : T^i ⊢ p), C i p :=
-begin
-  suffices :
-    ∀ {p : formula L} {U : theory L} (b : U ⊢ p) {i : ℕ} (ss : U ⊆ T^i),  C i p,
-  { intros i p b, refine this b (by refl) },
-  intros p U b,
-  induction b,
-  case provable.GE : U p b IH
-  { intros i ss,
-    have ss' : ⤊U ⊆ T ^ (i + 1), { rintros _ ⟨q, mem, rfl⟩, simp[theory.sf_itr_succ], refine ⟨q, ss mem, rfl⟩ },
-    have : C (i + 1) p, from @IH (i + 1) ss',
-    refine GE (weakening b ss') this },
-  case provable.MP : U p q b₁ b₂ IH₁ IH₂
-  { intros i ss, refine MP (weakening b₁ ss) (weakening b₂ ss) (IH₁ ss) (IH₂ ss) },
-  case provable.AX : U p mem
-  { intros i ss, refine AX (ss mem) },
-  { refine λ i ss, p0 },
-  { refine λ i ss, p1 },
-  { refine λ i ss, p2 },
-  { refine λ i ss, p3 },
-  { refine λ i ss, q1 },
-  { refine λ i ss, q2 },
-  { refine λ i ss, q3 },
-  { refine λ i ss, e1 },
-  { refine λ i ss, e2 },
-  { refine λ i ss, e3 },
-  { refine λ i ss, e4 },
-  { refine λ i ss, e5 }
-end
-
-@[elab_as_eliminator]
 theorem rec_on' {T : theory L} {C : ℕ → formula L → Prop} {i : ℕ} {p : formula L} (b : T^i ⊢ p)
   (GE : ∀ {i} {p : formula L} (b : T^(i + 1) ⊢ p), C (i + 1) p → C i (∏ p))
   (MP : ∀ {i} {p q : formula L} (b₁ : T^i ⊢ p ⟶ q) (b₂ : T^i ⊢ p), C i (p ⟶ q) → C i p → C i q)
-  (AX : ∀ {i} {p : formula L} (mem : p ∈ T^i), C i p)
+  (by_axiom : ∀ {i} {p : formula L} (mem : p ∈ T^i), C i p)
   (p0 : ∀ {i}, C i ⊤)
   (p1 : ∀ {i} {p q : formula L}, C i (p ⟶ q ⟶ p))
   (p2 : ∀ {i} {p q r : formula L}, C i ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r))
@@ -278,17 +303,17 @@ begin
   suffices :
     ∀ {p : formula L} {U : theory L} (b : U ⊢ p) {i : ℕ} (ss : U ⊆ T^i),  C i p,
   { refine this b (by refl) },
-  intros p U b,
+  rintros p U ⟨b⟩,
   induction b,
-  case provable.GE : U p b IH
+  case generalize : U p b IH
   { intros i ss,
     have ss' : ⤊U ⊆ T ^ (i + 1), { rintros _ ⟨q, mem, rfl⟩, simp[theory.sf_itr_succ], refine ⟨q, ss mem, rfl⟩ },
     have : C (i + 1) p, from @IH (i + 1) ss',
-    refine GE (weakening b ss') this },
-  case provable.MP : U p q b₁ b₂ IH₁ IH₂
-  { intros i ss, refine MP (weakening b₁ ss) (weakening b₂ ss) (IH₁ ss) (IH₂ ss) },
-  case provable.AX : U p mem
-  { intros i ss, refine AX (ss mem) },
+    refine GE (weakening ⟨b⟩ ss') this },
+  case mdp : U p q b₁ b₂ IH₁ IH₂
+  { intros i ss, refine MP (weakening ⟨b₁⟩ ss) (weakening ⟨b₂⟩ ss) (IH₁ ss) (IH₂ ss) },
+  case by_axiom : U p mem
+  { intros i ss, refine by_axiom (ss mem) },
   { refine λ i ss, p0 },
   { refine λ i ss, p1 },
   { refine λ i ss, p2 },
@@ -303,49 +328,6 @@ begin
   { refine λ i ss, e5 }
 end
 
-theorem proof_compact : ∀ {T : ℕ → theory L}, (∀ s, T s ⊆ T (s+1)) →
-  ∀ {p}, {p | ∃ s, T s p} ⊢ p → ∃ s, T s ⊢ p :=
-begin
-  suffices : ∀ {p} {U : theory L}, U ⊢ p → ∀ {T : ℕ → theory L},
-    (∀ s, T s ⊆ T (s+1)) → U ⊆ {p | ∃ s, T s p} → ∃ s, T s ⊢ p,
-  { refine λ T hyp p h, this h hyp (λ x hx, hx) },
-  intros p U h,
-  induction h,
-  case fopl.provable.GE : T p h IH
-  { intros U hyp ss,
-    let U' := λ s, ⤊(U s),
-    have hyp' : ∀ s, U' s ⊆ U' (s + 1),
-    { simp[U'], intros s p hyp_p, rcases hyp_p with ⟨p', hyp_q', rfl⟩,
-      refine ⟨p', hyp _ hyp_q', rfl⟩ },
-    have ss' : ⤊T ⊆ {p : formula L | ∃ s, U' s p},
-    { intros q hyp_q, rcases hyp_q with ⟨q', hyp_q', rfl⟩, rcases (ss hyp_q') with ⟨s, hyp_s⟩,
-      refine ⟨s, _, hyp_s, rfl⟩ },
-    have : ∃ s, U' s ⊢ p, from IH hyp' ss', rcases this with ⟨s, h⟩,
-    refine ⟨s, provable.GE h⟩ },
-  case fopl.provable.MP : T p q hyp_pq hyp_p IH₁ IH₂
-  { intros U hyp ss,
-    have : ∃ s, U s ⊢ p ⟶ q, from IH₁ hyp ss, rcases this with ⟨s₁, lmm₁⟩,
-    have : ∃ s, U s ⊢ p, from IH₂ hyp ss, rcases this with ⟨s₂, lmm₂⟩,
-    refine ⟨max s₁ s₂, _⟩,
-    have lmm₁ : U (max s₁ s₂) ⊢ p ⟶ q, from provable.weakening lmm₁ (ss_le hyp (by simp)),
-    have lmm₂ : U (max s₁ s₂) ⊢ p, from provable.weakening lmm₂ (ss_le hyp (by simp)),
-    exact lmm₁.MP lmm₂ },
-  case fopl.provable.AX : T p hyp_p
-  { intros U hyp ss, rcases (ss hyp_p) with ⟨s, hyp_s⟩,
-    refine ⟨s, provable.AX hyp_s⟩ },
-  { refine λ _ _ _, ⟨0, by simp⟩ },
-  { refine λ _ _ _, ⟨0, by simp⟩ },
-  { refine λ _ _ _, ⟨0, by simp⟩ },
-  { refine λ _ _ _, ⟨0, by simp⟩ },
-  { refine λ _ _ _, ⟨0, by simp⟩ },
-  { refine λ _ _ _, ⟨0, by simp⟩ },
-  { refine λ _ _ _, ⟨0, by simp⟩ },
-  { refine λ _ _ _, ⟨0, by simp⟩ },
-  { refine λ _ _ _, ⟨0, by simp⟩ },
-  { refine λ _ _ _, ⟨0, by simp⟩ },
-  { refine λ _ _ _, ⟨0, by simp⟩ },
-  { refine λ _ _ _, ⟨0, by simp⟩ }
-end
 
 lemma conjunction'_mem {n : ℕ} {P : finitary (formula L) n} :
   ∀ {p}, p ∈ P → T ⊢ conjunction' n P ⟶ p :=
@@ -353,13 +335,13 @@ begin
   induction n with n IH; simp[conjunction'];
   simp[has_mem.mem, finitary.mem],
   intros p mem,
-  exact and_inply_of_imply_right (IH mem)
+  exact and_imply_of_imply_right (IH mem)
 end
 
 lemma conjunction_mem {P : list (formula L)} : ∀ {p}, p ∈ P → T ⊢ conjunction P ⟶ p :=
 begin 
   induction P with p P IH; simp[conjunction],
-  have : ∀ q, q ∈ P → T ⊢ p ⊓ conjunction P ⟶ q, from λ q hq, and_inply_of_imply_right (IH hq),
+  have : ∀ q, q ∈ P → T ⊢ p ⊓ conjunction P ⟶ q, from λ q hq, and_imply_of_imply_right (IH hq),
   refine this,
 end
 
@@ -393,26 +375,27 @@ end
 theorem proof_conjunction {T : theory L} {p} :
   T ⊢ p → ∃ P : list (formula L), (∀ p, p ∈ P → T p) ∧ ∅ ⊢ conjunction P ⟶ p := λ h,
 begin
+  rcases h,
   induction h,
-  case fopl.provable.GE : T p hyp IH
+  case generalize : T p hyp IH
   { rcases IH with ⟨P₀, hyp_P₀, prov⟩,
     have : ∃ P, (conjunction P)^1 = conjunction P₀ ∧ ∀ p, p ∈ P → T p, from conjunction_sf _ hyp_P₀,
     rcases this with ⟨P, eqn, hyp_P⟩,
     have : ∅ ⊢ conjunction P ⟶ ∏ p,
-    { refine deduction.mp (GE _),
+    { refine deduction.mp (generalize _),
       rw [←sf_dsb, eqn], refine deduction.mpr (weakening prov (λ x hx, _)), cases hx },
     refine ⟨P, hyp_P, this⟩ },
-  case fopl.provable.MP : T p q hyp_pq hyp_p IH₁ IH₂
+  case mdp : T p q hyp_pq hyp_p IH₁ IH₂
   { rcases IH₁ with ⟨P₁, IH₁, prov₁⟩, rcases IH₂ with ⟨P₂, IH₂, prov₂⟩,
     refine ⟨P₁ ++ P₂, _, _⟩,
     { simp, intros p h, cases h, refine IH₁ _ h, refine IH₂ _ h },
     { have : ∅+{conjunction (P₁ ++ P₂)} ⊢ conjunction P₂, from deduction.mpr (conjunction_weakening (by simp)),
-      have lmm₁ : ∅+{conjunction (P₁ ++ P₂)} ⊢ p, from (show _ ⊢ conjunction P₂ ⟶ p, by simp[prov₂]).MP this,
+      have lmm₁ : ∅+{conjunction (P₁ ++ P₂)} ⊢ p, from (show _ ⊢ conjunction P₂ ⟶ p, by simp[prov₂]) ⨀ this,
       have : ∅+{conjunction (P₁ ++ P₂)} ⊢ conjunction P₁, from deduction.mpr (conjunction_weakening (by simp)),
       have lmm₂ : ∅+{conjunction (P₁ ++ P₂)} ⊢ p ⟶ q,
-      from (show _ ⊢ conjunction P₁ ⟶ p ⟶ q, by simp[prov₁]).MP this,
-      refine deduction.mp (lmm₂.MP lmm₁) } },
-  case fopl.provable.AX : T p hyp_p
+      from (show _ ⊢ conjunction P₁ ⟶ p ⟶ q, by simp[prov₁]) ⨀ this,
+      refine deduction.mp (lmm₂ ⨀ lmm₁) } },
+  case by_axiom : T p hyp_p
   { refine ⟨[p], _⟩, simp[conjunction],
     have : ∅ ⊢ p ⊓ ⊤ ⟶ p,
     { apply deduction.mp, have : ∅+{p ⊓ ⊤} ⊢ p ⊓ ⊤, { simp }, simp[*, axiomatic_classical_logic'.iff_and] at* },
@@ -432,7 +415,7 @@ begin
 end
 
 lemma fal_subst {p} (h : T ⊢ ∏ p) (t) : T ⊢ p.rew ι[0 ⇝ t] :=
-(show T ⊢ ∏ p ⟶ p.rew ι[0 ⇝ t], by simp).MP h
+(show T ⊢ ∏ p ⟶ p.rew ι[0 ⇝ t], by simp) ⨀ h
 
 infixl ` ⊚ `:60 := fal_subst
 
@@ -445,22 +428,22 @@ lemma cl_prove_rew [cl : closed_theory T] : ∀ {p : formula L}, T ⊢ p → ∀
 begin
   suffices : ∀ {p : formula L} {T}, T ⊢ p → closed_theory T → ∀ s, T ⊢ p.rew s,
   { refine λ p h s, this h cl _ },
-  intros p T h,
-  induction h,
-  case GE : T p hyp IH
+  rintros p T ⟨b⟩,
+  induction b,
+  case generalize : T p hyp IH
   { intros cl s, rw[@closed_theory_sf_eq _ _ cl] at IH,
-    refine GE _, simp[@closed_theory_sf_eq _ _ cl], exact IH cl _ },
-  case MP : T p q hyp_pq hyp_p IH₁ IH₂
-  { intros cl s, simp[formula.rew, @closed_theory_sf_eq _ _ cl] at*, refine (IH₁ cl _).MP (IH₂ cl _) },
-  case AX : T p hyp
-  { intros cl s, simp[@closed_theory.cl _ _ cl _ hyp], exact AX hyp },
+    refine generalize _, simp[@closed_theory_sf_eq _ _ cl], exact IH cl _ },
+  case mdp : T p q hyp_pq hyp_p IH₁ IH₂
+  { intros cl s, simp[formula.rew, @closed_theory_sf_eq _ _ cl] at*, refine (IH₁ cl _) ⨀ (IH₂ cl _) },
+  case by_axiom : T p hyp
+  { intros cl s, simp[@closed_theory.cl _ _ cl _ hyp], exact by_axiom hyp },
   { simp },
   { simp },
   { simp },
   { simp },
   { intros, simp[formula.rew, formula.subst_sf_rew] },
   { simp },
-  case q3 : T p { intros,
+  case dummy_univ : T p { intros,
     simp,
     have : (p^1).rew (s^1) = (p.rew s)^1,
     { simp[formula.pow_eq, formula.rew, formula.nested_rew], refl },
@@ -469,7 +452,7 @@ begin
   { simp },
   { simp },
   { simp [formula.sentence_rew eq_axiom4_sentence] },
-  { simp [formula.sentence_rew eq_axiom5_sentence] },
+  { simp [formula.sentence_rew eq_axiom5_sentence] }
 end
 
 lemma pow_of_cl [cl : closed_theory T] {p : formula L} {i : ℕ} : T ⊢ p → T^i ⊢ p :=
@@ -481,22 +464,22 @@ begin
   suffices : ∀ {p : formula L} {T},
     T ⊢ p → ∀ {n}, proper_at n T → ∀ s, T ⊢ p.rew (s^n),
   { refine λ p h s, this h @pp _ },
-  intros p T h,
-  induction h,
-  case GE : T p hyp IH
+  rintros p T ⟨b⟩,
+  induction b,
+  case generalize : T p hyp IH
   { intros n pp s,
-    refine GE _, refine @IH (n+1) (@proper_theory_sf_itr _ _ _ @pp 1) s },
-  case MP : T p q hyp_pq hyp_p IH₁ IH₂
-  { intros n pp s, refine (IH₁ @pp _).MP (IH₂ @pp _) },
-  case AX : T p hyp
-  { intros n pp s, refine AX (pp _ _ hyp) },
+    refine generalize _, refine @IH (n+1) (@proper_theory_sf_itr _ _ _ @pp 1) s },
+  case mdp : T p q hyp_pq hyp_p IH₁ IH₂
+  { intros n pp s, refine (IH₁ @pp _) ⨀ (IH₂ @pp _) },
+  case by_axiom : T p hyp
+  { intros n pp s, refine by_axiom (pp _ _ hyp) },
   { simp },
   { simp },
   { simp },
   { simp },
   { intros, simp[formula.subst_sf_rew] },
   { simp },
-  case q3 : T p { intros,
+  case dummy_univ : T p { intros,
     simp,
     simp[←formula.pow_rew_distrib] },
   { simp },
@@ -528,17 +511,17 @@ protected lemma conjunction' {n} {P : finitary (formula L) n} (h : ∀ i, T ⊢ 
 by { induction n with n IH; simp, refine ⟨h _, IH (λ i, _)⟩, refine h _ }
 
 lemma sf_sf {p : formula L} : ⤊T ⊢ p^1 ↔ T ⊢ p :=
-⟨λ h, by { have := fal_subst (GE h) #0, simp* at* },
+⟨λ h, by { have := fal_subst (generalize h) #0, simp* at* },
  λ h, by { have : ∃ P, (∀ p, p ∈ P → p ∈ T) ∧ ∅ ⊢ conjunction P ⟶ p,
   from proof_conjunction h, rcases this with ⟨P, hyp_P, prov⟩,
   have lmm₁ : ⤊T ⊢ conjunction (P.map (λ p, p^1)),
-  { refine conjunction_provable (λ p hyp, AX _), simp at hyp, rcases hyp with ⟨p', p'_mem, rfl⟩,
+  { refine conjunction_provable (λ p hyp, by_axiom _), simp at hyp, rcases hyp with ⟨p', p'_mem, rfl⟩,
     refine ⟨p', hyp_P p' p'_mem, rfl⟩ },
   have lmm₂ : ⤊T ⊢ conjunction (P.map (λ p, p^1)) ⟶ p^1,
   { have : ∅ ⊢ (conjunction P)^1 ⟶ p^1, from cl_prove_rew prov _,
     simp[formula.pow_eq, conjunction_rew_eq] at this,
     refine weakening this (λ p h, _), exfalso, exact h },
-  refine lmm₂.MP lmm₁ }⟩
+  refine lmm₂ ⨀ lmm₁ }⟩
 
 lemma sf_itr_sf_itr : ∀ {i : ℕ} {p : formula L},
   T^i ⊢ p^i ↔ T ⊢ p
@@ -552,7 +535,7 @@ begin
   have t := #0,
   let f : ℕ → term L := λ x, if x < i + 1 then s x else (u (x - i - 1))^i,
   have : T^i ⊢ ∏ (∏[i + 1] p) ^ (i+1),
-    from generalize (show T^(i + 1) ⊢ (∏[i + 1] p) ^ (i+1), from sf_itr_sf_itr.mpr (GE_itr h)),
+    from generalize (show T^(i + 1) ⊢ (∏[i + 1] p) ^ (i+1), from sf_itr_sf_itr.mpr (generalize_itr h)),
   have := fal_subst this t,
   have := (proper_theory_pow_rew i this u),
   simp[formula.nfal_pow, formula.nested_rew, -nfal] at this,
@@ -590,34 +573,34 @@ begin
   simp[has_exists_quantifier.ex, formula.ex],
   refine raa (p.rew ι[0 ⇝ t]) (by simp[h]) (deduction.mpr _),
   have : ⁻p.rew ι[0 ⇝ t] = (⁻p).rew ι[0 ⇝ t] := rfl,
-  rw[this], refine provable.q1,
+  rw[this], refine specialize t,
 end
 
 lemma use_0 {p : formula L} (h : ⤊T ⊢ p) : T ⊢ ∐ p :=
 use #0 ((generalize h) ⊚ #0)
 
-@[simp] lemma eq_refl : ∀ {t : term L}, T ⊢ t ≃ t := (@provable.e1 _ T).fal_subst
+@[simp] lemma eq_refl : ∀ {t : term L}, T ⊢ t ≃ t := (@eq_reflexivity _ T).fal_subst
 
 lemma eq_symm : ∀ {t u : term L}, (T ⊢ t ≃ u) → (T ⊢ u ≃ t) :=
 begin
   intros t u h,
-  have : T ⊢ (t ≃ u) ⟶ (u ≃ t), { have := fal_subst (fal_subst (@provable.e2 _ T) u) t, simp at*, refine this },
-  refine this.MP h
+  have : T ⊢ (t ≃ u) ⟶ (u ≃ t), { have := fal_subst (fal_subst (@eq_symmetry _ T) u) t, simp at*, refine this },
+  refine this ⨀ h
 end
 
 
 lemma eq_trans {t₁ t₂ t₃ : term L} : (T ⊢ t₁ ≃ t₂) → (T ⊢ t₂ ≃ t₃) → (T ⊢ t₁ ≃ t₃) := λ h₁ h₂,
 by { have : T ⊢ (t₁ ≃ t₂) ⟶ (t₂ ≃ t₃) ⟶ (t₁ ≃ t₃),
-     { have := (@provable.e3 _ T) ⊚ t₃ ⊚ t₂ ⊚ t₁, simp[←term.pow_rew_distrib] at*,
+     { have := (@eq_transitivity _ T) ⊚ t₃ ⊚ t₂ ⊚ t₁, simp[←term.pow_rew_distrib] at*,
        exact this },
-     exact (this.MP h₁).MP h₂ }
+     exact (this ⨀ h₁) ⨀ h₂ }
 
 lemma ne_symm {t u : term L} (h : T ⊢ t ≄ u) : T ⊢ u ≄ t :=
 neg_of_equiv h (show T ⊢ (t ≃ u) ⟷ (u ≃ t), by { 
     have : T ⊢ (t ≃ u) ⟶ (u ≃ t),
-    { have := fal_subst (fal_subst (@provable.e2 _ T) u) t, simp at*, refine this },
+    { have := fal_subst (fal_subst (@eq_symmetry _ T) u) t, simp at*, refine this },
     have : T ⊢ (u ≃ t) ⟶ (t ≃ u),
-    { have := fal_subst (fal_subst (@provable.e2 _ T) t) u, simp at*, refine this },
+    { have := fal_subst (fal_subst (@eq_symmetry _ T) t) u, simp at*, refine this },
     simp[iff_equiv, *] })
 
 lemma function_ext' {n} (f : L.fn n) (v₁ v₂ : finitary (term L) n) :
@@ -636,7 +619,7 @@ begin
     intros h, exfalso, refine not_le_of_gt i.property (nat.le_of_add_le_left h) },
   have eq_v₂ : (λ i, ite (n + ↑i < 2 * n) (s (n + ↑i)) #(n + ↑i - 2 * n)) = v₂,
   { funext i, simp[s, two_mul, show ↑i < n, from i.property] },
-  have := nfal_subst' (@provable.e4 _ T _ f) s,
+  have := nfal_subst' (@function_ext _ T _ f) s,
   simp[eq_conj, eq_v₁, eq_v₂] at this, exact this
 end
 
@@ -656,7 +639,7 @@ begin
     intros h, exfalso, refine not_le_of_gt i.property (nat.le_of_add_le_left h) },
   have eq_v₂ : (λ i, ite (n + ↑i < 2 * n) (s (n + ↑i)) #(n + ↑i - 2 * n)) = v₂,
   { funext i, simp[s, two_mul, show ↑i < n, from i.property] },
-  have := nfal_subst' (@provable.e5 _ T _ r) s,
+  have := nfal_subst' (@predicate_ext _ T _ r) s,
   simp[eq_conj, eq_v₁, eq_v₂] at this, exact this
 end
 
@@ -667,7 +650,7 @@ lemma equal_rew_equal (s₁ s₂ : ℕ → term L) (e : ∀ n, T ⊢ s₁ n ≃ 
   by { simp,
        have : T ⊢ conjunction' n (λ i, (v i).rew s₁ ≃ (v i).rew s₂),
        { apply provable.conjunction', intros i, refine equal_rew_equal (v i) },
-       refine (@function_ext' _ T _ f (λ i, (v i).rew s₁) (λ i, (v i).rew s₂)).MP this }
+       refine (@function_ext' _ T _ f (λ i, (v i).rew s₁) (λ i, (v i).rew s₂)) ⨀ this }
 
 lemma equal_fal_subst_equal (t : term L) {t₁ t₂} (h : T ⊢ t₁ ≃ t₂) :
   T ⊢ t.rew (t₁ ⌢ ι) ≃ t.rew (t₂ ⌢ ι) :=
@@ -684,7 +667,7 @@ begin
     intros s₁ s₂ eqs,
     have : T ⊢ conjunction' n (λ i, (v i).rew s₁ ≃ (v i).rew s₂),
     { apply provable.conjunction', intros i,refine equal_rew_equal _ _ eqs _ },
-    refine (predicate_ext' p _ _).MP this },
+    refine (predicate_ext' p _ _) ⨀ this },
   case equal : t₁ t₂ { intros, simp[axiomatic_classical_logic'.iff_equiv],
     refine ⟨deduction.mp _, deduction.mp _⟩,
     { have lmm₁ : T+{t₁.rew s₁ ≃ t₂.rew s₁} ⊢ t₁.rew s₂ ≃ t₁.rew s₁,
@@ -706,13 +689,13 @@ begin
       have : T+{p.rew s₁ ⟶ q.rew s₁}+{p.rew s₂} ⊢ p.rew s₂, simp,
       have : T+{p.rew s₁ ⟶ q.rew s₁}+{p.rew s₂} ⊢ p.rew s₁, from (by simp[IH₁ eqn]) ⨀ this,
       have : T+{p.rew s₁ ⟶ q.rew s₁}+{p.rew s₂} ⊢ q.rew s₁,
-        from MP (show _ ⊢ p.rew s₁ ⟶ q.rew s₁, by simp) this,
+        from (show _ ⊢ p.rew s₁ ⟶ q.rew s₁, by simp) ⨀ this,
       from (by simp[IH₂ eqn]) ⨀ this },
     { refine deduction.mp (deduction.mp _),
       have : T+{p.rew s₂ ⟶ q.rew s₂}+{p.rew s₁} ⊢ p.rew s₁, simp,
       have : T+{p.rew s₂ ⟶ q.rew s₂}+{p.rew s₁} ⊢ p.rew s₂, from (by simp[IH₁ eqn]) ⨀ this,
       have : T+{p.rew s₂ ⟶ q.rew s₂}+{p.rew s₁} ⊢ q.rew s₂,
-        from MP (show _ ⊢ p.rew s₂ ⟶ q.rew s₂, by simp) this,
+        from (show _ ⊢ p.rew s₂ ⟶ q.rew s₂, by simp) ⨀ this,
       from (by simp[IH₂ eqn]) ⨀ this } },
   case neg : p IH
   { intros, simp[axiomatic_classical_logic'.iff_equiv] at*,
@@ -722,7 +705,7 @@ begin
     have := @IH (T^1) (s₁^1) (s₂^1)
       (λ n, by { cases n; simp, exact sf_sf.mpr (eqn n) }),
     simp[axiomatic_classical_logic'.iff_equiv] at this, 
-    refine ⟨provable.q2.MP (GE this.1), provable.q2.MP (GE this.2)⟩ }
+    refine ⟨univ_K _ _ ⨀ (generalize this.1), univ_K _ _ ⨀ (generalize this.2)⟩ }
 end
 
 lemma iff_rew_of_eq {t : term L} {n : ℕ} (eqn : T ⊢ #n ≃ t) (p : formula L) :
@@ -760,7 +743,7 @@ begin
 end
 
 lemma dummy_fal_quantifir (p) : T ⊢ p ⟷ ∏ p^1 :=
-by { have : T ⊢ ∏ (p^1) ⟶ (p^1).rew ι[0 ⇝ #0], from provable.q1, simp[*, axiomatic_classical_logic'.iff_equiv] at * }
+by { have : T ⊢ ∏ (p^1) ⟶ (p^1).rew ι[0 ⇝ #0], from specialize #0, simp[*, axiomatic_classical_logic'.iff_equiv] at * }
 
 lemma dummy_fal_quantifir_iff {p : formula L} : T ⊢ ∏ (p^1) ↔ T ⊢ p :=
 by { have :=  (@dummy_fal_quantifir _ T p), simp[axiomatic_classical_logic'.iff_equiv] at this,  split,
@@ -775,7 +758,7 @@ by { simp[has_exists_quantifier.ex, formula.ex, axiomatic_classical_logic'.iff_e
      { refine contrapose.mp _, simp[this] } }
 
 @[simp] lemma T_hyp_eliminate {p} : T ⊢ ⊤ ⟶ p ↔ T ⊢ p :=
-⟨λ h, by { have : T ⊢ ⊤, simp, exact h.MP this }, λ h, by simp[h]⟩
+⟨λ h, by { have : T ⊢ ⊤, simp, exact h ⨀ this }, λ h, by simp[h]⟩
 
 lemma equiv_eq_of_equiv {t₁ u₁ t₂ u₂} (h₁ : T ⊢ t₁ ≃₁ u₁) (h₂ : T ⊢ t₂ ≃₁ u₂) : T ⊢ (t₁ ≃ t₂) ⟷ (u₁ ≃ u₂) :=
 by { simp[axiomatic_classical_logic'.iff_equiv],

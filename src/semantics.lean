@@ -155,40 +155,41 @@ lemma nfal_models_iff : ∀ {n} {p : formula L}, M ⊧ nfal p n ↔ M ⊧ p
 
 theorem soundness {T : theory L} : ∀ {p}, T ⊢ p → ∀ {M}, M ⊧ₜₕ T → M ⊧ p := λ p hyp,
 begin
+  rcases hyp,
   induction hyp,
-  case fopl.provable.GE : T p hyp_p IH
+  case generalize : T p hyp_p IH
   { intros M hyp_T e d, exact IH (modelsth_sf hyp_T) _ },
-  case fopl.provable.MP : T p q hyp_pq hyp_p IH_pq IH_p
+  case mdp : T p q hyp_pq hyp_p IH_pq IH_p
   { intros M hyp_T e, exact IH_pq hyp_T e (IH_p hyp_T e) },
-  case fopl.provable.AX : T p hyp_p
+  case by_axiom : T p hyp_p
   { intros M hyp_T e, exact hyp_T _ hyp_p _ },
-    case fopl.provable.p0 : T
+  case verum : T
   { intros M hyp_T e, simp },
-  case fopl.provable.p1 : T p q
+  case imply₁ : T p q
   { intros M hyp_T e h₁ h₂, exact h₁ },
-  case fopl.provable.p2 : T p q r
+  case imply₂ : T p q r
   { intros M hyp_T e h₁ h₂ h₃, exact (h₁ h₃) (h₂ h₃) },
-  case fopl.provable.p3 : T p q
+  case contraposition : T p q
   { intros M hyp_T e h₁, simp[formula.val], contrapose, exact h₁ },
-  case fopl.provable.q1 : T p t
+  case specialize : T p t
   { intros M hyp_T e h, simp[rew_val_iff] at h ⊢,
     have : (λ n, (ι[0 ⇝ t] n).val e) = (t.val e) ⌢ e,
     { funext n, cases n; simp[term.val, term.val, concat] },
     rw this, exact h _ },
-  case fopl.provable.q2 : T p q
+  case univ_K : T p q
   { intros M hyp_T e h₁ h₂ d, exact (h₁ d) (h₂ d) },
-  case fopl.provable.q3 : T p
+  case dummy_univ : T p
   { intros M hyp_T e h d, simp, exact h },
-  case fopl.provable.e1 : T
+  case eq_reflexivity : T
   { intros M hyp_T e t, simp[formula.val] },
-  case fopl.provable.e2 : T
+  case eq_symmetry : T
   { intros M hyp_T e t₁ t₂, simp[formula.val], refine eq.symm },
-  case fopl.provable.e3 : T
+  case eq_transitivity : T
   { intros M hyp_T e t₁ t₂ t₃, simp[formula.val], refine eq.trans },
-  case fopl.provable.e4 : T n f
+  case function_ext : T n f
   { simp[eq_axiom4, nfal_models_iff], intros M hyp_T e,
     simp, intros h, simp[h] },
-  case fopl.provable.e5 : T n f
+  case predicate_ext : T n f
   { simp[eq_axiom5, nfal_models_iff], intros M hyp_T e,
     simp, intros h, simp[h] },
 end
