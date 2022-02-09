@@ -102,13 +102,13 @@ inductive robinson : theory LA
 notation `𝐐` := robinson
 
 def succ_induction (p : formula LA) : formula LA :=
-p.rew (0 ⌢ ι) ⊓ ∏ (p ⟶ p.rew ((Succ #0) ⌢ (λ x, #(x+1)))) ⟶ ∏ p
+p.rew (0 ⌢ ı) ⊓ ∏ (p ⟶ p.rew ((Succ #0) ⌢ (λ x, #(x+1)))) ⟶ ∏ p
 
 def order_induction (p : formula LA) : formula LA :=
-(∀₁ x, ((∀₁ y ≺ᵇ x, p.rew ι-{1}) ⟶ p)) ⟶ ∀₁ x, p
+(∀₁ x, ((∀₁ y ≺ᵇ x, p.rew ı-{1}) ⟶ p)) ⟶ ∀₁ x, p
 
 def collection (p : formula LA) : formula LA :=
-∀₁ u, (∀₁ x ≼ᵇ u, ∃₁ y, p.rew ι-{2}) ⟶ (∃₁ v, ∀₁ x ≼ᵇ u, ∃₁ y ≼ᵇ v, p.rew ι-{2}-{2})
+∀₁ u, (∀₁ x ≼ᵇ u, ∃₁ y, p.rew ı-{2}) ⟶ (∃₁ v, ∀₁ x ≼ᵇ u, ∃₁ y ≼ᵇ v, p.rew ı-{2}-{2})
 
 instance : closed_theory 𝐐 := ⟨λ p h,
   by cases h; simp[sentence, lrarrow_def, formula.ex, formula.and, fal_fn, ex_fn]⟩
@@ -181,7 +181,7 @@ by simp [Lindenbaum.equal_symm (Succ h) 0]
 by { induction h₁ using fopl.Herbrand.ind_on, induction h₂ using fopl.Herbrand.ind_on,
      have : T^i ⊢ ∏₁ ∏₁ ((Succ #1 ≃ Succ #0) ⟷ (#1 ≃ #0)),
      { refine generalize (generalize _), simp[iff_equiv],
-       have := ss_robinson T (i + 2) robinson.q2 ⊚ #1 ⊚ #0, simp[fal_fn, ι] at this,
+       have := ss_robinson T (i + 2) robinson.q2 ⊚ #1 ⊚ #0, simp[fal_fn, ı] at this,
        refine this },
      have := this ⊚ h₁ ⊚ h₂, simp at this,
      have : (⟦Succ h₁ ≃ Succ h₂⟧ᴸ : Lindenbaum T i) = ⟦h₁ ≃ h₂⟧ᴸ,
@@ -197,7 +197,7 @@ by { induction h using fopl.Herbrand.ind_on,
 @[simp] lemma mul_zero  (h : Herbrand T i) : h * 0 = 0 :=
 by { induction h using fopl.Herbrand.ind_on,
      have : T^i ⊢ ∏ (#0 * 0 ≃ 0), from ss_robinson T i robinson.q6,
-     have : T^i ⊢ formula.rew ι[0 ⇝ h] ((#0 * 0) ≃ 0), from this ⊚ h,
+     have : T^i ⊢ formula.rew ı[0 ⇝ h] ((#0 * 0) ≃ 0), from this ⊚ h,
      have := Herbrand.eq_of_provable_equiv.mp this, simp at this, exact this }
 
 @[simp] lemma add_succ {i} (h₁ h₂ : Herbrand T i) :
@@ -270,7 +270,7 @@ begin
   induction x using fopl.Herbrand.ind_on,
   induction y using fopl.Herbrand.ind_on,
   have : T^i ⊢ (x + y ≃ 0) ⟶ (x ≃ 0) ⊓ (y ≃ 0),
-  { have := (ss_robinson' T i add_eq_zero) ⊚ x ⊚ y, simp[fal_fn, ι] at this, exact this },
+  { have := (ss_robinson' T i add_eq_zero) ⊚ x ⊚ y, simp[fal_fn, ı] at this, exact this },
   have le_and := Lindenbaum.le_of_provable_imply_0.mp this, simp[-le_inf_iff] at le_and,
   have and_le : (⟦x⟧ᴴ ≃ 0 : Lindenbaum T i) ⊓ (⟦y⟧ᴴ ≃ 0) ≤ ((⟦x⟧ᴴ + ⟦y⟧ᴴ : Herbrand T i) ≃ 0 + 0),
     from and_ext _ _ _ _ _ _,
@@ -309,7 +309,7 @@ begin
   simp[iff_equiv], split,
   { simp[pnf_imply_ex_iff_fal_imply₁], refine generalize _, simp,
     simp[Lindenbaum.le_of_provable_imply_0] },
-  { refine deduction.mp (use 0 _), simp[ι, Herbrand.eq_of_provable_equiv_0] }
+  { refine deduction.mp (use 0 _), simp[ı, Herbrand.eq_of_provable_equiv_0] }
 end
 
 @[simp] lemma Lindenbaum.le_zero_eq_eq_zero (h : Herbrand T i) : (h ≼ 0 : Lindenbaum T i) = (h ≃ 0) :=
@@ -412,7 +412,7 @@ notation `∏_{≼ `:95 h `} ` l :90 := Lindenbaum.bd_fal l h
 notation `∐_{≼ `:95 h `} ` l :90 := Lindenbaum.bd_ex l h 
 
 theorem collection (p : formula LA) [proper 0 (𝚺⁰1)] :
-  𝐈𝚺⁰1 ⊢ ([∏ ≼ #0] ∐ p) ⟶ ∐ [∏ ≼ #1] [∐ ≼ #1] ((p^3).rew ι[4 ⇝ #0]).rew ι[3 ⇝ #1] :=
+  𝐈𝚺⁰1 ⊢ ([∏ ≼ #0] ∐ p) ⟶ ∐ [∏ ≼ #1] [∐ ≼ #1] ((p^3).rew ı[4 ⇝ #0]).rew ı[3 ⇝ #1] :=
 begin
   simp[le_of_provable_imply_0, bounded_fal, bounded_ex, Lindenbaum.pow_eq p, Herbrand.subst_eq, Lindenbaum.subst_eq],
   suffices : ∀ l : Lindenbaum 𝐐+𝐈𝚺⁰1 2,
@@ -427,18 +427,18 @@ end
 theorem collection (p : formula LA) [proper 0 (𝚺⁰1)] : 𝐐+𝐈𝚺⁰1 ⊢ ([∏ ≼ #0] ∐ p) ⟶ ∐ [∏ ≼ #1] [∐ ≼ #1] p :=
 begin
   refine deduction.mp _,
-  have : ∀ n, ∃ m, (((ι[0 ⇝ #0] ^ 1) ^ 1) ^ 1) m = (#n : term LA) :=
+  have : ∀ n, ∃ m, (((ı[0 ⇝ #0] ^ 1) ^ 1) ^ 1) m = (#n : term LA) :=
     (rewriting_sf_perm $ rewriting_sf_perm $ rewriting_sf_perm $ slide_perm _ #0), 
   rcases formula.total_rew_inv p this with ⟨q, e_q⟩,
   suffices : 𝐐+𝐈𝚺⁰1+{[∏ ≼ #0] ∐ p} ⊢ ∏ ∏ ((#0 ≼ #1) ⟶ ∐ [∏ ≼ #1] [∐ ≼ #1] q),
   { have := (this.fal_subst #0).fal_subst #0,
     simp[e_q, formula.nested_rew, rewriting_sf_itr.pow_add, subst_pow] at this,
-    have eqn : (λ (x : ℕ), term.rew ι[3 ⇝ #3] (ι[4 ⇝ #4] x) : ℕ → term LA) = 
+    have eqn : (λ (x : ℕ), term.rew ı[3 ⇝ #3] (ı[4 ⇝ #4] x) : ℕ → term LA) = 
       (λ x, if x < 4 then #x else if 4 < x then #(x - 2) else #3 ),
     { funext x, have C : x < 4 ∨ x = 4 ∨ 4 < x := trichotomous x 4,
       cases C, simp[C], { by_cases C₂ : x < 3, simp[C₂], simp[show x = 3, by omega] },
       cases C; simp[C], 
-      { simp[show ¬x < 4, from asymm C, show 3 < x - 1, from nat.lt_sub_left_of_add_lt C, ι],
+      { simp[show ¬x < 4, from asymm C, show 3 < x - 1, from nat.lt_sub_left_of_add_lt C, ı],
         refl } },
     rw eqn at this, sorry },
   apply provable.deduction.mpr, simp[Lindenbaum.provable_top_iff0],

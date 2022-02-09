@@ -124,9 +124,9 @@ by { induction n with n IH; simp,
 by simp[formula.pow_eq, rew_val_iff]
 
 lemma models_subst {p : formula L} {i : ℕ} {t : term L} {e : ℕ → |M| } :
-  (p.rew ι[i ⇝ t]).val e ↔ p.val (λ n, if n < i then e n else if i < n then e (n - 1) else t.val e) :=
+  (p.rew ı[i ⇝ t]).val e ↔ p.val (λ n, if n < i then e n else if i < n then e (n - 1) else t.val e) :=
 by { simp[rew_val_iff],
-     have : (λ (n : ℕ), term.val e (ι[i ⇝ t] n)) = (λ n, if n < i then e n else if i < n then e (n - 1) else t.val e),
+     have : (λ (n : ℕ), term.val e (ı[i ⇝ t] n)) = (λ n, if n < i then e n else if i < n then e (n - 1) else t.val e),
      { funext n,
        have C : n < i ∨ n = i ∨ i < n, exact trichotomous n i,
        cases C, simp[C],
@@ -134,13 +134,13 @@ by { simp[rew_val_iff],
      simp[this] }
 
 @[simp] lemma models_subst_0 {p : formula L} {t : term L} {e : ℕ → |M| } :
-  (p.rew ι[0 ⇝ t]).val e ↔ p.val (t.val e ⌢ e) :=
+  (p.rew ı[0 ⇝ t]).val e ↔ p.val (t.val e ⌢ e) :=
 by { have := @models_subst _ _ p 0 t e, simp at this,
      have eqn : (λ n, ite (0 < n) (e (n - 1)) (t.val e)) = t.val e ⌢ e,
      { funext n, cases n; simp }, rw[←eqn], exact this }
 
 @[simp] lemma models_subst_1 {p : formula L} {t : term L} {e : ℕ → |M| } :
-  (p.rew ι[1 ⇝ t]).val e ↔ p.val (e 0 ⌢ t.val e ⌢ (λ x, e (x + 1))) :=
+  (p.rew ı[1 ⇝ t]).val e ↔ p.val (e 0 ⌢ t.val e ⌢ (λ x, e (x + 1))) :=
 by { have := @models_subst _ _ p 1 t e,
      have eqn : (λ n, ite (n < 1) (e n) (ite (1 < n) (e (n - 1)) (t.val e))) =
        e 0 ⌢ t.val e ⌢ (λ x, e (x + 1)),
@@ -173,7 +173,7 @@ begin
   { intros M hyp_T e h₁, simp[formula.val], contrapose, exact h₁ },
   case specialize : T p t
   { intros M hyp_T e h, simp[rew_val_iff] at h ⊢,
-    have : (λ n, (ι[0 ⇝ t] n).val e) = (t.val e) ⌢ e,
+    have : (λ n, (ı[0 ⇝ t] n).val e) = (t.val e) ⌢ e,
     { funext n, cases n; simp[term.val, term.val, concat] },
     rw this, exact h _ },
   case univ_K : T p q

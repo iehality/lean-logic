@@ -38,7 +38,7 @@ term.app (sum.inr $ skolemize.char.sk p n)
 by simp[Sk]
 
 @[simp] def skseq (p : pnf L) : fin (p.rank + 1) → ℕ → term L.skolemize
-| ⟨0,     _⟩ := ι
+| ⟨0,     _⟩ := ı
 | ⟨n + 1, h⟩ :=
     match p.quantifier.nth_le n (by simp at h; exact h) with
     | 𝚷 := (skseq ⟨n, by { simp at h ⊢; exact nat.lt.step h }⟩)^1
@@ -48,8 +48,8 @@ by simp[Sk]
 
 /-
 @[simp] def skseq (p : pnf L) : list bool → ℕ → ℕ → term L.skolemize
-| Q        0       := ι
-| []       (n + 1) := ι
+| Q        0       := ı
+| []       (n + 1) := ı
 | (𝚷 :: Q) (n + 1) := (skseq Q n)^1
 | (𝚺 :: Q) (n + 1) := Sk p (p.rank - Q.length - 1) (λ i, skseq Q n i) ⌢ skseq Q n
 -/
@@ -60,7 +60,7 @@ by simp[Sk]
 def skolemize (p : pnf L) (n : fin (p.rank + 1)) : pnf L.skolemize :=
 (skolemize_core p n).rew (skseq p n)
 
-@[simp] lemma skseq_zero (p : pnf L) : skseq p 0 = ι :=
+@[simp] lemma skseq_zero (p : pnf L) : skseq p 0 = ı :=
 by simp [show (0 : fin (p.rank + 1)) = ⟨0, by simp⟩, from rfl, -fin.mk_zero]
 
 @[simp] lemma skolemize_zero : ∀ (p : pnf L), (skolemize p 0).to_formula = tr[p.to_formula]
@@ -95,7 +95,7 @@ end
 lemma skolemize_succ_of_sigma : ∀ (p : pnf L)
   (s : fin p.rank) (eq_sigma : p.quantifier.nth_le s s.property = 𝚺),
   ∃ p' : pnf L.skolemize, skolemize p s = ∐ p' ∧
-    skolemize p s.succ = p'.rew ι[0 ⇝ Sk p s (λ i, skseq p (fin.cast_succ s) i)]
+    skolemize p s.succ = p'.rew ı[0 ⇝ Sk p s (λ i, skseq p (fin.cast_succ s) i)]
 | ⟨Q, p, h⟩ s eq_sigma :=
 begin
   have : list.drop s Q = 𝚺 :: list.drop (s + 1) Q,

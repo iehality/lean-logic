@@ -186,12 +186,12 @@ namespace proper
 
 @[simp] def subst_sf_H_aux [proper : proper_theory T] (t : term L) :
   Herbrand T (i + 1) → Herbrand T i :=
-λ h, Herbrand.lift_on h (λ u, ⟦u.rew ι[i ⇝ t]⟧ᴴ : term L → Herbrand T i) $
+λ h, Herbrand.lift_on h (λ u, ⟦u.rew ı[i ⇝ t]⟧ᴴ : term L → Herbrand T i) $
 λ t₁ t₂ hyp, by { simp[Herbrand.of_eq_of] at*, exact provable.pow_subst' i hyp t }
 
 @[simp] def subst_sf_H_aux_inv (t : term L) :
   Herbrand T (i + 1) → Herbrand T i :=
-λ h, Herbrand.lift_on h (λ u, ⟦u.rew ι[0 ⇝ t]⟧ᴴ : term L → Herbrand T i) $
+λ h, Herbrand.lift_on h (λ u, ⟦u.rew ı[0 ⇝ t]⟧ᴴ : term L → Herbrand T i) $
 λ t₁ t₂ hyp, by { simp[Herbrand.of_eq_of] at*, 
   have := (provable.generalize hyp) ⊚ t, simp at this, exact this }
 
@@ -202,7 +202,7 @@ def subst_sf_H : Herbrand T i → Herbrand T (i+1) → Herbrand T i :=
 λ t₁ t₂ hyp,
 by { induction h using fopl.Herbrand.ind_on,
      simp[Herbrand.of_eq_of] at*, 
-     refine provable.equal_rew_equal (ι[i ⇝ t₁]) (ι[i ⇝ t₂]) (λ m, _) h,
+     refine provable.equal_rew_equal (ı[i ⇝ t₁]) (ı[i ⇝ t₂]) (λ m, _) h,
      have C : m < i ∨ m = i ∨ i < m, from trichotomous m i,
      cases C,
      { simp[C] }, cases C; simp[C], exact hyp }
@@ -230,7 +230,7 @@ end proper
 
 
 lemma subst_eq [proper_theory T] (t : term L) :
-  (⟦t.rew ι[i ⇝ t]⟧ᴴ : Herbrand T i) = ⟦t⟧ᴴ ⊳ᴴ ⟦t⟧ᴴ := rfl
+  (⟦t.rew ı[i ⇝ t]⟧ᴴ : Herbrand T i) = ⟦t⟧ᴴ ⊳ᴴ ⟦t⟧ᴴ := rfl
 
 @[simp] lemma pow_eq (t : term L) :
   (⟦t^1⟧ᴴ : Herbrand T (i + 1)) = pow ⟦t⟧ᴴ := rfl
@@ -393,7 +393,7 @@ begin
   { refine (deduction.mp $ generalize $ contrapose.mp _), simp [←sf_dsb],
     have lmm₁ : ⤊(T^i) +{ ⁻(∏ p)^1 ⟶ q^1 } ⊢ ⁻q^1 ⟶ (∏ p)^1, { refine contrapose.mp _, simp },
     have lmm₂ : ⤊(T^i) +{ ⁻(∏ p)^1 ⟶ q^1 } ⊢ (∏ p)^1 ⟶ p,
-    { suffices : ⤊(T^i) +{ ⁻(∏ p)^1 ⟶ q^1 } ⊢ (∏ p)^1 ⟶ (p.rew $ (λ x, #(x + 1))^1).rew ι[0 ⇝ #0],
+    { suffices : ⤊(T^i) +{ ⁻(∏ p)^1 ⟶ q^1 } ⊢ (∏ p)^1 ⟶ (p.rew $ (λ x, #(x + 1))^1).rew ı[0 ⇝ #0],
       { simp[formula.nested_rew] at this, exact this },
       exact specialize _ }, 
     exact imply_trans lmm₁ lmm₂ },
@@ -454,7 +454,7 @@ variables [proper_theory T]
 
 @[simp] def subst_sf_L_aux (t : term L) :
   Lindenbaum T (i+1) → Lindenbaum T i :=
-λ p, classical_logic.lindenbaum.lift_on p (λ p, (⟦p.rew (ι[i ⇝ t])⟧ᴸ : Lindenbaum T i)) $
+λ p, classical_logic.lindenbaum.lift_on p (λ p, (⟦p.rew (ı[i ⇝ t])⟧ᴸ : Lindenbaum T i)) $
 λ p₁ p₂ hyp, by { simp at*,
     exact provable.pow_subst' i hyp t }
 
@@ -473,9 +473,9 @@ lemma fal_le_subst (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : ∏' (♯0 �
 begin
   induction l using classical_logic.lindenbaum.ind_on with p, 
   induction h using fopl.Herbrand.ind_on with t,
-  have : T^i ⊢ ∏ (p^1).rew ι[(i + 1) ⇝ #0] ⟶ ((p^1).rew ι[(i + 1) ⇝ #0]).rew ι[0 ⇝ t],
-    from @specialize _ (T^i) ((p^1).rew ι[(i + 1) ⇝ #0]) t,
-  have eqn : (((p^1).rew ι[(i + 1) ⇝ #0]).rew ι[0 ⇝ t]) = p.rew ι[i ⇝ t],
+  have : T^i ⊢ ∏ (p^1).rew ı[(i + 1) ⇝ #0] ⟶ ((p^1).rew ı[(i + 1) ⇝ #0]).rew ı[0 ⇝ t],
+    from @specialize _ (T^i) ((p^1).rew ı[(i + 1) ⇝ #0]) t,
+  have eqn : (((p^1).rew ı[(i + 1) ⇝ #0]).rew ı[0 ⇝ t]) = p.rew ı[i ⇝ t],
   { simp[formula.nested_rew, formula.pow_eq], congr,
     funext x, have C : i < x ∨ i = x ∨ x < i, exact trichotomous i x,
     cases C, { simp[C, pos_of_gt C] }, cases C;
@@ -498,7 +498,7 @@ begin
   induction h using fopl.Herbrand.ind_on,
   simp[exist_def, -exist_eq, subst_sf_L, classical_logic.lindenbaum.le_def],
   refine contrapose.mp _, simp[has_exists_quantifier.ex, formula.ex],
-  rw (show ⁻(l.rew ι[0 ⇝ h]) = (⁻l).rew ι[0 ⇝ h], by simp), 
+  rw (show ⁻(l.rew ı[0 ⇝ h]) = (⁻l).rew ı[0 ⇝ h], by simp), 
   exact specialize _
 end
 
@@ -574,8 +574,8 @@ end
 by { induction l using classical_logic.lindenbaum.ind_on, 
      simp[univ_def, pow_def, var_def, -univ_eq, -pow_eq, -var_eq, subst_sf_L,
           formula.pow_eq, formula.nested_rew, rewriting_sf_itr.pow_eq'],
-     have : (λ x, ite (x = 0) #x #(x - 1 + 1 + 1) : ℕ → term L) = (λ x, ι[(1 + 1) ⇝ #0] (x + 1 + 1)),
-     { funext x, simp[slide, ι], cases x; simp[← nat.add_one] },
+     have : (λ x, ite (x = 0) #x #(x - 1 + 1 + 1) : ℕ → term L) = (λ x, ı[(1 + 1) ⇝ #0] (x + 1 + 1)),
+     { funext x, simp[slide, ı], cases x; simp[← nat.add_one] },
      simp [this] }
 
 end proper
@@ -622,7 +622,7 @@ theorem le_of_provable_imply_0 {p q} : T ⊢ p ⟶ q ↔ (⟦p⟧ᴸ : Lindenbau
   exact this }
 
 lemma subst_eq [proper_theory T] (p : formula L) (t : term L) :
-  (⟦p.rew ι[i ⇝ t]⟧ᴸ : Lindenbaum T i) = ⟦t⟧ᴴ ⊳ ⟦p⟧ᴸ := rfl
+  (⟦p.rew ı[i ⇝ t]⟧ᴸ : Lindenbaum T i) = ⟦t⟧ᴴ ⊳ ⟦p⟧ᴸ := rfl
 
 @[simp] lemma equiv_eq_top_iff {p q} : (⟦p ⟷ q⟧ᴸ : Lindenbaum T i) = ⊤ ↔ (⟦p⟧ᴸ : Lindenbaum T i) = ⟦q⟧ᴸ :=
 by simp[eq_top_of_provable]

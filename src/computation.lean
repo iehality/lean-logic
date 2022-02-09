@@ -124,7 +124,7 @@ begin
     refine by_axiom Prim.zero },
   case succ { 
     simp[pcode.eval], 
-    have : Prim ⊢ formula.rew ι[0 ⇝ (v 0)˙] (Ḟ pcode.succ ‹#0› ≃ Succ #0),
+    have : Prim ⊢ formula.rew ı[0 ⇝ (v 0)˙] (Ḟ pcode.succ ‹#0› ≃ Succ #0),
       from (by_axiom Prim.succ) ⊚ (v 0)˙, simp at this, 
     simp[show ∀ i, v i = v 0, by intros i; { simp[show i = 0, by simp] }], exact this },
   case nth : m i { simp[pcode.eval],
@@ -294,7 +294,7 @@ end prim
 namespace prim_incompleteness
 variables {L : language.{0}} [primcodable (formula L)] [primcodable (proof L)]
 
-def Γ (p : formula L) (t : term L) : formula L := p.rew ι[0 ⇝ t]
+def Γ (p : formula L) (t : term L) : formula L := p.rew ı[0 ⇝ t]
 
 
 end prim_incompleteness
