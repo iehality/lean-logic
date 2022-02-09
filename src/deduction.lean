@@ -80,7 +80,13 @@ infixl ` ⨀ `:90 := axiomatic_classical_logic'.modus_ponens
 @[simp] lemma mem_iff_prov (p : formula L) (T : set (formula L)) :
   (@has_mem.mem (formula L) (set (formula L)) _) p (provable T) ↔ T ⊢ p := by refl
 
-def theory.consistent (T : theory L) : Prop := ¬ ∃p : formula L, (T ⊢ p) ∧ (T ⊢ ⁻p) 
+def theory.consistent (T : theory L) : Prop := ¬∃p : formula L, (T ⊢ p) ∧ (T ⊢ ⁻p) 
+
+lemma theory.consistent_iff_bot (T : theory L) : T.consistent ↔ ¬T ⊢ ⊥ :=
+⟨by { simp[theory.consistent], intros h, exact h ⊤ (by simp) },
+  by { intros h, simp[theory.consistent], intros p hp hnp,
+  have : T ⊢ ⊥, from explosion hp hnp,
+  exact h this }⟩
 
 class consistent (T : theory L) := (consistent : theory.consistent T)
 

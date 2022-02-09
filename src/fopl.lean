@@ -32,6 +32,8 @@ prefix `#`:max := term.var
 
 notation `❨` c `❩ ` v :84 := term.app c v
 
+def term.const (f : L.fn 0) : term L := term.app f finitary.nil
+
 instance : inhabited (term L) := ⟨#0⟩
 
 instance [has_zero_symbol L] : has_zero (term L) := ⟨term.app has_zero_symbol.zero finitary.nil⟩

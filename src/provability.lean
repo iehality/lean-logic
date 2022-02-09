@@ -598,6 +598,9 @@ lemma of_equiv {p₁ p₂ : F} (h : T ⊢ p₁) (hp : T ⊢ p₁ ⟷ p₂) : T �
 
 @[simp] lemma or_imply (p q r : F) : T ⊢ (p ⟶ r) ⟶ (q ⟶ r) ⟶ p ⊔ q ⟶ r := or_imply p q r
 
+lemma explosion {p : F} (h₁ : T ⊢ p) (h₂ : T ⊢ ⁻p) {q : F} : T ⊢ q :=
+explosion h₁ h₂
+
 lemma contrapose {p q : F} : T ⊢ ⁻p ⟶ ⁻q ↔ T ⊢ q ⟶ p :=
 contrapose
 
@@ -690,11 +693,13 @@ lemma axiom_and {p₁ p₂ q : F} : T +{ p₁ ⊓ p₂ } ⊢ q ↔ T +{ p₁ } +
       exact lmm₁ ⨀ lmm₂.1 ⨀ lmm₂.2 } ⟩
 
 lemma raa {p} (q) (h₁ : T+{p} ⊢ q) (h₂ : T+{p} ⊢ ⁻q) : T ⊢ ⁻p :=
-neg_hyp (deduction.mp (explosion h₁ h₂))
+neg_hyp (deduction.mp (classical_logic.explosion h₁ h₂))
 
 variables (T)
 
 @[reducible] def lindenbaum := lindenbaum ((⊢) T)
+
+
 
 notation p ` ≈[`:50 T :50 `] `:0 q:50 := classical_logic.equiv ((⊢) T) p q
 
