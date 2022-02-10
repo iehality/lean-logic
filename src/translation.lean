@@ -904,7 +904,7 @@ begin
 end
 
 @[simp] lemma ax_app_0 (T : theory L) : conservative.ax (tr : L + sing ↝ L) 0 ↑T = T^1 :=
-by { simp[ax_app], simp[discard_0_eq_add_one, ←formula.pow_eq, pow_eq_image] }
+by simp[ax_app, discard_0_eq_add_one, ←formula.pow_eq, pow_eq_image]
 
 open classical_logic axiomatic_classical_logic axiomatic_classical_logic' Herbrand Lindenbaum
 

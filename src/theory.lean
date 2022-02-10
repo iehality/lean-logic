@@ -74,6 +74,10 @@ lemma theory_sf_itr_eq {T : theory L} : ∀ {i : ℕ},
   { rcases h with ⟨q1, ⟨q2, h, rfl⟩, rfl⟩, refine ⟨q2, h, by simp[formula.pow_add]⟩ },
   { rcases h with ⟨q, h, rfl⟩, refine ⟨q^i, ⟨q, h, rfl⟩, by simp[formula.pow_add]⟩ } }
 
+lemma pow_eq_image {T : theory L} {i : ℕ} :
+  T^i = (λ p, p^i) '' T :=
+by { ext p, simp[theory_sf_itr_eq], tauto }
+
 lemma sentence_mem_theory_sf_itr {T : theory L} {p : formula L} (a : sentence p) (n : ℕ) :
   p ∈ T → p ∈ T^n := λ h,
 by { have : p.rew (λ x, #(x+n)) = p, exact formula.sentence_rew a _, rw ←this,
