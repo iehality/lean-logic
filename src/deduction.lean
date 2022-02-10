@@ -334,6 +334,48 @@ begin
   { refine λ i ss, e5 }
 end
 
+theorem proof_compact : ∀ {T : ℕ → theory L}, (∀ s, T s ⊆ T (s+1)) →
+  ∀ {p}, {p | ∃ s, T s p} ⊢ p → ∃ s, T s ⊢ p :=
+begin
+  suffices : ∀ {p} {U : theory L}, U ⊢ p → ∀ {T : ℕ → theory L},
+    (∀ s, T s ⊆ T (s+1)) → U ⊆ {p | ∃ s, T s p} → ∃ s, T s ⊢ p,
+  { refine λ T hyp p h, this h hyp (λ x hx, hx) },
+  rintros p U ⟨b⟩,
+  induction b,
+  case generalize : T p h IH
+  { intros U hyp ss,
+    let U' := λ s, ⤊(U s),
+    have hyp' : ∀ s, U' s ⊆ U' (s + 1),
+    { simp[U'], intros s p hyp_p, exact hyp s hyp_p },
+    have ss' : ⤊T ⊆ {p : formula L | ∃ s, U' s p},
+    { intros q hyp_q, rcases hyp_q with ⟨q', hyp_q', rfl⟩, rcases (ss hyp_q') with ⟨s, hyp_s⟩,
+      refine ⟨s, _, hyp_s, rfl⟩ },
+    have : ∃ s, U' s ⊢ p, from IH hyp' ss', rcases this with ⟨s, h⟩,
+    refine ⟨s, generalize h⟩ },
+  case mdp : T p q hyp_pq hyp_p IH₁ IH₂
+  { intros U hyp ss,
+    have : ∃ s, U s ⊢ p ⟶ q, from IH₁ hyp ss, rcases this with ⟨s₁, lmm₁⟩,
+    have : ∃ s, U s ⊢ p, from IH₂ hyp ss, rcases this with ⟨s₂, lmm₂⟩,
+    refine ⟨max s₁ s₂, _⟩,
+    have lmm₁ : U (max s₁ s₂) ⊢ p ⟶ q, from provable.weakening lmm₁ (ss_le hyp (by simp)),
+    have lmm₂ : U (max s₁ s₂) ⊢ p, from provable.weakening lmm₂ (ss_le hyp (by simp)),
+    exact lmm₁ ⨀ lmm₂ },
+  case by_axiom : T p hyp_p
+  { intros U hyp ss, rcases (ss hyp_p) with ⟨s, hyp_s⟩,
+    refine ⟨s, by_axiom hyp_s⟩ },
+  { refine λ _ _ _, ⟨0, by simp⟩ },
+  { refine λ _ _ _, ⟨0, by simp⟩ },
+  { refine λ _ _ _, ⟨0, by simp⟩ },
+  { refine λ _ _ _, ⟨0, by simp⟩ },
+  { refine λ _ _ _, ⟨0, by simp⟩ },
+  { refine λ _ _ _, ⟨0, by simp⟩ },
+  { refine λ _ _ _, ⟨0, by simp⟩ },
+  { refine λ _ _ _, ⟨0, by simp⟩ },
+  { refine λ _ _ _, ⟨0, by simp⟩ },
+  { refine λ _ _ _, ⟨0, by simp⟩ },
+  { refine λ _ _ _, ⟨0, by simp⟩ },
+  { refine λ _ _ _, ⟨0, by simp⟩ }
+end
 
 lemma conjunction'_mem {n : ℕ} {P : finitary (formula L) n} :
   ∀ {p}, p ∈ P → T ⊢ conjunction' n P ⟶ p :=

@@ -753,10 +753,16 @@ def symbol {m : ℕ} : (singleton_fn.{u} m).fn m := by { simp[singleton_fn]; sim
 
 notation `sing` := singleton_fn 0
 
-def const {L : language.{u}} : term (L + sing) := 
+def const_right {L : language.{u}} : term (L + sing) := 
 extention.to_extention₂.fun_term (@term.app sing 0 symbol finitary.nil : term sing)
 
-notation `●` := const
+def const_at_right {ι : Type u} {L : language.{u}} (i : ι) : term (L + sum (λ i : ι, singleton_fn.{u} 0)) :=
+extention.to_extention₂.fun_term ((extention.to_extention (λ i : ι, singleton_fn.{u} 0) i).fun_term
+  (@term.app sing 0 symbol finitary.nil : term (singleton_fn.{u} 0)))
+
+notation `●ᴿ` := const_right
+
+notation `●ᴿ[` i `]` := const_at_right i
 
 namespace add_sing
 
@@ -868,7 +874,7 @@ instance tr_conservative : (tr : L + sing ↝ L).conservative :=
     { cases n; simp, { rcases r } } } }
 
 
-@[simp] lemma fun_term_const (k : ℕ) : fun_term k (● : term (L + sing)) = #k := rfl
+@[simp] lemma fun_term_const (k : ℕ) : fun_term k (●ᴿ : term (L + sing)) = #k := rfl
 
 @[simp] lemma fun_term_coe : ∀ (t : term L) (k : ℕ),
   fun_term k ↑t = t.rew ı-{k}
@@ -903,7 +909,7 @@ by { simp[ax_app], simp[discard_0_eq_add_one, ←formula.pow_eq, pow_eq_image] }
 open classical_logic axiomatic_classical_logic axiomatic_classical_logic' Herbrand Lindenbaum
 
 theorem provable_iff (T : theory L) (p : formula L) :
-  (↑T : theory (L + sing)) ⊢ rew ı[0 ⇝ ●] p ↔ T ⊢ ∏ p :=
+  (↑T : theory (L + sing)) ⊢ rew ı[0 ⇝ ●ᴿ] p ↔ T ⊢ ∏ p :=
 ⟨λ h, begin
   have : T^1 ⊢ p,
   { have := translation.provability tr _ _ 0 h,
@@ -914,14 +920,14 @@ theorem provable_iff (T : theory L) (p : formula L) :
   exact provable.generalize this
 end, λ h, begin
   have : (↑T : theory (L + sing)) ⊢ ↑∏ p, from language_translation_coe.provability h,
-  simp at this, exact this ⊚ ●
+  simp at this, exact this ⊚ ●ᴿ
 end⟩ 
 
 lemma consistency_iff (T : theory L) (p : formula L) (k : ℕ) :
-  theory.consistent (T +{∐ p}) ↔ theory.consistent (↑T +{rew ı[0 ⇝ ●] p} : theory (L + sing)) :=
+  theory.consistent (T +{∐ p}) ↔ theory.consistent (↑T +{rew ı[0 ⇝ ●ᴿ] p} : theory (L + sing)) :=
 begin
   simp[theory.consistent_iff_bot], simp[deduction],
-  have lmm₁ : (↑T : theory (L + sing)) ⊢ rew ı[0 ⇝ ●] ↑p ⟶ ⊥ ↔ (↑T : theory (L + sing)) ⊢ rew ı[0 ⇝ ●] ↑(⁻p),
+  have lmm₁ : (↑T : theory (L + sing)) ⊢ rew ı[0 ⇝ ●ᴿ] ↑p ⟶ ⊥ ↔ (↑T : theory (L + sing)) ⊢ rew ı[0 ⇝ ●ᴿ] ↑(⁻p),
   { simp[eq_top_of_provable_0] },
   have lmm₂ : T ⊢ ∐ p ⟶ ⊥ ↔ T ⊢ ∏ (⁻p),
   { simp[eq_top_of_provable_0, ←prenex_ex_neg] },
@@ -930,7 +936,26 @@ end
 
 end add_sing
 
+namespace completeness 
 
+@[reducible] def henkin_lang (L : language.{u}) : language.{u} := L + sum (λ i : formula L, singleton_fn.{u} 0)
+
+def henkin_axiom (p : formula L) : formula (henkin_lang L) :=
+(∐ p) ⟶ rew ı[0 ⇝ ●ᴿ[p]] ↑p
+
+lemma consistence_of_con (T : theory L) (con : T.consistent) :
+  theory.consistent ((↑T : theory (henkin_lang L)) ∪ (set.range henkin_axiom)) :=
+begin
+  
+end
+
+def henkin_language_aux (L : language.{u}) : ℕ → language.{u}
+| 0       := L
+| (n + 1) := sum (λ i : formula (henkin_language_aux n), singleton_fn.{u} 0)
+
+def henkin_language (L : language.{u}) := sum (henkin_language_aux L)
+
+end completeness
 
 #check 0/--
 def to_predicate (L : language.{u}) : language.{u} :=
