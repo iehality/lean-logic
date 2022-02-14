@@ -466,6 +466,14 @@ by simp[concat, rew, pow_eq, nested_rew]
 
 def vector_vars {n} : vector (term L) n := vector.of_fn $ λ i, #i
 
+@[simp] def symbols : term L → set (Σ n, L.fn n)
+| #n        := ∅ 
+| (app f v) := insert ⟨_, f⟩ (⋃ i, symbols (v i))
+
+lemma symbols_finite : ∀ t : term L, set.finite t.symbols
+| #n        := by simp
+| (app f v) := set.finite.insert ⟨_, f⟩ (set.finite_Union (λ i, symbols_finite (v i)))
+
 end term
 
 def rewriting_sf_itr (s : ℕ → term L) : ℕ → ℕ → term L
@@ -839,7 +847,41 @@ prefix `∏* `:64 := fal_complete
 lemma fal_complete_sentence (p : formula L) : sentence (∏* p) :=
 by simp[sentence, fal_complete]
 
+@[simp] def fn_symbols : formula L → set (Σ n, L.fn n)
+| ⊤         := ∅
+| (app r v) := ⋃ i, (v i).symbols
+| (t ≃₁ u)  := t.symbols ∪ u.symbols
+| (p ⟶ q)   := fn_symbols p ∪ q.fn_symbols
+| (⁻p)      := p.fn_symbols
+| (∏ p)     := p.fn_symbols
+
+@[simp] def pr_symbols : formula L → set (Σ n, L.pr n)
+| ⊤         := ∅
+| (app r v) := {⟨_, r⟩}
+| (t ≃₁ u)  := ∅
+| (p ⟶ q)   := p.pr_symbols ∪ q.pr_symbols
+| (⁻p)      := p.pr_symbols
+| (∏ p)     := p.pr_symbols
+
+lemma fn_symbols_finite : ∀ p : formula L, p.fn_symbols.finite
+| ⊤         := by simp
+| (app r v) := set.finite_Union (λ i, (v i).symbols_finite)
+| (t ≃₁ u)  := set.finite.union t.symbols_finite u.symbols_finite
+| (p ⟶ q)   := set.finite.union p.fn_symbols_finite q.fn_symbols_finite
+| (⁻p)      := p.fn_symbols_finite
+| (∏ p)     := p.fn_symbols_finite
+
+lemma pr_symbols_finite : ∀ p : formula L, p.pr_symbols.finite
+| ⊤         := by simp
+| (app r v) := by simp
+| (t ≃₁ u)  := by simp
+| (p ⟶ q)   := set.finite.union p.pr_symbols_finite q.pr_symbols_finite
+| (⁻p)      := p.pr_symbols_finite
+| (∏ p)     := p.pr_symbols_finite
+
 end formula
+
+
 
 namespace language
 
