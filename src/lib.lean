@@ -532,6 +532,9 @@ by { rw[show ‹⟦a⟧, ⟦b⟧› = (λ x : fin 2, ⟦‹a, b› x⟧), by { r
 
 end quotient
 
+@[simp] lemma is_empty_sigma {α} {s : α → Sort*} : is_empty (Σ a, s a) ↔ ∀ a, is_empty (s a) :=
+by simp only [← not_nonempty_iff, nonempty_sigma, not_exists]
+
 @[notation_class] class has_succ (α : Sort*) := (succ : α → α)
 
 prefix `Succ `:85 := has_succ.succ
@@ -630,6 +633,21 @@ notation `⋁*` binders `, ` r:(scoped p, sup_disjunction _ p) := r
 instance : has_arrow Prop := ⟨(→)⟩
 
 instance : has_negation Prop := ⟨not⟩
+
+def fintype_sup {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α] [order_bot α] (f : ι → α) : α :=
+  (finset.univ : finset ι).sup f
+
+notation `⨆ᶠ ` binders `, ` r:(scoped f, fintype_sup f) := r
+
+@[simp] lemma le_fintype_sup {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α] [order_bot α]
+  (f : ι → α) (i : ι) :
+  f i ≤ ⨆ᶠ i, f i := finset.le_sup (by simp)
+
+lemma fintype_sup_le {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α] [order_bot α]
+  {f : ι → α} {a : α} (h : ∀ i, f i ≤ a) : (⨆ᶠ i, f i) ≤ a :=
+finset.sup_le (λ i _, h i)
+
+
 
 section classical
 attribute [instance, priority 0] classical.prop_decidable
