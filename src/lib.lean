@@ -647,8 +647,6 @@ lemma fintype_sup_le {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α]
   {f : ι → α} {a : α} (h : ∀ i, f i ≤ a) : (⨆ᶠ i, f i) ≤ a :=
 finset.sup_le (λ i _, h i)
 
-
-
 section classical
 attribute [instance, priority 0] classical.prop_decidable
 
