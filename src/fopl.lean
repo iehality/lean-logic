@@ -491,90 +491,20 @@ instance : wf_lt (term L) :=
 @[simp] lemma not_lt_var (t : term L) (n : ℕ) : ¬t < #n := λ h,
 by { rcases wf_lt.lt_iff.mp h with ⟨u, prelt, le⟩, rcases prelt }
 
+@[simp] lemma lt_app {n} (f : L.fn n) (v : fin n → term L) (i) : v i < app f v :=
+by { have : wf_lt.prelt (v i) (app f v), from subterm.app f v i,
+     exact wf_lt.lt_of_prelt this }
 
-
-instance
-/--/
-
+lemma lt_app_iff {t : term L} {n} {f : L.fn n} {v} : t < app f v ↔ ∃ i, t ≤ v i :=
+by { simp[wf_lt.lt_iff], sorry }
 
 lemma symbols_ss_of_le {t u : term L} (h : t ≤ u) : t.symbols ⊆ u.symbols :=
 by { induction h,
   case refl { refl },
-  case app : n f v i
-  { exact set.subset.trans (show (v i).symbols ⊆ ⋃ i, (v i).symbols, from set.subset_Union _ i) (set.subset_insert _ _) },
-  case trans : s t u _ _ IH_st IH_tu { exact set.subset.trans IH_st IH_tu } } 
-
-@[simp] lemma le_var {t : term L} {n : ℕ} : t ≤ #n ↔ t = #n :=
-⟨by { suffices : ∀ {t u : term L} (h : t ≤ u) (n : ℕ) (eq : u = #n), t = #n,
-     { intros h, exact this h _ rfl },
-     intros t u h, induction h,
-     case refl { simp },
-     case app : m f v i { simp },
-     case trans : s t u h₁ h₂ IH₁ IH₂ { rintros n rfl, exact IH₁ n (IH₂ n rfl) } },
- by { rintros rfl, exact subterm.refl _ }⟩
-
-instance : preorder (term L) :=
-{ le := subterm,
-  le_refl := subterm.refl,
-  le_trans := subterm.trans }
-
-@[simp] lemma not_lt_var (t : term L) (n : ℕ) : ¬t < #n := λ h,
-by { have : t = #n, from le_var.mp (le_of_lt h),
-     simp[this] at h, contradiction }
-
-@[simp] lemma not_app_le {n} (f : L.fn n) (v : fin n → term L) (i) : ¬app f v ≤ v i := λ h,
-begin
-  have lmm₁ : (⨆ᶠ i, (v i).complexity) < (v i).complexity, from nat.succ_le_iff.mp (le_complexity_of_le h),
-  have lmm₂ : (v i).complexity ≤ ⨆ᶠ i, (v i).complexity, from le_fintype_sup (λ i, (v i).complexity) i,
-  exact nat.lt_le_antisymm lmm₁ lmm₂
-end
-
-@[simp] lemma lt_app {n} (f : L.fn n) (v : fin n → term L) (i) : v i < app f v :=
-lt_of_le_not_le (subterm.app f v i) (not_app_le f v i)
-
-instance : partial_order (term L) :=
-  { le_antisymm := λ t u h, by { 
-      induction h,
-      case refl { simp },
-      case app : n f v i { simp },
-      case trans : s t u s_le_t t_le_u IH_st IH_tu { intros h,
-        have : t = u, from IH_tu (le_trans h s_le_t), rcases this with rfl,
-        exact IH_st h } },
-    ..fopl.term.preorder }
-
-lemma lt_app_iff {t : term L} {n} {f : L.fn n} {v} : t < app f v ↔ ∃ i, t ≤ v i :=
-⟨by { 
-  suffices : ∀ {t u : term L} (h : t ≤ u) (h' : t ≠ u) {n} {f : L.fn n} {v} (e : u = app f v), ∃ i, t ≤ v i,
-  { intros h, exact this (le_of_lt h) (ne_of_lt h) rfl }, 
-  intros t u h,
-  induction h,
-  case refl : s { simp },
-  case app : n f v i {
-    rintros _ n f v eqn, simp at eqn, rcases eqn with ⟨rfl, eqn⟩, simp at eqn, rcases eqn with ⟨rfl, rfl⟩,
-    refine ⟨i, by simp⟩ },
-  case trans : s t u s_le_t t_le_u IH_st IH_tu
-  { rintros ne n f v rfl,
-    by_cases C : t = ❨f❩ v,
-    { rcases C with rfl, exact IH_st ne rfl },
-    { have : ∃ i, t ≤ v i, from IH_tu C rfl, rcases this with ⟨i, le⟩,
-      exact ⟨i, le_trans (show s ≤ t, from s_le_t) le⟩ } }
- }, by { rintros ⟨i, le⟩, exact gt_of_gt_of_ge (show v i < app f v, by simp) le }⟩
-
-def lt_wf : well_founded ((<) : term L → term L → Prop) :=
-⟨λ t, by { induction t,
-    case var : n { refine acc.intro #n (by simp) },
-    case app : n f v IH { refine acc.intro _ (λ t ht, _),
-      simp[lt_app_iff] at IH ht,
-      rcases ht with ⟨i, ht⟩,
-      rcases eq_or_lt_of_le ht with (rfl | lt),
-      { exact IH i }, { exact (IH i).inv lt } } }⟩
-
-instance : has_well_founded (term L) :=
-{ r := (<), wf := lt_wf }
-
-theorem lt_induction {C : term L → Prop}
-  (t : term L) (h : ∀ t, (∀ u, u < t → C u) → C t) : C t :=
-lt_wf.induction t h
+  case of_prelt : a b prelt
+  { induction prelt with n f v i, simp,
+    exact set.subset.trans (show (v i).symbols ⊆ ⋃ i, (v i).symbols, from set.subset_Union _ i) (set.subset_insert _ _) },
+  case trans : s t u _ _ IH_st IH_tu  { exact set.subset.trans IH_st IH_tu } } 
 
 end term
 
@@ -999,104 +929,12 @@ lemma pr_symbols_finite : ∀ p : formula L, p.pr_symbols.finite
 lemma pr_symbols'_finite (p : formula L) (n : ℕ) : (p.pr_symbols' n).finite :=
 by { have : p.pr_symbols' n = (λ r : L.pr n, (⟨n, r⟩ : Σ n, L.pr n))⁻¹' p.pr_symbols, { refl },
      rw this, refine set.finite.preimage (λ r, by simp) p.pr_symbols_finite  }
-/-
-inductive subterm : term L → formula L → Prop
-| app   : ∀ {t} {n} (r : L.pr n) {v : finitary (term L) n} {i} (h : t ≤ v i), subterm t (app r v)
-| equall : ∀ {s t u : term L} (le : s ≤ t), subterm s (t ≃₁ u)
-| equalr : ∀ {s t u : term L} (le : s ≤ u), subterm s (t ≃₁ u)
-| neg   : ∀ {p} {t}, subterm t p → subterm t (⁻p)
-| implyl : ∀ {p q} {t}, subterm t p → subterm t (p ⟶ q)
-| implyr : ∀ {p q} {t}, subterm t q → subterm t (p ⟶ q)
-| fal   : ∀ {p} {t}, subterm t p → subterm t (∏ p)
 
-attribute [simp] subterm.app
-
-instance : has_mem (term L) (formula L) := ⟨subterm⟩
-
-lemma mem_of_le {t : term L} {p : formula L} (mem : t ∈ p) : ∀ u ≤ t, u ∈ p :=
-begin
-  induction mem,
-  case app : t n r v i le { intros u h, exact subterm.app r (h.trans le) },
-  case equall : s t u le { intros s' h, exact subterm.equall (h.trans le) },
-  case equalr : s t u le { intros s' h, exact subterm.equalr (h.trans le) },
-  case neg : p t h IH      { intros u le, exact (IH u le).neg },
-  case implyl : p q t h IH { intros u le, exact (IH u le).implyl },
-  case implyr : p q t h IH { intros u le, exact (IH u le).implyr },
-  case fal : p t h IH      { intros u le, exact (IH u le).fal }
-end
-
-@[simp] lemma mem_pr_iff {n} {r : L.pr n} {v : fin n → term L} {t : term L} :
-  t ∈ app r v ↔ ∃ i, t ≤ v i :=
-⟨begin
-  suffices : ∀ {t : term L} {p : formula L} (h : t ∈ p)
-    {n} {r : L.pr n} {v : fin n → term L} (e : p = app r v), ∃ i, t ≤ v i,
-  { intros h, exact this h rfl },
-  intros t p h, induction h; try { simp },
-  case app : t n r v i h { rintros n r v rfl, simp, rintros rfl rfl, exact ⟨i, h⟩ }
-end, by { rintros ⟨i, le⟩, exact subterm.app r le }⟩
-
-@[simp] lemma mem_equal_iff {s t u : term L} :
-  s ∈ (t ≃₁ u) ↔ s ≤ t ∨ s ≤ u :=
-⟨begin
-  suffices : ∀ {s : term L} {p : formula L} (h : s ∈ p) {t u : term L} (e : p = (t ≃₁ u)), s ≤ t ∨ s ≤ u,
-  { intros h, exact this h rfl },
-  intros s p h, induction h; try { simp },
-  case equall : s t u le { rintros t u rfl rfl, exact or.inl le },
-  case equalr : s t u le { rintros t u rfl rfl, exact or.inr le },
-end, by { rintros (le | le), exact subterm.equall le, exact subterm.equalr le }⟩
-
-@[simp] lemma nt_mem_top (t : term L) : ¬t ∈ (⊤ : formula L) := λ h,
-by { suffices : ∀ {t : term L} {p : formula L} (h : t ∈ p) (e : p = ⊤), false,
-     { exact this h rfl },
-     intros t p h, induction h; simp }
-
-@[simp] lemma mem_neg_iff {t : term L} {p : formula L} : t ∈ ⁻p ↔ t ∈ p :=
-⟨by { suffices : ∀ {t : term L} {p : formula L} (h : t ∈ p) (q : formula L) (e : p = ⁻q), t ∈ q,
-      { intros h, exact this h p rfl },
-      intros t p h, induction h; try { simp }, case neg : p t h IH { exact h } }, subterm.neg⟩
-
-@[simp] lemma mem_imply_iff {t : term L} {p q : formula L} : t ∈ p ⟶ q ↔ t ∈ p ∨ t ∈ q :=
-⟨by { suffices : ∀ {t : term L} {p : formula L} (h : t ∈ p) (q r : formula L) (e : p = q ⟶ r), t ∈ q ∨ t ∈ r,
-      { intros h, exact this h p q rfl },
-      intros t p h, induction h; try { simp },
-      case implyl : p q t le IH { rintros p q rfl rfl, exact or.inl le },
-      case implyr : p q t le IH { rintros p q rfl rfl, exact or.inr le }, },
- by { rintros (h | h), exact h.implyl, exact h.implyr }⟩
-
-@[simp] lemma mem_fal_iff {t : term L} {p : formula L} : t ∈ ∏ p ↔ t ∈ p :=
-⟨by { suffices : ∀ {t : term L} {p : formula L} (h : t ∈ p) (q : formula L) (e : p = ∏ q), t ∈ q,
-      { intros h, exact this h p rfl },
-      intros t p h, induction h; try { simp }, case fal : p t h IH { exact h } }, subterm.fal⟩
-
-lemma symbols_ss_of_mem {t : term L} {p : formula L} (h : t ∈ p) : t.symbols ⊆ p.fn_symbols :=
-begin
-  induction h,
-  case app : t n r v i le
-  { simp, refine (term.symbols_ss_of_le le).trans (set.subset_Union _ i) },
-  case equall : s t u le
-  { simp, refine (term.symbols_ss_of_le le).trans (set.subset_union_left _ _) },
-  case equalr : s t u le
-  { simp, refine (term.symbols_ss_of_le le).trans (set.subset_union_right _ _) },
-  case neg { simp* },
-  case implyl : p q t _ IH { simp, exact set.subset_union_of_subset_left IH _ },
-  case implyr : p q t _ IH { simp, exact set.subset_union_of_subset_right IH _ },
-  case fal { simp* }
-end
--/
 inductive subformula : formula L → formula L → Prop
-| refl   : ∀ p, subformula p p
 | neg    : ∀ {p}, subformula p (⁻p)
 | implyl : ∀ {p q}, subformula p (p ⟶ q)
 | implyr : ∀ {p q}, subformula q (p ⟶ q)
 | fal    : ∀ {p}, subformula p (∏ p)
-| trans  : ∀ p q r, subformula p q → subformula q r → subformula p r
-
-instance : has_le (formula L) := ⟨subformula⟩
-
-instance : preorder (formula L) :=
-{ le := subformula,
-  le_refl := subformula.refl,
-  le_trans := subformula.trans }
 
 @[simp] def complexity : formula L → ℕ
 | ⊤         := 0
@@ -1106,181 +944,44 @@ instance : preorder (formula L) :=
 | (p ⟶ q)  := max p.complexity q.complexity + 1
 | (∏ p)     := p.complexity + 1
 
-lemma le_complexity_of_le {p q : formula L} (h : p ≤ q) : p.complexity ≤ q.complexity :=
-begin
-  induction h,
-  case refl { simp },
-  case neg : p { simp },
-  case implyl : p q 
-  { simp, exact le_add_right (le_max_left p.complexity q.complexity) },
-  case implyr : p q
-  { simp, exact le_add_right (le_max_right p.complexity q.complexity) },
-  case fal : p { simp },
-  case trans : p q r _ _ IH_pq IH_qr { exact le_trans IH_pq IH_qr }
-end
-
-@[simp] lemma lt_neg (p : formula L) : p < ⁻p :=
-by { have : ¬⁻p ≤ p, 
-     { intros a, have := le_complexity_of_le a, simp at this, contradiction },
-     exact lt_of_le_not_le subformula.neg this }
-
-
-
-
-@[simp] lemma lt_implyl (p q: formula L) : p < p ⟶ q  :=
-by { have : ¬p ⟶ q ≤ p, 
-     { intros a,
-       have gt : max p.complexity q.complexity + 1 > p.complexity,
-       from nat.lt_succ_iff.mpr (le_max_left (complexity p) (complexity q)),
-       exact nat.lt_le_antisymm gt (le_complexity_of_le a) },
-     exact lt_of_le_not_le subformula.implyl this }
-
-@[simp] lemma lt_implyr (p q: formula L) : q < p ⟶ q  :=
-by { have : ¬p ⟶ q ≤ q, 
-     { intros a,
-       have gt : max p.complexity q.complexity + 1 > q.complexity,
-       from nat.lt_succ_iff.mpr (le_max_right (complexity p) (complexity q)),
-       exact nat.lt_le_antisymm gt (le_complexity_of_le a) },
-     exact lt_of_le_not_le subformula.implyr this }
-
-@[simp] lemma lt_fal (p : formula L) : p < ∏ p :=
-by { have : ¬∏ p ≤ p, 
-     { intros a, have := le_complexity_of_le a, simp at this, contradiction },
-     exact lt_of_le_not_le subformula.fal this }
-
-instance : partial_order (formula L) :=
-  { le_antisymm := λ p q h, by { 
-      induction h,
-      case refl { simp },
-      case neg : p { have : ¬⁻p ≤ p, from not_le_of_gt (by simp), simp[this] },
-      case implyl : p q { have : ¬p ⟶ q ≤ p, from not_le_of_gt (by simp), simp[this] },
-      case implyr : p q { have : ¬p ⟶ q ≤ q, from not_le_of_gt (by simp), simp[this] },
-      case fal : p { have : ¬∏ p ≤ p, from not_le_of_gt (by simp), simp[this] },
-      case trans : p q r p_le_q q_le_r IH_pq IH_qr
-      { intros le, rcases IH_qr (le_trans le p_le_q) with rfl, exact IH_pq le } },
-    ..fopl.formula.preorder }
-
-@[simp] lemma not_lt_top (p : formula L) : ¬p < ⊤ :=
-begin
-  suffices : ∀ {p q : formula L} (le : p ≤ q) (e : q = ⊤), p = ⊤,
-  { simp[lt_iff_le_not_le], intros h, rcases this h rfl with rfl, refl },
-  intros p q h, induction h; try { simp },
-  case trans : p q r _ _ IH_pq IH_qr { rintros rfl, rcases IH_qr rfl with rfl, exact IH_pq rfl }
-end
-
-@[simp] lemma not_lt_pr (p : formula L) {n} (r : L.pr n) (v) : ¬p < app r v :=
-begin
-  suffices : ∀ {p q : formula L} (le : p ≤ q) {n} (r : L.pr n) (v) (e : q = app r v), p = app r v,
-  { simp[lt_iff_le_not_le], intros h, rcases this h _ _ rfl with rfl, refl },
-  intros p q h, induction h; try { simp },
-  case trans : p q r _ _ IH_pq IH_qr { rintros n r v rfl, rcases IH_qr r v rfl with rfl, exact IH_pq r v rfl }
-end
-
-@[simp] lemma not_lt_equal (p : formula L) (t u : term L) : ¬p < (t ≃₁ u) :=
-begin
-  suffices : ∀ {p q : formula L} (le : p ≤ q) (t u : term L) (e : q = (t ≃₁ u)), p = (t ≃₁ u),
-  { simp[lt_iff_le_not_le], intros h, rcases this h _ _ rfl with rfl, refl },
-  intros p q h, induction h; try { simp },
-  case trans : p q r _ _ IH_pq IH_qr { rintros t u rfl, rcases IH_qr t u rfl with rfl, exact IH_pq t u rfl }
-end
-
-@[simp] lemma lt_neg_iff {p q : formula L} : p < ⁻q ↔ p ≤ q :=
-⟨by { suffices : ∀ {p q : formula L} (le : p ≤ q) (ne : p ≠ q) {q'} (e : q = ⁻q'), p ≤ q',
-      { intros h, exact this (le_of_lt h) (ne_of_lt h) rfl },
-      intros p q h, induction h; try { simp },
-      case trans : p q r le_pq le_qr IH_pq IH_qr { intros ne,           }
-       }, by {  }⟩
-
+instance : wf_lt (formula L) :=
+{ prelt := subformula,
+  wt := complexity,
+  mono' := λ a b h, by { induction h; try { simp },
+  case implyl : p q { exact nat.lt_succ_iff.mpr (le_max_left p.complexity q.complexity) },
+  case implyr : p q { exact nat.lt_succ_iff.mpr (le_max_right p.complexity q.complexity) } } }
 
 lemma fn_symbols_ss_of_le {p q : formula L} (h : p ≤ q) : p.fn_symbols ⊆ q.fn_symbols :=
 by { induction h; try { simp },
      case refl { refl },
-     case trans : p q r _ _ IH_pq IH_qr { exact set.subset.trans IH_pq IH_qr } } 
-/--/
+     case trans : p q r _ _ IH_pq IH_qr { exact set.subset.trans IH_pq IH_qr },
+     case of_prelt : p q prelt { induction prelt; try { simp } } }
+
 lemma pr_symbols_ss_of_le {p q : formula L} (h : p ≤ q) : p.pr_symbols ⊆ q.pr_symbols :=
 by { induction h; try { simp },
      case refl { refl },
-     case trans : p q r _ _ IH_pq IH_qr { exact set.subset.trans IH_pq IH_qr } } 
-
-def lt_wf : well_founded ((<) : formula L → formula L → Prop) :=
-⟨λ p, by { induction p,
-  case verum { refine acc.intro _ (by simp) },
-  case app { refine acc.intro _ (by simp) },
-  case equal { refine acc.intro _ (by simp) },
-  
-  
-   }⟩
+     case trans : p q r _ _ IH_pq IH_qr { exact set.subset.trans IH_pq IH_qr },
+     case of_prelt : p q prelt { induction prelt; try { simp } } }
 
 inductive subterm : term L → formula L → Prop
-| app    : ∀ {t} {n} (r : L.pr n) {v : finitary (term L) n} {i} (h : t ≤ v i), subterm t (app r v)
-| equall : ∀ {s t u : term L} (le : s ≤ t), subterm s (t ≃₁ u)
-| equalr : ∀ {s t u : term L} (le : s ≤ u), subterm s (t ≃₁ u)
-| of_lt  : ∀ {p q : formula L} {t}, p < q → subterm t p → subterm t q   
+| app    : ∀ {n} (r : L.pr n) {v : finitary (term L) n} {i}, subterm (v i) (app r v)
+| equall : ∀ {t u : term L}, subterm t (t ≃₁ u)
+| equalr : ∀ {t u : term L}, subterm u (t ≃₁ u)
 
-attribute [simp] subterm.app
+instance : has_mem (term L) (formula L) := ⟨λ t p, ∃ (t' ≥ t) (p' ≤ p), subterm t' p'⟩
 
-instance : has_mem (term L) (formula L) := ⟨subterm⟩
+lemma mem_def {t : term L} {p : formula L} : t ∈ p ↔ ∃ (t' ≥ t) (p' ≤ p), subterm t' p' := by refl
 
-lemma mem_of_le {t : term L} {p q : formula L} (mem : t ∈ p) (le : p ≤ q) : t ∈ q :=
-by { have : p = q ∨ p < q, from eq_or_lt_of_le le, rcases this with (rfl | lt),
-     { exact mem }, { exact subterm.of_lt lt mem } }
-
-lemma mem_of_le_t {t : term L} {p : formula L} (mem : t ∈ p) : ∀ u ≤ t, u ∈ p :=
+lemma fn_symbols_ss_of_mem {t : term L} {p : formula L} (h : t ∈ p) : t.symbols ⊆ p.fn_symbols :=
 begin
-  induction mem,
-  case app : t n r v i le { intros u h, exact subterm.app r (h.trans le) },
-  case equall : s t u le { intros s' h, exact subterm.equall (h.trans le) },
-  case equalr : s t u le { intros s' h, exact subterm.equalr (h.trans le) },
-  case of_lt : p q t lt mem IH { intros u le_ut, exact subterm.of_lt lt (IH u le_ut) }
+  have ss : ∀ {t : term L} {p : formula L}, subterm t p → t.symbols ⊆ p.fn_symbols,
+  { intros t p sub, induction sub; try { simp },
+    case app : n r v i { refine set.subset_Union _ i } },
+  rcases h with ⟨t', le_t, p', le_p, sub⟩,
+  have t_ss_t' : t.symbols ⊆ t'.symbols, from term.symbols_ss_of_le le_t,
+  have p'_ss_p : p'.fn_symbols ⊆ p.fn_symbols, from fn_symbols_ss_of_le le_p,
+  exact set.subset.trans (set.subset.trans t_ss_t' (ss sub)) p'_ss_p
 end
-
-@[simp] lemma mem_pr_iff {n} {r : L.pr n} {v : fin n → term L} {t : term L} :
-  t ∈ app r v ↔ ∃ i, t ≤ v i :=
-⟨begin
-  suffices : ∀ {t : term L} {p : formula L} (h : t ∈ p)
-    {n} {r : L.pr n} {v : fin n → term L} (e : p = app r v), ∃ i, t ≤ v i,
-  { intros h, exact this h rfl },
-  intros t p h, induction h; try { simp },
-  case app : t n r v i h { rintros n r v rfl, simp, rintros rfl rfl, exact ⟨i, h⟩ },
-  case of_lt : p q t lt mem IH { rintros n r v rfl, simp at lt, contradiction }
-end, by { rintros ⟨i, le⟩, exact subterm.app r le }⟩
-
-@[simp] lemma mem_equal_iff {s t u : term L} :
-  s ∈ (t ≃₁ u) ↔ s ≤ t ∨ s ≤ u :=
-⟨begin
-  suffices : ∀ {s : term L} {p : formula L} (h : s ∈ p) {t u : term L} (e : p = (t ≃₁ u)), s ≤ t ∨ s ≤ u,
-  { intros h, exact this h rfl },
-  intros s p h, induction h; try { simp },
-  case equall : s t u le { rintros t u rfl rfl, exact or.inl le },
-  case equalr : s t u le { rintros t u rfl rfl, exact or.inr le },
-  case of_lt : p q s lt mem IH { rintros t u rfl, simp at lt, contradiction }
-end, by { rintros (le | le), exact subterm.equall le, exact subterm.equalr le }⟩
-
-
-@[simp] lemma nt_mem_top (t : term L) : ¬t ∈ (⊤ : formula L) := λ h,
-by { suffices : ∀ {t : term L} {p : formula L} (h : t ∈ p) (e : p = ⊤), false,
-     { exact this h rfl },
-     intros t p h, induction h; try { simp },
-     case of_lt : p q t lt mem IH { rintros rfl, simp at lt, contradiction } }
-
-@[simp] lemma mem_neg_iff {t : term L} {p : formula L} : t ∈ ⁻p ↔ t ∈ p :=
-⟨by { suffices : ∀ {t : term L} {p : formula L} (h : t ∈ p) (q : formula L) (e : p = ⁻q), t ∈ q,
-      { intros h, exact this h p rfl },
-      intros t p h, induction h; try { simp },
-      case of_lt : p q t lt mem IH { rintros q' rfl, simp at lt,  }  }, by {  }⟩
-
-@[simp] lemma mem_imply_iff {t : term L} {p q : formula L} : t ∈ p ⟶ q ↔ t ∈ p ∨ t ∈ q :=
-⟨by { suffices : ∀ {t : term L} {p : formula L} (h : t ∈ p) (q r : formula L) (e : p = q ⟶ r), t ∈ q ∨ t ∈ r,
-      { intros h, exact this h p q rfl },
-      intros t p h, induction h; try { simp },
-      case implyl : p q t le IH { rintros p q rfl rfl, exact or.inl le },
-      case implyr : p q t le IH { rintros p q rfl rfl, exact or.inr le }, },
- by { rintros (h | h), exact h.implyl, exact h.implyr }⟩
-
-@[simp] lemma mem_fal_iff {t : term L} {p : formula L} : t ∈ ∏ p ↔ t ∈ p :=
-⟨by { suffices : ∀ {t : term L} {p : formula L} (h : t ∈ p) (q : formula L) (e : p = ∏ q), t ∈ q,
-      { intros h, exact this h p rfl },
-      intros t p h, induction h; try { simp }, case fal : p t h IH { exact h } }, subterm.fal⟩
 
 end formula
 
