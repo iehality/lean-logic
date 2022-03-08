@@ -647,9 +647,10 @@ lemma fintype_sup_le {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α]
   {f : ι → α} {a : α} (h : ∀ i, f i ≤ a) : (⨆ᶠ i, f i) ≤ a :=
 finset.sup_le (λ i _, h i)
 
-class wf_lt (α : Type*) [has_sizeof α] :=
+class wf_lt (α : Type*) :=
 (prelt : α → α → Prop)
-(mono' : ∀ {a b}, prelt a b → sizeof a < sizeof b)
+(wt : α → ℕ)
+(mono' : ∀ {a b}, prelt a b → wt a < wt b)
 
 namespace wf_lt
 variables {α : Type*} [wf_lt α]
@@ -664,7 +665,7 @@ instance : preorder α :=
   le_refl := le.refl,
   le_trans := le.trans }
 
-lemma mono {a b : α} (h : a ≤ b) : sizeof a ≤ sizeof b :=
+lemma mono {a b : α} (h : a ≤ b) : wt a ≤ wt b :=
 by { induction h,
   case refl { simp },
   case of_prelt : a b prelt { exact le_of_lt (mono' prelt) },
@@ -697,11 +698,33 @@ lemma lt_iff {a b : α} : a < b ↔ ∃ b', prelt b' b ∧ a ≤ b' :=
       refine ⟨b', prelt, le_trans (show a ≤ b, from le_ab) le⟩ } } },
  by { rintros ⟨b', prelt, le⟩, exact gt_of_gt_of_ge (lt_of_prelt prelt) le }⟩
 
-lemma lt_mono {a b : α} (h : a < b) : sizeof a < sizeof b :=
+lemma lt_mono {a b : α} (h : a < b) : wt a < wt b :=
 by { rcases lt_iff.mp h with ⟨b', prelt, le⟩, exact gt_of_gt_of_ge (mono' prelt) (mono le) }
 
 def wf : well_founded ((<) : α → α → Prop) :=
-subrelation.wf (λ x y h, @lt_mono _ _ _ _ h) (has_well_founded_of_has_sizeof α).wf
+subrelation.wf (λ x y h, @lt_mono _ _ _ _ h) (inv_image.wf wt nat.lt_wf)
+
+lemma lt_finite (h : ∀ {a : α}, set.finite {b | prelt b a}) (a : α) : set.finite {b | b < a} :=
+begin
+  refine @well_founded.induction _ _ wf (λ a, set.finite {b | b < a}) a _,
+  simp, intros a IH,
+  let P := {b | prelt b a},
+  let B := P ∪ ⋃ b ∈ P, {c | c < b},
+  have : B = {b : α | b < a},
+  { ext b, simp[B], split,
+    { rintros (prelt | ⟨c, prelt, lt⟩),
+      { exact lt_of_prelt prelt },
+      { have : c < a, from lt_of_prelt prelt, exact lt_trans lt this } },
+    { intros lt, rcases lt_iff.mp lt with ⟨c, prelt, le⟩,
+      have : b = c ∨ b < c, from eq_or_lt_of_le le,
+      rcases this with (rfl | lt_bc),
+      { exact or.inl prelt },
+      { refine or.inr ⟨c, prelt, lt_bc⟩ } } },
+  rw ←this,
+  show B.finite,
+  have : (⋃ b ∈ P, {c | c < b}).finite, from set.finite.bUnion h (λ c prelt, IH c (lt_of_prelt prelt)),
+  exact set.finite.union (show P.finite, from h) this
+end
 
 end wf_lt
 
