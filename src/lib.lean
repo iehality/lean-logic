@@ -647,6 +647,64 @@ lemma fintype_sup_le {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α]
   {f : ι → α} {a : α} (h : ∀ i, f i ≤ a) : (⨆ᶠ i, f i) ≤ a :=
 finset.sup_le (λ i _, h i)
 
+class wf_lt (α : Type*) [has_sizeof α] :=
+(prelt : α → α → Prop)
+(mono' : ∀ {a b}, prelt a b → sizeof a < sizeof b)
+
+namespace wf_lt
+variables {α : Type*} [wf_lt α]
+
+inductive le : α → α → Prop
+| refl     : ∀ a, le a a
+| of_prelt : ∀ {a b}, prelt a b → le a b
+| trans    : ∀ a b c, le a b → le b c → le a c
+
+instance : preorder α :=
+{ le := le,
+  le_refl := le.refl,
+  le_trans := le.trans }
+
+lemma mono {a b : α} (h : a ≤ b) : sizeof a ≤ sizeof b :=
+by { induction h,
+  case refl { simp },
+  case of_prelt : a b prelt { exact le_of_lt (mono' prelt) },
+  case trans : a b c _ _ le_ab le_bc { exact le_trans le_ab le_bc } }
+
+instance : partial_order α :=
+  { le_antisymm := λ p q h, by { 
+      induction h; try { simp },
+      case of_prelt : a b prelt { intros le, exfalso, exact nat.lt_le_antisymm (mono' prelt) (mono le) },
+      case trans : a b c le_ab le_bc IH_ab IH_bc
+      { intros le, rcases IH_bc (le_trans le le_ab) with rfl, exact IH_ab le } },
+    ..wf_lt.preorder }
+
+lemma lt_of_prelt {a b : α} (h : wf_lt.prelt a b) : a < b :=
+by { have le : a ≤ b, from le.of_prelt h,
+     have ne : a ≠ b, { rintros rfl, exact nat.lt_asymm (mono' h) (mono' h) },
+     refine lt_iff_le_and_ne.mpr ⟨le, ne⟩ }
+
+lemma lt_iff {a b : α} : a < b ↔ ∃ b', prelt b' b ∧ a ≤ b' :=
+⟨by { suffices : ∀ {a b : α} (le : a ≤ b) (ne : a ≠ b), (∃ b', prelt b' b ∧ a ≤ b'),
+  { intros lt, exact this (le_of_lt lt) (ne_of_lt lt) },
+  intros a b h, induction h,
+  case refl { simp },
+  case of_prelt : a b prelt { intros nle, refine ⟨a, prelt, by refl⟩ },
+  case trans : a b c le_ab le_bc IH_ab IH_bc
+  { intros ne,
+    by_cases C : b = c, rcases C with (rfl | C),
+    { exact IH_ab ne },
+    { rcases IH_bc C with ⟨b', prelt, le⟩,
+      refine ⟨b', prelt, le_trans (show a ≤ b, from le_ab) le⟩ } } },
+ by { rintros ⟨b', prelt, le⟩, exact gt_of_gt_of_ge (lt_of_prelt prelt) le }⟩
+
+lemma lt_mono {a b : α} (h : a < b) : sizeof a < sizeof b :=
+by { rcases lt_iff.mp h with ⟨b', prelt, le⟩, exact gt_of_gt_of_ge (mono' prelt) (mono le) }
+
+def wf : well_founded ((<) : α → α → Prop) :=
+subrelation.wf (λ x y h, @lt_mono _ _ _ _ h) (has_well_founded_of_has_sizeof α).wf
+
+end wf_lt
+
 section classical
 attribute [instance, priority 0] classical.prop_decidable
 
