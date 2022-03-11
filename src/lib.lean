@@ -8,6 +8,9 @@ import
   order
   init.data.list
   init.data.subtype
+  data.list.dedup
+
+
 
 universes u v
 
@@ -324,7 +327,7 @@ instance [has_to_string α] (n) : has_to_string (finitary α n) :=
 ⟨λ f, by { exact "(" ++ list.to_string_aux tt (of_fn f).val ++ ")" }⟩
 
 @[simp, reducible] def to_total [inhabited α] {n} (f : finitary α n) : ℕ → α :=
-λ x, if h : x < n then f ⟨x, h⟩ else default _
+λ x, if h : x < n then f ⟨x, h⟩ else default
 
 @[simp, reducible] def of_total {n} (f : ℕ → α) : finitary α n := λ i, f i
 
@@ -704,7 +707,7 @@ by { rcases lt_iff.mp h with ⟨b', prelt, le⟩, exact gt_of_gt_of_ge (mono' pr
 def wf : well_founded ((<) : α → α → Prop) :=
 subrelation.wf (λ x y h, @lt_mono _ _ _ _ h) (inv_image.wf wt nat.lt_wf)
 
-lemma lt_finite (h : ∀ {a : α}, set.finite {b | prelt b a}) (a : α) : set.finite {b | b < a} :=
+lemma lt_finite (h : ∀ a : α, set.finite {b | prelt b a}) (a : α) : set.finite {b | b < a} :=
 begin
   refine @well_founded.induction _ _ wf (λ a, set.finite {b | b < a}) a _,
   simp, intros a IH,
@@ -726,7 +729,29 @@ begin
   exact set.finite.union (show P.finite, from h) this
 end
 
+lemma le_finite (h : ∀ a : α, set.finite {b | prelt b a}) (a : α) : set.finite {b | b ≤ a} :=
+by { have : {b : α | b ≤ a} = insert a {b | b < a}, { ext b, simp, exact le_iff_eq_or_lt },
+     simp[this], exact set.finite.insert a (lt_finite h a) }
+
 end wf_lt
+
+namespace list
+variables {α : Type*} {ι : Type*} [fintype ι]
+
+def Sup {n} (f : fin n → list α) : list α := (list.of_fn f).join
+
+@[simp] lemma ss_Sup {n} (f : fin n → list α) (i : fin n) : f i ⊆ Sup f := λ x h,
+by simp[Sup]; refine ⟨f i, _, h⟩; simp[list.mem_of_fn]
+
+@[simp] lemma mem_Sup_iff {n} {f : fin n → list α} {a : α} :
+  a ∈ Sup f ↔ ∃ i, a ∈ f i :=
+⟨by { simp[Sup], intros i h, refine ⟨i, h⟩ },
+ by { rintros ⟨i, h⟩, simp[Sup, list.mem_of_fn], refine ⟨i, h⟩ }⟩
+
+lemma sskk_Sup {n} (f : fin n → list α) (i : fin n) : f i <+~ Sup f :=
+by { simp[Sup],  }
+
+end list
 
 section classical
 attribute [instance, priority 0] classical.prop_decidable

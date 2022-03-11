@@ -506,6 +506,22 @@ by { induction h,
     exact set.subset.trans (show (v i).symbols ⊆ ⋃ i, (v i).symbols, from set.subset_Union _ i) (set.subset_insert _ _) },
   case trans : s t u _ _ IH_st IH_tu  { exact set.subset.trans IH_st IH_tu } } 
 
+lemma prelt_finite (t : term L) : set.finite {u | subterm u t} :=
+begin
+  induction t,
+  case var 
+  { have : {u : term L | u.subterm #t} = ∅, { ext u, simp, intros h, rcases h },
+    simp[this] },
+  case app : n f v IH
+  { have : {u : term L | u.subterm (❨f❩ v)} = set.range v,
+    { ext u, simp, refine ⟨λ h, _, λ h, _⟩,
+      { rcases h, simp }, { rcases h with ⟨i, rfl⟩, exact subterm.app f v i } },
+    simp[this, set.finite_range] }  
+end
+
+lemma le_finite (t : term L) : set.finite {u | u ≤ t} :=
+wf_lt.le_finite (show ∀ (a : term L), {b : term L | wf_lt.prelt b a}.finite, from prelt_finite) t
+
 end term
 
 def rewriting_sf_itr (s : ℕ → term L) : ℕ → ℕ → term L
@@ -964,7 +980,7 @@ by { induction h; try { simp },
      case of_prelt : p q prelt { induction prelt; try { simp } } }
 
 inductive subterm : term L → formula L → Prop
-| app    : ∀ {n} (r : L.pr n) {v : finitary (term L) n} {i}, subterm (v i) (app r v)
+| app    : ∀ {n} (r : L.pr n) (v : finitary (term L) n) (i), subterm (v i) (app r v)
 | equall : ∀ {t u : term L}, subterm t (t ≃₁ u)
 | equalr : ∀ {t u : term L}, subterm u (t ≃₁ u)
 
@@ -981,6 +997,63 @@ begin
   have t_ss_t' : t.symbols ⊆ t'.symbols, from term.symbols_ss_of_le le_t,
   have p'_ss_p : p'.fn_symbols ⊆ p.fn_symbols, from fn_symbols_ss_of_le le_p,
   exact set.subset.trans (set.subset.trans t_ss_t' (ss sub)) p'_ss_p
+end
+
+lemma prelt_finite (p : formula L) : set.finite {q | subformula q p} :=
+begin
+  induction p,
+  case verum { have : {q : formula L | q.subformula ⊤} = ∅, { ext q, simp, intros h, rcases h }, simp[this] },
+  case app : n r v { have : {q : formula L | q.subformula (app r v)} = ∅, { ext q, simp, intros h, rcases h }, simp[this] },
+  case equal : t u { have : {q : formula L | q.subformula (t ≃ u)} = ∅, { ext q, simp, intros h, rcases h }, simp[this] },
+  case imply : p q { have : {r : formula L | r.subformula (p ⟶ q)} = {p, q},
+    { ext r, simp, split, { rintros h, rcases h; simp }, { rintros (rfl | rfl), exact subformula.implyl, exact subformula.implyr } },
+    simp[this] },
+  case neg : p IH
+  { have : {q : formula L | q.subformula (⁻p)} = {p},
+    { ext q, simp, split, { intros h, rcases h, simp }, { rintros rfl, exact subformula.neg } },
+    simp[this] },
+  case fal : p IH
+  { have : {q : formula L | q.subformula (∏ p)} = {p},
+    { ext q, simp, split, { intros h, rcases h, simp }, { rintros rfl, exact subformula.fal } },
+    simp[this] }
+end
+
+lemma le_finite (p : formula L) : set.finite {q | q ≤ p} :=
+wf_lt.le_finite (show ∀ (a : formula L), {b : formula L | wf_lt.prelt b a}.finite, from prelt_finite) p
+
+lemma subterm_finite (p : formula L) : set.finite {t : term L | subterm t p} :=
+begin
+  induction p,
+  case verum { have : {t : term L | subterm t ⊤} = ∅, { ext t, simp, intros h, rcases h }, simp[this] },
+  case app : n r v
+  { have : {t : term L | subterm t (app r v)} = set.range v,
+    { ext t, simp, split,
+      { intros h, rcases h, simp }, { rintros ⟨i, rfl⟩, exact subterm.app r v i } },
+    simp[this, set.finite_range] },
+  case equal : t u
+  { have : {s : term L | subterm s (t ≃ u)} = {t, u},
+    { ext s, simp, split,
+      { intros h, rcases h; simp }, { rintros (rfl | rfl), exact subterm.equall, exact subterm.equalr } },
+    simp[this] },
+  case imply : p q
+  { have : {t : term L | subterm t (p ⟶ q)} = ∅, { ext r, simp, intros h, rcases h }, simp[this] },
+  case neg : p IH
+  { have : {t : term L | subterm t (⁻p)} = ∅, { ext r, simp, intros h, rcases h }, simp[this] },
+  case fal : p IH
+  { have : {t : term L | subterm t (∏ p)} = ∅, { ext r, simp, intros h, rcases h }, simp[this] }
+end
+
+lemma mem_finite (p : formula L) : set.finite {t : term L | t ∈ p} :=
+begin
+  let s := ⋃ q ∈ {q | q ≤ p}, {t : term L | subterm t q},
+  let b := ⋃ t ∈ s, {u | u ≤ t},
+  have : {t : term L | t ∈ p} = b,
+  { ext t, simp[b, s, mem_def], split,
+    { rintros ⟨t', t_le_t', ⟨p', p'_le_p, t'_st_p'⟩⟩, refine ⟨p', p'_le_p, t', t'_st_p', t_le_t'⟩ },
+    { rintros ⟨p', p'_le_p, t', t'_st_p', t_le_t'⟩, exact ⟨t', t_le_t', ⟨p', p'_le_p, t'_st_p'⟩⟩ } },
+  simp[this],
+  have : s.finite, from set.finite.bUnion (le_finite p) (λ q h, subterm_finite q),
+  refine set.finite.bUnion this (λ u h, term.le_finite u),
 end
 
 end formula
