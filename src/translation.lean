@@ -5,22 +5,57 @@ universes u v
 namespace fopl
 open formula term
 
-namespace language
 variables {L L₁ L₂ L₃ : language.{u}}
 local infix ` ≃₀ `:50 := ((≃) : term L → term L → formula L)
 local infix ` ≃₁ `:50 := ((≃) : term L₁ → term L₁ → formula L₁)
 local infix ` ≃₂ `:50 := ((≃) : term L₂ → term L₂ → formula L₂)
 
+namespace language
+
+protected def pempty : language.{u} := ⟨λ n, pempty, λ n, pempty⟩
+
+instance : has_emptyc (language.{u}) := ⟨fopl.language.pempty⟩
+
+@[simp] lemma pempty_fn_def (n) : (∅ : language.{u}).fn n = pempty := rfl
+
+@[simp] lemma pempty_pr_def (n) : (∅ : language.{u}).pr n = pempty := rfl
+
 structure language_translation (L₁ : language) (L₂ : language) :=
-(fn : Π {n}, L₁.fn n → L₂.fn n)
-(pr : Π {n}, L₁.pr n → L₂.pr n)
+(fn : Π n, L₁.fn n → L₂.fn n)
+(pr : Π n, L₁.pr n → L₂.pr n)
 
 infix ` ↝ᴸ `:25 := language_translation
 
+class finite (L : language.{u}) :=
+(fin_fn : ∀ n, fintype (L.fn n))
+(fin_pr : ∀ n, fintype (L.pr n))
+(arity_fn : ℕ)
+(arity_pr : ℕ)
+(empty_fn : ∀ m ≥ arity_fn, is_empty (L.fn m))
+(empty_pr : ∀ m ≥ arity_pr, is_empty (L.pr m))
+
+def theory.arity_fn (L : language.{u}) [finite L] : ℕ := finite.arity_fn L
+
+instance fintype_of_finite_fn [finite L] {n} : fintype (L.fn n) := finite.fin_fn n
+
+instance fintype_of_finite_pr [finite L] {n} : fintype (L.pr n) := finite.fin_pr n
+
+instance is_empty_of_finite_fn [f : finite L] {n} (h : f.arity_fn ≤ n) : is_empty (L.fn n) := finite.empty_fn n h
+
+instance is_empty_of_finite_pr [f : finite L] {n} (h : f.arity_pr ≤ n) : is_empty (L.pr n) := finite.empty_pr n h
+
+instance : finite (∅ : language.{u}) :=
+{ fin_fn := λ n, by simp;  exact fintype.of_is_empty,
+  fin_pr := λ n, by simp; exact fintype.of_is_empty,
+  arity_fn := 0,
+  arity_pr := 0,
+  empty_fn := λ m h, by simp; exact pempty.is_empty,
+  empty_pr := λ m h, by simp; exact pempty.is_empty }
+
 class language_translation_coe (L₁ : language) (L₂ : language) :=
 (ltr : L₁ ↝ᴸ L₂)
-(fn_inj : ∀ {n} (f g : L₁.fn n), ltr.fn f = ltr.fn g → f = g)
-(pr_inj : ∀ {n} (p q : L₁.pr n), ltr.pr p = ltr.pr q → p = q)
+(fn_inj : ∀ {n} (f g : L₁.fn n), ltr.fn n f = ltr.fn n g → f = g)
+(pr_inj : ∀ {n} (p q : L₁.pr n), ltr.pr n p = ltr.pr n q → p = q)
 
 structure translation (L₁ : language) (L₂ : language.{v}) :=
 (to_fun : ℕ → formula L₁ → formula L₂)
@@ -195,20 +230,24 @@ namespace term_translation
 end term_translation
 
 namespace language_translation
+
+def from_empty : ∅ ↝ᴸ L :=
+{ fn := λ n f, by rcases f, pr := λ n r, by rcases r }
+
 variables (τ : L₁ ↝ᴸ L₂)
 
 @[simp] def fun_term : term L₁ → term L₂
 | #n        := #n
-| (app f v) := app (τ.fn f) (λ i, fun_term (v i))
+| (app f v) := app (τ.fn _ f) (λ i, fun_term (v i))
 
 def tr_term : term_translation L₁ L₂ :=
-{ to_fun_chr := λ k n f v, app (τ.fn f) v,
+{ to_fun_chr := λ k n f v, app (τ.fn _ f) v,
   to_fun     := λ k, τ.fun_term,
   map_fn     := λ k n f v, by simp }
 
 @[simp] def fun_formula : formula L₁ → formula L₂
 | ⊤                    := ⊤
-| (app p v)            := app (τ.pr p) (λ i, fun_term τ (v i))
+| (app p v)            := app (τ.pr _ p) (λ i, fun_term τ (v i))
 | ((t : term L₁) ≃ u)  := fun_term τ t ≃ fun_term τ u
 | (p ⟶ q)              := fun_formula p ⟶ fun_formula q
 | (⁻p)                 := ⁻fun_formula p
@@ -248,7 +287,7 @@ lemma tr_app_eq (k) (p) :
   τ.tr k p = τ.fun_formula p := by refl
 
 @[simp] lemma tr_term_to_fun_chr_app_eq (k) {n} (f : L₁.fn n) (v : finitary (term L₂) n) :
-  τ.tr_term.to_fun_chr k f v = app (τ.fn f) v := rfl
+  τ.tr_term.to_fun_chr k f v = app (τ.fn _ f) v := rfl
 
 @[simp] lemma fun_term_pow (t : term L₁) (i : ℕ) :
   (τ.fun_term (t^i) : term L₂) = (τ.fun_term t)^i :=
@@ -277,12 +316,16 @@ end language_translation
 
 namespace language_translation_coe
 open language_translation
+
+instance : language_translation_coe ∅ L :=
+{ltr := from_empty, fn_inj := λ n f g, by rcases f, pr_inj := λ n r s, by rcases r }
+
 variables [σ : language_translation_coe L₁ L₂]
 include σ
 
-instance {n} : has_coe (L₁.fn n) (L₂.fn n) := ⟨λ n, σ.ltr.fn n⟩
+instance {n} : has_coe (L₁.fn n) (L₂.fn n) := ⟨λ n, σ.ltr.fn _ n⟩
 
-instance {n} : has_coe (L₁.pr n) (L₂.pr n) := ⟨λ n, σ.ltr.pr n⟩
+instance {n} : has_coe (L₁.pr n) (L₂.pr n) := ⟨λ n, σ.ltr.pr _ n⟩
 
 instance : has_coe (term L₁) (term L₂) := ⟨σ.ltr.fun_term⟩
 
@@ -301,17 +344,17 @@ def t_f_translation : term_formula_translation L₁ L₂ :=
 
 instance : has_coe (theory L₁) (theory L₂) := ⟨tr_theory σ.ltr.tr 0⟩
 
-instance [has_zero_symbol L₁] : has_zero_symbol L₂ := ⟨σ.ltr.fn has_zero_symbol.zero⟩
+instance [has_zero_symbol L₁] : has_zero_symbol L₂ := ⟨σ.ltr.fn _ has_zero_symbol.zero⟩
 
-instance [has_succ_symbol L₁] : has_succ_symbol L₂ := ⟨σ.ltr.fn has_succ_symbol.succ⟩
+instance [has_succ_symbol L₁] : has_succ_symbol L₂ := ⟨σ.ltr.fn _ has_succ_symbol.succ⟩
 
-instance [has_add_symbol L₁] : has_add_symbol L₂ := ⟨σ.ltr.fn has_add_symbol.add⟩
+instance [has_add_symbol L₁] : has_add_symbol L₂ := ⟨σ.ltr.fn _ has_add_symbol.add⟩
 
-instance [has_mul_symbol L₁] : has_mul_symbol L₂ := ⟨σ.ltr.fn has_mul_symbol.mul⟩
+instance [has_mul_symbol L₁] : has_mul_symbol L₂ := ⟨σ.ltr.fn _ has_mul_symbol.mul⟩
 
-instance [has_le_symbol L₁] : has_le_symbol L₂ := ⟨σ.ltr.pr has_le_symbol.le⟩
+instance [has_le_symbol L₁] : has_le_symbol L₂ := ⟨σ.ltr.pr _ has_le_symbol.le⟩
 
-instance [has_mem_symbol L₁] : has_mem_symbol L₂ := ⟨σ.ltr.pr has_mem_symbol.mem⟩
+instance [has_mem_symbol L₁] : has_mem_symbol L₂ := ⟨σ.ltr.pr _ has_mem_symbol.mem⟩
 
 lemma app_formula_extention_eq_coe (k) (p : formula L₁) :
   (σ.ltr.tr : translation L₁ L₂) k p = ↑p := rfl
@@ -322,7 +365,7 @@ lemma app_term_extention_eq_coe (k) (t : term L₁) :
 @[simp] lemma add_tr_v1_var (n) : ((#n : term L₁) : term L₂) = #n := rfl
 
 lemma add_tr_v1_app {n} (f : L₁.fn n) (v : finitary (term L₁) n) :
-  ((❨f❩ v : term L₁) : term L₂) = ❨σ.ltr.fn f❩ (λ i, (v i)) := by refl
+  ((❨f❩ v : term L₁) : term L₂) = ❨σ.ltr.fn _ f❩ (λ i, (v i)) := by refl
 
 @[simp] lemma coe_tr_v1_zero [has_zero_symbol L₁] :
   ((0 : term L₁) : term L₂) = 0 := by { unfold has_zero.zero has_zero_symbol.zero,
@@ -459,6 +502,48 @@ lemma mem_coe_iff {T : theory L₁} {p : formula L₂} :
   p ∈ (↑T : theory L₂) ↔ ∃ p₁ ∈ T, p = ↑p₁ := 
 ⟨λ ⟨p₁, h, eqn⟩, ⟨p₁, h, eq.symm eqn⟩, by { rintros ⟨p₁, mem, rfl⟩, simp[mem] }⟩
 
+@[simp] lemma theory_coe_empty : (↑(∅ : theory L₁) : theory L₂) = ∅ :=
+set.ext (λ p, by unfold_coes; simp[tr_theory])
+
+@[simp] lemma theory_coe_union (T U : theory L₁) : (↑(T ∪ U) : theory L₂) = ↑T ∪ ↑U :=
+set.ext (λ p, by { unfold_coes, simp[tr_theory], split,
+  { rintros ⟨p, (mem_p | mem_p), rfl⟩,
+    refine or.inl ⟨p, mem_p, rfl⟩,
+    refine or.inr ⟨p, mem_p, rfl⟩ },
+  { rintros (⟨p, mem_p, rfl⟩ | ⟨p, mem_p, rfl⟩),
+    refine ⟨p, or.inl mem_p, rfl⟩,
+    refine ⟨p, or.inr mem_p, rfl⟩ } })
+
+@[simp] lemma theory_coe_sf (T : theory L₁) : (↑⤊T : theory L₂) = ⤊(↑T : theory L₂) :=
+set.ext (λ p, by { unfold_coes,simp[tr_theory, theory.sf], refine ⟨_, _⟩,
+  { rintros ⟨_, ⟨q₁, mem_q₁, rfl⟩, rfl⟩, refine ⟨q₁, mem_q₁, by simp[app_formula_extention_eq_coe]⟩ },
+  { rintros ⟨p₁, mem_p₁, rfl⟩, refine ⟨p₁^1, ⟨p₁, mem_p₁, rfl⟩, by simp[app_formula_extention_eq_coe]⟩ } })
+
+@[simp] lemma theory_coe_pow {T : theory L₁} {i : ℕ} :
+  (↑T : theory L₂)^i = ↑(T^i) := 
+begin
+  ext p,
+  simp[theory_sf_itr_eq, mem_coe_iff], split,
+  { rintros ⟨p', ⟨p₁, mem, rfl⟩, rfl⟩,
+    refine ⟨p₁^i, ⟨p₁, mem, rfl⟩, by simp⟩ },
+  { rintros ⟨_, ⟨p₁, mem, rfl⟩, rfl⟩, 
+    refine ⟨p₁, ⟨p₁, mem, rfl⟩, by simp⟩ } 
+end
+
+lemma destruct_of_eq_imply {p : formula L₁} {q r : formula L₂} (h : ↑p = q ⟶ r) :
+  ∃ p₁ p₂, p = p₁ ⟶ p₂ :=
+begin
+  rcases p; try { simp at h, contradiction },
+  { simp at h, rcases h with ⟨rfl, rfl⟩, simp }
+end
+
+lemma destruct_of_eq_neg {p : formula L₁} {q : formula L₂} (h : ↑p = ⁻q) :
+  ∃ p₁, p = ⁻p₁ :=
+begin
+  rcases p; try { simp at h, contradiction },
+  { simp at h, rcases h with ⟨rfl, rfl⟩, simp }
+end
+
 end language_translation_coe
 
 namespace language_translation
@@ -475,9 +560,9 @@ instance conservative : τ.tr.conservative :=
   eq_symmetry := by simp[tr_app_eq],
   eq_transitive := by simp[tr_app_eq],
   function_ext := λ k n f T i, by { simp[eq_axiom4], simp[tr_app_eq],
-    exact (show _ ⊢ eq_axiom4 (τ.fn f), by simp) },
+    exact (show _ ⊢ eq_axiom4 (τ.fn _ f), by simp) },
   predicate_ext := λ k n f T i, by { simp[eq_axiom5], simp[tr_app_eq],
-    exact (show _ ⊢ eq_axiom5 (τ.pr f), by simp) } }
+    exact (show _ ⊢ eq_axiom5 (τ.pr _ f), by simp) } }
 
 end language_translation
 
@@ -565,32 +650,149 @@ include σ
 
 lemma provability_pow {T : theory L₁} {p : formula L₁} {i : ℕ} :
   T^i ⊢ p → (↑T : theory L₂)^i ⊢ ↑p :=
-by { simp[← app_formula_extention_eq_coe i],
+by { simp[← app_formula_extention_eq_coe i, -theory_coe_pow],
      exact translation.provability_pow σ.ltr.tr T p i 0 }
 
 lemma provability {T : theory L₁} {p : formula L₁} :
   T ⊢ p → (↑T : theory L₂) ⊢ ↑p :=
 translation.provability σ.ltr.tr T p 0
 
-@[simp] lemma theory_coe_pow {T : theory L₁} {i : ℕ} :
-  (↑T : theory L₂)^i = ↑(T^i) := 
-begin
-  ext p,
-  simp[theory_sf_itr_eq, mem_coe_iff], split,
-  { rintros ⟨p', ⟨p₁, mem, rfl⟩, rfl⟩,
-    refine ⟨p₁^i, ⟨p₁, mem, rfl⟩, by simp⟩ },
-  { rintros ⟨_, ⟨p₁, mem, rfl⟩, rfl⟩, 
-    refine ⟨p₁, ⟨p₁, mem, rfl⟩, by simp⟩ } 
-end
-
 end language_translation_coe
 
+class synonym (L₁ L₂ : language) 
+(ltc : language_translation_coe L₁ L₂)
+(ltc_inv : language_translation_coe L₂ L₁)
+(left_inv_fn  : ∀ n, function.left_inverse (ltc_inv.ltr.fn n) (ltc.ltr.fn n))
+(right_inv_fn : ∀ n, function.right_inverse (ltc_inv.ltr.fn n) (ltc.ltr.fn n))
+(left_inv_pr  : ∀ n, function.left_inverse (ltc_inv.ltr.pr n) (ltc.ltr.pr n))
+(right_inv_pr : ∀ n, function.right_inverse (ltc_inv.ltr.pr n) (ltc.ltr.pr n))
+
+/-
+def sublanguage (sf : Π n : ℕ, set (L.fn n)) (sr : Π n : ℕ, set (L.pr n)) : language :=
+⟨λ n, sf n, λ n, sr n⟩
+
+namespace sublanguage
+variables (sf : Π n : ℕ, set (L.fn n)) (sr : Π n : ℕ, set (L.pr n))
+
+@[simp] lemma fn_def (n) : (sublanguage sf sr).fn n = sf n := rfl
+
+@[simp] lemma pr_def (n) : (sublanguage sf sr).pr n = sr n := rfl
+
+instance ltc : language_translation_coe (sublanguage sf sr) L :=
+{ ltr := ⟨λ n ⟨f, h⟩, f, λ n ⟨r, h⟩, r⟩,
+  fn_inj := λ n ⟨f, hf⟩ ⟨g, hg⟩, by { simp, intros h, exact h }, 
+  pr_inj := λ n ⟨f, hf⟩ ⟨g, hg⟩, by { simp, intros h, exact h } }
+
+@[simp] lemma coe_fn {n} {f : L.fn n} {h} : (↑(⟨f, h⟩ : (sublanguage sf sr).fn n) : L.fn n) = f := rfl
+
+@[simp] lemma coe_pr {n} {r : L.pr n} {h} : (↑(⟨r, h⟩ : (sublanguage sf sr).pr n) : L.pr n) = r := rfl
+
+def down_fn {n} (f : L.fn n) (h : f ∈ sf n) : (sublanguage sf sr).fn n := ⟨f, h⟩
+
+@[simp] lemma down_fn_coe {n} (f : L.fn n) (h : f ∈ sf n) : (down_fn sf sr f h : L.fn n) = f := rfl
+
+def down_pr {n} (r : L.pr n) (h : r ∈ sr n) : (sublanguage sf sr).pr n := ⟨r, h⟩
+
+@[simp] lemma down_pr_coe {n} (r : L.pr n) (h : r ∈ sr n) : (down_pr sf sr r h : L.pr n) = r := rfl
+
+end sublanguage
+-/
+--end language
+/-
+@[reducible] def formula.language (p : formula L) : language := language.sublanguage p.fn_symbols' p.pr_symbols'
+-/
+namespace language
+/-
+noncomputable instance formula_language_finite (p : formula L) : finite p.language :=
+{ fin_fn := λ n, set.finite.fintype (p.fn_symbols'_finite n),
+  fin_pr := λ n, set.finite.fintype (p.pr_symbols'_finite n),
+  arity_fn := (p.fn_symbols_finite).to_finset.sup sigma.fst + 1,
+  arity_pr := (p.pr_symbols_finite).to_finset.sup sigma.fst + 1,
+  empty_fn := λ m h, by { simp[formula.language, formula.fn_symbols] at h ⊢,
+    have : (p.fn_symbols_finite).to_finset.sup sigma.fst < m, from nat.succ_le_iff.mp h, 
+    have : p.fn_symbols' m = ∅,
+    { ext k, simp[formula.fn_symbols'], intros a,
+      have : m < m, from (finset.sup_lt_iff (pos_of_gt this)).mp this ⟨m, k⟩ (by simp[a]),
+      simp at this, contradiction },
+    simp[this], exact set.has_emptyc.emptyc.is_empty _ },
+  empty_pr := λ m h, by { simp[formula.language, formula.fn_symbols] at h ⊢,
+    have : (p.pr_symbols_finite).to_finset.sup sigma.fst < m, from nat.succ_le_iff.mp h, 
+    have : p.pr_symbols' m = ∅,
+    { ext k, simp[formula.pr_symbols'], intros a,
+      have : m < m, from (finset.sup_lt_iff (pos_of_gt this)).mp this ⟨m, k⟩ (by simp[a]),
+      simp at this, contradiction },
+    simp[this], exact set.has_emptyc.emptyc.is_empty _ } }
+
+#check 0
+
+lemma formula_lang_inv_term : ∀ {p : formula L} {t : term L}, t ∈ p → ∃ t' : term p.language, ↑t' = t :=
+begin
+  suffices : ∀ (t : term L) (p : formula L), t ∈ p → ∃ t' : term p.language, ↑t' = t,
+  { intros p t, exact this t p },
+  intros t,
+  induction t,
+  case var : n { intros p mem, refine ⟨#n, by simp⟩ },
+  case app : n f v IH { intros p mem, 
+    simp at IH,
+    have : ∀ i, ∃ (t' : term p.language), ↑t' = v i, from λ i, IH i p (formula.mem_of_le mem (v i) (le_of_lt (by simp))),
+    rcases classical.skolem.mp this with ⟨v', hv'⟩,
+    let f' : p.language.fn n := ⟨f, by simp[mem_fn_symbols'_iff]; refine symbols_ss_of_mem mem (by simp)⟩,
+    refine ⟨app f' v', _⟩, simp[f'], refine ⟨rfl, _⟩,
+    funext i, exact hv' i }
+end
+
+
+lemma formula_lang_inv : ∀ p : formula L, ∃ p' : formula p.language, ↑p' = p
+| ⊤ := ⟨⊤, by simp⟩
+| (app f v) := by {  }
+
+
+#check 0
+
+lemma proof_finite_retruct_aux {T : theory (sum l)} (p) {k : ℕ} (b : T^k ⊢ p) :
+  ∃ (s : set ι) (T₀ : theory (sum (λ i : s, l i))) (p₀ : formula (sum (λ i : s, l i))),
+    set.finite s ∧ (↑T₀ : theory (sum l)) ⊆ T ∧ ↑p₀ = p ∧ T₀^k ⊢ p₀ :=
+begin
+  refine provable.rec_on' b _ _ _ _ _ _ _ _ _ _ _ _ _ _ _,
+  { rintros i p b ⟨s, T₀, p', s_fin, T₀_ss, rfl, IH⟩,
+    refine ⟨s, T₀, ∏ p', s_fin, T₀_ss, by simp, provable.generalize IH⟩ },
+  { rintros i p q b₁ b₂ ⟨s₁, T₁, p_to_q₁, s₁_fin, T₁_ss, pq_coe, IH₁⟩
+      ⟨s₂, T₂, p₂, s₂_fin, T₂_ss, rfl, IH₂⟩,
+    rcases language_translation_coe.destruct_of_eq_imply pq_coe with ⟨p₁, q₁, rfl⟩,
+    simp at pq_coe, rcases pq_coe with ⟨p₁_eq_p₂, rfl⟩,
+    let T₀ := (ext_ss l (set.subset_union_left s₁ s₂)).fun_formula '' T₁ ∪
+      (ext_ss l (set.subset_union_right s₁ s₂)).fun_formula '' T₂, 
+    let q₀ := (ext_ss l (set.subset_union_left s₁ s₂)).fun_formula q₁,
+    refine ⟨s₁ ∪ s₂, T₀, q₀, set.finite.union s₁_fin s₂_fin, by simp[T₀, T₁_ss, T₂_ss], _⟩,
+    simp, 
+    have := (ext_ss l (set.subset_union_left s₁ s₂)).fun_formula p₁,
+    have : T₀^i ⊢ (ext_ss l (set.subset_union_left s₁ s₂)).fun_formula p₁ ⟶ (ext_ss l (set.subset_union_left s₁ s₂)).fun_formula q₁,
+    {  }
+       }
+end
+
+end translation
+-/
 instance : has_add language := ⟨λ L₁ L₂ : language.{u}, ⟨λ n, L₁.fn n ⊕ L₂.fn n, λ n, L₁.pr n ⊕ L₂.pr n⟩⟩ 
 
-def sum {ι : Type*} (l : ι → language) : language := ⟨λ n, Σ i, (l i).fn n, λ n, Σ i, (l i).pr n⟩
+def direct_sum {ι : Type*} (l : ι → language) : language := ⟨λ n, Σ i, (l i).fn n, λ n, Σ i, (l i).pr n⟩
+
+def consts (α : Type u) : language.{u} := ⟨λ n, match n with | 0 := α | (n + 1) := pempty end, λ n, pempty⟩
+
+def consts.c {α : Type u} (a : α) : (consts α).fn 0 := a
+
+instance (α : Type*) : has_coe α (term (consts α)) := ⟨λ a, term.app (consts.c a) finitary.nil⟩
+
+@[reducible] def add_consts (L : language) (α : Type) : language := L + consts α
+
+notation L`+[` α `]` := add_consts L α
+
+@[simp] lemma sum_fn_def {ι : Type*} (l : ι → language) (n : ℕ) : (direct_sum l).fn n = Σ i, (l i).fn n := rfl
+
+@[simp] lemma sum_pr_def {ι : Type*} (l : ι → language) (n : ℕ) : (direct_sum l).pr n = Σ i, (l i).pr n := rfl
 
 namespace extention
-open language_translation
+open language_translation language_translation_coe
 
 def to_extention₁ : L₁ ↝ᴸ L₁ + L₂ := ⟨λ n f, sum.inl f, λ n p, sum.inl p⟩
 
@@ -614,54 +816,63 @@ lemma coe_fn₂ {n} (f : L₂.fn n) : (↑f : (L₁ + L₂).fn n) = sum.inr f:= 
 
 lemma coe_pr₂ {n} (r : L₂.pr n) : (↑r : (L₁ + L₂).pr n) = sum.inr r:= rfl
 
+class sublanguage (L₀ : language.{u}) (L : language.{u}) :=
+(map_fn : Π {n}, L.fn n → L₀.fn n)
+(map_pr : Π {n}, L.pr n → L₀.pr n)
+
 variables {ι : Type*} (l : ι → language)
 
-def to_extention (i : ι) : l i ↝ᴸ sum l :=
+def to_extention (i : ι) : l i ↝ᴸ direct_sum l :=
 ⟨λ n f, ⟨i, f⟩, λ n r, ⟨i, r⟩⟩
 
-instance ltr (i : ι) : language_translation_coe (l i) (sum l) :=
+instance ltr (i : ι) : language_translation_coe (l i) (direct_sum l) :=
 { ltr := to_extention l i,
   fn_inj := λ n f g, by simp[to_extention],
   pr_inj := λ n f g, by simp[to_extention] }
 
-def to_extention_ss {s t : set ι} (ss : s ⊆ t) : sum (λ i : s, l i) ↝ᴸ sum (λ i : t, l i) :=
+def ext_ss {s t : set ι} (ss : s ⊆ t) : direct_sum (λ i : s, l i) ↝ᴸ direct_sum (λ i : t, l i) :=
 ⟨λ n ⟨⟨i, hi⟩, f⟩, ⟨⟨i, ss hi⟩, f⟩, λ n ⟨⟨i, hi⟩, f⟩, ⟨⟨i, ss hi⟩, f⟩⟩
 
-def ltr_ss {s t : set ι} (ss : s ⊆ t) : language_translation_coe (sum (λ i : s, l i)) (sum (λ i : t, l i)) :=
-{ ltr := to_extention_ss l ss,
-  fn_inj := λ n ⟨⟨i, pi⟩, f⟩ ⟨⟨j, pj⟩, g⟩, by { simp[to_extention_ss], rintros rfl, simp },
-  pr_inj := λ n ⟨⟨i, pi⟩, f⟩ ⟨⟨j, pj⟩, g⟩, by { simp[to_extention_ss], rintros rfl, simp } }
+def ltr_ss {s t : set ι} (ss : s ⊆ t) : language_translation_coe (direct_sum (λ i : s, l i)) (direct_sum (λ i : t, l i)) :=
+{ ltr := ext_ss l ss,
+  fn_inj := λ n ⟨⟨i, pi⟩, f⟩ ⟨⟨j, pj⟩, g⟩, by { simp[ext_ss], rintros rfl, simp },
+  pr_inj := λ n ⟨⟨i, pi⟩, f⟩ ⟨⟨j, pj⟩, g⟩, by { simp[ext_ss], rintros rfl, simp } }
 
-def to_extention_subtype (s : set ι) : sum (λ i : s, l i) ↝ᴸ sum l :=
+def to_extention_subtype (s : set ι) : direct_sum (λ i : s, l i) ↝ᴸ direct_sum l :=
 ⟨λ n ⟨i, f⟩, ⟨i, f⟩, λ n ⟨i, r⟩, ⟨i, r⟩⟩
 
-instance ltr_subtype (s : set ι) : language_translation_coe (sum (λ i : s, l i)) (sum l) :=
+instance ltr_subtype (s : set ι) : language_translation_coe (direct_sum (λ i : s, l i)) (direct_sum l) :=
 { ltr := to_extention_subtype l s,
   fn_inj := λ n ⟨⟨i, pi⟩, f⟩ ⟨⟨j, pj⟩, g⟩, by { simp[to_extention_subtype], rintros rfl, simp },
   pr_inj := λ n ⟨⟨i, pi⟩, f⟩ ⟨⟨j, pj⟩, g⟩, by { simp[to_extention_subtype], rintros rfl, simp } }
 
-@[simp] lemma to_extention_ss_subtype_consistence_term {s t : set ι} (ss : s ⊆ t) : ∀ (u : term (sum (λ i : s, l i))),
-  ((to_extention_ss l ss).fun_term u : term (sum l)) = u
+@[simp] lemma ext_ss_subtype_consistence_term {s t : set ι} (ss : s ⊆ t) : ∀ (u : term (direct_sum (λ i : s, l i))),
+  ((ext_ss l ss).fun_term u : term (direct_sum l)) = u
 | #n                  := by simp
 | (@term.app _ n f v) :=
-  by { rcases f with ⟨⟨i, hi⟩, f⟩, simp[to_extention_ss],
-       refine ⟨rfl, funext (λ i, to_extention_ss_subtype_consistence_term (v i))⟩}
+  by { rcases f with ⟨⟨i, hi⟩, f⟩, simp[ext_ss],
+       refine ⟨rfl, funext (λ i, ext_ss_subtype_consistence_term (v i))⟩}
 
-@[simp] lemma to_extention_ss_subtype_consistence {s t : set ι} (ss : s ⊆ t) : ∀ (p : formula (sum (λ i : s, l i))),
-  ((to_extention_ss l ss).fun_formula p : formula (sum l)) = p
+@[simp] lemma ext_ss_subtype_consistence {s t : set ι} (ss : s ⊆ t) :
+  ∀ (p : formula (direct_sum (λ i : s, l i))), ((ext_ss l ss).fun_formula p : formula (direct_sum l)) = p
 | ⊤                                       := by simp
-| (app r v)                               := by { simp, rcases r with ⟨⟨i, hi⟩, r⟩, simp[to_extention_ss], refl }
-| ((t : term (sum (λ (i : s), l i))) ≃ u) := by simp
-| (p ⟶ q)                                 := by simp[to_extention_ss_subtype_consistence p, to_extention_ss_subtype_consistence q]
-| (⁻p)                                    := by simp[to_extention_ss_subtype_consistence p]
-| (∏ p)                                   := by simp[to_extention_ss_subtype_consistence p]
+| (app r v)                               := by { simp, rcases r with ⟨⟨i, hi⟩, r⟩, simp[ext_ss], refl }
+| ((t : term (direct_sum (λ (i : s), l i))) ≃ u) := by simp
+| (p ⟶ q)                                 := by simp[ext_ss_subtype_consistence p, ext_ss_subtype_consistence q]
+| (⁻p)                                    := by simp[ext_ss_subtype_consistence p]
+| (∏ p)                                   := by simp[ext_ss_subtype_consistence p]
 
-lemma finite_retruct_term : ∀ (t : term (sum l)),
-  ∃ (s : set ι) (t₀ : term (sum (λ i : s, l i))), set.finite s ∧ ↑t₀ = t
+@[simp] lemma theory_ext_ss_subtype_consistence {s t : set ι} (ss : s ⊆ t)
+  (T : theory (direct_sum (λ i : s, l i))) :
+  (↑((ext_ss l ss).fun_formula '' T) : theory (direct_sum l)) = ↑T :=
+set.ext (λ p, by { unfold_coes, simp[tr_theory, app_formula_extention_eq_coe] })
+
+lemma finite_retruct_term : ∀ (t : term (direct_sum l)),
+  ∃ (s : set ι) (t₀ : term (direct_sum (λ i : s, l i))), set.finite s ∧ ↑t₀ = t
 | #n                  := ⟨λ i, false, #n, set.finite_empty, rfl⟩
 | (@term.app L n f v) := by { 
   have : ∃ (s : fin n → set ι),
-    ∀ i, ∃ (t₀ : term (sum (λ (i : ↥(s i)), l ↑i))), (s i).finite ∧ ↑t₀ = v i,
+    ∀ i, ∃ (t₀ : term (direct_sum (λ (i : ↥(s i)), l ↑i))), (s i).finite ∧ ↑t₀ = v i,
     from classical.skolem.mp (λ i, finite_retruct_term (v i)),
   rcases this with ⟨s, hs⟩,
   rcases f with ⟨i₀, f⟩,
@@ -672,28 +883,148 @@ lemma finite_retruct_term : ∀ (t : term (sum l)),
     have : (⋃ i, s i).finite, from set.finite_Union this, exact this },
   have mem_S : ∀ i, s i ⊆ S,
   { intros i, exact (set.subset_Union s i).trans (set.subset_insert i₀ _) },
-  { have : ∃ (w : Π (i : fin n), term (sum (λ (j : ↥(s i)), l ↑j))), ∀ (i : fin n), (s i).finite ∧ ↑(w i) = v i,
+  { have : ∃ (w : Π (i : fin n), term (direct_sum (λ (j : ↥(s i)), l ↑j))), ∀ (i : fin n), (s i).finite ∧ ↑(w i) = v i,
       from classical.skolem.mp hs,
     rcases this with ⟨w, hw⟩,
-    let w' : Π (i : fin n), term (sum (λ (j : S), l ↑j)) := λ i, (to_extention_ss l (mem_S i)).fun_term (w i),
-    let f' : (sum (λ (i : S), l ↑i)).fn n := ⟨⟨i₀, set.mem_insert i₀ _⟩, f⟩,
+    let w' : Π (i : fin n), term (direct_sum (λ (j : S), l ↑j)) := λ i, (ext_ss l (mem_S i)).fun_term (w i),
+    let f' : (direct_sum (λ (i : S), l ↑i)).fn n := ⟨⟨i₀, set.mem_insert i₀ _⟩, f⟩,
     refine ⟨app f' w', set.finite.insert _ ufinite, _⟩,
     simp[f', w'], refine ⟨rfl, funext (λ i, (hw i).2)⟩ } }
 
-lemma finite_retruct : ∀ (p : formula (sum l)),
-  ∃ (s : set ι) (p₀ : formula (sum (λ i : s, l i))), set.finite s ∧ ↑p₀ = p
+instance add_finite {L₁ L₂ : language.{u}} [h₁ : L₁.finite] [h₂ : L₂.finite] :
+  (L₁ + L₂).finite :=
+{ fin_fn := λ n, by simp[has_add.add]; exact sum.fintype _ _,
+  fin_pr := λ n, by simp[has_add.add]; exact sum.fintype _ _,
+  arity_fn := max h₁.arity_fn h₂.arity_fn, 
+  arity_pr := max h₁.arity_pr h₂.arity_pr,
+  empty_fn := λ n h, by simp[has_add.add];
+    refine ⟨language.is_empty_of_finite_fn (le_of_max_le_left h), language.is_empty_of_finite_fn (le_of_max_le_right h)⟩,
+  empty_pr := λ n h, by simp[has_add.add];
+    refine ⟨language.is_empty_of_finite_pr (le_of_max_le_left h), language.is_empty_of_finite_pr (le_of_max_le_right h)⟩ }
+
+instance sum_finite [fintype ι] {l : ι → language.{u}} [h₁ : ∀ i, (l i).finite] :
+  (direct_sum l).finite :=
+{ fin_fn := λ n, by { simp, exact sigma.fintype _ },
+  fin_pr := λ n, by { simp, exact sigma.fintype _ },
+  arity_fn  := ⨆ᶠ i, finite.arity_fn (l i),
+  arity_pr  := ⨆ᶠ i, finite.arity_pr (l i),
+  empty_fn := λ m h, by { simp, intros i, 
+    have : finite.arity_fn (l i) ≤ ⨆ᶠ i, finite.arity_fn (l i), from le_fintype_sup _ i,
+    refine finite.empty_fn m (this.trans h) },
+  empty_pr := λ m h, by { simp, intros i, 
+    have : finite.arity_pr (l i) ≤ ⨆ᶠ i, finite.arity_pr (l i), from le_fintype_sup _ i,
+    refine finite.empty_pr m (this.trans h) } }
+
+namespace add_consts
+variables {C : Type u} [decidable_eq C]
+
+@[simp] def symbols_aux : term (L + consts C) → list C
+| (#n)                      := []
+| (@term.app _ 0 f v)       := let ih := list.Sup (λ i, symbols_aux (v i)) in
+  by { cases f, { exact ih }, { exact f :: ih } }
+| (@term.app _ (n + 1) f v) := list.Sup (λ i, symbols_aux (v i))
+
+def symbols (t : term (L + consts C)) : list C := (symbols_aux t).dedup
+
+def symbols' {n} (v : fin n → term (L + consts C)) : list C := (list.Sup (λ i, symbols (v i))).dedup
+
+def consts_to_var (t : term (L + consts C)) : C → ℕ := λ c, (list.index_of c (symbols t))
+
+def consts_to_var' {n} (v : fin n → term (L + consts C)) : C → ℕ :=
+λ c, (list.index_of c (symbols' v))
+
+def var_to_consts (t : term (L + consts C)) : ℕ → term (consts C) :=
+λ n, if h : n < (symbols t).length then (symbols t).nth_le n h else #(n - (symbols t).length)
+
+def var_to_consts' {n} (v : fin n → term (L + consts C)) : ℕ → term (consts C) :=
+λ n, if h : n < (symbols' v).length then (symbols' v).nth_le n h else #(n - (symbols' v).length)
+
+@[simp] def elim_aux (u : ℕ) : term (L + consts C) → (C → ℕ) → term L
+| (#n) s := #(u + n)
+| (@term.app _ 0 f v) s :=
+    by { cases f, { exact app f (λ i, elim_aux (v i) s) }, { exact #(s f) }, }
+| (@term.app _ (n + 1) f v) s :=
+    by { cases f, { exact app f (λ i, elim_aux (v i) s) }, { rcases f } }
+
+lemma le_symbols_length_app {n} (f : (L + consts C).fn n) (v : fin n → term (L + consts C)) (i) :
+  (symbols (v i)).length ≤ (symbols (app f v)).length :=
+begin
+  have : symbols (v i) ⊆ symbols (app f v), 
+  { intros x h, rcases n,
+    { rcases f; simp[symbols] at h ⊢, { exact ⟨i, h⟩ }, { exact or.inr ⟨i, h⟩ } },
+    { rcases f; simp[symbols] at h ⊢, { exact ⟨i, h⟩ }, { rcases f } } },
+  have : symbols (v i) <+~ symbols (app f v), from list.subperm_of_subset_nodup (((symbols_aux (v i))).nodup_dedup) this,
+  exact list.subperm.length_le this
+end
+
+@[simp] lemma symbols_var_eq_nil (n : ℕ) : symbols (#n : term (L + consts C)) = [] :=
+by simp[symbols]
+
+lemma elim_aux_spec : ∀ (t : term (L + consts C)) (s : C → ℕ) (s_pinv : ℕ → term (consts C))
+  (pinv_inv : ∀ c : C, c ∈ symbols t → s_pinv (s c) = c)
+  (u : ℕ) (h : (symbols t).length ≤ u) (pinv_id : ∀ n, s_pinv (u + n) = #n),
+  (↑(elim_aux u t s) : term (L + consts C)).rew (λ n, s_pinv n) = t :=
+begin
+  intros t, induction t,
+  case var : x
+  { intros s s_pinv pinv_inv u h pinv_id, simp[pinv_id x] },
+  case app : n f v IH 
+  { intros s s_pinv pinv_inv u h pinv_id,
+    cases n,
+    { rcases f with (c | c),
+      { simp, refl },
+      { simp, simp[pinv_inv c ( by simp[symbols])], unfold_coes, simp, refl } },
+    { rcases f with (f | f),
+      { simp, refine ⟨by refl, _⟩,
+        funext i,
+        have pinv_inv' : ∀ c ∈ symbols (v i), s_pinv (s c) = ↑c,
+        { intros c, simp[symbols] at pinv_inv ⊢, exact pinv_inv c i },
+        have : (symbols (v i)).length ≤ (symbols (❨sum.inl f❩ v)).length, from (le_symbols_length_app (sum.inl f) v i),
+        exact IH i s s_pinv pinv_inv' u (this.trans h) pinv_id },
+    { rcases f } } }
+end
+
+def elim : term (L + consts C) → term L := λ t, elim_aux (symbols t).length t (consts_to_var t)
+
+def elim' {n} : finitary (term (L + consts C)) n → finitary (term L) n :=
+λ v i, elim_aux (symbols' v).length (v i) (consts_to_var' v)
+
+lemma elim_spec (t : term (L + consts C)) :
+  (↑(elim t) : term (L + consts C)).rew (λ n, var_to_consts t n) = t :=
+begin
+  refine elim_aux_spec t (consts_to_var t) (var_to_consts t) _ (symbols t).length (by refl) _,
+  { intros c mem, show var_to_consts t (consts_to_var t c) = ↑c,
+    induction t,
+    case var : n { simp at mem, contradiction },
+    case app : n f v IH
+    { simp[var_to_consts, consts_to_var], have := list.index_of_lt_length.mpr mem,
+      intros h, exfalso, exact nat.lt_le_antisymm this h } },
+  { intros n, simp[var_to_consts] }
+end
+
+@[simp] def formula_elim_aux (u : ℕ) : formula (L + consts C) → formula L
+| (@formula.app _ n r v) := by {  }
+
+end add_consts
+
+#check 0
+#check 0 /--
+lemma finite_retruct : ∀ (p : formula L),
+  ∃ (L' : language) (ltr : L' ↝ᴸ L) (fin : L'.finite) (p' : formula L'), ltr.fun_formula p' = p
+| ⊤ := ⟨∅, from_empty, emptyc.finite, ⊤, by simp⟩
+
 | ⊤ := ⟨∅, ⊤, set.finite_empty, rfl⟩
-| ((t : term (sum l)) ≃ u) := by { 
+| ((t : term (direct_sum l)) ≃ u) := by { 
     rcases finite_retruct_term l t with ⟨s₁, t₁, hs₁, rfl⟩,
     rcases finite_retruct_term l u with ⟨s₂, t₂, hs₂, rfl⟩,
-    let t₁' : term (sum (λ (i : s₁ ∪ s₂), l i)) := (to_extention_ss l (set.subset_union_left s₁ s₂)).fun_term t₁,
-    let t₂' : term (sum (λ (i : s₁ ∪ s₂), l i)) := (to_extention_ss l (set.subset_union_right s₁ s₂)).fun_term t₂,
+    let t₁' : term (direct_sum (λ (i : s₁ ∪ s₂), l i)) := (ext_ss l (set.subset_union_left s₁ s₂)).fun_term t₁,
+    let t₂' : term (direct_sum (λ (i : s₁ ∪ s₂), l i)) := (ext_ss l (set.subset_union_right s₁ s₂)).fun_term t₂,
     refine ⟨s₁ ∪ s₂, t₁' ≃ t₂', set.finite.union hs₁ hs₂, by simp⟩ }
 | (p ⟶ q) := by { 
     rcases finite_retruct p with ⟨s₁, p₁, hs₁, rfl⟩,
     rcases finite_retruct q with ⟨s₂, p₂, hs₂, rfl⟩,
-    let p₁' : formula (sum (λ (i : s₁ ∪ s₂), l i)) := (to_extention_ss l (set.subset_union_left s₁ s₂)).fun_formula p₁,
-    let p₂' : formula (sum (λ (i : s₁ ∪ s₂), l i)) := (to_extention_ss l (set.subset_union_right s₁ s₂)).fun_formula p₂,
+    let p₁' : formula (direct_sum (λ (i : s₁ ∪ s₂), l i)) := (ext_ss l (set.subset_union_left s₁ s₂)).fun_formula p₁,
+    let p₂' : formula (direct_sum (λ (i : s₁ ∪ s₂), l i)) := (ext_ss l (set.subset_union_right s₁ s₂)).fun_formula p₂,
     refine ⟨s₁ ∪ s₂, p₁' ⟶ p₂', set.finite.union hs₁ hs₂, by simp⟩ }
 | (⁻p) := by { 
     rcases finite_retruct p with ⟨s, p, hs, rfl⟩,
@@ -702,7 +1033,7 @@ lemma finite_retruct : ∀ (p : formula (sum l)),
     rcases finite_retruct p with ⟨s, p, hs, rfl⟩,
     refine ⟨s, ∏ p, hs, by simp⟩ }
 | (@formula.app L n r v) := by { 
-    have : ∃ (s : fin n → set ι), ∀ (i : fin n), ∃ (t₀ : term (sum (λ (i : s i), l ↑i))), (s i).finite ∧ ↑t₀ = v i,
+    have : ∃ (s : fin n → set ι), ∀ (i : fin n), ∃ (t₀ : term (direct_sum (λ (i : s i), l ↑i))), (s i).finite ∧ ↑t₀ = v i,
       from classical.skolem.mp (λ i, finite_retruct_term l (v i) : ∀ i, ∃ (s : set ι) t₀, s.finite ∧ ↑t₀ = v i),
     rcases this with ⟨s, hs⟩,
     rcases r with ⟨i₀, r⟩,
@@ -713,16 +1044,83 @@ lemma finite_retruct : ∀ (p : formula (sum l)),
       have : (⋃ i, s i).finite, from set.finite_Union this, exact this },
     have mem_S : ∀ i, s i ⊆ S,
     { intros i, exact (set.subset_Union s i).trans (set.subset_insert i₀ _) },
-    { have : ∃ (w : Π (i : fin n), term (sum (λ (j : ↥(s i)), l ↑j))), ∀ (i : fin n), (s i).finite ∧ ↑(w i) = v i,
+    { have : ∃ (w : Π (i : fin n), term (direct_sum (λ (j : ↥(s i)), l ↑j))), ∀ (i : fin n), (s i).finite ∧ ↑(w i) = v i,
         from classical.skolem.mp hs,
       rcases this with ⟨w, hw⟩,
-      let w' : Π (i : fin n), term (sum (λ (j : S), l ↑j)) := λ i, (to_extention_ss l (mem_S i)).fun_term (w i),
-      let r' : (sum (λ (i : S), l ↑i)).pr n := ⟨⟨i₀, set.mem_insert i₀ _⟩, r⟩,
+      let w' : Π (i : fin n), term (direct_sum (λ (j : S), l ↑j)) := λ i, (ext_ss l (mem_S i)).fun_term (w i),
+      let r' : (direct_sum (λ (i : S), l ↑i)).pr n := ⟨⟨i₀, set.mem_insert i₀ _⟩, r⟩,
       refine ⟨app r' w', set.finite.insert _ ufinite, _⟩,
       simp[r', w'], refine ⟨rfl, funext (λ i, (hw i).2)⟩ } }
 
+
+
+
+
+lemma finite_retruct : ∀ (p : formula (direct_sum l)),
+  ∃ (s : set ι) (p₀ : formula (direct_sum (λ i : s, l i))), set.finite s ∧ ↑p₀ = p
+| ⊤ := ⟨∅, ⊤, set.finite_empty, rfl⟩
+| ((t : term (direct_sum l)) ≃ u) := by { 
+    rcases finite_retruct_term l t with ⟨s₁, t₁, hs₁, rfl⟩,
+    rcases finite_retruct_term l u with ⟨s₂, t₂, hs₂, rfl⟩,
+    let t₁' : term (direct_sum (λ (i : s₁ ∪ s₂), l i)) := (ext_ss l (set.subset_union_left s₁ s₂)).fun_term t₁,
+    let t₂' : term (direct_sum (λ (i : s₁ ∪ s₂), l i)) := (ext_ss l (set.subset_union_right s₁ s₂)).fun_term t₂,
+    refine ⟨s₁ ∪ s₂, t₁' ≃ t₂', set.finite.union hs₁ hs₂, by simp⟩ }
+| (p ⟶ q) := by { 
+    rcases finite_retruct p with ⟨s₁, p₁, hs₁, rfl⟩,
+    rcases finite_retruct q with ⟨s₂, p₂, hs₂, rfl⟩,
+    let p₁' : formula (direct_sum (λ (i : s₁ ∪ s₂), l i)) := (ext_ss l (set.subset_union_left s₁ s₂)).fun_formula p₁,
+    let p₂' : formula (direct_sum (λ (i : s₁ ∪ s₂), l i)) := (ext_ss l (set.subset_union_right s₁ s₂)).fun_formula p₂,
+    refine ⟨s₁ ∪ s₂, p₁' ⟶ p₂', set.finite.union hs₁ hs₂, by simp⟩ }
+| (⁻p) := by { 
+    rcases finite_retruct p with ⟨s, p, hs, rfl⟩,
+    refine ⟨s, ⁻p, hs, by simp⟩ }
+| (∏ p) := by { 
+    rcases finite_retruct p with ⟨s, p, hs, rfl⟩,
+    refine ⟨s, ∏ p, hs, by simp⟩ }
+| (@formula.app L n r v) := by { 
+    have : ∃ (s : fin n → set ι), ∀ (i : fin n), ∃ (t₀ : term (direct_sum (λ (i : s i), l ↑i))), (s i).finite ∧ ↑t₀ = v i,
+      from classical.skolem.mp (λ i, finite_retruct_term l (v i) : ∀ i, ∃ (s : set ι) t₀, s.finite ∧ ↑t₀ = v i),
+    rcases this with ⟨s, hs⟩,
+    rcases r with ⟨i₀, r⟩,
+    let S := insert i₀ (⋃ (i : fin n), s i),
+    refine ⟨S, _⟩,
+    have ufinite : (⋃ i, s i).finite,
+    { have : ∀ i, set.finite {j | s i j}, { intros i, rcases hs i with ⟨_, fin, _⟩, exact fin },
+      have : (⋃ i, s i).finite, from set.finite_Union this, exact this },
+    have mem_S : ∀ i, s i ⊆ S,
+    { intros i, exact (set.subset_Union s i).trans (set.subset_insert i₀ _) },
+    { have : ∃ (w : Π (i : fin n), term (direct_sum (λ (j : ↥(s i)), l ↑j))), ∀ (i : fin n), (s i).finite ∧ ↑(w i) = v i,
+        from classical.skolem.mp hs,
+      rcases this with ⟨w, hw⟩,
+      let w' : Π (i : fin n), term (direct_sum (λ (j : S), l ↑j)) := λ i, (ext_ss l (mem_S i)).fun_term (w i),
+      let r' : (direct_sum (λ (i : S), l ↑i)).pr n := ⟨⟨i₀, set.mem_insert i₀ _⟩, r⟩,
+      refine ⟨app r' w', set.finite.insert _ ufinite, _⟩,
+      simp[r', w'], refine ⟨rfl, funext (λ i, (hw i).2)⟩ } }
+
+lemma proof_finite_retruct_aux {T : theory (direct_sum l)} (p) {k : ℕ} (b : T^k ⊢ p) :
+  ∃ (s : set ι) (T₀ : theory (direct_sum (λ i : s, l i))) (p₀ : formula (direct_sum (λ i : s, l i))),
+    set.finite s ∧ (↑T₀ : theory (direct_sum l)) ⊆ T ∧ ↑p₀ = p ∧ T₀^k ⊢ p₀ :=
+begin
+  refine provable.rec_on' b _ _ _ _ _ _ _ _ _ _ _ _ _ _ _,
+  { rintros i p b ⟨s, T₀, p', s_fin, T₀_ss, rfl, IH⟩,
+    refine ⟨s, T₀, ∏ p', s_fin, T₀_ss, by simp, provable.generalize IH⟩ },
+  { rintros i p q b₁ b₂ ⟨s₁, T₁, p_to_q₁, s₁_fin, T₁_ss, pq_coe, IH₁⟩
+      ⟨s₂, T₂, p₂, s₂_fin, T₂_ss, rfl, IH₂⟩,
+    rcases language_translation_coe.destruct_of_eq_imply pq_coe with ⟨p₁, q₁, rfl⟩,
+    simp at pq_coe, rcases pq_coe with ⟨p₁_eq_p₂, rfl⟩,
+    let T₀ := (ext_ss l (set.subset_union_left s₁ s₂)).fun_formula '' T₁ ∪
+      (ext_ss l (set.subset_union_right s₁ s₂)).fun_formula '' T₂, 
+    let q₀ := (ext_ss l (set.subset_union_left s₁ s₂)).fun_formula q₁,
+    refine ⟨s₁ ∪ s₂, T₀, q₀, set.finite.union s₁_fin s₂_fin, by simp[T₀, T₁_ss, T₂_ss], _⟩,
+    simp, 
+    have := (ext_ss l (set.subset_union_left s₁ s₂)).fun_formula p₁,
+    have : T₀^i ⊢ (ext_ss l (set.subset_union_left s₁ s₂)).fun_formula p₁ ⟶ (ext_ss l (set.subset_union_left s₁ s₂)).fun_formula q₁,
+    {  }
+       }
+end
+
 def sum_to_add {ι : Type} [decidable_eq ι] (l : ι → language) {s : set ι} (i : ι) :
-  sum (λ i : insert i s, l i) ↝ᴸ sum (λ i : s, l i) + l i :=
+  direct_sum (λ i : insert i s, l i) ↝ᴸ direct_sum (λ i : s, l i) + l i :=
 { fn := λ n ⟨⟨j, mem_j⟩, f⟩, by { 
     simp at mem_j f, 
     by_cases C : j = i,
@@ -737,7 +1135,7 @@ def sum_to_add {ι : Type} [decidable_eq ι] (l : ι → language) {s : set ι} 
       refine sum.inl ⟨⟨j, mem_j⟩, r⟩ } } }
 
 def add_to_sum {ι : Type} (l : ι → language) {s : set ι} (i : ι) :
-  sum (λ i : s, l i) + l i ↝ᴸ sum (λ i : insert i s, l i) :=
+  direct_sum (λ i : s, l i) + l i ↝ᴸ direct_sum (λ i : insert i s, l i) :=
 { fn := λ n f, by { rcases f with (⟨⟨j, mem_j⟩, f⟩ | f),
     { refine ⟨⟨j, set.mem_insert_of_mem i mem_j⟩, f⟩ },
     { refine ⟨⟨i, set.mem_insert i s⟩, f⟩ } },
@@ -749,14 +1147,22 @@ end extention
 
 def singleton_fn (m : ℕ) : language.{u} := ⟨λ n, if n = m then punit else pempty, λ n, pempty⟩
 
+instance (m : ℕ) : finite (singleton_fn m) :=
+{ fin_fn := λ n, by { by_cases n = m; simp[singleton_fn], { simp[h], exact unit.fintype }, { simp[h], exact fintype.of_is_empty } },
+  fin_pr := λ n, by simp[singleton_fn]; exact fintype.of_is_empty,
+  arity_fn := (m + 1),
+  arity_pr := 0,
+  empty_fn := λ k h, by { simp[singleton_fn], have : ¬k = m, from (ne_of_lt (nat.succ_le_iff.mp h)).symm, simp[this], exact pempty.is_empty },
+  empty_pr := λ k h, by { simp[singleton_fn], exact pempty.is_empty } }
+
 def symbol {m : ℕ} : (singleton_fn.{u} m).fn m := by { simp[singleton_fn]; simp[show (m = m) ↔ true, by simp], refine punit.star }
 
 notation `sing` := singleton_fn 0
-
+/--/
 def const_right {L : language.{u}} : term (L + sing) := 
 extention.to_extention₂.fun_term (@term.app sing 0 symbol finitary.nil : term sing)
 
-def const_at_right {ι : Type u} {L : language.{u}} (i : ι) : term (L + sum (λ i : ι, singleton_fn.{u} 0)) :=
+def const_at_right {ι : Type u} {L : language.{u}} (i : ι) : term (L + direct_sum (λ i : ι, singleton_fn.{u} 0)) :=
 extention.to_extention₂.fun_term ((extention.to_extention (λ i : ι, singleton_fn.{u} 0) i).fun_term
   (@term.app sing 0 symbol finitary.nil : term (singleton_fn.{u} 0)))
 
@@ -938,7 +1344,7 @@ end add_sing
 
 namespace completeness 
 
-@[reducible] def henkin_lang (L : language.{u}) : language.{u} := L + sum (λ i : formula L, singleton_fn.{u} 0)
+@[reducible] def henkin_lang (L : language.{u}) : language.{u} := L + direct_sum (λ i : formula L, singleton_fn.{u} 0)
 
 def henkin_axiom (p : formula L) : formula (henkin_lang L) :=
 (∐ p) ⟶ rew ı[0 ⇝ ●ᴿ[p]] ↑p
@@ -951,9 +1357,9 @@ end
 
 def henkin_language_aux (L : language.{u}) : ℕ → language.{u}
 | 0       := L
-| (n + 1) := sum (λ i : formula (henkin_language_aux n), singleton_fn.{u} 0)
+| (n + 1) := direct_sum (λ i : formula (henkin_language_aux n), singleton_fn.{u} 0)
 
-def henkin_language (L : language.{u}) := sum (henkin_language_aux L)
+def henkin_language (L : language.{u}) := direct_sum (henkin_language_aux L)
 
 end completeness
 
