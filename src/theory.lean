@@ -66,6 +66,10 @@ def openform : theory L := {p | p.is_open = tt}
 instance : proper_theory (openform : theory L) :=
 ⟨λ p s h, by { induction p; simp[openform] at*; simp* at* }⟩
 
+lemma theory_sf_def {T : theory L} :
+  ⤊T = {p | ∃ q : formula L, q ∈ T ∧ p = q^1} :=
+by { simp[theory.sf] }
+
 lemma theory_sf_itr_eq {T : theory L} : ∀ {i : ℕ},
   T^i = {p | ∃ q : formula L, q ∈ T ∧ p = q^i}
 | 0      := by simp
@@ -73,6 +77,10 @@ lemma theory_sf_itr_eq {T : theory L} : ∀ {i : ℕ},
   simp, refine ⟨λ h, _, λ h, _⟩,
   { rcases h with ⟨q1, ⟨q2, h, rfl⟩, rfl⟩, refine ⟨q2, h, by simp[formula.pow_add]⟩ },
   { rcases h with ⟨q, h, rfl⟩, refine ⟨q^i, ⟨q, h, rfl⟩, by simp[formula.pow_add]⟩ } }
+
+lemma sf_eq_image {T : theory L} :
+  ⤊T = (λ p, p^1) '' T :=
+by { ext p, simp[theory_sf_def], tauto }
 
 lemma pow_eq_image {T : theory L} {i : ℕ} :
   T^i = (λ p, p^i) '' T :=
@@ -132,6 +140,9 @@ begin
   { rcases h with ⟨q, hq, rfl⟩, rcases hq with (rfl | hq); simp,
     refine or.inr ⟨q, hq, rfl⟩ }
 end
+
+lemma pow_dsb (T : theory L) (p : formula L) (k : ℕ) : (T +{ p })^k = (T^k) +{ p^k } :=
+by induction k with k IH; simp[theory.sf_itr_succ, ←sf_dsb, formula.pow_add, *]
 
 lemma sf_union (T U : theory L) : ⤊(T ∪ U) = ⤊T ∪ ⤊U :=
 begin
