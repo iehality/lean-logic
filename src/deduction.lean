@@ -237,7 +237,7 @@ lemma nfal_subst' {n} {p : formula L} (h : T ⊢ ∏[n] p ) (s : ℕ → term L)
 
 lemma nfal_subst'_finitary {n} {p : formula L} (h : T ⊢ ∏[n] p ) (s : finitary (term L) n) :
   T ⊢ p.rew (λ x, if h : x < n then s ⟨x, h⟩ else #(x-n)) :=
-by { let s' : ℕ → term L := λ x, if h : x < n then s ⟨x, h⟩ else (default _),
+by { let s' : ℕ → term L := λ x, if h : x < n then s ⟨x, h⟩ else default,
      exact cast (by { congr, ext x, by_cases C : x < n; simp[C, s'] }) (nfal_subst' h s')}
 
 lemma fal_complete_rew (p : formula L) (s : ℕ → term L) :
@@ -854,6 +854,25 @@ lemma ex_of_equiv {p₁ p₂} (h : T ⊢ ∐ p₁) (hp : ⤊T ⊢ p₁ ⟷ p₂)
 @[simp] lemma extend {T₀ T : theory L} [extend T₀ T] {p : formula L} (h : T₀ ⊢ p) : T ⊢ p :=
 extend.le h
 
+lemma nfal_K (p q : formula L) (n) : T ⊢ (∏[n] (p ⟶ q)) ⟶ (∏[n] p) ⟶ ∏[n] q :=
+begin
+  have eqn : ∀ p : formula L, (p.rew (λ x, ite (x < n) #x #(x + n))).rew (λ x, ite (x < n) #x #(x - n)) = p,
+  { intros p, simp[formula.nested_rew], 
+    have : (λ x, term.rew (λ (x : ℕ), ite (x < n) #x #(x - n)) (ite (x < n) #x #(x + n)) : ℕ → term L) = ı,
+    { funext x, by_cases C : x < n; simp[C] }, simp[this] },  
+  refine deduction.mp (deduction.mp (generalize_itr _)),
+  simp[pow_dsb],
+  have lmm₁ : (T^n) +{ (∏[n] p ⟶ q)^n } +{ (∏[n] p)^n } ⊢ p ⟶ q,
+  { have :  (T^n) +{ (∏[n] p ⟶ q)^n } +{ (∏[n] p)^n } ⊢ ∏[n] p.rew (λ x, ite (x < n) #x #(x + n)) ⟶ q.rew (λ x, ite (x < n) #x #(x + n)),
+    { simp[show (∏[n] p.rew (λ x, ite (x < n) #x #(x + n)) ⟶ q.rew (λ x, ite (x < n) #x #(x + n))) = (∏[n] p ⟶ q)^n, by simp[formula.nfal_pow]] }, 
+    have := nfal_subst' this ı, simp[eqn] at this, exact this },
+  have lmm₂ : (T^n) +{ (∏[n] p ⟶ q)^n } +{ (∏[n] p)^n } ⊢ p,
+  { have : (T^n) +{ (∏[n] p ⟶ q)^n } +{ (∏[n] p)^n } ⊢ ∏[n] p.rew (λ x, ite (x < n) #x #(x + n)),
+    { simp[show (∏[n] p.rew (λ x, ite (x < n) #x #(x + n))) = (∏[n] p)^n, by simp[formula.nfal_pow]] },
+    have := nfal_subst' this ı, simp[eqn] at this, exact this },
+  exact lmm₁ ⨀ lmm₂
+end
+
 variables (T)
 
 @[simp] lemma provable_theory_refl : T ⊢ₜₕ T := λ p mem, by_axiom mem
@@ -890,5 +909,106 @@ lemma proper_image_of_proper_schema (C : theory L) [proper_theory C]
 end
 
 lemma weakening_le {T U : theory L} : T ⊆ U → T ≤ U := λ hyp p h, weakening hyp h
+
+@[reducible] def prf (L : language) := Σ (T : theory L) (p : formula L), T ⟹ p
+
+@[reducible] def prf.formula (b : prf L) : formula L := b.snd.fst
+
+@[reducible] def prf.proof (b : prf L) := b.snd.snd
+
+@[reducible] def proof.to_prf {p} (b : T ⟹ p) : prf L := ⟨T, p, b⟩
+
+namespace proof
+variables {T} {p : formula L}
+
+inductive subproof : prf L → prf L → Prop
+| mdp₁    : ∀ {T : theory L} {p q : formula L} {b₁ : T ⟹ (p ⟶ q)} {b₂ : T ⟹ p}, subproof ⟨T, p ⟶ q, b₁⟩ ⟨T, q, mdp b₁ b₂⟩ 
+| mdp₂    : ∀ {T : theory L} {p q : formula L} {b₁ : T ⟹ (p ⟶ q)} {b₂ : T ⟹ p}, subproof ⟨T, p, b₂⟩ ⟨T, q, mdp b₁ b₂⟩
+| generalize : ∀ {T : theory L} {p : formula L} {b : ⤊T ⟹ p}, subproof ⟨⤊T, p, b⟩ ⟨T, ∏p, b.generalize⟩ 
+
+@[simp] def complexity : Π {T : theory L} {p : formula L} (b : T ⟹ p), ℕ
+| T p (generalize b)            := b.complexity + 1
+| T p (mdp b₁ b₂)               := max b₁.complexity b₂.complexity + 1
+| T p (by_axiom h)              := 0
+| T _ verum                     := 0
+| T _ (@imply₁ _ _ p q)         := 0
+| T _ (@imply₂ _ _ p q r)       := 0
+| T _ (@contraposition _ _ p q) := 0
+| T _ (@specialize _ _ p t)     := 0
+| T _ (@univ_K _ _ p q)         := 0
+| T _ (@dummy_univ _ _ p)       := 0
+| T _ (@eq_reflexivity _ _)     := 0
+| T _ eq_symmetry               := 0
+| T _ eq_transitivity           := 0
+| T _ (@function_ext _ _ _ f)   := 0
+| T _ (@predicate_ext _ _ _ r)  := 0
+
+instance : wf_lt (prf L) :=
+{ prelt := subproof,
+  wt := λ b, b.snd.snd.complexity,
+  mono' := λ b₁ b₂ h, by { induction h; try { simp },
+  case mdp₁ : T p q b₁ b₂ { exact nat.lt_succ_iff.mpr (le_max_left b₁.complexity b₂.complexity) },
+  case mdp₂ : T p q b₁ b₂ { exact nat.lt_succ_iff.mpr (le_max_right b₁.complexity b₂.complexity) } } }
+
+def le' {T₁ T₂ : theory L} {p₁ p₂ : formula L} (b₁ : T₁ ⟹ p₁) (b₂ : T₂ ⟹ p₂) : Prop := b₁.to_prf ≤ b₂.to_prf
+
+def lt' {T₁ T₂ : theory L} {p₁ p₂ : formula L} (b₁ : T₁ ⟹ p₁) (b₂ : T₂ ⟹ p₂) : Prop := b₁.to_prf < b₂.to_prf
+
+def fn_symbols {p} (b : T ⟹ p) : set (Σ n, L.fn n) :=
+  let B : set (prf L) := {c | c < b.to_prf},
+      B' : set (formula L) := prf.formula '' B in ⋃₀ (formula.fn_symbols '' B')
+
+attribute [irreducible] eq_axiom4
+
+@[simp] lemma wt_eq_complexity (T) (p) (b) : wf_lt.wt (⟨T, p, b⟩ : prf L) = complexity b :=
+by refl
+
+lemma prelt_finite (b : prf L) : set.finite {c | subproof c b} :=
+begin
+  have of_eq_empty : ∀ s : set (prf L), s = ∅ → s.finite,
+  { rintros _ rfl, simp }, 
+  rcases b with ⟨T, p, b⟩,
+  induction b;
+  try { refine of_eq_empty _
+    (by { ext c, simp, intros h, 
+      have : wf_lt.wt c < wf_lt.wt _, from wf_lt.lt_mono (wf_lt.lt_of_prelt (show wf_lt.prelt c ⟨_, _, _⟩, from h)),
+      simp at this, contradiction }) },
+  case generalize : T p b
+  { have : {c : prf L | subproof c ⟨T, ⟨∏ p, b.generalize⟩⟩} = {b.to_prf},
+    { ext c, simp, split,
+      { intros h, rcases h, refl }, { rintros rfl, exact subproof.generalize } },
+    simp[this] },
+  case mdp : T p q b₁ b₂
+  { have : {c : prf L | subproof c ⟨T, ⟨q, b₁.mdp b₂⟩⟩} = {b₁.to_prf, b₂.to_prf},
+    { ext c, simp, split,
+      { intros h, rcases h, refine or.inl rfl, refine or.inr rfl },
+      { rintros (rfl | rfl), refine subproof.mdp₁, refine subproof.mdp₂ } },
+    simp[this] }
+end
+
+lemma le_finite (b : prf L) : set.finite {b' | b' ≤ b} :=
+wf_lt.le_finite (show ∀ (a : prf L), {b : prf L | wf_lt.prelt b a}.finite, from prelt_finite) b
+
+instance formula_mem_proof (T : theory.{u} L) (p : formula.{u} L) : has_mem (formula L) (T ⟹ p) :=
+⟨λ q b, ∃ (b' ≤ b.to_prf), q ≤ b'.formula⟩
+
+@[simp] lemma formula_mem_self {T : theory L} {p : formula L} (b : T ⟹ p) : p ∈ b := ⟨b.to_prf, by refl, by refl⟩
+
+instance term_mem_proof (T : theory.{u} L) (p : formula.{u} L) : has_mem (term L) (T ⟹ p) :=
+⟨λ t b, ∃ (b' ≤ b.to_prf), t ∈ b'.formula⟩
+
+lemma term_mem_proof_def {t : term L} {T : theory L} {p : formula L} {b : T ⟹ p} :
+  t ∈ b ↔ ∃ b' ≤ b.to_prf, t ∈ b'.formula := by refl
+
+lemma term_mem_finite {T : theory L} {p : formula L} (b : T ⟹ p) : set.finite {t | t ∈ b} :=
+begin
+  let s := ⋃ b' ∈ {b' | b' ≤ b.to_prf}, {t | t ∈ b'.formula},
+  have : {t | t ∈ b} = s,
+  { ext t, simp[s, term_mem_proof_def] },
+  simp[this],
+  refine set.finite.bUnion (le_finite b.to_prf) (λ b' _, b'.formula.mem_finite) 
+end
+
+end proof
 
 end fopl
