@@ -873,6 +873,19 @@ begin
   exact lmm₁ ⨀ lmm₂
 end
 
+lemma nfal_rew {n} {p : formula L} (s : ℕ → term L) :
+  T ⊢ (∏[n] p) ⟶ ∏[n] p.rew (λ x, if x < n then s x else #x) :=
+begin
+  refine deduction.mp (generalize_itr _),
+  have : T +{ ∏[n] p } ^ n ⊢ ∏[n] p.rew (λ x, ite (x < n) #x #(x + n)),
+  { simp[pow_dsb, show (∏[n] p.rew (λ x, ite (x < n) #x #(x + n))) = (∏[n] p)^n, by simp[formula.nfal_pow]] },
+  have lmm : T +{ ∏[n] p } ^ n ⊢ (p.rew (λ x, ite (x < n) #x #(x + n))).rew (λ x, ite (x < n) (s x) #(x - n)), from nfal_subst' this s,
+  simp[formula.nested_rew] at lmm,
+  have : (λ x, term.rew (λ x, ite (x < n) (s x) #(x - n)) (ite (x < n) #x #(x + n))) = (λ x, ite (x < n) (s x) #x),
+  { funext x, by_cases C : x < n; simp[C] },
+  simp[this] at lmm, exact lmm
+end
+
 variables (T)
 
 @[simp] lemma provable_theory_refl : T ⊢ₜₕ T := λ p mem, by_axiom mem
@@ -989,21 +1002,28 @@ end
 lemma le_finite (b : prf L) : set.finite {b' | b' ≤ b} :=
 wf_lt.le_finite (show ∀ (a : prf L), {b : prf L | wf_lt.prelt b a}.finite, from prelt_finite) b
 
-instance formula_mem_proof (T : theory.{u} L) (p : formula.{u} L) : has_mem (formula L) (T ⟹ p) :=
-⟨λ q b, ∃ (b' ≤ b.to_prf), q ≤ b'.formula⟩
 
-@[simp] lemma formula_mem_self {T : theory L} {p : formula L} (b : T ⟹ p) : p ∈ b := ⟨b.to_prf, by refl, by refl⟩
+def formula_mem_proof (p : formula L) {T : theory.{u} L} {q : formula.{u} L} (b : T ⟹ q) : Prop := ∃ (b' ≤ b.to_prf),p ≤ b'.formula
 
-instance term_mem_proof (T : theory.{u} L) (p : formula.{u} L) : has_mem (term L) (T ⟹ p) :=
-⟨λ t b, ∃ (b' ≤ b.to_prf), t ∈ b'.formula⟩
+infix ` ∈ᶠ `:50 := formula_mem_proof
+
+@[simp] lemma formula_mem_self {T : theory L} {p : formula L} (b : T ⟹ p) : p ∈ᶠ b := ⟨b.to_prf, by refl, by refl⟩
+
+def term_mem_proof (t : term L) {T : theory.{u} L} {p : formula.{u} L} (b : T ⟹ p) : Prop := ∃ (b' ≤ b.to_prf), t ∈ b'.formula
+
+infix ` ∈ᵗ `:50 := term_mem_proof
 
 lemma term_mem_proof_def {t : term L} {T : theory L} {p : formula L} {b : T ⟹ p} :
-  t ∈ b ↔ ∃ b' ≤ b.to_prf, t ∈ b'.formula := by refl
+  t ∈ᵗ b ↔ ∃ b' ≤ b.to_prf, t ∈ b'.formula := by refl
 
-lemma term_mem_finite {T : theory L} {p : formula L} (b : T ⟹ p) : set.finite {t | t ∈ b} :=
+lemma mem_trans {t : term L} {T : theory L} {p q : formula L} {b : T ⟹ p}
+  (ht : t ∈ q) (hq : q ∈ᶠ b) : t ∈ᵗ b :=
+by { rcases hq with ⟨b', hb', hq⟩, refine ⟨b', hb', formula.mem_of_formula_le_mem ht hq⟩ }
+
+lemma term_mem_finite {T : theory L} {p : formula L} (b : T ⟹ p) : set.finite {t | t ∈ᵗ b} :=
 begin
   let s := ⋃ b' ∈ {b' | b' ≤ b.to_prf}, {t | t ∈ b'.formula},
-  have : {t | t ∈ b} = s,
+  have : {t | t ∈ᵗ b} = s,
   { ext t, simp[s, term_mem_proof_def] },
   simp[this],
   refine set.finite.bUnion (le_finite b.to_prf) (λ b' _, b'.formula.mem_finite) 
