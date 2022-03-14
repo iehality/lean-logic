@@ -56,7 +56,6 @@ infix ` ⟹ `:45 := proof
 
 def provable (T : theory L) (p : formula L) : Prop := nonempty (T ⟹ p)
 
-noncomputable def provable.proof {T : theory L} {p : formula L} (b : T ⊢ p) : T ⟹ p := nonempty.some b
 
 instance : axiomatic_classical_logic' (formula L) :=
 { turnstile := provable,
@@ -70,6 +69,8 @@ instance : axiomatic_classical_logic' (formula L) :=
     and_def := λ p q, rfl,
     or_def := λ p q, rfl },
   by_axiom := λ T p mem, ⟨proof.by_axiom mem⟩ }
+
+noncomputable def provable.proof {T : theory L} {p : formula L} (b : T ⊢ p) : T ⟹ p := nonempty.some b
 
 def provable_theory (T Γ : theory L) : Prop := ∀ p ∈ Γ, T ⊢ p
 
@@ -1212,19 +1213,6 @@ by { have := not_mem_of (@univ_K _ T p q) (by simp) t, simp at this, simp[this] 
 @[simp] lemma term_mem_dummy_univ_iff {p : formula L} {t} :
   t ∈ᵗ (@dummy_univ _ T p) ↔ t ∈ p ∨ t ∈ p^1 :=
 by { have := not_mem_of (@dummy_univ _ T p) (by simp) t, simp at this, simp[this] }
-
-/-
-| T _ (@contraposition _ _ p q) := 0
-| T _ (@specialize _ _ p t)     := 0
-| T _ (@univ_K _ _ p q)         := 0
-| T _ (@dummy_univ _ _ p)       := 0
-| T _ (@eq_reflexivity _ _)     := 0
-| T _ eq_symmetry               := 0
-| T _ eq_transitivity           := 0
-| T _ (@function_ext _ _ _ f)   := 0
-| T _ (@predicate_ext _ _ _ r)  := 0
-
--/
 
 variables (b)
 

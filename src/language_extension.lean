@@ -14,6 +14,7 @@ namespace language
 
 namespace add_consts
 open language_translation language_translation_coe extension
+  proof provable axiomatic_classical_logic' axiomatic_classical_logic
 variables {C : Type u} [decidable_eq C]
 
 @[simp] def symbols_aux : term (L + consts C) → list C
@@ -28,12 +29,8 @@ def symbols' {n} (v : fin n → term (L + consts C)) : list C := (list.Sup (λ i
 
 @[simp] lemma symbols_var_eq_nil (n : ℕ) : symbols (#n : term (L + consts C)) = [] :=
 by simp[symbols]
- 
-open proof provable axiomatic_classical_logic' axiomatic_classical_logic
-variables (Γ : list C) (b : ℕ) 
 
-noncomputable def consts_list {T : theory (L + consts C)} {p : formula (L + consts C)} (b : T ⟹ p) : list C :=
-(list.map symbols_aux ((proof.term_mem_finite b).to_finset.to_list)).join.dedup
+variables (Γ : list C) (b : ℕ) 
 
 def consts_to_var : C → ℕ := λ c, (list.index_of c Γ)
 
@@ -228,9 +225,7 @@ by simp[eq_axiom4]
 private lemma  eq_axiom5_coe {n} (r : L.pr n) : eq_axiom5 (↑r : (L + consts C).pr n) = ↑(eq_axiom5 r) :=
 by simp[eq_axiom5]
 
-#check 0
-
-def elim_specdd : ∀ (T : theory L) (p : formula (L + consts C)) (B : ↑T ⟹ p)
+lemma provable_formula_elim_of_proof_aux : ∀ {T : theory L} {p : formula (L + consts C)} (B : ↑T ⟹ p)
   (hΓ : ∀ (t : term (L + consts C)) (h : t ∈ᵗ B), symbols_aux t ⊆ Γ), T ⊢ formula_elim Γ p :=
 begin
   suffices : ∀ (T : theory (L + consts C)) (p : formula (L + consts C)) (k : ℕ) (B : T^k ⟹ p)
@@ -260,8 +255,10 @@ begin
     have : T^k ⊢ ∏[Γ.length] formula_elim_aux Γ 0 p,
     { have : ∃ (p' ∈ T), p = ↑p' ^ k, from theory_mem_coe_pow_iff.mp mem, rcases this with ⟨p, p_mem, rfl⟩,
       rw ← coe_pow_formula, simp[-coe_pow_formula],
-      show T ^ k ⊢ ∏[Γ.length] (p ^ k) ^ Γ.length,
-      sorry },
+      show T^k ⊢ ∏[Γ.length] (p ^ k) ^ Γ.length,
+      have lmm₁ : T^k ⊢ p^k ⟶ (∏[Γ.length] (p^k)^Γ.length), from (axiomatic_classical_logic'.iff_equiv.mp nfal_pow_equiv_self).2, 
+      have lmm₂ : T^k ⊢ p^k, exact sf_itr_sf_itr.mpr (by_axiom' p_mem),
+      exact lmm₁ ⨀ lmm₂ },
     exact this },
   { rintros,  refine generalize_itr _, simp[formula_elim] },
   { rintros, refine generalize_itr _, simp[formula_elim] },
@@ -280,8 +277,30 @@ begin
   { rintros k m r hΓ T rfl, refine generalize_itr _, simp[formula_elim],
     rcases r,
     { simp[sum_inl_eq_coe_pr, eq_axiom5_coe] },
-    { rcases r }, }
+    { rcases r } }
 end
+
+noncomputable def consts_of {T : theory (L + consts C)} {p : formula (L + consts C)} (b : T ⟹ p) : list C :=
+(list.map symbols_aux ((proof.term_mem_finite b).to_finset.to_list)).join.dedup
+
+lemma consts_list_spec {T : theory (L + consts C)} {p : formula (L + consts C)}
+  (b : T ⟹ p) (t : term (L + consts C)) (h : t ∈ᵗ b) : symbols_aux t ⊆ consts_of b := λ c mem,
+by simp[consts_of]; refine ⟨t, h, mem⟩
+
+theorem provable_formula_elim_of_proof {T : theory L} {p : formula (L + consts C)} (b : ↑T ⟹ p) :
+  T ⊢ formula_elim (consts_of b) p :=
+provable_formula_elim_of_proof_aux b (consts_list_spec b)
+
+theorem provable_iff {T : theory L} {p : formula L} :
+  ↑T ⊢ (↑p : formula (L + consts C)) ↔ T ⊢ p:=
+⟨begin
+  rintros ⟨b⟩,
+  have lmm₁ : T ⊢ ∏[(consts_of b).length] p^(consts_of b).length,
+  { have := provable_formula_elim_of_proof b, 
+    simp[formula_elim] at this, exact this },
+  have lmm₂ : T ⊢ (∏[(consts_of b).length] p^(consts_of b).length) ⟶ p, from (axiomatic_classical_logic'.iff_equiv.mp nfal_pow_equiv_self).1,
+  exact lmm₂ ⨀ lmm₁
+end, provability⟩
 
 end add_consts
 
