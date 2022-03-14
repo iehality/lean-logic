@@ -196,7 +196,7 @@ end
 
 theorem model_consistent {T : theory L} : M ⊧ₜₕ T → theory.consistent T :=
 by { contrapose, simp[theory.consistent], intros p hp₁ hp₂ hyp,
-     exact soundness hp₂ hyp (λ _, (default M.dom)) (soundness hp₁ hyp (λ _, (default M.dom))) }
+     exact soundness hp₂ hyp (λ _, default) (soundness hp₁ hyp (λ _, default)) }
 
 lemma eval_eq : ∀ {t : term L} {e₁ e₂ : ℕ → |M|},
   (∀ n, n < t.arity → e₁ n = e₂ n) → t.val e₁ = t.val e₂
