@@ -522,6 +522,10 @@ end
 lemma le_finite (t : term L) : set.finite {u | u ≤ t} :=
 wf_lt.le_finite (show ∀ (a : term L), {b : term L | wf_lt.prelt b a}.finite, from prelt_finite) t
 
+@[simp] lemma ite_pow (p : Prop) [decidable p] (t u : term L) (k : ℕ) :
+  (ite p t u)^k = ite p (t^k) (u^k) :=
+by by_cases C : p; simp[C]
+
 end term
 
 def rewriting_sf_itr (s : ℕ → term L) : ℕ → ℕ → term L
@@ -967,6 +971,42 @@ instance : wf_lt (formula L) :=
   case implyl : p q { exact nat.lt_succ_iff.mpr (le_max_left p.complexity q.complexity) },
   case implyr : p q { exact nat.lt_succ_iff.mpr (le_max_right p.complexity q.complexity) } } }
 
+@[simp] lemma lt_app {p : formula L} {n} {r : L.pr n} {v} : ¬p < app r v :=
+by { simp [wf_lt.lt_iff], intros p h, rcases h }
+
+@[simp] lemma lt_equal {p : formula L} {t u : term L} : ¬p < t ≃₁ u :=
+by { simp [wf_lt.lt_iff], intros p h, rcases h }
+
+@[simp] lemma lt_verum {p : formula L} : ¬p < ⊤ :=
+by { simp [wf_lt.lt_iff], intros p h, rcases h }
+
+@[simp] lemma lt_imply {p q r : formula L} :
+  p < q ⟶ r ↔ p ≤ q ∨ p ≤ r :=
+begin
+  simp [wf_lt.lt_iff], split,
+  { rintros ⟨p', h, le⟩, rcases h, { exact or.inl le }, { exact or.inr le } },
+  rintros (le | le),
+  { refine ⟨q, subformula.implyl, le⟩ }, { refine ⟨r, subformula.implyr, le⟩ }
+end
+
+@[simp] lemma lt_neg {p q : formula L} :
+  p < ⁻q ↔ p ≤ q :=
+begin
+  simp [wf_lt.lt_iff], split,
+  { rintros ⟨p', h, le⟩, rcases h, exact le },
+  rintros le,
+  { refine ⟨q, subformula.neg, le⟩ }
+end
+
+@[simp] lemma lt_fal {p q : formula L} :
+  p < ∏ q ↔ p ≤ q :=
+begin
+  simp [wf_lt.lt_iff], split,
+  { rintros ⟨p', h, le⟩, rcases h, exact le },
+  rintros le,
+  { refine ⟨q, subformula.fal, le⟩ }
+end
+
 lemma fn_symbols_ss_of_le {p q : formula L} (h : p ≤ q) : p.fn_symbols ⊆ q.fn_symbols :=
 by { induction h; try { simp },
      case refl { refl },
@@ -987,6 +1027,62 @@ inductive subterm : term L → formula L → Prop
 instance : has_mem (term L) (formula L) := ⟨λ t p, ∃ (t' ≥ t) (p' ≤ p), subterm t' p'⟩
 
 lemma mem_def {t : term L} {p : formula L} : t ∈ p ↔ ∃ (t' ≥ t) (p' ≤ p), subterm t' p' := by refl
+
+@[simp] lemma mem_equall (t u : term L) : t ∈ (t ≃₁ u) := ⟨t, by simp, t ≃₁ u, by simp, subterm.equall⟩ 
+
+@[simp] lemma mem_equalr (t u : term L) : u ∈ (t ≃₁ u) := ⟨u, by simp, t ≃₁ u, by simp, subterm.equalr⟩ 
+
+lemma mem_of_formula_le_mem {t : term L} {p q : formula L} : t ∈ p → p ≤ q → t ∈ q :=
+by { rintros ⟨t', ht', p', hp', sb⟩ le, refine ⟨t', ht', p', (le_trans hp' le), sb⟩ }
+
+lemma mem_of_term_le_mem {t u : term L} {p : formula L} : u ∈ p → t ≤ u → t ∈ p :=
+by { rintros ⟨t', ht', p', hp', sb⟩ le, refine ⟨t', le_trans le ht', p', hp', sb⟩ }
+
+@[simp] lemma mem_app {t : term L} {n} {r : L.pr n} {v : finitary (term L) n} :
+  t ∈ app r v ↔ ∃ i, t ≤ v i :=
+⟨by { rintros ⟨t', ht', p', hp', sb⟩,
+      have hp' : p' = app r v ∨ p' < app r v, exact eq_or_lt_of_le hp', simp at hp',
+      rcases hp' with rfl, cases sb with i, refine ⟨_, ht'⟩ },
+ by { rintros ⟨i, le⟩, refine mem_of_term_le_mem ⟨v i, by simp, app r v, by simp, subterm.app r v i⟩ le }⟩
+
+@[simp] lemma mem_equal {s t u : term L} :
+  s ∈ t ≃₁ u ↔ s ≤ t ∨ s ≤ u :=
+⟨by { rintros ⟨t', ht', p', hp', sb⟩,
+      have hp' : p' = t ≃₁ u ∨ p' <t ≃₁ u, exact eq_or_lt_of_le hp', simp at hp',
+      rcases hp' with rfl, cases sb, { exact or.inl ht' }, { exact or.inr ht' } },
+ by { rintros (le | le),
+      { refine mem_of_term_le_mem ⟨t, by simp, t ≃₁ u, by simp, subterm.equall⟩ le },
+      { refine mem_of_term_le_mem ⟨u, by simp, t ≃₁ u, by simp, subterm.equalr⟩ le } }⟩
+
+@[simp] lemma mem_verum {t : term L} :
+  ¬t ∈ (⊤ : formula L) :=
+by { rintros ⟨t', ht', p', hp', sb⟩, 
+      have hp' : p' = ⊤ ∨ p' < ⊤, exact eq_or_lt_of_le hp', simp at hp',
+      rcases hp' with rfl, rcases sb }
+
+@[simp] lemma mem_imply {t : term L} {p q : formula L} :
+  t ∈ p ⟶ q ↔ t ∈ p ∨ t ∈ q :=
+⟨by { rintros ⟨t', ht', p', hp', sb⟩, 
+      have hp' : p' = p ⟶ q ∨ p' < p ⟶ q, exact eq_or_lt_of_le hp', simp at hp',
+      rcases hp' with (rfl | (hp' | hp')),
+      { rcases sb }, { refine or.inl ⟨t', ht', p', hp', sb⟩ }, { refine or.inr ⟨t', ht', p', hp', sb⟩ }  },
+ by { rintros (h | h); refine mem_of_formula_le_mem h (le_of_lt (by simp)) }⟩
+
+@[simp] lemma mem_neg {t : term L} {p : formula L} :
+  t ∈ ⁻p ↔ t ∈ p :=
+⟨by { rintros ⟨t', ht', p', hp', sb⟩, 
+      have hp' : p' = ⁻p ∨ p' < ⁻p, exact eq_or_lt_of_le hp', simp at hp',
+      rcases hp' with (rfl | hp'),
+      { rcases sb }, { refine ⟨t', ht', p', hp', sb⟩ }  },
+ by { rintros h, refine mem_of_formula_le_mem h (le_of_lt (by simp)) }⟩
+
+@[simp] lemma mem_fal {t : term L} {p : formula L} :
+  t ∈ ∏ p ↔ t ∈ p :=
+⟨by { rintros ⟨t', ht', p', hp', sb⟩, 
+      have hp' : p' = ∏ p ∨ p' < ∏ p, exact eq_or_lt_of_le hp', simp at hp',
+      rcases hp' with (rfl | hp'),
+      { rcases sb }, { refine ⟨t', ht', p', hp', sb⟩ }  },
+ by { rintros h, refine mem_of_formula_le_mem h (le_of_lt (by simp)) }⟩
 
 lemma fn_symbols_ss_of_mem {t : term L} {p : formula L} (h : t ∈ p) : t.symbols ⊆ p.fn_symbols :=
 begin
@@ -1055,6 +1151,10 @@ begin
   have : s.finite, from set.finite.bUnion (le_finite p) (λ q h, subterm_finite q),
   refine set.finite.bUnion this (λ u h, term.le_finite u),
 end
+
+@[simp] lemma formula.ite_pow (p : Prop) [decidable p] (q r : formula L) (k : ℕ) :
+  (ite p q r)^k = ite p (q^k) (r^k) :=
+by by_cases C : p; simp[C]
 
 end formula
 
