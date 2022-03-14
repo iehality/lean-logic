@@ -554,9 +554,11 @@ impl_trans
 
 lemma iff_equiv {p q : F} : T ⊢ p ⟷ q ↔ (T ⊢ p ⟶ q ∧ T ⊢ q ⟶ p) := iff_equiv_p
 
-lemma equiv_symm {p q : F} : T ⊢ p ⟷ q → T ⊢ q ⟷ p := equiv_symm
+@[refl, simp] lemma equiv_refl (p : F) : T ⊢ p ⟷ p := equiv_refl p
 
-@[simp] lemma equiv_refl (p : F) : T ⊢ p ⟷ p := equiv_refl p
+@[symm] lemma equiv_symm {p q : F} : T ⊢ p ⟷ q → T ⊢ q ⟷ p := equiv_symm
+
+@[trans] lemma equiv_trans {p q r : F} : T ⊢ p ⟷ q → T ⊢ q ⟷ r → T ⊢ p ⟷ r := equiv_trans
 
 @[simp] lemma iff_dn_refl_right (p : F) : T ⊢ p ⟷ ⁻⁻p := iff_dn_refl_right p
 

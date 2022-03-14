@@ -702,7 +702,6 @@ begin
   simp*
 end
 
-
 end provable
 
 namespace Lindenbaum
