@@ -23,12 +23,6 @@ variables {C : Type u} [decidable_eq C]
   have h : ∀ i, (v i).complexity < (⨆ᶠ i, (v i).complexity) + 1, from λ i,  nat.lt_succ_iff.mpr (le_fintype_sup (λ i, (v i).complexity) i),
   by { cases f, { exact list.Sup (λ i, symbols_aux (v i)) }, { cases n, exact [f], rcases f, } }
 
-def symbols (t : term (L + consts C)) : list C := (symbols_aux t).dedup
-
-def symbols' {n} (v : fin n → term (L + consts C)) : list C := (list.Sup (λ i, symbols (v i))).dedup
-
-@[simp] lemma symbols_var_eq_nil (n : ℕ) : symbols (#n : term (L + consts C)) = [] :=
-by simp[symbols]
 
 variables (Γ : list C) (b : ℕ) 
 
@@ -37,31 +31,31 @@ def consts_to_var : C → ℕ := λ c, (list.index_of c Γ)
 lemma consts_to_var_lt_Γ_of_mem {Γ : list C} {c : C} (mem : c ∈ Γ) : consts_to_var Γ c < Γ.length :=
 by { simp[consts_to_var], exact list.index_of_lt_length.mpr mem }
 
-@[simp] def elim_aux : term (L + consts C) → term L
+@[simp] def elim_aux_t : term (L + consts C) → term L
 | (#n)                      := if n < b then #n else #(Γ.length + n)
 | (@term.app _ n f v)       :=
-    by { cases f, { exact app f (λ i, elim_aux (v i)) },
+    by { cases f, { exact app f (λ i, elim_aux_t (v i)) },
          { rcases n, { exact #(consts_to_var Γ f + b) }, { rcases f } } }
 
-@[simp] def formula_elim_aux : ℕ → formula (L + consts C) → formula L
-| b (app r v)                          := by { rcases r, { refine app r (λ i, elim_aux Γ b (v i)) }, { rcases r } }
-| b ((t₁ : term (L + consts C)) ≃ t₂)  := elim_aux Γ b t₁ ≃ elim_aux Γ b t₂
+@[simp] def elim_aux_f : ℕ → formula (L + consts C) → formula L
+| b (app r v)                          := by { rcases r, { refine app r (λ i, elim_aux_t Γ b (v i)) }, { rcases r } }
+| b ((t₁ : term (L + consts C)) ≃ t₂)  := elim_aux_t Γ b t₁ ≃ elim_aux_t Γ b t₂
 | b ⊤                                  := ⊤
-| b (p ⟶ q)                            := formula_elim_aux b p ⟶ formula_elim_aux b q
-| b (⁻p)                               := ⁻formula_elim_aux b p
-| b (∏ p)                              := ∏ formula_elim_aux (b + 1) p
+| b (p ⟶ q)                            := elim_aux_f b p ⟶ elim_aux_f b q
+| b (⁻p)                               := ⁻elim_aux_f b p
+| b (∏ p)                              := ∏ elim_aux_f (b + 1) p
 
 def var_to_consts : ℕ → term (consts C) := λ n, if h : n < Γ.length then Γ.nth_le n h else #(n - Γ.length)
 
-def formula_elim : formula (L + consts C) → formula L := λ p, ∏[Γ.length] formula_elim_aux Γ 0 p
+def formula_elim : formula (L + consts C) → formula L := λ p, ∏[Γ.length] elim_aux_f Γ 0 p
 
 @[simp] lemma term_elim_coe : ∀ (t : term L),
-  elim_aux Γ b (t : term (L + consts C)) = t.rew (λ x, if x < b then #x else #(Γ.length + x))
+  elim_aux_t Γ b (t : term (L + consts C)) = t.rew (λ x, if x < b then #x else #(Γ.length + x))
 | (#n)                      := by simp
 | (@term.app _ n f v) := by { simp[coe_fn₁], funext i, exact term_elim_coe (v i) }
 
 lemma formula_elim_coe : ∀ (b : ℕ) (p : formula L),
-  formula_elim_aux Γ b (p : formula (L + consts C)) = p.rew (λ x, if x < b then #x else #(Γ.length + x))
+  elim_aux_f Γ b (p : formula (L + consts C)) = p.rew (λ x, if x < b then #x else #(Γ.length + x))
 | b (app r v) := by simp[coe_pr₁]
 | b (equal t u) := by simp
 | b ⊤ := by simp
@@ -74,7 +68,7 @@ lemma formula_elim_coe : ∀ (b : ℕ) (p : formula L),
     simp[this] }
 
 @[simp] lemma formula_elim_coe_0 (p : formula L) :
-  formula_elim_aux Γ 0 (p : formula (L + consts C)) = p^Γ.length :=
+  elim_aux_f Γ 0 (p : formula (L + consts C)) = p^Γ.length :=
 by simp[formula_elim_coe, formula.pow_eq, show ∀ x, Γ.length + x = x + Γ.length, from λ x, add_comm (list.length Γ) x]
 
 @[reducible] def shifting : ℕ → term L :=
@@ -82,8 +76,8 @@ by simp[formula_elim_coe, formula.pow_eq, show ∀ x, Γ.length + x = x + Γ.len
 
 variables {Γ}
 
-lemma term_elim_rew (b : ℕ) (t : term (L + consts C)) (hΓ : symbols_aux t ⊆ Γ) :
-  (elim_aux Γ b t).rew (shifting Γ b) = elim_aux Γ (b + 1) t :=
+lemma elim_aux_t_rew (b : ℕ) (t : term (L + consts C)) (hΓ : symbols_aux t ⊆ Γ) :
+  (elim_aux_t Γ b t).rew (shifting Γ b) = elim_aux_t Γ (b + 1) t :=
 begin
   induction t,
   case var : n
@@ -101,13 +95,13 @@ begin
         simp[le_of_lt this, ne_of_lt this, add_assoc] },  { rcases f } } }
 end
 
-lemma formula_elim_rew (b : ℕ) (p : formula (L + consts C)) (hΓ : ∀ t ∈ p, symbols_aux t ⊆ Γ):
-  (formula_elim_aux Γ b p).rew (shifting Γ b) = formula_elim_aux Γ (b + 1) p :=
+lemma elim_aux_f_rew (b : ℕ) (p : formula (L + consts C)) (hΓ : ∀ t ∈ p, symbols_aux t ⊆ Γ):
+  (elim_aux_f Γ b p).rew (shifting Γ b) = elim_aux_f Γ (b + 1) p :=
 begin
   induction p generalizing b,
   case verum { simp },
-  case app : n r v { rcases r; simp, { funext i, exact term_elim_rew b (v i) (hΓ (v i) (by {simp, refine ⟨i, by simp⟩ })) }, { rcases r } },
-  case equal : t u { simp, refine ⟨term_elim_rew b t (hΓ t (by simp)), term_elim_rew b u (hΓ u (by simp))⟩ },
+  case app : n r v { rcases r; simp, { funext i, exact elim_aux_t_rew b (v i) (hΓ (v i) (by {simp, refine ⟨i, by simp⟩ })) }, { rcases r } },
+  case equal : t u { simp, refine ⟨elim_aux_t_rew b t (hΓ t (by simp)), elim_aux_t_rew b u (hΓ u (by simp))⟩ },
   case imply : p q IHp IHq { simp, refine ⟨IHp (λ t mem, hΓ t (by simp[mem])) b, IHq (λ t mem, hΓ t (by simp[mem])) b⟩ },
   case neg : p IH { simp, exact IH (λ t mem, hΓ t (by simp[mem])) b },
   case fal : p IH
@@ -124,8 +118,8 @@ def prf' (L : language) := Σ (T : theory L) (k : ℕ) (p : formula L), T^k ⟹ 
 
 variables (Γ)
 
-private lemma term_elim_aux_rew (t u : term (L + consts C)) (s : ℕ) :
-  elim_aux Γ s (t.rew ı[s ⇝ u]) = (elim_aux Γ (s + 1) t).rew ı[s ⇝ elim_aux Γ s u] :=
+private lemma elim_aux_t_subst (t u : term (L + consts C)) (s : ℕ) :
+  elim_aux_t Γ s (t.rew ı[s ⇝ u]) = (elim_aux_t Γ (s + 1) t).rew ı[s ⇝ elim_aux_t Γ s u] :=
 begin
   induction t,
   case var : n { simp, have : n < s ∨ n = s ∨ s < n, exact trichotomous n s,
@@ -141,8 +135,8 @@ begin
       { simp[←add_assoc, show s < consts_to_var Γ f + s + 1, by omega] }, { rcases f } } }
 end
 
-private lemma elim_aux_succ_pow (t : term (L + consts C)) (s : ℕ) (k : ℕ) :
-  (elim_aux Γ s t)^k =  elim_aux Γ (s + k) (t^k) :=
+private lemma elim_aux_t_succ_pow (t : term (L + consts C)) (s : ℕ) (k : ℕ) :
+  (elim_aux_t Γ s t)^k =  elim_aux_t Γ (s + k) (t^k) :=
 begin
   induction t,
   case var : n { simp[add_assoc] },
@@ -152,8 +146,8 @@ begin
     { rcases n, { simp[add_assoc] }, { rcases f } } }
 end
 
-private lemma elim_aux_succ_pow' (t : term (L + consts C)) (s : ℕ) (k : ℕ) :
-  (elim_aux Γ s t)^k =  elim_aux Γ (s + k) (t^k) :=
+private lemma elim_aux_t_succ_pow' (t : term (L + consts C)) (s : ℕ) (k : ℕ) :
+  (elim_aux_t Γ s t)^k =  elim_aux_t Γ (s + k) (t^k) :=
 begin
   induction t,
   case var : n { simp[add_assoc] },
@@ -163,20 +157,20 @@ begin
     { rcases n, { simp[add_assoc] }, { rcases f } } }
 end
 
-private lemma  formula_elim_aux_rew (p : formula (L + consts C)) (u : term (L + consts C)) (s : ℕ) :
-  formula_elim_aux Γ s (p.rew ı[s ⇝ u]) = (formula_elim_aux Γ (s + 1) p).rew ı[s ⇝ elim_aux Γ s u] :=
+private lemma  elim_aux_f_subst (p : formula (L + consts C)) (u : term (L + consts C)) (s : ℕ) :
+  elim_aux_f Γ s (p.rew ı[s ⇝ u]) = (elim_aux_f Γ (s + 1) p).rew ı[s ⇝ elim_aux_t Γ s u] :=
 begin
   induction p generalizing s u,
   case verum { simp },
-  case app : n r v { rcases r, { simp[term_elim_aux_rew] }, { rcases r } },
-  case equal : t u { simp[term_elim_aux_rew] },
+  case app : n r v { rcases r, { simp[elim_aux_t_subst] }, { rcases r } },
+  case equal : t u { simp[elim_aux_t_subst] },
   case imply : p q IH_p IH_q { simp, exact ⟨IH_p s u, IH_q s u⟩ },
   case neg : p IH { simp, exact IH s u },
-  case fal : p IH { simp[subst_pow, elim_aux_succ_pow], exact IH (s + 1) (u^1) },  
+  case fal : p IH { simp[subst_pow, elim_aux_t_succ_pow], exact IH (s + 1) (u^1) },  
 end
 
-private lemma term_elim_aux_succ_pow_aux (t : term (L + consts C)) (s k : ℕ) :
-  (elim_aux Γ s t).rew ((λ x, #(x + k))^s) =  elim_aux Γ (s + k) (t.rew ((λ x, #(x + k))^s)) :=
+private lemma elim_aux_t_succ_pow_aux (t : term (L + consts C)) (s k : ℕ) :
+  (elim_aux_t Γ s t).rew ((λ x, #(x + k))^s) =  elim_aux_t Γ (s + k) (t.rew ((λ x, #(x + k))^s)) :=
 begin
   induction t generalizing s k,
   case var : n
@@ -191,24 +185,24 @@ begin
     { rcases n, { simp, omega }, { rcases f } } }
 end
 
-private lemma formula_elim_aux_succ_pow_aux (p : formula (L + consts C)) (s k : ℕ) :
-  (formula_elim_aux Γ s p).rew ((λ x, #(x + k))^s) =  formula_elim_aux Γ (s + k) (p.rew ((λ x, #(x + k))^s)) :=
+private lemma elim_aux_f_succ_pow_aux (p : formula (L + consts C)) (s k : ℕ) :
+  (elim_aux_f Γ s p).rew ((λ x, #(x + k))^s) =  elim_aux_f Γ (s + k) (p.rew ((λ x, #(x + k))^s)) :=
 begin
   induction p generalizing s k,
   case app : n r v
-  { rcases r, { simp, funext i, exact term_elim_aux_succ_pow_aux Γ (v i) s k }, { rcases r } },
-  case equal : t u { simp, exact ⟨term_elim_aux_succ_pow_aux Γ t s k, term_elim_aux_succ_pow_aux Γ u s k⟩ },
+  { rcases r, { simp, funext i, exact elim_aux_t_succ_pow_aux Γ (v i) s k }, { rcases r } },
+  case equal : t u { simp, exact ⟨elim_aux_t_succ_pow_aux Γ t s k, elim_aux_t_succ_pow_aux Γ u s k⟩ },
   case verum { simp },
   case imply : p q IH_p IH_q { simp* },  
   case neg : p IH { simp* },
   case fal : p IH { simp, simp[rewriting_sf_itr.pow_add, IH (s + 1) k, show s + 1 + k = s + k + 1, by omega] },
 end
 
-private lemma formula_elim_aux_succ_pow (p : formula (L + consts C)) (k : ℕ) :
-  (formula_elim_aux Γ 0 p)^k =  formula_elim_aux Γ k (p^k) :=
+private lemma elim_aux_f_succ_pow (p : formula (L + consts C)) (k : ℕ) :
+  (elim_aux_f Γ 0 p)^k =  elim_aux_f Γ k (p^k) :=
 begin
   simp[formula.pow_eq],
-  have := formula_elim_aux_succ_pow_aux Γ p 0 k, simp at this, exact this,
+  have := elim_aux_f_succ_pow_aux Γ p 0 k, simp at this, exact this,
 end
 
 variables {Γ}
@@ -240,11 +234,11 @@ begin
   { rintros k p B IH hΓ T rfl,
     simp[formula_elim] at IH ⊢,
     have : T^k ⊢ ∏ formula_elim Γ p, from (generalize (IH (λ t h, hΓ t (by simp[h])) T rfl)),
-    have : T^k ⊢ ∏[Γ.length + 1] formula_elim_aux Γ 0 p, from this,
-    have : T^k ⊢ ∏[Γ.length + 1] (formula_elim_aux Γ 0 p).rew (shifting Γ 0),
+    have : T^k ⊢ ∏[Γ.length + 1] elim_aux_f Γ 0 p, from this,
+    have : T^k ⊢ ∏[Γ.length + 1] (elim_aux_f Γ 0 p).rew (shifting Γ 0),
     { have := provable.nfal_rew (λ x, if x = Γ.length + 0 then #0 else if 0 ≤ x then #(x + 1) else #x) ⨀ this,
       simp only [nat.lt_succ_iff] at this, exact this },
-    simp[formula_elim_rew 0 p (λ t h, hΓ t (by { simp, exact proof.mem_trans h (by simp) }))] at this,
+    simp[elim_aux_f_rew 0 p (λ t h, hΓ t (by { simp, exact proof.mem_trans h (by simp) }))] at this,
     exact this },
   { rintros k p q B₁ B₂ IH₁ IH₂ hΓ T rfl,
     have IH₁ : T^k ⊢ formula_elim Γ (p ⟶ q), from IH₁ (λ t h, hΓ t (by simp[h])) T rfl,
@@ -252,7 +246,7 @@ begin
     simp[formula_elim] at IH₁ IH₂ ⊢,
     exact (provable.nfal_K _ _ _ ⨀ IH₁ ⨀ IH₂) },
   { rintros k p mem hΓ T rfl, simp[formula_elim] at mem ⊢, 
-    have : T^k ⊢ ∏[Γ.length] formula_elim_aux Γ 0 p,
+    have : T^k ⊢ ∏[Γ.length] elim_aux_f Γ 0 p,
     { have : ∃ (p' ∈ T), p = ↑p' ^ k, from theory_mem_coe_pow_iff.mp mem, rcases this with ⟨p, p_mem, rfl⟩,
       rw ← coe_pow_formula, simp[-coe_pow_formula],
       show T^k ⊢ ∏[Γ.length] (p ^ k) ^ Γ.length,
@@ -264,9 +258,9 @@ begin
   { rintros, refine generalize_itr _, simp[formula_elim] },
   { rintros, refine generalize_itr _, simp[formula_elim] },
   { rintros, refine generalize_itr _, simp[formula_elim] },
-  { rintros, refine generalize_itr _, simp[formula_elim, formula_elim_aux_rew] },
+  { rintros, refine generalize_itr _, simp[formula_elim, elim_aux_f_subst] },
   { rintros, refine generalize_itr _, simp[formula_elim] },
-  { rintros, refine generalize_itr _, simp[formula_elim, ←formula_elim_aux_succ_pow] },
+  { rintros, refine generalize_itr _, simp[formula_elim, ←elim_aux_f_succ_pow] },
   { rintros, refine generalize_itr _, simp[formula_elim] },
   { rintros, refine generalize_itr _, simp[formula_elim] },
   { rintros, refine generalize_itr _, simp[formula_elim] },
