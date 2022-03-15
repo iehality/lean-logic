@@ -57,28 +57,33 @@ class language_translation_coe (L₁ : language) (L₂ : language) :=
 (fn_inj : ∀ {n} (f g : L₁.fn n), ltr.fn n f = ltr.fn n g → f = g)
 (pr_inj : ∀ {n} (p q : L₁.pr n), ltr.pr n p = ltr.pr n q → p = q)
 
-structure translation (L₁ : language) (L₂ : language.{v}) :=
+structure formula_homomorphism (L₁ : language) (L₂ : language.{v}) :=
 (to_fun : ℕ → formula L₁ → formula L₂)
 (map_verum : ∀ i, to_fun i ⊤ = ⊤)
 (map_imply : ∀ (p q : formula L₁) (i : ℕ), to_fun i (p ⟶ q) = to_fun i p ⟶ to_fun i q)
 (map_neg : ∀ (p : formula L₁) (i), to_fun i (⁻p) = ⁻to_fun i p)
 (map_univ : ∀ (p : formula L₁) (i), to_fun i (∏ p) = ∏ to_fun (i + 1) p)
+
+structure translation (L₁ : language) (L₂ : language.{v}) extends formula_homomorphism L₁ L₂ :=
 (map_pow : ∀ (p : formula L₁) (i), to_fun (i + 1) (p^1) = (to_fun i p)^1)
 
 infix ` ↝ `:25 := translation
 
-instance {L₁ L₂ : language} : has_coe_to_fun (translation L₁ L₂) (λ _, ℕ → formula L₁ → formula L₂) :=
-⟨@translation.to_fun L₁ L₂⟩
+instance {L₁ L₂ : language} : has_coe_to_fun (formula_homomorphism L₁ L₂) (λ _, ℕ → formula L₁ → formula L₂) :=
+⟨@formula_homomorphism.to_fun L₁ L₂⟩
 
-structure term_translation (L₁ : language) (L₂ : language) :=
+instance {L₁ L₂ : language} : has_coe_to_fun (translation L₁ L₂) (λ _, ℕ → formula L₁ → formula L₂) :=
+⟨λ τ, @formula_homomorphism.to_fun L₁ L₂ τ.to_formula_homomorphism⟩
+
+structure term_homomorphism (L₁ : language) (L₂ : language) :=
 (to_fun_chr : ℕ → Π {n}, L₁.fn n → finitary (term L₂) n → term L₂)
 (to_fun : ℕ → term L₁ → term L₂)
 (map_fn : Π (k : ℕ) {n} (f : L₁.fn n) (v : finitary (term L₁) n),
   to_fun k (term.app f v) = to_fun_chr k f (λ i, to_fun k (v i)))
 
-infix ` ↝ᵀ `:25 := term_translation
+infix ` ↝ᵀ `:25 := term_homomorphism
 
-instance {L₁ L₂ : language} : has_coe_to_fun (term_translation L₁ L₂) (λ _, ℕ → term L₁ → term L₂) :=
+instance {L₁ L₂ : language} : has_coe_to_fun (term_homomorphism L₁ L₂) (λ _, ℕ → term L₁ → term L₂) :=
 ⟨λ τ, τ.to_fun⟩
 
 def tr_theory {L₁ L₂ : language} (τ : translation L₁ L₂) (i) (T : theory L₁) : theory L₂ := τ i '' T
@@ -86,11 +91,6 @@ def tr_theory {L₁ L₂ : language} (τ : translation L₁ L₂) (i) (T : theor
 @[simp] lemma mem_theory_tr_of_mem {L₁ L₂ : language} {τ : translation L₁ L₂} {i}
   {T : theory L₁} {p} (mem : p ∈ T) : τ i p ∈ tr_theory τ i T :=
 ⟨p, mem, rfl⟩
-
-structure term_formula_translation (L₁ : language) (L₂ : language) :=
-(tr : translation L₁ L₂)
-(tr_term : term_translation L₁ L₂)
-(consistence_eq : ∀ (t u : term L₁) (k), tr k (t ≃ u : formula L₁) = (tr_term k t ≃ tr_term k u))
 
 class translation.conservative (τ : translation L₁ L₂) :=
 (ax : ℕ → theory L₁ → theory L₂)
@@ -107,6 +107,51 @@ class translation.conservative (τ : translation L₁ L₂) :=
   (ax k T)^i ⊢ τ (k + i) (eq_axiom4 f))
 (predicate_ext : ∀ (k) {n} (r : L₁.pr n) (T : theory L₁) (i : ℕ),
   (ax k T)^i ⊢ τ (k + i) (eq_axiom5 r))
+
+namespace formula_homonorphism
+variables (τ : formula_homomorphism L₁ L₂) (i : ℕ)
+
+@[simp] lemma map_verum' :
+  τ i ⊤ = ⊤ := τ.map_verum i
+
+@[simp] lemma map_imply' (p q : formula L₁) :
+  τ i (p ⟶ q) = τ i p ⟶ τ i q := τ.map_imply p q i
+
+@[simp] lemma map_neg' (p : formula L₁) :
+  τ i (⁻p) = ⁻τ i p := τ.map_neg p i
+
+@[simp] lemma map_univ' (p : formula L₁) :
+  τ i (∏ p) = ∏ τ (i + 1) p := τ.map_univ p i
+
+lemma map_pow'_aux
+  (H_pr : ∀ {n} (r : L₁.pr n) (v) (i s k : ℕ) (le : s ≤ i),
+    τ (i + k) ((app r v).rew ((λ x, #(x + k))^s)) = (τ i (app r v)).rew ((λ x, #(x + k))^s))
+  (H_eq : ∀ (t u : term L₁) (i s k : ℕ) (le : s ≤ i),
+    τ (i + k) ((t ≃₁ u).rew ((λ x, #(x + k))^s)) = (τ i (t ≃₁ u)).rew ((λ x, #(x + k))^s))
+  (p : formula L₁) (i s k : ℕ) (hs : s ≤ i) :
+  τ (i + k) (p.rew ((λ x, #(x + k))^s)) = (τ i p).rew ((λ x, #(x + k))^s) :=
+begin
+  induction p generalizing i s k,
+  case app : n r v { exact H_pr r v i s k hs },
+  case equal : t u i s k { exact H_eq t u i s k hs },
+  case verum { simp },  
+  case imply : p q IH_p IH_q { simp, exact ⟨IH_p i s k hs, IH_q i s k hs⟩ },
+  case neg : p IH { simp, exact IH i s k hs},
+  case fal : p IH { simp[rewriting_sf_itr.pow_add, show i + k + 1 = i + 1 + k, by omega],
+  exact IH (i + 1) (s + 1) k (by simp[hs]) }
+end
+
+def mk_translation
+  (H_pr : ∀ {n} (r : L₁.pr n) (v) (i s k : ℕ) (le : s ≤ i),
+    τ (i + k) ((app r v).rew ((λ x, #(x + k))^s)) = (τ i (app r v)).rew ((λ x, #(x + k))^s))
+  (H_eq : ∀ (t u : term L₁) (i s k : ℕ) (le : s ≤ i),
+    τ (i + k) ((t ≃₁ u).rew ((λ x, #(x + k))^s)) = (τ i (t ≃₁ u)).rew ((λ x, #(x + k))^s)) : translation L₁ L₂ :=
+{  map_pow := λ p i, by { simp,
+    have : τ (i + 1) (p.rew (λ x, #(x + 1))) = rew (λ x, #(x + 1)) (τ i p),
+    { have := map_pow'_aux τ (@H_pr) (@H_eq) p i 0 1 (by simp), simp at this, exact this },
+    simp[formula.pow_eq], exact this },  ..τ }
+
+end formula_homonorphism
 
 namespace translation
 
@@ -208,13 +253,13 @@ def comp : translation L₁ L₂ → translation L₂ L₃ → translation L₁ 
 
 end translation
 
-namespace term_translation
+namespace term_homomorphism
 
-@[simp] lemma translation.map_imply' (τ : term_translation L₁ L₂) {n} (f : L₁.fn n) (v : finitary (term L₁) n) (k) :
+@[simp] lemma translation.map_imply' (τ : term_homomorphism L₁ L₂) {n} (f : L₁.fn n) (v : finitary (term L₁) n) (k) :
   τ k (term.app f v) = τ.to_fun_chr k f (λ i, τ k (v i)) := τ.map_fn k f v
 
 @[simp] lemma app_eq (fc) (f) (map_fn) (t : term L₁) (i) :
-  ({to_fun_chr := fc, to_fun := f, map_fn := map_fn} : term_translation L₁ L₂) i t = f i t := rfl
+  ({to_fun_chr := fc, to_fun := f, map_fn := map_fn} : term_homomorphism L₁ L₂) i t = f i t := rfl
 
 @[simp] def mk_fun_of_atom {L₁ L₂ : language} 
   (to_fun_chr : ℕ → Π {n}, L₁.fn n → finitary (term L₂) n → term L₂) : ℕ → term L₁ → term L₂
@@ -222,12 +267,12 @@ namespace term_translation
 | k (app f v) := to_fun_chr k f (λ i, mk_fun_of_atom k (v i))
 
 @[simp] def mk_of_atom {L₁ L₂ : language}
-  (to_fun_chr : ℕ → Π {n}, L₁.fn n → finitary (term L₂) n → term L₂) : term_translation L₁ L₂ :=
+  (to_fun_chr : ℕ → Π {n}, L₁.fn n → finitary (term L₂) n → term L₂) : term_homomorphism L₁ L₂ :=
 { to_fun_chr := @to_fun_chr,
   to_fun := mk_fun_of_atom @to_fun_chr,
   map_fn := by simp }
 
-end term_translation
+end term_homomorphism
 
 namespace language_translation
 
@@ -240,7 +285,7 @@ variables (τ : L₁ ↝ᴸ L₂)
 | #n        := #n
 | (app f v) := app (τ.fn _ f) (λ i, fun_term (v i))
 
-def tr_term : term_translation L₁ L₂ :=
+def tr_term : term_homomorphism L₁ L₂ :=
 { to_fun_chr := λ k n f v, app (τ.fn _ f) v,
   to_fun     := λ k, τ.fun_term,
   map_fn     := λ k n f v, by simp }
@@ -337,11 +382,6 @@ instance : has_coe (formula L₁) (formula L₂) := ⟨σ.ltr.fun_formula⟩
 lemma app_formula_extension_eq (p : formula L₁) (i : ℕ) :
   (σ.ltr.tr i p : formula L₂) = ↑p := rfl
 
-def t_f_translation : term_formula_translation L₁ L₂ :=
-{ tr_term := σ.ltr.tr_term,
-  tr := σ.ltr.tr,
-  consistence_eq := λ t u k, by { simp[tr], refine ⟨rfl, rfl⟩ } }
-
 instance : has_coe (theory L₁) (theory L₂) := ⟨tr_theory σ.ltr.tr 0⟩
 
 instance [has_zero_symbol L₁] : has_zero_symbol L₂ := ⟨σ.ltr.fn _ has_zero_symbol.zero⟩
@@ -360,7 +400,7 @@ lemma app_formula_extension_eq_coe (k) (p : formula L₁) :
   (σ.ltr.tr : translation L₁ L₂) k p = ↑p := rfl
 
 lemma app_term_extension_eq_coe (k) (t : term L₁) :
-  (σ.ltr.tr_term : term_translation L₁ L₂) k t = ↑t := rfl
+  (σ.ltr.tr_term : term_homomorphism L₁ L₂) k t = ↑t := rfl
 
 @[simp] lemma add_tr_v1_var (n) : ((#n : term L₁) : term L₂) = #n := rfl
 
