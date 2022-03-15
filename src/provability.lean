@@ -310,6 +310,9 @@ end
 @[simp] lemma impl_iff_and_p {p q : F} : (p ⟶ q) ⟷ (⁻p ⊔ q) ∈ P :=
 by {simp [or_def P, -iff_equiv_p], refine equiv_imply_of_equiv _ _; simp }
 
+@[simp] lemma excluded_middle_p {p : F} : (p ⊔ ⁻p) ∈ P :=
+by simp[or_def P]
+
 @[simp] lemma equiv_symm_and (p q : F) : p ⊓ q ⟷ q ⊓ p ∈ P :=
 by { simp only [and_def P], refine equiv_neg_of_equiv _,
      refine equiv_of_equiv (show p ⟶ ⁻q ⟷ ⁻⁻q ⟶ ⁻p ∈ P, by simp) _ (equiv_imply_of_equiv _ _); simp }
@@ -582,6 +585,8 @@ lemma of_equiv {p₁ p₂ : F} (h : T ⊢ p₁) (hp : T ⊢ p₁ ⟷ p₂) : T �
 
 @[simp] lemma impl_iff_and {p q : F} : T ⊢ (p ⟶ q) ⟷ (⁻p ⊔ q) := impl_iff_and_p
 
+@[simp] lemma excluded_middle {p : F} : T ⊢ p ⊔ ⁻p := excluded_middle_p
+
 @[simp] lemma equiv_symm_and (p q : F) : T ⊢ p ⊓ q ⟷ q ⊓ p := equiv_symm_and p q
 
 @[simp] lemma equiv_symm_equiv (p q : F) : T ⊢ (p ⟷ q) ⟷ (q ⟷ p) := equiv_symm_equiv p q
@@ -599,6 +604,9 @@ lemma of_equiv {p₁ p₂ : F} (h : T ⊢ p₁) (hp : T ⊢ p₁ ⟷ p₂) : T �
 @[simp] lemma neg_or_equiv_and_neg (p q : F) : T ⊢ ⁻(p ⊔ q) ⟷ ⁻p ⊓ ⁻q := neg_or_equiv_and_neg p q
 
 @[simp] lemma or_imply (p q r : F) : T ⊢ (p ⟶ r) ⟶ (q ⟶ r) ⟶ p ⊔ q ⟶ r := or_imply p q r
+
+lemma cases_of (p q : F) (ht : T ⊢ p ⟶ q) (hf : T ⊢ ⁻p ⟶ q) : T ⊢ q :=
+or_imply p (⁻p) q ⨀ ht ⨀ hf ⨀ (by simp)
 
 lemma explosion {p : F} (h₁ : T ⊢ p) (h₂ : T ⊢ ⁻p) {q : F} : T ⊢ q :=
 explosion h₁ h₂

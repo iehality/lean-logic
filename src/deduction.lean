@@ -91,6 +91,9 @@ lemma theory.consistent_iff_bot (T : theory L) : T.consistent ↔ ¬T ⊢ ⊥ :=
   have : T ⊢ ⊥, from explosion hp hnp,
   exact h this }⟩
 
+lemma not_consistent_iff_bot {T : theory L} : ¬T.consistent ↔ T ⊢ ⊥ :=
+by simp[consistent_iff_bot T]
+
 class consistent (T : theory L) := (consistent : theory.consistent T)
 
 def theory.le (T U : theory L) : Prop := ∀ {p : formula L}, T ⊢ p → U ⊢ p

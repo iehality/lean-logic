@@ -296,6 +296,15 @@ theorem provable_iff {T : theory L} {p : formula L} :
   exact lmm₂ ⨀ lmm₁
 end, provability⟩
 
+theorem consistent_iff {T : theory L} :
+  (↑T : theory (L + consts C)).consistent ↔ T.consistent :=
+begin
+  have : (↑T : theory (L + consts C)) ⊢ ⊥ ↔ T ⊢ ⊥,
+  { have : (↑T : theory (L + consts C)) ⊢ ↑(⊥ : formula L) ↔ T ⊢ ⊥, from provable_iff,
+    simp at this, exact this },
+  simp[theory.consistent_iff_bot, this],  
+end
+
 end add_consts
 
 end language
