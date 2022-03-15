@@ -11,17 +11,26 @@ local infix ` ≃₁ `:50 := ((≃) : term L₁ → term L₁ → formula L₁)
 local infix ` ≃₂ `:50 := ((≃) : term L₂ → term L₂ → formula L₂)
 
 namespace language
+variables {C : Type u} [decidable_eq C]
+
+
+lemma sum_inl_eq_coe_fn {n} (f : L.fn n) : sum.inl f = (↑f : (L + consts C).fn n) := rfl
+
+lemma sum_inl_eq_coe_pr {n} (r : L.pr n) : sum.inl r = (↑r : (L + consts C).pr n) := rfl
+
+@[simp] def consts_of_t : term (L + consts C) → list C
+| (#n)                      := []
+| (@term.app _ n f v)       :=
+  have h : ∀ i, (v i).complexity < (⨆ᶠ i, (v i).complexity) + 1, from λ i, nat.lt_succ_iff.mpr (le_fintype_sup (λ i, (v i).complexity) i),
+  by { cases f, { exact list.Sup (λ i, consts_of_t (v i)) }, { cases n, exact [f], rcases f, } }
+
+noncomputable def consts_of_p (p : formula (L + consts C)) : list C :=
+(list.map consts_of_t ((formula.mem_finite p).to_finset.to_list)).join.dedup
+
 
 namespace add_consts
 open language_translation language_translation_coe extension
   proof provable axiomatic_classical_logic' axiomatic_classical_logic
-variables {C : Type u} [decidable_eq C]
-
-@[simp] def symbols_aux : term (L + consts C) → list C
-| (#n)                      := []
-| (@term.app _ n f v)       :=
-  have h : ∀ i, (v i).complexity < (⨆ᶠ i, (v i).complexity) + 1, from λ i,  nat.lt_succ_iff.mpr (le_fintype_sup (λ i, (v i).complexity) i),
-  by { cases f, { exact list.Sup (λ i, symbols_aux (v i)) }, { cases n, exact [f], rcases f, } }
 
 
 variables (Γ : list C) (b : ℕ) 
@@ -76,7 +85,7 @@ by simp[formula_elim_coe, formula.pow_eq, show ∀ x, Γ.length + x = x + Γ.len
 
 variables {Γ}
 
-lemma elim_aux_t_rew (b : ℕ) (t : term (L + consts C)) (hΓ : symbols_aux t ⊆ Γ) :
+lemma elim_aux_t_rew (b : ℕ) (t : term (L + consts C)) (hΓ : consts_of_t t ⊆ Γ) :
   (elim_aux_t Γ b t).rew (shifting Γ b) = elim_aux_t Γ (b + 1) t :=
 begin
   induction t,
@@ -95,7 +104,7 @@ begin
         simp[le_of_lt this, ne_of_lt this, add_assoc] },  { rcases f } } }
 end
 
-lemma elim_aux_f_rew (b : ℕ) (p : formula (L + consts C)) (hΓ : ∀ t ∈ p, symbols_aux t ⊆ Γ):
+lemma elim_aux_f_rew (b : ℕ) (p : formula (L + consts C)) (hΓ : ∀ t ∈ p, consts_of_t t ⊆ Γ):
   (elim_aux_f Γ b p).rew (shifting Γ b) = elim_aux_f Γ (b + 1) p :=
 begin
   induction p generalizing b,
@@ -209,10 +218,6 @@ variables {Γ}
 
 def prf'_to_prf (b : prf' L) : prf L := by { rcases b with ⟨T, k, p, b⟩, refine ⟨T^k, p, b⟩ }
 
-lemma sum_inl_eq_coe_fn {n} (f : L.fn n) : sum.inl f = (↑f : (L + consts C).fn n) := rfl
-
-lemma sum_inl_eq_coe_pr {n} (r : L.pr n) : sum.inl r = (↑r : (L + consts C).pr n) := rfl
-
 private lemma  eq_axiom4_coe {n} (f : L.fn n) : eq_axiom4 (↑f : (L + consts C).fn n) = ↑(eq_axiom4 f) :=
 by simp[eq_axiom4]
 
@@ -220,15 +225,15 @@ private lemma  eq_axiom5_coe {n} (r : L.pr n) : eq_axiom5 (↑r : (L + consts C)
 by simp[eq_axiom5]
 
 lemma provable_formula_elim_of_proof_aux : ∀ {T : theory L} {p : formula (L + consts C)} (B : ↑T ⟹ p)
-  (hΓ : ∀ (t : term (L + consts C)) (h : t ∈ᵗ B), symbols_aux t ⊆ Γ), T ⊢ formula_elim Γ p :=
+  (hΓ : ∀ (t : term (L + consts C)) (h : t ∈ᵗ B), consts_of_t t ⊆ Γ), T ⊢ formula_elim Γ p :=
 begin
   suffices : ∀ (T : theory (L + consts C)) (p : formula (L + consts C)) (k : ℕ) (B : T^k ⟹ p)
-    (hΓ : ∀ (t : term (L + consts C)) (h : t ∈ᵗ B), symbols_aux t ⊆ Γ) (T₀ : theory L) (eqn : ↑T₀ = T),
+    (hΓ : ∀ (t : term (L + consts C)) (h : t ∈ᵗ B), consts_of_t t ⊆ Γ) (T₀ : theory L) (eqn : ↑T₀ = T),
     T₀^k ⊢ formula_elim Γ p,
   { intros T p B hΓ, exact this ↑T p 0 B hΓ T rfl },
   intros T' p' k' B',
   let C : Π (k : ℕ) (p : formula (L + consts C)) (b : T'^k ⟹ p), Prop :=
-    (λ k p b, (∀ (t : term (L + consts C)), t ∈ᵗ b → symbols_aux t ⊆ Γ) →
+    (λ k p b, (∀ (t : term (L + consts C)), t ∈ᵗ b → consts_of_t t ⊆ Γ) →
       Π T₀, ↑T₀ = T' → T₀ ^ k ⊢ formula_elim Γ p), 
   refine proof.rec''_on C k' p' B' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _,
   { rintros k p B IH hΓ T rfl,
@@ -275,10 +280,10 @@ begin
 end
 
 noncomputable def consts_of {T : theory (L + consts C)} {p : formula (L + consts C)} (b : T ⟹ p) : list C :=
-(list.map symbols_aux ((proof.term_mem_finite b).to_finset.to_list)).join.dedup
+(list.map consts_of_t ((proof.term_mem_finite b).to_finset.to_list)).join.dedup
 
 lemma consts_list_spec {T : theory (L + consts C)} {p : formula (L + consts C)}
-  (b : T ⟹ p) (t : term (L + consts C)) (h : t ∈ᵗ b) : symbols_aux t ⊆ consts_of b := λ c mem,
+  (b : T ⟹ p) (t : term (L + consts C)) (h : t ∈ᵗ b) : consts_of_t t ⊆ consts_of b := λ c mem,
 by simp[consts_of]; refine ⟨t, h, mem⟩
 
 theorem provable_formula_elim_of_proof {T : theory L} {p : formula (L + consts C)} (b : ↑T ⟹ p) :
@@ -306,6 +311,182 @@ begin
 end
 
 end add_consts
+
+namespace consts_elimination
+open language_translation language_translation_coe extension
+  proof provable axiomatic_classical_logic' axiomatic_classical_logic
+
+@[simp] def consts_of_t : term (L + consts C) → list C
+| (#n)                      := []
+| (@term.app _ n f v)       :=
+  have h : ∀ i, (v i).complexity < (⨆ᶠ i, (v i).complexity) + 1, from λ i, nat.lt_succ_iff.mpr (le_fintype_sup (λ i, (v i).complexity) i),
+  by { cases f, { exact list.Sup (λ i, consts_of_t (v i)) }, { cases n, exact [f], rcases f, } }
+
+noncomputable def consts_of_p (p : formula (L + consts C)) : list C :=
+(list.map consts_of_t ((formula.mem_finite p).to_finset.to_list)).join.dedup
+
+variables (Γ : list C) (b : ℕ) 
+
+def consts_to_var (Γ : list C) : {c : C | c ∈ Γ} → ℕ := λ ⟨c, _⟩, (list.index_of c Γ : ℕ)
+
+lemma consts_to_var_lt_Γ_of_mem {Γ : list C} {c : C} (mem : c ∈ Γ) : consts_to_var Γ ⟨c, mem⟩ < Γ.length :=
+by { simp[consts_to_var], exact list.index_of_lt_length.mpr mem }
+
+@[simp] def elim_aux_t : term (L + consts C) → term (L + consts C)
+| (#n)                      := if n < b then #n else #(Γ.length + n)
+| (@term.app _ n f v)       :=
+    by { cases f, { exact app ↑f (λ i, elim_aux_t (v i)) },
+         { rcases n, { by_cases h : f ∈ Γ, { exact #(consts_to_var Γ ⟨f, h⟩ + b) },
+         { exact app ↑f finitary.nil } }, { rcases f } } }
+
+@[simp] def elim_aux_f : ℕ → formula (L + consts C) → formula (L + consts C)
+| b (app r v)                          := by { rcases r, { refine app ↑r (λ i, elim_aux_t Γ b (v i)) }, { rcases r } }
+| b ((t₁ : term (L + consts C)) ≃ t₂)  := elim_aux_t Γ b t₁ ≃ elim_aux_t Γ b t₂
+| b ⊤                                  := ⊤
+| b (p ⟶ q)                            := elim_aux_f b p ⟶ elim_aux_f b q
+| b (⁻p)                               := ⁻elim_aux_f b p
+| b (∏ p)                              := ∏ elim_aux_f (b + 1) p
+
+def formula_elim : formula (L + consts C) → formula (L + consts C) := λ p, ∏[Γ.length] elim_aux_f Γ 0 p
+
+private lemma elim_aux_t_pow_aux (t : term (L + consts C)) (i s k : ℕ) (le : s ≤ i) :
+  elim_aux_t Γ (i + k) (t.rew ((λ x, #(x + k))^s)) = (elim_aux_t Γ i t).rew ((λ x, #(x + k)) ^ s) :=
+begin
+  induction t generalizing s k,
+  case var : n
+  { simp, have hn : n < s ∨ s ≤ n, exact lt_or_ge n s, 
+    rcases hn; simp[hn],
+    { simp[hn, show n < i, from (gt_of_ge_of_gt le hn), show n < i + k, from nat.lt_add_right _ _ _ (gt_of_ge_of_gt le hn)] },
+    { simp[show n - s + k + s = n + k, by omega],
+      have hi : n < i ∨ i ≤ n, exact lt_or_ge n i,
+      rcases hi, { simp[hi, hn], omega },
+      { simp[show ¬n < i, from not_lt.mpr hi, show s ≤ Γ.length + n, from le_add_left hn], omega } } },
+  case app : n f v IH
+  { rcases f,
+    { simp, funext i, exact IH i s k le },
+    { rcases n,
+      { by_cases mem : f ∈ Γ; simp[mem, le],
+        { simp[show s ≤ consts_to_var Γ ⟨f, mem⟩ + i, from le_add_left le], omega } }, { rcases f } } }
+end
+
+private lemma elim_aux_t_pow (t : term (L + consts C)) (i k : ℕ) :
+  elim_aux_t Γ (i + k) (t^k) = (elim_aux_t Γ i t)^k :=
+by { have :=  elim_aux_t_pow_aux Γ t i 0 k (by simp), simp at this,
+     simp[term.pow_eq], exact this }
+
+private def elimination_aux : formula_homomorphism (L + consts C) (L + consts C) :=
+{ to_fun := elim_aux_f Γ,
+  map_verum := by simp,
+  map_imply := by simp,
+  map_neg := by simp,
+  map_univ := by simp }
+
+lemma elimination_aux_app (p : formula (L + consts C)) (k) : elimination_aux Γ k p = elim_aux_f Γ k p := rfl
+
+def elimination : (L + consts C) ↝ (L + consts C) :=
+formula_homonorphism.mk_translation (elimination_aux Γ)
+  (λ n r v l s k le, by { rcases r,
+      { simp[elimination_aux_app], funext i, exact elim_aux_t_pow_aux Γ (v i) l s k le },
+      { rcases r } })
+  (λ t u l s k le, by { simp[elimination_aux_app], refine ⟨elim_aux_t_pow_aux Γ t l s k le, elim_aux_t_pow_aux Γ u l s k le⟩ })
+
+lemma elimination_app (p : formula (L + consts C)) (k) : elimination Γ k p = elim_aux_f Γ k p := rfl
+
+def elimination' : term_formula_translation (L + consts C) (L + consts C) :=
+{ p := elimination Γ,
+  t := elim_aux_t Γ,
+  chr := λ n, id,
+  equal := λ t u k, by simp[elimination_app],
+  app := λ k n r v, by { rcases r, { simp, refl }, { rcases r } },
+  map_pow := λ t s, by { exact elim_aux_t_pow Γ t s 1 } }
+
+@[simp] lemma elimination'_t_eq_elim_aux_t (t : term (L + consts C)) (s : ℕ) :
+  (elimination' Γ).t s t = elim_aux_t Γ s t := rfl
+
+instance elimination_conservative : (elimination Γ : (L + consts C) ↝ (L + consts C)).conservative :=
+term_formula_translation.conservative_of (elimination' Γ : term_formula_translation (L + consts C) (L + consts C))
+(λ t u s m, by { simp[elimination'],
+  induction t generalizing s m,
+  case var : n { intros le, simp,
+    have hn : n < m ∨ n = m ∨ m < n, from trichotomous n m, rcases hn with (hn | rfl | hn),
+    { simp[hn, show n < s, from gt_of_ge_of_gt le hn, show n < s + 1, from nat.lt.step (gt_of_ge_of_gt le hn)] },
+    { simp[show n < s + 1, from nat.lt_succ_iff.mpr le] },
+    { simp[hn], rcases n;simp[←nat.add_one] at hn ⊢, { contradiction },
+      { have hn' : n < s ∨ s ≤ n, from lt_or_ge n s, rcases hn' with (hn' | hn'), 
+      { simp[hn', hn] }, { simp[show ¬n < s, from not_lt.mpr hn', show m < Γ.length + (n + 1), from nat.lt_add_left m _ _ hn] } } } },
+  case app : n f v IH { intros le,
+    rcases f,
+    { simp, funext i, exact IH i s m le },
+    { cases n,
+      { by_cases mem : f ∈ Γ; simp[mem, le],
+        { simp[show m < consts_to_var Γ ⟨f, mem⟩ + (s + 1), by omega] } }, { rcases f } } } })
+  (λ s n f T k, by { rcases f,
+    { simp[eq_axiom4, elimination'], 
+      simp[elimination_app, show ∀ i : fin n, ↑i < s + k + 2 * n, { rintros ⟨i, lt⟩, simp, omega },
+      show ∀ i : fin n, n + i < s + k + 2 * n, { rintros ⟨i, lt⟩, simp, omega } ], exact function_ext _ },
+    { cases n,
+      { simp[eq_axiom4, elimination'], simp[elimination_app] }, { rcases f } } })
+  (λ s n r T k, by { rcases r,
+    { simp[eq_axiom5, elimination'],
+    simp[elimination_app, show ∀ i : fin n, ↑i < s + k + 2 * n, { rintros ⟨i, lt⟩, simp, omega },
+      show ∀ i : fin n, n + i < s + k + 2 * n, { rintros ⟨i, lt⟩, simp, omega } ], exact predicate_ext _ },
+    { rcases r } })
+
+def disjoint (p : formula (L + consts C)) : Prop := ∀ c ∈ Γ, c ∉ consts_of_p p 
+
+lemma elim_aux_t_eq_pow_of_disjoint_aux (t : term (L + consts C)) (h : ∀ c ∈ Γ, c ∉ consts_of_t t) (s : ℕ) :
+  elim_aux_t Γ s t = t.rew ((λ x, #(Γ.length + x))^s) :=
+begin
+  induction t generalizing s,
+  case var { simp, by_cases C : t < s; simp[C], { simp[show s ≤ t, from not_lt.mp C], omega } },
+  case app : n f v IH
+  { rcases f,
+    { simp, refine ⟨rfl, _⟩, funext i, exact IH i (λ c mem, by { have := h c mem, simp at this, exact this i }) s },
+    { rcases n,
+      { have : f ∉ Γ, { intros mem, have := h f mem, simp [consts_of_t] at this, contradiction }, simp[this], refl }, { rcases f } } }
+end
+
+lemma elimination_eq_pow_aux_of_disjoint (p : formula (L + consts C)) (h : disjoint Γ p) (s : ℕ) :
+  elimination Γ s p = p.rew ((λ x, #(Γ.length + x))^s) :=
+begin
+  induction p generalizing s,
+  case app : n r v { rcases r,
+    { simp[elimination_app], refine ⟨rfl, _⟩, funext i,
+      exact elim_aux_t_eq_pow_of_disjoint_aux Γ (v i) (λ c mem, by { have := h c mem, simp[consts_of_p] at this, refine this (v i) i (by refl) }) s },
+    { rcases r } },
+  case equal : t u
+  { simp[elimination_app],
+    refine ⟨elim_aux_t_eq_pow_of_disjoint_aux Γ t (λ c mem, by { have := h c mem, simp[consts_of_p] at this, refine this t (by simp) }) s,
+      elim_aux_t_eq_pow_of_disjoint_aux Γ u (λ c mem, by { have := h c mem, simp[consts_of_p] at this, refine this u (by simp) }) s⟩,   },
+  case verum { simp },
+  case imply : p q IH_p IH_q
+  { simp, refine
+    ⟨IH_p (λ c mem mem_p, by { have := h c mem, simp[consts_of_p] at this mem_p, rcases mem_p with ⟨t, ht, mem_t⟩, exact this t (by simp[ht]) mem_t }) s,
+     IH_q (λ c mem mem_p, by { have := h c mem, simp[consts_of_p] at this mem_p, rcases mem_p with ⟨t, ht, mem_t⟩, exact this t (by simp[ht]) mem_t }) s⟩ },
+  case neg : p IH
+  { simp, refine IH (λ c mem mem_p, by { have := h c mem, simp[consts_of_p] at this mem_p, rcases mem_p with ⟨t, ht, mem_t⟩, exact this t (by simp[ht]) mem_t }) s },
+  case fal : p IH { simp[rewriting_sf_itr.pow_add], exact IH (λ c mem mem_p, by { have := h c mem, simp[consts_of_p] at this mem_p, rcases mem_p with ⟨t, ht, mem_t⟩,refine this t ht mem_t }) (s + 1) },
+end
+
+lemma elimination_eq_pow_of_disjoint (p : formula (L + consts C)) (h : disjoint Γ p) :
+  elimination Γ 0 p = p^Γ.length :=
+by { have := elimination_eq_pow_aux_of_disjoint Γ p h 0, simp at this,
+     simp[formula.pow_eq, show ∀ x, x + Γ.length = Γ.length + x, from λ x, add_comm _ _], exact this }
+
+theorem provable_elimination_of_disjoint (T : theory (L + consts C)) (p : formula (L + consts C))
+  (disj : ∀ p ∈ T, disjoint Γ p) : T ⊢ p → T ⊢ ∏[Γ.length] (elimination' Γ).p 0 p := λ b,
+begin
+  have lmm₁ : tr_theory (elimination Γ) 0 T ⊢ (elimination Γ) 0 p, from translation.provability (elimination Γ) T p 0 b,
+  have : tr_theory (elimination Γ) 0 T = T^Γ.length,
+  { ext q, simp[tr_theory, theory_sf_itr_eq], split,
+    { rintros ⟨q, q_mem, rfl⟩, refine ⟨q, q_mem, elimination_eq_pow_of_disjoint Γ q (disj q q_mem)⟩ },
+    { rintros ⟨q, q_mem, rfl⟩, refine ⟨q, q_mem, elimination_eq_pow_of_disjoint Γ q (disj q q_mem)⟩ } },
+  rw this at lmm₁,
+  exact generalize_itr lmm₁
+end
+
+
+end consts_elimination
 
 end language
 

@@ -86,6 +86,14 @@ infix ` ↝ᵀ `:25 := term_homomorphism
 instance {L₁ L₂ : language} : has_coe_to_fun (term_homomorphism L₁ L₂) (λ _, ℕ → term L₁ → term L₂) :=
 ⟨λ τ, τ.to_fun⟩
 
+structure term_formula_translation (L₁ : language) (L₂ : language) :=
+(p : translation L₁ L₂)
+(t : ℕ → term L₁ → term L₂)
+(chr : Π {n} (r : L₁.pr n), L₂.pr n)
+(equal : ∀ (t₁ t₂ : term L₁) (k), p k (t₁ ≃ t₂ : formula L₁) = (t k t₁ ≃ t k t₂))
+(app : ∀ (k) {n} (r : L₁.pr n) (v), p k (app r v) = app (chr r) (λ i, t k (v i)))
+(map_pow : ∀ u s, t (s + 1) (u^1) = (t s u)^1)
+
 def tr_theory {L₁ L₂ : language} (τ : translation L₁ L₂) (i) (T : theory L₁) : theory L₂ := τ i '' T
 
 @[simp] lemma mem_theory_tr_of_mem {L₁ L₂ : language} {τ : translation L₁ L₂} {i}
@@ -93,7 +101,7 @@ def tr_theory {L₁ L₂ : language} (τ : translation L₁ L₂) (i) (T : theor
 ⟨p, mem, rfl⟩
 
 class translation.conservative (τ : translation L₁ L₂) :=
-(ax : ℕ → theory L₁ → theory L₂)
+(ax : ℕ → theory L₁ → theory L₂ := tr_theory τ)
 (ax_ss : ∀ T k, tr_theory τ k T ⊆ ax k T)
 (specialize : ∀ (k) (p : formula L₁) (t : term L₁) (T : theory L₁) (i : ℕ), 
   (ax k T)^i ⊢ τ (k + i) (∏ p ⟶ p.rew ı[0 ⇝ t]))
@@ -253,6 +261,7 @@ def comp : translation L₁ L₂ → translation L₂ L₃ → translation L₁ 
 
 end translation
 
+
 namespace term_homomorphism
 
 @[simp] lemma translation.map_imply' (τ : term_homomorphism L₁ L₂) {n} (f : L₁.fn n) (v : finitary (term L₁) n) (k) :
@@ -273,6 +282,62 @@ namespace term_homomorphism
   map_fn := by simp }
 
 end term_homomorphism
+
+namespace term_formula_translation
+open translation
+variables (τ : term_formula_translation L₁ L₂) (k : ℕ)
+
+@[simp] lemma map_equal (t₁ t₂ : term L₁) : τ.p k (t₁ ≃ t₂ : formula L₁) = (τ.t k t₁ ≃ τ.t k t₂) := τ.equal t₁ t₂ k
+
+@[simp] lemma map_app {n} (r : L₁.pr n) (v) :
+  τ.p k (formula.app r v) = formula.app (τ.chr r) (λ i, τ.t k (v i)) := τ.app k r v
+
+#check map_pow
+
+lemma map_pow' (t : term L₁) (k s : ℕ) :
+  τ.t (k + s) (t^s) = (τ.t k t)^s := 
+by { induction s with s IH; simp[←nat.add_one, ←add_assoc],
+     have : τ.t (k + s + 1) ((t ^ s) ^ 1) = τ.t (k + s) (t ^ s) ^ 1, from map_pow τ (t^s) (k + s), 
+     simp[IH, term.pow_add] at this, exact this }
+
+private lemma tr_rew
+  (H : ∀ (t u : term L₁) (s m : ℕ) (le : m ≤ s), τ.t s (t.rew ı[m ⇝ u]) = (τ.t (s + 1) t).rew ı[m ⇝ τ.t s u])
+  (p : formula L₁) (t : term L₁) (s m : ℕ) (le : m ≤ s) :
+  τ.p s (p.rew ı[m ⇝ t]) = (τ.p (s + 1) p).rew ı[m ⇝ τ.t s t] :=
+begin
+  induction p generalizing t s m,
+  case app : n r v { simp, funext i, exact H (v i) t s m le },
+  case equal : u₁ u₂ { simp, exact ⟨H u₁ t s m le, H u₂ t s m le⟩ },
+  case verum { simp },
+  case imply : p q IH_p IH_q { simp, exact ⟨IH_p t s m le, IH_q t s m le⟩ },
+  case neg : p IH { simp, exact IH t s m le },
+  case fal : p IH { simp[subst_pow, ←map_pow'], exact IH (t^1) (s + 1) (m + 1) (by simp[le]) },
+end
+
+open provable axiomatic_classical_logic axiomatic_classical_logic'
+
+def conservative_of
+  (H : ∀ (t u : term L₁) (s m) (le : m ≤ s), τ.t s (t.rew ı[m ⇝ u]) = (τ.t (s + 1) t).rew ı[m ⇝ τ.t s u])
+  (function_ext : ∀ (s) {n} (f : L₁.fn n) (T : theory L₁) (k : ℕ),
+    (tr_theory τ.p s T)^k ⊢ τ.p (s + k) (eq_axiom4 f))
+  (predicate_ext : ∀ (s) {n} (r : L₁.pr n) (T : theory L₁) (k : ℕ),
+    (tr_theory τ.p s T)^k ⊢ τ.p (s + k) (eq_axiom5 r))
+   : conservative τ.p :=
+{ ax_ss := λ _ _, by refl,
+  specialize := λ s p t T k, by simp[tr_rew τ H],
+  eq_reflexivity := λ s T k, by { simp, refine generalize (by simp) },
+  eq_symmetry := λ s T k, by { simp, refine generalize (generalize _),
+    have : ⤊⤊(tr_theory τ.p s T ^ k) ⊢ _, from eq_symmetry ⊚ (τ.t (s + k + 1 + 1) #1) ⊚ τ.t (s + k + 1 + 1) #0,
+    simp at this, simp at this, exact this },
+  eq_transitive := λ s T k,
+   by { simp, refine generalize (generalize (generalize _)),
+        have : ⤊⤊⤊(tr_theory τ.p s T ^ k) ⊢ _, from eq_transitivity ⊚ τ.t (s + k + 1 + 1 + 1) #2 ⊚ τ.t (s + k + 1 + 1 + 1) #1 ⊚ τ.t (s + k + 1 + 1 + 1) #0,
+        simp at this, simp at this, exact this },
+  function_ext := λ s n f T k, by { exact function_ext s f T k },
+  predicate_ext := λ s n f T k, by { exact predicate_ext s f T k } }
+
+
+end term_formula_translation
 
 namespace language_translation
 
