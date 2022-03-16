@@ -63,11 +63,21 @@ by { simp[list.eq_nil_iff_forall_not_mem], induction t,
 @[simp] lemma consts_of_p_coe_eq_nil (p : formula L) : consts_of_p (↑p : formula (L + consts C)) = [] :=
 by { simp[list.eq_nil_iff_forall_not_mem, consts_of_p], intros c t mem, rcases extension.formula.exists_of_mem_coe mem with ⟨t, rfl⟩, simp }
 
+lemma mem_of_consts_of_t_rew (t : term (L + consts C)) (s) {c : C} (mem : c ∈ consts_of_t (t.rew s)) :
+  c ∈ consts_of_t t ∨ ∃ n, c ∈ consts_of_t (s n) :=
+begin
+  induction t generalizing s c,
+  case var : n { simp at mem, refine or.inr ⟨n, mem⟩ },
+  case app : n f v IH
+  { cases f,
+    { simp at mem ⊢, rcases mem with ⟨i, mem⟩, rcases IH i s mem with (mem | mem),
+      refine or.inl ⟨i, mem⟩, exact or.inr mem },
+    { cases n, { simp at mem ⊢, simp[mem] }, { rcases f } } }
+end
 
 namespace add_consts
 open language_translation language_translation_coe extension
   proof provable axiomatic_classical_logic' axiomatic_classical_logic
-
 
 variables (Γ : list C) (b : ℕ) 
 

@@ -420,6 +420,60 @@ lemma fun_formula_rew : ∀ (p : formula L₁) (s : ℕ → term L₁),
 | (∏ p)             s := by
     { simp[fun_formula_rew p, rewriting_sf_itr.pow_eq'], congr, funext x, cases x; simp }
 
+lemma fun_term_inversion_of_le {t₁ : term L₁} {u₂ : term L₂} (le : u₂ ≤ τ.fun_term t₁) :
+  ∃ (u₁ : term L₁) (le : u₁ ≤ t₁), u₂ = τ.fun_term u₁ :=
+begin
+  induction t₁ generalizing u₂,
+  case var : n { simp at le, refine ⟨#n, by simp[le]⟩ },
+  case app : n f v IH
+  { rcases le_iff_lt_or_eq.mp le with (lt | rfl),
+    { simp at lt, rcases lt with ⟨i, le⟩, rcases IH i le with ⟨t, t_le', rfl⟩, refine ⟨t, le_trans t_le' (by simp), rfl⟩ },
+    { refine ⟨app f v, by refl, rfl⟩ } }
+end
+
+lemma fun_formula_inversion_of_le {p₁ : formula L₁} {q₂ : formula L₂} (le : q₂ ≤ τ.fun_formula p₁) :
+  ∃ (q₁ : formula L₁) (le : q₁ ≤ p₁), q₂ = τ.fun_formula q₁ :=
+begin
+  induction p₁ generalizing q₂,
+  case app : n r v { simp at le, refine ⟨app r v, by simp[le]⟩ },
+  case equal : t u { simp at le, refine ⟨t ≃₁ u, by simp[le]⟩ },
+  case verum { simp at le, refine ⟨⊤, by simp[le]⟩ },
+  case imply : p q IH_p IH_q
+  { rcases le_iff_lt_or_eq.mp le with (lt | rfl),
+    { simp at lt, rcases lt with (le | le),
+      { rcases IH_p le with ⟨q₁, le', rfl⟩, refine ⟨q₁, le_trans le' (le_of_lt (by simp)), rfl⟩ },
+      { rcases IH_q le with ⟨q₁, le', rfl⟩, refine ⟨q₁, le_trans le' (le_of_lt (by simp)), rfl⟩ } },
+    { refine ⟨p ⟶ q, by simp⟩ } },
+  case neg : p IH
+  { rcases le_iff_lt_or_eq.mp le with (lt | rfl),
+    { simp at lt, rcases IH lt with ⟨q₁, le', rfl⟩, refine ⟨q₁, le_trans le' (le_of_lt (by simp)), rfl⟩ },
+    { refine ⟨⁻p, by simp⟩ } },
+  case fal : p IH
+  { rcases le_iff_lt_or_eq.mp le with (lt | rfl),
+    { simp at lt, rcases IH lt with ⟨q₁, le', rfl⟩, refine ⟨q₁, le_trans le' (le_of_lt (by simp)), rfl⟩ },
+    { refine ⟨∏ p, by simp⟩ } },
+end
+
+lemma fun_formula_inversion_of_mem {p₁ : formula L₁} {t₂ : term L₂} (mem : t₂ ∈ τ.fun_formula p₁) :
+  ∃ (t₁ : term L₁) (mem : t₁ ∈ p₁), t₂ = τ.fun_term t₁ :=
+begin
+  induction p₁ generalizing t₂,
+  case app : n r v
+  { simp at mem, rcases mem with ⟨i, le⟩,
+    rcases fun_term_inversion_of_le τ le with ⟨t₁, le', rfl⟩, refine ⟨t₁, by simp; exact ⟨i, le'⟩, rfl⟩ },
+  case equal : t u
+  { simp at mem, rcases mem with (le | le),
+    { rcases fun_term_inversion_of_le τ le with ⟨t₁, le', rfl⟩, refine ⟨t₁, by simp[le'], rfl⟩ },
+    { rcases fun_term_inversion_of_le τ le with ⟨t₁, le', rfl⟩, refine ⟨t₁, by simp[le'], rfl⟩ } },
+  case verum { simp at mem, contradiction },
+  case imply : p q IH_p IH_q
+  { simp at mem, rcases mem with (mem | mem),
+    { rcases IH_p mem with ⟨t', mem', rfl⟩, refine ⟨t', by simp[mem'], rfl⟩ },
+    { rcases IH_q mem with ⟨t', mem', rfl⟩, refine ⟨t', by simp[mem'], rfl⟩ } },
+  case neg : p IH { simp at mem ⊢, rcases IH mem with ⟨t', mem', rfl⟩, refine ⟨t', mem', rfl⟩ },
+  case fal : p IH { simp at mem ⊢, rcases IH mem with ⟨t', mem', rfl⟩, refine ⟨t', mem', rfl⟩ }
+end
+
 end language_translation
 
 namespace language_translation_coe
@@ -655,6 +709,15 @@ begin
   { simp at h, rcases h with ⟨rfl, rfl⟩, simp }
 end
 
+lemma fun_term_inversion_of_le {t₁ : term L₁} {u₂ : term L₂} (le : u₂ ≤ ↑t₁) :
+  ∃ (u₁ : term L₁) (le : u₁ ≤ t₁), u₂ = ↑u₁ := fun_term_inversion_of_le _ le
+
+lemma fun_formula_inversion_of_le {p₁ : formula L₁} {q₂ : formula L₂} (le : q₂ ≤ ↑p₁) :
+  ∃ (q₁ : formula L₁) (le : q₁ ≤ p₁), q₂ = ↑q₁ := fun_formula_inversion_of_le _ le
+
+lemma fun_formula_inversion_of_mem {p₁ : formula L₁} {t₂ : term L₂} (mem : t₂ ∈ (↑p₁ : formula L₂)) :
+  ∃ (t₁ : term L₁) (mem : t₁ ∈ p₁), t₂ = ↑t₁ := fun_formula_inversion_of_mem _ mem
+
 end language_translation_coe
 
 namespace language_translation
@@ -786,15 +849,18 @@ def direct_sum {ι : Type*} (l : ι → language) : language := ⟨λ n, Σ i, (
 
 def consts (α : Type u) : language.{u} := ⟨λ n, match n with | 0 := α | (n + 1) := pempty end, λ n, pempty⟩
 
-def consts.c {α : Type u} (a : α) : (consts α).fn 0 := a
+namespace consts
+variables {α : Type u}
 
-instance (α : Type*) : has_coe α (term (consts α)) := ⟨λ a, term.app (consts.c a) finitary.nil⟩
+def c (a : α) : (consts α).fn 0 := a
 
-lemma consts.coe_def {α : Type*} (a : α) : (a : term (consts α)) = term.app (consts.c a) finitary.nil := rfl
+instance : has_coe α (term (consts α)) := ⟨λ a, term.app (consts.c a) finitary.nil⟩
 
-@[reducible] def add_consts (L : language) (α : Type) : language := L + consts α
+lemma coe_def (a : α) : (a : term (consts α)) = term.app (consts.c a) finitary.nil := rfl
 
-notation L`+[` α `]` := add_consts L α
+@[simp] lemma arity_eq_0 (a : α) : (a : term (consts α)).arity = 0 := by simp[coe_def]
+
+end consts
 
 @[simp] lemma sum_fn_def {ι : Type*} (l : ι → language) (n : ℕ) : (direct_sum l).fn n = Σ i, (l i).fn n := rfl
 
