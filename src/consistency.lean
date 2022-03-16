@@ -58,7 +58,7 @@ end
 
 lemma of_finite_induction
   (consis : consistent T)
-  (H : ∀ (s ⊆ U) (p ∈ U), s.finite → consistent (T ∪ s) → consistent ((T ∪ s) +{ p })) :
+  (H : ∀ (s ⊆ U) (p ∈ U), p ∉ s → s.finite → consistent (T ∪ s) → consistent ((T ∪ s) +{ p })) :
   consistent (T ∪ U) :=
 begin
   refine (finite_character_union consis).mpr _,
@@ -69,7 +69,7 @@ begin
   intros p s nmem fin consis ss, 
   have : T ∪ insert p s = (T ∪ s) +{ p }, { ext q, simp },
   simp[this],
-  exact H s (set.subset.trans (show s ⊆ insert p s, by simp) ss) p (ss (show p ∈ insert p s, by simp)) fin
+  exact H s (set.subset.trans (show s ⊆ insert p s, by simp) ss) p (ss (show p ∈ insert p s, by simp)) nmem fin
     (consis (set.subset.trans (show s ⊆ insert p s, by simp) ss))
 end
 
