@@ -91,8 +91,8 @@ lemma theory.consistent_iff_bot (T : theory L) : T.consistent ↔ ¬T ⊢ ⊥ :=
   have : T ⊢ ⊥, from explosion hp hnp,
   exact h this }⟩
 
-lemma not_consistent_iff_bot {T : theory L} : ¬T.consistent ↔ T ⊢ ⊥ :=
-by simp[consistent_iff_bot T]
+lemma theory.not_consistent_iff_bot {T : theory L} : ¬T.consistent ↔ T ⊢ ⊥ :=
+by simp[theory.consistent_iff_bot T]
 
 class consistent (T : theory L) := (consistent : theory.consistent T)
 
@@ -362,7 +362,7 @@ instance : axiomatic_classical_logic (formula L) :=
   weakening := @weakening' L }
 
 @[elab_as_eliminator]
-theorem rec_on' {T : theory L} {C : ℕ → formula L → Prop} {i : ℕ} {p : formula L} (b : T^i ⊢ p)
+theorem rec'_on {T : theory L} {C : ℕ → formula L → Prop} {i : ℕ} {p : formula L} (b : T^i ⊢ p)
   (GE : ∀ {i} {p : formula L} (b : T^(i + 1) ⊢ p), C (i + 1) p → C i (∏ p))
   (MP : ∀ {i} {p q : formula L} (b₁ : T^i ⊢ p ⟶ q) (b₂ : T^i ⊢ p), C i (p ⟶ q) → C i p → C i q)
   (by_axiom : ∀ {i} {p : formula L} (mem : p ∈ T^i), C i p)
@@ -1231,5 +1231,23 @@ end
 end
 
 end proof
+
+namespace theory
+open provable
+variables {T} {U : theory L}
+
+lemma le_iff_mem_provable :
+  T ≤ U ↔ ∀ p ∈ T, U ⊢ p :=
+⟨λ h p mem, h (by_axiom mem), by { 
+  suffices : ∀ (T : theory L) (k : ℕ) (p : formula L) (b : T^k ⊢ p) (h : ∀ p ∈ T, U ⊢ p), U^k ⊢ p,
+  { intros h p b, exact this T 0 p b h },
+  intros T k p b,
+  refine rec'_on b _ _ _ _ _ _ _ _ _ _ _ _ _ _ _; try { simp },
+  { intros i p b IH h, exact generalize (IH h) },
+  { intros i p q b₁ b₂ IH_b₁ IH_b₂ h, exact IH_b₁ h ⨀ IH_b₂ h },
+  { intros i p mem h, simp[theory_sf_itr_eq] at mem, rcases mem with ⟨p, mem, rfl⟩,
+    exact sf_itr_sf_itr.mpr (h p mem) } }⟩
+
+end theory
 
 end fopl

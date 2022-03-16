@@ -491,12 +491,18 @@ instance : wf_lt (term L) :=
 @[simp] lemma not_lt_var (t : term L) (n : ℕ) : ¬t < #n := λ h,
 by { rcases wf_lt.lt_iff.mp h with ⟨u, prelt, le⟩, rcases prelt }
 
+@[simp] lemma le_var {t : term L} {n : ℕ} : t ≤ #n ↔ t = #n := by simp[le_iff_lt_or_eq]
+
 @[simp] lemma lt_app {n} (f : L.fn n) (v : fin n → term L) (i) : v i < app f v :=
 by { have : wf_lt.prelt (v i) (app f v), from subterm.app f v i,
      exact wf_lt.lt_of_prelt this }
 
-lemma lt_app_iff {t : term L} {n} {f : L.fn n} {v} : t < app f v ↔ ∃ i, t ≤ v i :=
-by { simp[wf_lt.lt_iff], sorry }
+@[simp] lemma lt_app_iff {t : term L} {n} {f : L.fn n} {v} : t < app f v ↔ ∃ i, t ≤ v i :=
+⟨by { simp[wf_lt.lt_iff], rintros u prelt le, rcases prelt, refine ⟨_, le⟩ },
+ by { rintros ⟨i, le⟩, refine lt_of_le_of_lt le (by simp) }⟩
+
+@[simp] lemma le_app {n} (f : L.fn n) (v : fin n → term L) (i) : v i ≤ app f v :=
+le_of_lt (lt_app f v i)
 
 lemma symbols_ss_of_le {t u : term L} (h : t ≤ u) : t.symbols ⊆ u.symbols :=
 by { induction h,
@@ -525,6 +531,19 @@ wf_lt.le_finite (show ∀ (a : term L), {b : term L | wf_lt.prelt b a}.finite, f
 @[simp] lemma ite_pow (p : Prop) [decidable p] (t u : term L) (k : ℕ) :
   (ite p t u)^k = ite p (t^k) (u^k) :=
 by by_cases C : p; simp[C]
+
+lemma rew_inversion_or_le_of_le_rew {t u : term L} {s} (h : t ≤ u.rew s) : (∃ t' ≤ u, t = t'.rew s) ∨ (∃ n, t ≤ s n) :=
+begin
+  induction u,
+  case var : n { simp at h, refine or.inr ⟨n, h⟩ },
+  case app : n f v IH
+  { rcases (eq_or_lt_of_le h) with (rfl | lt),
+    { refine or.inl ⟨app f v, by refl, by refl⟩ },
+    { simp at lt, rcases lt with ⟨i, le⟩,
+      rcases IH i le with (⟨t', le', rfl⟩ | ⟨n, le⟩),
+      { refine or.inl ⟨t', (le_trans le' (by simp)), rfl⟩ },
+      { refine or.inr ⟨n, le⟩ } } }
+end
 
 end term
 
@@ -974,11 +993,17 @@ instance : wf_lt (formula L) :=
 @[simp] lemma lt_app {p : formula L} {n} {r : L.pr n} {v} : ¬p < app r v :=
 by { simp [wf_lt.lt_iff], intros p h, rcases h }
 
+@[simp] lemma le_app {p : formula L} {n} {r : L.pr n} {v} : p ≤ app r v ↔ p = app r v := by simp[le_iff_lt_or_eq]
+
 @[simp] lemma lt_equal {p : formula L} {t u : term L} : ¬p < t ≃₁ u :=
 by { simp [wf_lt.lt_iff], intros p h, rcases h }
 
+@[simp] lemma le_equal {p : formula L} {t u : term L} : p ≤ t ≃₁ u ↔ p = t ≃₁ u := by simp[le_iff_lt_or_eq]
+
 @[simp] lemma lt_verum {p : formula L} : ¬p < ⊤ :=
 by { simp [wf_lt.lt_iff], intros p h, rcases h }
+
+@[simp] lemma le_verum {p : formula L} : p ≤ ⊤ ↔ p = ⊤ := by simp[le_iff_lt_or_eq]
 
 @[simp] lemma lt_imply {p q r : formula L} :
   p < q ⟶ r ↔ p ≤ q ∨ p ≤ r :=
@@ -1005,6 +1030,29 @@ begin
   { rintros ⟨p', h, le⟩, rcases h, exact le },
   rintros le,
   { refine ⟨q, subformula.fal, le⟩ }
+end
+
+lemma rew_inversion_of_le_rew {p q : formula L} {s} (le : p ≤ q.rew s) : ∃ (p' ≤ q) (k : ℕ), p = p'.rew (s^k) :=
+begin
+  induction q generalizing p s; try { simp* },
+  case app : n r v { simp at le, rcases le with rfl, refine ⟨0, by simp⟩ },
+  case equal : t u { simp at le, rcases le with rfl, refine ⟨0, by simp⟩ },
+  case verum { simp at le, exact le },
+  case imply : q₁ q₂ IH₁ IH₂
+  { rcases le_iff_lt_or_eq.mp le with (lt | rfl),
+    { simp at lt, rcases lt with (le | le),
+      { rcases IH₁ le with ⟨p', le_p', k, rfl⟩, refine ⟨p', le_trans le_p' (le_of_lt (by simp)), k, by refl⟩ },
+      { rcases IH₂ le with ⟨p', le_p', k, rfl⟩, refine ⟨p', le_trans le_p' (le_of_lt (by simp)), k, by refl⟩ } },
+    { refine ⟨q₁ ⟶ q₂, by simp, 0, by simp⟩ } },
+  case neg : q IH
+  { rcases le_iff_lt_or_eq.mp le with (lt | rfl),
+    { simp at lt, rcases IH lt with ⟨p', le_p', k, rfl⟩, refine ⟨p', le_trans le_p' (le_of_lt (by simp)), k, by refl⟩ },
+    { refine ⟨⁻q, by refl, 0, by refl⟩ } },
+  case fal : q IH
+  { rcases le_iff_lt_or_eq.mp le with (lt | rfl),
+    { simp at lt, rcases IH lt with ⟨p', le_p', k, rfl⟩, 
+      refine ⟨p', le_trans le_p' (le_of_lt (by simp)), k + 1, by simp[rewriting_sf_itr.pow_add, add_comm 1]⟩ },
+    { refine ⟨∏ q, by refl, 0, by simp⟩ } }
 end
 
 lemma fn_symbols_ss_of_le {p q : formula L} (h : p ≤ q) : p.fn_symbols ⊆ q.fn_symbols :=
@@ -1083,6 +1131,44 @@ by { rintros ⟨t', ht', p', hp', sb⟩,
       rcases hp' with (rfl | hp'),
       { rcases sb }, { refine ⟨t', ht', p', hp', sb⟩ }  },
  by { rintros h, refine mem_of_formula_le_mem h (le_of_lt (by simp)) }⟩
+
+@[simp] lemma mem_ex {t : term L} {p : formula L} :
+  t ∈ ∐ p ↔ t ∈ p := by simp[ex_eq]
+
+lemma rew_inversion_or_le_of_mem_rew {t : term L} {p : formula L} {s} (mem : t ∈ p.rew s) :
+ (∃ (t' : term L) (mem : t' ∈ p) (k : ℕ), t = t'.rew (s^k)) ∨ (∃ (k n : ℕ), t ≤ (s^k) n) :=
+begin
+  induction p generalizing t s,
+  case app : n r v
+  { simp at mem, rcases mem with ⟨i, le⟩,
+    rcases term.rew_inversion_or_le_of_le_rew le with (⟨t', le_t', rfl⟩ | h),
+    { refine or.inl ⟨t', by { simp; exact ⟨i, le_t'⟩ }, 0, rfl⟩ },
+    { exact or.inr ⟨0, h⟩ } },
+  case equal : u₁ u₂
+  { simp at mem, rcases mem with (le | le),
+    { rcases term.rew_inversion_or_le_of_le_rew le with (⟨t', le_t', rfl⟩ | h),
+      { refine or.inl ⟨t', by simp[le_t'], 0, rfl⟩ },
+      { exact or.inr ⟨0, h⟩ } },
+    { rcases term.rew_inversion_or_le_of_le_rew le with (⟨t', le_t', rfl⟩ | h),
+      { refine or.inl ⟨t', by simp[le_t'], 0, rfl⟩ },
+      { exact or.inr ⟨0, h⟩ } } },
+  case verum { simp at mem, contradiction },
+  case imply : p q IH_p IH_q
+  { simp at mem, rcases mem with (mem | mem),
+    { rcases IH_p mem with (⟨t', mem', k, rfl⟩ | h),
+      { refine or.inl ⟨t', by simp[mem'], k, rfl⟩ }, { exact or.inr h } },
+    { rcases IH_q mem with (⟨t', mem', k, rfl⟩ | h),
+      { refine or.inl ⟨t', by simp[mem'], k, rfl⟩ }, { exact or.inr h } } },
+  case neg : p IH
+  { simp at mem,
+    { rcases IH mem with (⟨t', mem', k, rfl⟩ | h),
+      { refine or.inl ⟨t', by simp[mem'], k, rfl⟩ }, { exact or.inr h } }, },
+  case fal : p IH
+  { simp at mem, rcases IH mem with (⟨t', mem', k, rfl⟩ | h),
+    { refine or.inl ⟨t', by simp[mem'], k + 1, by simp[rewriting_sf_itr.pow_add, add_comm 1]⟩ },
+    { rcases h with ⟨k, h⟩, simp[rewriting_sf_itr.pow_add, add_comm 1] at h,
+      refine or.inr ⟨k+1, h⟩ } }
+end
 
 lemma fn_symbols_ss_of_mem {t : term L} {p : formula L} (h : t ∈ p) : t.symbols ⊆ p.fn_symbols :=
 begin
