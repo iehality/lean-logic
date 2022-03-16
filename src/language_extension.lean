@@ -75,6 +75,21 @@ begin
     { cases n, { simp at mem ⊢, simp[mem] }, { rcases f } } }
 end
 
+lemma mem_of_consts_of_t_subst (t u : term (L + consts C)) (k) {c : C} (mem : c ∈ consts_of_t (t.rew ı[k ⇝ u])) :
+  c ∈ consts_of_t t ∨ c ∈ consts_of_t u :=
+begin
+  rcases mem_of_consts_of_t_rew _ _ mem with (mem | ⟨n, mem⟩),
+  { exact or.inl mem },
+  { have : n < k ∨ n = k ∨ k < n, from trichotomous n k, rcases this with (lt | rfl | lt),
+    { simp[lt] at mem, contradiction }, { simp at mem, exact or.inr mem }, { simp[lt] at mem, contradiction } }
+end
+
+@[simp] lemma eq_of_consts_of_t_coe {c d : C} :
+  c ∈ consts_of_t (d : term (L + consts C)) ↔ c = d :=
+begin
+  simp[consts.coe_def, show (↑(consts.c d) : (L + consts C).fn 0) = sum.inr (consts.c d), from rfl], refl
+end
+
 namespace add_consts
 open language_translation language_translation_coe extension
   proof provable axiomatic_classical_logic' axiomatic_classical_logic

@@ -15,6 +15,8 @@ private lemma list_set_finite {α} (l : list α) : {a : α | a ∈ l}.finite :=
 by { induction l with a l IH, { simp },
   { simp[show {b : α | b = a ∨ b ∈ l} = insert a {b : α | b ∈ l}, by refl], exact set.finite.insert a IH } }
 
+namespace consistent
+
 lemma finite_character :
   consistent T ↔ ∀ (s ⊆ T) (f : s.finite), consistent s :=
 ⟨begin
@@ -73,7 +75,7 @@ begin
     (consis (set.subset.trans (show s ⊆ insert p s, by simp) ss))
 end
 
-
+end consistent
 
 end theory
 

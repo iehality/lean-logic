@@ -1,227 +1,113 @@
-import deduction pnf data.equiv.encodable.basic arithmetic
+import language_extension consistency
 open encodable
 
 universes u
 
 namespace fopl
-variables {L : language.{u}} 
+open term formula
+variables (L : language.{u}) (T : theory L)
 
-local notation `𝚷` := bool.tt
+namespace henkin
+open language language.extension language.consts_pelimination theory
 
-local notation `𝚺` := bool.ff
+@[reducible] def extend : language.{u} := L + consts (formula L)
 
-namespace language
+@[reducible] def Lang : ℕ → language
+| 0     := L
+| (n+1) := extend (Lang n)
 
-inductive skolemize.char (L : language.{u}) : ℕ → Type u
-| sk : ∀ (p : pnf L) (n : ℕ), skolemize.char n
+def Consts : Type u := Σ n, formula (Lang L n)
 
-def skolemize (L : language) : language := L + ⟨skolemize.char L, L.pr⟩
-
-namespace skolemize
-
-instance : translation L L.skolemize := language.has_add.add.fopl.translation
-
-@[simp] lemma iff_open (p : formula L) : (tr[p] : formula L.skolemize).is_open ↔ p.is_open :=
-language.add_open p
-
-@[simp] lemma translation_eq : ∀ (Q : list bool) (p : formula L) (h),
-  tr[(⟨Q, p, h⟩ : pnf L).to_formula] = (⟨Q, tr[p], by simp[h]⟩ : pnf L.skolemize).to_formula
-| []       p h := by simp
-| (𝚷 :: Q) p h := by simp[translation_eq Q p h]
-| (𝚺 :: Q) p h := by simp[translation_eq Q p h]
-
-def Sk (p : pnf L) (n : ℕ) : finitary (term L.skolemize) n → term L.skolemize :=
-term.app (sum.inr $ skolemize.char.sk p n)
-
-@[simp] lemma skolemize.skolem_fn_rew (p : pnf L) (n) (v : finitary (term L.skolemize) n) (s : ℕ → term L.skolemize) :
-  term.rew s (Sk p n v) = Sk p n (λ i, term.rew s (v i)) :=
-by simp[Sk]
-
-@[simp] def skseq (p : pnf L) : fin (p.rank + 1) → ℕ → term L.skolemize
-| ⟨0,     _⟩ := ı
-| ⟨n + 1, h⟩ :=
-    match p.quantifier.nth_le n (by simp at h; exact h) with
-    | 𝚷 := (skseq ⟨n, by { simp at h ⊢; exact nat.lt.step h }⟩)^1
-    | 𝚺 := Sk p n (λ i, skseq ⟨n, by { simp at h ⊢; exact nat.lt.step h }⟩ i) ⌢ 
-    skseq ⟨n, by { simp at h ⊢; exact nat.lt.step h }⟩
-    end
-
-/-
-@[simp] def skseq (p : pnf L) : list bool → ℕ → ℕ → term L.skolemize
-| Q        0       := ı
-| []       (n + 1) := ı
-| (𝚷 :: Q) (n + 1) := (skseq Q n)^1
-| (𝚺 :: Q) (n + 1) := Sk p (p.rank - Q.length - 1) (λ i, skseq Q n i) ⌢ skseq Q n
--/
-
-@[simp] def skolemize_core : Π (p : pnf L) (n : fin (p.rank + 1)), pnf L.skolemize
-| ⟨Q, p, h⟩ n := ⟨Q.drop n, tr[p], by simp[h]⟩
-
-def skolemize (p : pnf L) (n : fin (p.rank + 1)) : pnf L.skolemize :=
-(skolemize_core p n).rew (skseq p n)
-
-@[simp] lemma skseq_zero (p : pnf L) : skseq p 0 = ı :=
-by simp [show (0 : fin (p.rank + 1)) = ⟨0, by simp⟩, from rfl, -fin.mk_zero]
-
-@[simp] lemma skolemize_zero : ∀ (p : pnf L), (skolemize p 0).to_formula = tr[p.to_formula]
-| ⟨Q, p, h⟩ := by simp[skolemize, pnf.to_formula, skseq]
-
-lemma skseq_succ_of_pi : ∀ (p : pnf L) (s : fin p.rank)
-  (eq_pi : p.quantifier.nth_le s s.property = 𝚷),
-  skseq p s.succ = (skseq p (fin.cast_succ s))^1
-| ⟨𝚷 :: Q, p, h⟩ ⟨0,     lt⟩ eq_pi := by simp
-| ⟨𝚺 :: Q, p, h⟩ ⟨0,     lt⟩ eq_pi := by { simp at eq_pi, contradiction }
-| ⟨𝚷 :: Q, p, h⟩ ⟨s + 1, lt⟩ eq_pi := by { simp at eq_pi ⊢, simp[eq_pi] }
-| ⟨𝚺 :: Q, p, h⟩ ⟨s + 1, lt⟩ eq_pi := by { simp at eq_pi ⊢, simp[eq_pi] }
-
-lemma skseq_succ_of_sigma : ∀ (p : pnf L) (s : fin p.rank)
-  (eq_sigma : p.quantifier.nth_le s s.property = 𝚺),
-  skseq p s.succ = (Sk p s (λ i, skseq p (fin.cast_succ s) i)) ⌢ skseq p (fin.cast_succ s)
-| ⟨𝚷 :: Q, p, h⟩ ⟨0,     lt⟩ eq_sigma := by { simp at eq_sigma, contradiction }
-| ⟨𝚺 :: Q, p, h⟩ ⟨0,     lt⟩ eq_sigma := by { simp, refl }
-| ⟨𝚷 :: Q, p, h⟩ ⟨s + 1, lt⟩ eq_sigma := by { simp at eq_sigma ⊢, simp[eq_sigma], refl }
-| ⟨𝚺 :: Q, p, h⟩ ⟨s + 1, lt⟩ eq_sigma := by { simp at eq_sigma ⊢, simp[eq_sigma], refl }
-
-lemma skolemize_succ_of_pi : ∀ (p : pnf L)
-  (s : fin p.rank) (eq_pi : p.quantifier.nth_le s s.property = 𝚷),
-  ∏ skolemize p s.succ = skolemize p s
-| ⟨Q, p, h⟩ s eq_pi :=
-begin
-  have : list.drop s Q = 𝚷 :: list.drop (s + 1) Q,
-  { rw [←eq_pi], from list.drop_eq_nth_le_cons s.property },
-  simp [skolemize, this, pnf.rew_fal, skseq_succ_of_pi ⟨Q, p, h⟩ s eq_pi]
-end
-
-lemma skolemize_succ_of_sigma : ∀ (p : pnf L)
-  (s : fin p.rank) (eq_sigma : p.quantifier.nth_le s s.property = 𝚺),
-  ∃ p' : pnf L.skolemize, skolemize p s = ∐ p' ∧
-    skolemize p s.succ = p'.rew ı[0 ⇝ Sk p s (λ i, skseq p (fin.cast_succ s) i)]
-| ⟨Q, p, h⟩ s eq_sigma :=
-begin
-  have : list.drop s Q = 𝚺 :: list.drop (s + 1) Q,
-  { rw [←eq_sigma], from list.drop_eq_nth_le_cons s.property },
-  simp [skolemize, this, pnf.rew_ex, pnf.nested_rew, skseq_succ_of_sigma ⟨Q, p, h⟩ s eq_sigma]
-end
-
-
-instance [∀ n, has_to_string (L.fn n)] : ∀ n, has_to_string (L.skolemize.fn n) := λ n,
-⟨λ c, by { cases c, { exact has_to_string.to_string c }, { exact "Sk[" ++ has_to_string.to_string n ++ "]" } }⟩
-
-instance [∀ n, has_to_string (L.pr n)] : ∀ n, has_to_string (L.skolemize.pr n) := λ n,
-⟨λ c, by { cases c, { exact has_to_string.to_string c }, { exact "" } }⟩
-
-def skolem_axiom (p : pnf L) (s : fin (p.rank + 1)) : formula L.skolemize :=
-(skolemize_core p s : formula L.skolemize) ⟶ skolemize_core p s.succ
-
-end skolemize
-
-end language
-
-open language.skolemize
-
-def formula.skolemize (p : formula L) : formula L.skolemize := skolemize p.to_pnf 0
-
-def Skolemize (T : theory L) : theory L.skolemize:= formula.skolemize '' T
-
-open arithmetic
-
-#eval to_string (skolemize (∀₁ x, ∃₁ y, ∀₁ z, ∃₁ v, (x ≃ 0) ⟶ (y ≃ 0) ⟶ (z ≃ 0) ⟶ (v ≃ 0)
-  : formula LA).to_pnf (fin.last _)).to_formula
-
-def term.skolem_corresp : term L → term L.skolemize
-| (#n) := #n
-| (term.app f v) := (term.app (sum.inl f) (λ i, (v i).skolem_corresp))
-
-
-
-def formula.corresp : formula L → formula L.skolemize
-| (formula.const c) := formula.const c
-| (formula.app p v) := formula.app p v.corresp
-| (t ≃ u)        := t.corresp ≃ u.corresp
-| (p ⟶ q)       := p.corresp ⟶ q.corresp
-| (⁻p)           := ⁻p.corresp
-| (Ȧp)           := Ȧp.corresp
-
-instance : has_coe (formula L) (formula L.skolemize) := ⟨formula.corresp⟩
-
-def normvecvar : ∀ {n}, vecterm L n
-| 0     := #0
-| (n+1) := vecterm.cons #(n+1) normvecvar
-
-namespace skolemization
 variables {L}
 
-def skterm (p : formula L) : term L.skolemize :=
+def henkin_axiom (p : formula L) : formula (extend L) := (∐ ↑p) ⟶ rew ı[0 ⇝ p] ↑p
+
+@[reducible] def theory_extend : theory (extend L) := ↑T ∪ set.range henkin_axiom
+
+section
+open axiomatic_classical_logic axiomatic_classical_logic' provable
+
+variables {S : theory (extend L)} (Γ : list (formula L))
+
+lemma consistent_of_disjoint (S_consis : S.consistent) (disj : ∀ p ∈ S, disjoint Γ p) (p : formula (extend L)) :
+  ¬S ⊢ (∏[Γ.length] ⁻((pelimination' Γ).p 0 p)) → theory.consistent (S +{ p }) := λ not_b,
 begin
-  cases C : p.arity,
-  have := language_fn.sk p, simp[C] at this, exact vecterm.const this,
-  have F : L.skolemize.fn (n+1), { have := language_fn.sk p, simp[C] at this, exact this },
-  refine vecterm.app F normvecvar
+  simp [theory.consistent_iff_bot],
+  intros b,
+  have : S ⊢ ⁻p, from of_equiv_p (deduction.mp b) (equiv_symm $ neg_iff _),
+  have : S ⊢ ∏[Γ.length] ⁻(pelimination' Γ).p 0 p,
+  { have := provable_pelimination_of_disjoint Γ S (⁻p) disj this, simp at this, exact this },
+  contradiction
 end
 
-
-inductive theory.skolemize (T : theory L) : theory (L.skolemize)
-| sk  : ∀ (p : formula L), theory.skolemize (p.corresp ⟶ p.corresp.ᵉ(skterm p))
-| old : ∀ {p}, T p → theory.skolemize p
-
-end skolemization
-
-end fopl
-
-namespace fopl
-variables {L : language.{u}} [encodable (formula L)] (T : theory L)
-
-
-def theory.maximum_aux (T : theory L) : ℕ → theory L
-| 0     := T
-| (s+1) := let p := idecode (formula L) s in
-    if (theory.maximum_aux s +{p}).consistent then theory.maximum_aux s +{p} else theory.maximum_aux s
-
-def theory.maximum  : theory L := {p | ∃ s, T.maximum_aux s p}
-
-variables {T}
-
-lemma maximum_aux_inclusion (s) : T.maximum_aux s ⊆ T.maximum := λ p h, ⟨s, h⟩
-
-lemma maximum_consistent_aux (h : T.consistent) : ∀ s, (T.maximum_aux s).consistent
-| 0 := h
-| (s+1) := by { simp[theory.maximum_aux],
-    by_cases (T.maximum_aux s +{idecode (formula L) s}).consistent; simp[h, maximum_consistent_aux s] }
-
-lemma maximum_aux_ss (s) : T.maximum_aux s ⊆ T.maximum_aux (s+1) := λ p hyp_p,
-by { simp[theory.maximum_aux], by_cases C₁ : (T.maximum_aux s)+{idecode (formula L) s}.consistent; simp[C₁],
-     refine theory.add.old hyp_p, refine hyp_p }
-
-theorem maximum_maximum {p} : T.maximum ⊢ p ∨ T.maximum ⊢ ⁻p :=
+lemma tauto (p : formula L) : S ⊢ ∐ ((∐ ↑p)^1 ⟶ ↑p) :=
 begin
-  by_cases C : (T.maximum_aux (encode p) +{p}).consistent,
-  { left, have : T.maximum_aux (encode p + 1) = (T.maximum_aux (encode p) +{p}),
-    { simp[theory.maximum_aux, C] },
-    have : T.maximum_aux (encode p + 1) ⊢ p,
-    { rw this, simp },
-    refine provable.inclusion this (maximum_aux_inclusion _) },
-  { right, simp[theory.consistent] at C, rcases C with ⟨r, hyp1, hyp2⟩,
-    have hyp1 : T.maximum +{p} ⊢ r,
-    { refine provable.inclusion hyp1 (λ h h1, _), cases h1 with _ h,
-      refine theory.add.new, refine theory.add.old (maximum_aux_inclusion _ _ h) },
-    have hyp2 : T.maximum +{p} ⊢ ⁻r,
-    { refine provable.inclusion hyp2 (λ h h1, _), cases h1 with _ h,
-      refine theory.add.new, refine theory.add.old (maximum_aux_inclusion _ _ h) },
-    show T.maximum ⊢ ⁻p, from provable.raa _ hyp1 hyp2 }
-end 
-
-lemma maximum_consistent (con : T.consistent) : T.maximum.consistent :=
-begin
-  simp[theory.consistent], intros p hyp A,
-  have : ∃ s, T.maximum_aux s ⊢ p, from provable.proof_compact maximum_aux_ss hyp, rcases this with ⟨s₁, lmm₁⟩,
-  have : ∃ s, T.maximum_aux s ⊢ ⁻p, from provable.proof_compact maximum_aux_ss A, rcases this with ⟨s₂, lmm₂⟩,
-  have lmm₁ : T.maximum_aux (max s₁ s₂) ⊢ p, from provable.inclusion lmm₁ (ss_le maximum_aux_ss (by simp)),
-  have lmm₂ : T.maximum_aux (max s₁ s₂) ⊢ ⁻p, from provable.inclusion lmm₂ (ss_le maximum_aux_ss (by simp)),
-  have : ¬(T.maximum_aux (max s₁ s₂)).consistent, simp[theory.consistent], refine ⟨p, lmm₁, lmm₂⟩,
-  exact this (maximum_consistent_aux con _)
+  have lmm₁ : S ⊢ (∐ ↑p) ⟶ ∐ ((∐ ↑p)^1 ⟶ ↑p),
+  { simp[pnf_imply_ex_iff_fal_imply₁], refine generalize (deduction.mp _),
+    refine use #0 _, simp[formula.nested_rew] },
+  have lmm₂ : S ⊢ ⁻(∐ ↑p) ⟶ ∐ ((∐ ↑p)^1 ⟶ ↑p),
+  { refine deduction.mp (use #0 (deduction.mp _)), simp,
+    show S +{ ⁻∐ ↑p } +{ ∐ ↑p } ⊢ rew ı[0 ⇝ #0] ↑p,
+    exact explosion (show S +{ ⁻∐ ↑p } +{ ∐ ↑p } ⊢ ∐ ↑p, by simp) (show S +{ ⁻∐ ↑p } +{ ∐ ↑p } ⊢ ⁻∐ ↑p, by simp) },
+  exact cases_of _ _ lmm₁ lmm₂
 end
 
-def LMmodel := 𝔗[T.maximum]
+@[simp] lemma pelimination'_henkin_axiom (p : formula L) : (pelimination' ([p])).p 0 (henkin_axiom p) = ((∐ ↑p)^1 ⟶ ↑p) :=
+begin
+  simp[henkin_axiom, pelimination'_subst, pelimination_coe_eq_pow_coe_aux],
+  have : pelim_aux_t ([p]) 0 ↑↑p = (#0 : term (extend L)),
+  { have : pelim_aux_t ([p]) 0 ↑p = (#(list.index_of p ([p]) + 0) : term (extend L)), from pelim_aux_t_consts_of_Γ ([p]) p (by simp) 0,
+    simp at this, exact this },
+  simp[this, formula.nested_rew, show (#0 ⌢ λ x, #(1 + x) : ℕ → term (extend L)) = ı, by { funext x, rcases x; simp[add_comm 1] }],
+  simp[formula.pow_eq, add_comm 1]
+end
 
+lemma consts_of_henkin_axiom {p : formula L} {c} (mem : c ∈ consts_of_p (henkin_axiom p)) : c = p :=
+begin
+  simp[henkin_axiom, consts_of_p] at mem,
+  rcases mem with ⟨t, (t_mem | t_mem), c_mem⟩,
+  { rcases language_translation_coe.fun_formula_inversion_of_mem t_mem with ⟨t, t_mem, rfl⟩, simp at c_mem, contradiction },
+  { rcases formula.rew_inversion_or_le_of_mem_rew t_mem with (⟨t, t_mem', k, rfl⟩ | ⟨k, n, le⟩),
+    { rcases language_translation_coe.fun_formula_inversion_of_mem t_mem' with ⟨t, t_mem'', rfl⟩,
+      simp[subst_pow] at c_mem,
+      rcases mem_of_consts_of_t_subst _ _ _ c_mem with (c_mem | c_mem),
+      { simp at c_mem, contradiction },
+      {exact eq_of_consts_of_t_coe.mp c_mem } },
+    { simp[subst_pow] at le, have : n < k ∨ n = k ∨ k < n , exact trichotomous n k, rcases this with (lt | rfl | lt),
+      { simp[lt] at le, simp[le] at c_mem, contradiction },
+      { simp[consts.coe_def, show (↑(consts.c p) : (extend L).fn 0) = sum.inr (consts.c p), from rfl, le_iff_lt_or_eq] at le,
+        rcases le with (⟨⟨_, A⟩, _⟩ | rfl), { simp at A, contradiction }, { simp at c_mem, exact c_mem } },
+      { simp[lt] at le, simp[le] at c_mem, contradiction } } }
+end
+
+lemma disjoint_of_ne (p q : formula L) (ne : p ≠ q) : disjoint ([p]) (henkin_axiom q) := λ p mem,
+by { simp at mem, rcases mem with rfl, intros mem, have : p = q, from consts_of_henkin_axiom mem, contradiction }
+
+end
+
+theorem theory_extend_consistent (consis : T.consistent) : (theory_extend T).consistent :=
+begin
+  have : (↑T : theory (extend L)).consistent, from language.add_consts.consistent_iff.mpr consis,
+  refine of_finite_induction this _,
+  intros s s_ss φ φ_mem p_nmem s_fin consis',
+  let U := ↑T ∪ s,
+  rcases φ_mem with ⟨φ, rfl⟩,
+  show theory.consistent (U +{ henkin_axiom φ }),
+  have disj : ∀ p ∈ U, disjoint ([φ]) p,
+  { intros p mem, simp[U] at mem, rcases mem,
+    { rcases mem with ⟨p, mem, rfl⟩, show disjoint ([φ]) (↑p), intros h, simp },
+    { have : p ∈ set.range henkin_axiom, from s_ss mem,
+      rcases this with ⟨p, rfl⟩,
+      have : φ ≠ p, { rintros rfl, contradiction },
+      exact disjoint_of_ne _ _ this } },
+  have : ¬U ⊢ ∏ ⁻((∐ ↑φ)^1 ⟶ ↑φ),
+  { intros b,
+    have : U ⊢ ⁻∏ ⁻((∐ ↑φ)^1 ⟶ ↑φ), from tauto φ,
+    have : ¬U.consistent, { simp[theory.consistent], refine ⟨_, b, this⟩ },
+    contradiction },
+  exact consistent_of_disjoint ([φ]) consis' disj (henkin_axiom φ) (by simp; exact this)
+end
+
+end henkin
 
 end fopl
