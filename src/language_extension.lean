@@ -13,10 +13,37 @@ local infix ` ≃₂ `:50 := ((≃) : term L₂ → term L₂ → formula L₂)
 namespace language
 variables {C : Type u} [decidable_eq C]
 
+namespace extension
 
 lemma sum_inl_eq_coe_fn {n} (f : L.fn n) : sum.inl f = (↑f : (L + consts C).fn n) := rfl
 
 lemma sum_inl_eq_coe_pr {n} (r : L.pr n) : sum.inl r = (↑r : (L + consts C).pr n) := rfl
+
+lemma term.exists_of_le_coe {t : term (L + consts C)} {u : term L} (le : t ≤ (↑u : term (L + consts C))) :
+  ∃ t₀ : term L, t = ↑t₀ :=
+begin
+  induction u generalizing t,
+  case var : n
+  { rcases eq_or_lt_of_le le with (rfl | lt), { refine ⟨#n, rfl⟩ }, simp at lt, contradiction },
+  case app : n f v IH
+  { rcases eq_or_lt_of_le le with (rfl | lt),
+    { refine ⟨app f v, rfl⟩ },
+    { simp at lt, rcases lt with ⟨i, le⟩, exact IH i le } }
+end
+
+lemma formula.exists_of_mem_coe {t : term (L + consts C)} {p : formula L} (mem : t ∈ (↑p : formula (L + consts C))) :
+  ∃ t₀ : term L, t = ↑t₀ :=
+begin
+  induction p generalizing t,
+  case app : n r v { simp at mem, rcases mem with ⟨i, le⟩, exact term.exists_of_le_coe le },
+  case equal : t₁ t₂ { simp at mem, rcases mem with (le | le), { exact term.exists_of_le_coe le }, { exact term.exists_of_le_coe le } },
+  case verum { simp at mem, contradiction },
+  case imply : p q IH_p IH_q { simp at mem, rcases mem, { exact IH_p mem }, { exact IH_q mem } },
+  case neg : p IH { simp at mem, exact IH mem },
+  case fal : p IH { simp at mem, exact IH mem }
+end
+
+end extension
 
 @[simp] def consts_of_t : term (L + consts C) → list C
 | (#n)                      := []
@@ -26,6 +53,15 @@ lemma sum_inl_eq_coe_pr {n} (r : L.pr n) : sum.inl r = (↑r : (L + consts C).pr
 
 noncomputable def consts_of_p (p : formula (L + consts C)) : list C :=
 (list.map consts_of_t ((formula.mem_finite p).to_finset.to_list)).join.dedup
+
+@[simp] lemma consts_of_t_coe_eq_nil (t : term L) : consts_of_t (↑t : term (L + consts C)) = [] :=
+by { simp[list.eq_nil_iff_forall_not_mem], induction t,
+     case var { simp },
+     case app : n f v IH
+     { simp[←extension.sum_inl_eq_coe_fn, list.eq_nil_iff_forall_not_mem], intros c i, exact IH i c } }
+
+@[simp] lemma consts_of_p_coe_eq_nil (p : formula L) : consts_of_p (↑p : formula (L + consts C)) = [] :=
+by { simp[list.eq_nil_iff_forall_not_mem, consts_of_p], intros c t mem, rcases extension.formula.exists_of_mem_coe mem with ⟨t, rfl⟩, simp }
 
 
 namespace add_consts
@@ -312,18 +348,9 @@ end
 
 end add_consts
 
-namespace consts_elimination
+namespace consts_pelimination
 open language_translation language_translation_coe extension
   proof provable axiomatic_classical_logic' axiomatic_classical_logic
-
-@[simp] def consts_of_t : term (L + consts C) → list C
-| (#n)                      := []
-| (@term.app _ n f v)       :=
-  have h : ∀ i, (v i).complexity < (⨆ᶠ i, (v i).complexity) + 1, from λ i, nat.lt_succ_iff.mpr (le_fintype_sup (λ i, (v i).complexity) i),
-  by { cases f, { exact list.Sup (λ i, consts_of_t (v i)) }, { cases n, exact [f], rcases f, } }
-
-noncomputable def consts_of_p (p : formula (L + consts C)) : list C :=
-(list.map consts_of_t ((formula.mem_finite p).to_finset.to_list)).join.dedup
 
 variables (Γ : list C) (b : ℕ) 
 
@@ -332,25 +359,25 @@ def consts_to_var (Γ : list C) : {c : C | c ∈ Γ} → ℕ := λ ⟨c, _⟩, (
 lemma consts_to_var_lt_Γ_of_mem {Γ : list C} {c : C} (mem : c ∈ Γ) : consts_to_var Γ ⟨c, mem⟩ < Γ.length :=
 by { simp[consts_to_var], exact list.index_of_lt_length.mpr mem }
 
-@[simp] def elim_aux_t : term (L + consts C) → term (L + consts C)
+@[simp] def pelim_aux_t : term (L + consts C) → term (L + consts C)
 | (#n)                      := if n < b then #n else #(Γ.length + n)
 | (@term.app _ n f v)       :=
-    by { cases f, { exact app ↑f (λ i, elim_aux_t (v i)) },
+    by { cases f, { exact app ↑f (λ i, pelim_aux_t (v i)) },
          { rcases n, { by_cases h : f ∈ Γ, { exact #(consts_to_var Γ ⟨f, h⟩ + b) },
          { exact app ↑f finitary.nil } }, { rcases f } } }
 
-@[simp] def elim_aux_f : ℕ → formula (L + consts C) → formula (L + consts C)
-| b (app r v)                          := by { rcases r, { refine app ↑r (λ i, elim_aux_t Γ b (v i)) }, { rcases r } }
-| b ((t₁ : term (L + consts C)) ≃ t₂)  := elim_aux_t Γ b t₁ ≃ elim_aux_t Γ b t₂
+@[simp] def pelim_aux_f : ℕ → formula (L + consts C) → formula (L + consts C)
+| b (app r v)                          := by { rcases r, { refine app ↑r (λ i, pelim_aux_t Γ b (v i)) }, { rcases r } }
+| b ((t₁ : term (L + consts C)) ≃ t₂)  := pelim_aux_t Γ b t₁ ≃ pelim_aux_t Γ b t₂
 | b ⊤                                  := ⊤
-| b (p ⟶ q)                            := elim_aux_f b p ⟶ elim_aux_f b q
-| b (⁻p)                               := ⁻elim_aux_f b p
-| b (∏ p)                              := ∏ elim_aux_f (b + 1) p
+| b (p ⟶ q)                            := pelim_aux_f b p ⟶ pelim_aux_f b q
+| b (⁻p)                               := ⁻pelim_aux_f b p
+| b (∏ p)                              := ∏ pelim_aux_f (b + 1) p
 
-def formula_elim : formula (L + consts C) → formula (L + consts C) := λ p, ∏[Γ.length] elim_aux_f Γ 0 p
+def formula_elim : formula (L + consts C) → formula (L + consts C) := λ p, ∏[Γ.length] pelim_aux_f Γ 0 p
 
-private lemma elim_aux_t_pow_aux (t : term (L + consts C)) (i s k : ℕ) (le : s ≤ i) :
-  elim_aux_t Γ (i + k) (t.rew ((λ x, #(x + k))^s)) = (elim_aux_t Γ i t).rew ((λ x, #(x + k)) ^ s) :=
+private lemma pelim_aux_t_pow_aux (t : term (L + consts C)) (i s k : ℕ) (le : s ≤ i) :
+  pelim_aux_t Γ (i + k) (t.rew ((λ x, #(x + k))^s)) = (pelim_aux_t Γ i t).rew ((λ x, #(x + k)) ^ s) :=
 begin
   induction t generalizing s k,
   case var : n
@@ -369,73 +396,86 @@ begin
         { simp[show s ≤ consts_to_var Γ ⟨f, mem⟩ + i, from le_add_left le], omega } }, { rcases f } } }
 end
 
-private lemma elim_aux_t_pow (t : term (L + consts C)) (i k : ℕ) :
-  elim_aux_t Γ (i + k) (t^k) = (elim_aux_t Γ i t)^k :=
-by { have :=  elim_aux_t_pow_aux Γ t i 0 k (by simp), simp at this,
+private lemma pelim_aux_t_pow (t : term (L + consts C)) (i k : ℕ) :
+  pelim_aux_t Γ (i + k) (t^k) = (pelim_aux_t Γ i t)^k :=
+by { have :=  pelim_aux_t_pow_aux Γ t i 0 k (by simp), simp at this,
      simp[term.pow_eq], exact this }
 
-private def elimination_aux : formula_homomorphism (L + consts C) (L + consts C) :=
-{ to_fun := elim_aux_f Γ,
-  map_verum := by simp,
-  map_imply := by simp,
-  map_neg := by simp,
-  map_univ := by simp }
-
-lemma elimination_aux_app (p : formula (L + consts C)) (k) : elimination_aux Γ k p = elim_aux_f Γ k p := rfl
-
-def elimination : (L + consts C) ↝ (L + consts C) :=
-formula_homonorphism.mk_translation (elimination_aux Γ)
-  (λ n r v l s k le, by { rcases r,
-      { simp[elimination_aux_app], funext i, exact elim_aux_t_pow_aux Γ (v i) l s k le },
-      { rcases r } })
-  (λ t u l s k le, by { simp[elimination_aux_app], refine ⟨elim_aux_t_pow_aux Γ t l s k le, elim_aux_t_pow_aux Γ u l s k le⟩ })
-
-lemma elimination_app (p : formula (L + consts C)) (k) : elimination Γ k p = elim_aux_f Γ k p := rfl
-
-def elimination' : term_formula_translation (L + consts C) (L + consts C) :=
-{ p := elimination Γ,
-  t := elim_aux_t Γ,
-  chr := λ n, id,
-  equal := λ t u k, by simp[elimination_app],
-  app := λ k n r v, by { rcases r, { simp, refl }, { rcases r } },
-  map_pow := λ t s, by { exact elim_aux_t_pow Γ t s 1 } }
-
-@[simp] lemma elimination'_t_eq_elim_aux_t (t : term (L + consts C)) (s : ℕ) :
-  (elimination' Γ).t s t = elim_aux_t Γ s t := rfl
-
-instance elimination_conservative : (elimination Γ : (L + consts C) ↝ (L + consts C)).conservative :=
-term_formula_translation.conservative_of (elimination' Γ : term_formula_translation (L + consts C) (L + consts C))
-(λ t u s m, by { simp[elimination'],
+lemma pelim_aux_t_subst (t u : term (L + consts C)) {s m : ℕ} (le : m ≤ s) :
+  pelim_aux_t Γ s (t.rew ı[m ⇝ u]) = (pelim_aux_t Γ (s + 1) t).rew ı[m ⇝ pelim_aux_t Γ s u] :=
+begin
   induction t generalizing s m,
-  case var : n { intros le, simp,
+  case var : n { simp,
     have hn : n < m ∨ n = m ∨ m < n, from trichotomous n m, rcases hn with (hn | rfl | hn),
     { simp[hn, show n < s, from gt_of_ge_of_gt le hn, show n < s + 1, from nat.lt.step (gt_of_ge_of_gt le hn)] },
     { simp[show n < s + 1, from nat.lt_succ_iff.mpr le] },
     { simp[hn], rcases n;simp[←nat.add_one] at hn ⊢, { contradiction },
       { have hn' : n < s ∨ s ≤ n, from lt_or_ge n s, rcases hn' with (hn' | hn'), 
       { simp[hn', hn] }, { simp[show ¬n < s, from not_lt.mpr hn', show m < Γ.length + (n + 1), from nat.lt_add_left m _ _ hn] } } } },
-  case app : n f v IH { intros le,
+  case app : n f v IH {
     rcases f,
-    { simp, funext i, exact IH i s m le },
+    { simp, funext i, exact IH i le },
     { cases n,
       { by_cases mem : f ∈ Γ; simp[mem, le],
-        { simp[show m < consts_to_var Γ ⟨f, mem⟩ + (s + 1), by omega] } }, { rcases f } } } })
+        { simp[show m < consts_to_var Γ ⟨f, mem⟩ + (s + 1), by omega] } }, { rcases f } } }
+end
+
+lemma pelim_aux_t_subst' (t u : term (L + consts C)) {s : ℕ} :
+  pelim_aux_t Γ s (t.rew ı[s ⇝ u]) = (pelim_aux_t Γ (s + 1) t).rew ı[s ⇝ pelim_aux_t Γ s u] :=
+pelim_aux_t_subst Γ t u (by refl) 
+
+private def pelimination_aux : formula_homomorphism (L + consts C) (L + consts C) :=
+{ to_fun := pelim_aux_f Γ,
+  map_verum := by simp,
+  map_imply := by simp,
+  map_neg := by simp,
+  map_univ := by simp }
+
+lemma pelimination_aux_app (p : formula (L + consts C)) (k) : pelimination_aux Γ k p = pelim_aux_f Γ k p := rfl
+
+def pelimination : (L + consts C) ↝ (L + consts C) :=
+formula_homonorphism.mk_translation (pelimination_aux Γ)
+  (λ n r v l s k le, by { rcases r,
+      { simp[pelimination_aux_app], funext i, exact pelim_aux_t_pow_aux Γ (v i) l s k le },
+      { rcases r } })
+  (λ t u l s k le, by { simp[pelimination_aux_app], refine ⟨pelim_aux_t_pow_aux Γ t l s k le, pelim_aux_t_pow_aux Γ u l s k le⟩ })
+
+lemma pelimination_app (p : formula (L + consts C)) (k) : pelimination Γ k p = pelim_aux_f Γ k p := rfl
+
+def pelimination' : term_formula_translation (L + consts C) (L + consts C) :=
+{ p := pelimination Γ,
+  t := pelim_aux_t Γ,
+  chr := λ n, id,
+  equal := λ t u k, by simp[pelimination_app],
+  app := λ k n r v, by { rcases r, { simp, refl }, { rcases r } },
+  map_pow := λ t s, by { exact pelim_aux_t_pow Γ t s 1 } }
+
+@[simp] lemma pelimination'_t_eq_pelim_aux_t (t : term (L + consts C)) (s : ℕ) :
+  (pelimination' Γ).t s t = pelim_aux_t Γ s t := rfl
+
+lemma pelimination'_subst (p : formula (L + consts C)) (t) (s : ℕ) :
+  (pelimination' Γ).p s (p.rew ı[s ⇝ t]) = ((pelimination' Γ).p (s + 1) p).rew ı[s ⇝ pelim_aux_t Γ s t] :=
+term_formula_translation.tr_subst_of_subst (pelimination' Γ) (pelim_aux_t_subst Γ) p t s s (by refl)
+
+instance pelimination_conservative : (pelimination Γ : (L + consts C) ↝ (L + consts C)).conservative :=
+term_formula_translation.conservative_of (pelimination' Γ : term_formula_translation (L + consts C) (L + consts C))
+(λ t u s m le, by { simp[pelimination', pelim_aux_t_subst Γ t u le], })
   (λ s n f T k, by { rcases f,
-    { simp[eq_axiom4, elimination'], 
-      simp[elimination_app, show ∀ i : fin n, ↑i < s + k + 2 * n, { rintros ⟨i, lt⟩, simp, omega },
+    { simp[eq_axiom4, pelimination'], 
+      simp[pelimination_app, show ∀ i : fin n, ↑i < s + k + 2 * n, { rintros ⟨i, lt⟩, simp, omega },
       show ∀ i : fin n, n + i < s + k + 2 * n, { rintros ⟨i, lt⟩, simp, omega } ], exact function_ext _ },
     { cases n,
-      { simp[eq_axiom4, elimination'], simp[elimination_app] }, { rcases f } } })
+      { simp[eq_axiom4, pelimination'], simp[pelimination_app] }, { rcases f } } })
   (λ s n r T k, by { rcases r,
-    { simp[eq_axiom5, elimination'],
-    simp[elimination_app, show ∀ i : fin n, ↑i < s + k + 2 * n, { rintros ⟨i, lt⟩, simp, omega },
+    { simp[eq_axiom5, pelimination'],
+    simp[pelimination_app, show ∀ i : fin n, ↑i < s + k + 2 * n, { rintros ⟨i, lt⟩, simp, omega },
       show ∀ i : fin n, n + i < s + k + 2 * n, { rintros ⟨i, lt⟩, simp, omega } ], exact predicate_ext _ },
     { rcases r } })
 
 def disjoint (p : formula (L + consts C)) : Prop := ∀ c ∈ Γ, c ∉ consts_of_p p 
 
-lemma elim_aux_t_eq_pow_of_disjoint_aux (t : term (L + consts C)) (h : ∀ c ∈ Γ, c ∉ consts_of_t t) (s : ℕ) :
-  elim_aux_t Γ s t = t.rew ((λ x, #(Γ.length + x))^s) :=
+lemma pelim_aux_t_eq_pow_of_disjoint_aux (t : term (L + consts C)) (h : ∀ c ∈ Γ, c ∉ consts_of_t t) (s : ℕ) :
+  pelim_aux_t Γ s t = t.rew ((λ x, #(Γ.length + x))^s) :=
 begin
   induction t generalizing s,
   case var { simp, by_cases C : t < s; simp[C], { simp[show s ≤ t, from not_lt.mp C], omega } },
@@ -446,18 +486,18 @@ begin
       { have : f ∉ Γ, { intros mem, have := h f mem, simp [consts_of_t] at this, contradiction }, simp[this], refl }, { rcases f } } }
 end
 
-lemma elimination_eq_pow_aux_of_disjoint (p : formula (L + consts C)) (h : disjoint Γ p) (s : ℕ) :
-  elimination Γ s p = p.rew ((λ x, #(Γ.length + x))^s) :=
+lemma pelimination_eq_pow_aux_of_disjoint (p : formula (L + consts C)) (h : disjoint Γ p) (s : ℕ) :
+  pelimination Γ s p = p.rew ((λ x, #(Γ.length + x))^s) :=
 begin
   induction p generalizing s,
   case app : n r v { rcases r,
-    { simp[elimination_app], refine ⟨rfl, _⟩, funext i,
-      exact elim_aux_t_eq_pow_of_disjoint_aux Γ (v i) (λ c mem, by { have := h c mem, simp[consts_of_p] at this, refine this (v i) i (by refl) }) s },
+    { simp[pelimination_app], refine ⟨rfl, _⟩, funext i,
+      exact pelim_aux_t_eq_pow_of_disjoint_aux Γ (v i) (λ c mem, by { have := h c mem, simp[consts_of_p] at this, refine this (v i) i (by refl) }) s },
     { rcases r } },
   case equal : t u
-  { simp[elimination_app],
-    refine ⟨elim_aux_t_eq_pow_of_disjoint_aux Γ t (λ c mem, by { have := h c mem, simp[consts_of_p] at this, refine this t (by simp) }) s,
-      elim_aux_t_eq_pow_of_disjoint_aux Γ u (λ c mem, by { have := h c mem, simp[consts_of_p] at this, refine this u (by simp) }) s⟩,   },
+  { simp[pelimination_app],
+    refine ⟨pelim_aux_t_eq_pow_of_disjoint_aux Γ t (λ c mem, by { have := h c mem, simp[consts_of_p] at this, refine this t (by simp) }) s,
+      pelim_aux_t_eq_pow_of_disjoint_aux Γ u (λ c mem, by { have := h c mem, simp[consts_of_p] at this, refine this u (by simp) }) s⟩,   },
   case verum { simp },
   case imply : p q IH_p IH_q
   { simp, refine
@@ -468,25 +508,35 @@ begin
   case fal : p IH { simp[rewriting_sf_itr.pow_add], exact IH (λ c mem mem_p, by { have := h c mem, simp[consts_of_p] at this mem_p, rcases mem_p with ⟨t, ht, mem_t⟩,refine this t ht mem_t }) (s + 1) },
 end
 
-lemma elimination_eq_pow_of_disjoint (p : formula (L + consts C)) (h : disjoint Γ p) :
-  elimination Γ 0 p = p^Γ.length :=
-by { have := elimination_eq_pow_aux_of_disjoint Γ p h 0, simp at this,
+lemma pelimination_eq_pow_of_disjoint (p : formula (L + consts C)) (h : disjoint Γ p) :
+  pelimination Γ 0 p = p^Γ.length :=
+by { have := pelimination_eq_pow_aux_of_disjoint Γ p h 0, simp at this,
      simp[formula.pow_eq, show ∀ x, x + Γ.length = Γ.length + x, from λ x, add_comm _ _], exact this }
 
-theorem provable_elimination_of_disjoint (T : theory (L + consts C)) (p : formula (L + consts C))
-  (disj : ∀ p ∈ T, disjoint Γ p) : T ⊢ p → T ⊢ ∏[Γ.length] (elimination' Γ).p 0 p := λ b,
+theorem provable_pelimination_of_disjoint (T : theory (L + consts C)) (p : formula (L + consts C))
+  (disj : ∀ p ∈ T, disjoint Γ p) : T ⊢ p → T ⊢ ∏[Γ.length] (pelimination' Γ).p 0 p := λ b,
 begin
-  have lmm₁ : tr_theory (elimination Γ) 0 T ⊢ (elimination Γ) 0 p, from translation.provability (elimination Γ) T p 0 b,
-  have : tr_theory (elimination Γ) 0 T = T^Γ.length,
+  have lmm₁ : tr_theory (pelimination Γ) 0 T ⊢ (pelimination Γ) 0 p, from translation.provability (pelimination Γ) T p 0 b,
+  have : tr_theory (pelimination Γ) 0 T = T^Γ.length,
   { ext q, simp[tr_theory, theory_sf_itr_eq], split,
-    { rintros ⟨q, q_mem, rfl⟩, refine ⟨q, q_mem, elimination_eq_pow_of_disjoint Γ q (disj q q_mem)⟩ },
-    { rintros ⟨q, q_mem, rfl⟩, refine ⟨q, q_mem, elimination_eq_pow_of_disjoint Γ q (disj q q_mem)⟩ } },
+    { rintros ⟨q, q_mem, rfl⟩, refine ⟨q, q_mem, pelimination_eq_pow_of_disjoint Γ q (disj q q_mem)⟩ },
+    { rintros ⟨q, q_mem, rfl⟩, refine ⟨q, q_mem, pelimination_eq_pow_of_disjoint Γ q (disj q q_mem)⟩ } },
   rw this at lmm₁,
   exact generalize_itr lmm₁
 end
 
+@[simp] lemma disjoint_coe (p : formula L) : disjoint Γ (↑p : formula (L + consts C)) :=
+λ c mem, by simp
 
-end consts_elimination
+lemma pelimination_coe_eq_pow_coe_aux (p : formula L) (s : ℕ) :
+  (pelimination' Γ).p s (↑p : formula (L + consts C)) = (↑p : formula (L + consts C)).rew ((λ x, #(Γ.length + x))^s) :=
+pelimination_eq_pow_aux_of_disjoint Γ (↑p : formula (L + consts C)) (disjoint_coe Γ p) s
+
+@[simp] lemma pelim_aux_t_consts_of_Γ (c : C) (h : c ∈ Γ) (s : ℕ) :
+  (pelim_aux_t Γ s c : term (L + consts C)) = #(Γ.index_of c + s) :=
+by simp[consts.coe_def, show (↑(consts.c c) : (L + consts C).fn 0) = sum.inr (consts.c c), from rfl]; simp[consts.c, h]; refl
+
+end consts_pelimination
 
 end language
 

@@ -292,15 +292,13 @@ variables (τ : term_formula_translation L₁ L₂) (k : ℕ)
 @[simp] lemma map_app {n} (r : L₁.pr n) (v) :
   τ.p k (formula.app r v) = formula.app (τ.chr r) (λ i, τ.t k (v i)) := τ.app k r v
 
-#check map_pow
-
 lemma map_pow' (t : term L₁) (k s : ℕ) :
   τ.t (k + s) (t^s) = (τ.t k t)^s := 
 by { induction s with s IH; simp[←nat.add_one, ←add_assoc],
      have : τ.t (k + s + 1) ((t ^ s) ^ 1) = τ.t (k + s) (t ^ s) ^ 1, from map_pow τ (t^s) (k + s), 
      simp[IH, term.pow_add] at this, exact this }
 
-private lemma tr_rew
+lemma tr_subst_of_subst
   (H : ∀ (t u : term L₁) (s m : ℕ) (le : m ≤ s), τ.t s (t.rew ı[m ⇝ u]) = (τ.t (s + 1) t).rew ı[m ⇝ τ.t s u])
   (p : formula L₁) (t : term L₁) (s m : ℕ) (le : m ≤ s) :
   τ.p s (p.rew ı[m ⇝ t]) = (τ.p (s + 1) p).rew ı[m ⇝ τ.t s t] :=
@@ -324,7 +322,7 @@ def conservative_of
     (tr_theory τ.p s T)^k ⊢ τ.p (s + k) (eq_axiom5 r))
    : conservative τ.p :=
 { ax_ss := λ _ _, by refl,
-  specialize := λ s p t T k, by simp[tr_rew τ H],
+  specialize := λ s p t T k, by simp[tr_subst_of_subst τ H],
   eq_reflexivity := λ s T k, by { simp, refine generalize (by simp) },
   eq_symmetry := λ s T k, by { simp, refine generalize (generalize _),
     have : ⤊⤊(tr_theory τ.p s T ^ k) ⊢ _, from eq_symmetry ⊚ (τ.t (s + k + 1 + 1) #1) ⊚ τ.t (s + k + 1 + 1) #0,
@@ -692,7 +690,7 @@ by { simp[theory_sf_itr_eq] at mem ⊢, rcases mem with ⟨q, mem, rfl⟩,
 lemma provability_pow (T : theory L₁) (p : formula L₁) (i k : ℕ) (h : T^i ⊢ p) :
   (ax τ k T)^i ⊢ τ (k + i) p :=
 begin
-  refine provable.rec_on' h _ _ _ _ _ _ _ _ _ _ _ _ _ _ _,
+  refine provable.rec'_on h _ _ _ _ _ _ _ _ _ _ _ _ _ _ _,
   { intros i p _ h, simp[add_assoc] at h ⊢,
     exact generalize h },
   { intros i p q _ _ hpq hp, simp at hpq,
@@ -791,6 +789,8 @@ def consts (α : Type u) : language.{u} := ⟨λ n, match n with | 0 := α | (n 
 def consts.c {α : Type u} (a : α) : (consts α).fn 0 := a
 
 instance (α : Type*) : has_coe α (term (consts α)) := ⟨λ a, term.app (consts.c a) finitary.nil⟩
+
+lemma consts.coe_def {α : Type*} (a : α) : (a : term (consts α)) = term.app (consts.c a) finitary.nil := rfl
 
 @[reducible] def add_consts (L : language) (α : Type) : language := L + consts α
 
