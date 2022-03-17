@@ -75,7 +75,7 @@ begin
     (consis (set.subset.trans (show s ⊆ insert p s, by simp) ss))
 end
 
-lemma union (T : ℕ → theory L) (h : ∀ n, T n ⊆ T (n + 1)) :
+lemma Union_seq (T : ℕ → theory L) (h : ∀ n, T n ⊆ T (n + 1)) :
   theory.consistent (⋃ n, T n) ↔ ∀ n, theory.consistent (T n) :=
 ⟨λ H n, consistent_of_consistent_ss H (set.subset_Union T n),
  λ H, by {

@@ -484,17 +484,21 @@ by induction t; simp*
 @[simp] lemma self_fun_p (p : formula L) : (self L).fun_p p = p :=
 by induction p; simp*
 
-lemma comp_fun_t (t : term L₁) : (τ₁₂.comp τ₂₃).fun_t t = τ₂₃.fun_t (τ₁₂.fun_t t) :=
-by induction t; simp*
+lemma comp_fun_t : (τ₁₂.comp τ₂₃).fun_t = τ₂₃.fun_t ∘ τ₁₂.fun_t :=
+by funext t; induction t; simp*
 
-lemma comp_fun_p (p : formula L₁) : (τ₁₂.comp τ₂₃).fun_p p = τ₂₃.fun_p (τ₁₂.fun_p p) :=
-by induction p; simp[*, comp_fun_t]
+lemma comp_fun_p  : (τ₁₂.comp τ₂₃).fun_p = τ₂₃.fun_p ∘ τ₁₂.fun_p :=
+by funext p; induction p; simp[*, comp_fun_t]
 
 lemma mk.eta : Π (τ : L₁ ↝ᴸ L₂), ({fn := τ.fn, pr := τ.pr} : L₁ ↝ᴸ L₂) = τ
 | ⟨fn, pr⟩ := rfl
 
+lemma eq_iff : τ₁₂ = σ₁₂ ↔ (∀ n f, τ₁₂.fn n f = σ₁₂.fn n f) ∧ (∀ n r, τ₁₂.pr n r = σ₁₂.pr n r) :=
+by { rw[←mk.eta τ₁₂, ←mk.eta σ₁₂], simp, split,
+     { rintros ⟨eq_fn, eq_pr⟩, simp* }, { rintros ⟨hfn, hpr⟩, refine ⟨_, _⟩; { funext, simp* } } }
+
 @[ext] lemma ext (eq_fn : ∀ n f, τ₁₂.fn n f = σ₁₂.fn n f) (eq_pr : ∀ n r, τ₁₂.pr n r = σ₁₂.pr n r) : τ₁₂ = σ₁₂ :=
-by { rw[←mk.eta τ₁₂, ←mk.eta σ₁₂], simp, refine ⟨_, _⟩; { funext; simp* } }
+by { simp[eq_iff], exact ⟨eq_fn, eq_pr⟩ }
 
 end language_translation
 
@@ -1064,14 +1068,14 @@ end language_translation
 open language_translation extension
 variables (L₁ L₂ L₃)
 
-def add_comm : L₁ + L₂ ↭ᴸ L₂ + L₁ :=
+def add_comm' : L₁ + L₂ ↭ᴸ L₂ + L₁ :=
 { ltr := add_comm' L₁ L₂, inv := add_comm' L₂ L₁,
   left_inv_fn := λ n f, by rcases f; simp[←coe_fn₁, ←coe_fn₂],
   left_inv_pr := λ n r, by rcases r; simp[←coe_pr₁, ←coe_pr₂],
   right_inv_fn := λ n f, by rcases f; simp[←coe_fn₁, ←coe_fn₂],
   right_inv_pr := λ n r, by rcases r; simp[←coe_pr₁, ←coe_pr₂] }
 
-def add_assoc : L₁ + L₂ + L₃ ↭ᴸ L₁ + (L₂ + L₃) :=
+def add_assoc' : L₁ + L₂ + L₃ ↭ᴸ L₁ + (L₂ + L₃) :=
 { ltr := add_assoc' L₁ L₂ L₃, inv := add_assoc'_inv L₁ L₂ L₃,
   left_inv_fn := λ n f, by { rcases f; simp[←coe_fn₁, ←coe_fn₂], rcases f; simp[←coe_fn₁, ←coe_fn₂] },
   left_inv_pr := λ n r, by { rcases r; simp[←coe_pr₁, ←coe_pr₂], rcases r; simp[←coe_pr₁, ←coe_pr₂] },
