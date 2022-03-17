@@ -915,6 +915,10 @@ lemma coe_fn₁ {n} (f : L₁.fn n) : (↑f : (L₁ + L₂).fn n) = sum.inl f:= 
 
 lemma coe_pr₁ {n} (r : L₁.pr n) : (↑r : (L₁ + L₂).pr n) = sum.inl r:= rfl
 
+lemma to_extension₁_fn_to_coe {n} (f : L₁.fn n) : (to_extension₁.fn _ f : (L₁ + L₂).fn n) = f := rfl
+
+lemma to_extension₁_pr_to_coe {n} (r : L₁.pr n) : (to_extension₁.pr _ r : (L₁ + L₂).pr n) = r := rfl
+
 def to_extension₂ : L₂ ↝ᴸ L₁ + L₂ := ⟨λ n f, sum.inr f, λ n p, sum.inr p⟩
 
 instance ltr₂ : language_translation_coe L₂ (L₁ + L₂) :=
@@ -925,6 +929,10 @@ instance ltr₂ : language_translation_coe L₂ (L₁ + L₂) :=
 lemma coe_fn₂ {n} (f : L₂.fn n) : (↑f : (L₁ + L₂).fn n) = sum.inr f:= rfl
 
 lemma coe_pr₂ {n} (r : L₂.pr n) : (↑r : (L₁ + L₂).pr n) = sum.inr r:= rfl
+
+lemma to_extension₂_fn_to_coe {n} (f : L₂.fn n) : (to_extension₂.fn _ f : (L₁ + L₂).fn n) = f := rfl
+
+lemma to_extension₂_pr_to_coe {n} (r : L₂.pr n) : (to_extension₂.pr _ r : (L₁ + L₂).pr n) = r := rfl
 
 class sublanguage (L₀ : language.{u}) (L : language.{u}) :=
 (map_fn : Π {n}, L.fn n → L₀.fn n)
@@ -981,19 +989,35 @@ end extension
 
 namespace language_translation
 
-variables {L₁} {L₂} {L₃} {L₄ : language.{u}} (τ : L₁ ↝ᴸ L₂) (σ : L₃ ↝ᴸ L₄)
+variables {L₁} {L₂} {L₃} {L₄ : language.{u}}
 
 def add (τ : L₁ ↝ᴸ L₂) (σ : L₃ ↝ᴸ L₄) : L₁ + L₃ ↝ᴸ L₂ + L₄ :=
 { fn := λ n f, by { rcases f, { exact sum.inl (τ.fn _ f) }, { exact sum.inr (σ.fn _ f) } },
   pr := λ n r, by { rcases r, { exact sum.inl (τ.pr _ r) }, { exact sum.inr (σ.pr _ r) } } }
 
+section
+variables (τ : L₁ ↝ᴸ L₂) (σ : L₃ ↝ᴸ L₄)
+
 @[simp] lemma add_fnl {n} (f : L₁.fn n) : (τ.add σ).fn n ↑f = ↑(τ.fn n f) := rfl
-
 @[simp] lemma add_prl {n} (r : L₁.pr n) : (τ.add σ).pr n ↑r = ↑(τ.pr n r) := rfl
-
 @[simp] lemma add_fnr {n} (f : L₃.fn n) : (τ.add σ).fn n ↑f = ↑(σ.fn n f) := rfl
-
 @[simp] lemma add_prr {n} (r : L₃.pr n) : (τ.add σ).pr n ↑r = ↑(σ.pr n r) := rfl
+
+end
+
+def sum (τ : L₁ ↝ᴸ L₂) (σ : L₃ ↝ᴸ L₂) : L₁ + L₃ ↝ᴸ L₂ :=
+{ fn := λ n f, by { rcases f, { refine τ.fn n f }, { refine σ.fn n f } },
+  pr := λ n r, by { rcases r, { refine τ.pr n r }, { refine σ.pr n r } } }
+
+section
+variables (τ : L₁ ↝ᴸ L₂) (σ : L₃ ↝ᴸ L₂)
+
+@[simp] lemma sum_fnl {n} (f : L₁.fn n) : (τ.sum σ).fn n ↑f = (τ.fn n f) := rfl
+@[simp] lemma sum_prl {n} (r : L₁.pr n) : (τ.sum σ).pr n ↑r = (τ.pr n r) := rfl
+@[simp] lemma sum_fnr {n} (f : L₃.fn n) : (τ.sum σ).fn n ↑f = (σ.fn n f) := rfl
+@[simp] lemma sum_prr {n} (r : L₃.pr n) : (τ.sum σ).pr n ↑r = (σ.pr n r) := rfl
+
+end
 
 variables (L₁ L₂ L₃)
 
