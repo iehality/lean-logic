@@ -8,7 +8,7 @@ variables {L : language.{u}} {T U : theory L}
 namespace theory
 open provable axiomatic_classical_logic'
 
-lemma consistent_of_consistent_ss {T U : theory L} (h : consistent T) (ss : U ⊆ T) : consistent U :=
+lemma consistent_of_consistent_ss {T U : theory L} (h : T.consistent) (ss : U ⊆ T) : U.consistent :=
 by { simp[consistent_iff_bot] at h ⊢, intros hU, have : T ⊢ ⊥, from weakening hU ss, contradiction }
 
 private lemma list_set_finite {α} (l : list α) : {a : α | a ∈ l}.finite :=
@@ -74,6 +74,25 @@ begin
   exact H s (set.subset.trans (show s ⊆ insert p s, by simp) ss) p (ss (show p ∈ insert p s, by simp)) nmem fin
     (consis (set.subset.trans (show s ⊆ insert p s, by simp) ss))
 end
+
+lemma union (T : ℕ → theory L) (h : ∀ n, T n ⊆ T (n + 1)) :
+  theory.consistent (⋃ n, T n) ↔ ∀ n, theory.consistent (T n) :=
+⟨λ H n, consistent_of_consistent_ss H (set.subset_Union T n),
+ λ H, by {
+  have ss_of_le : ∀ {m n}, m ≤ n → T m ⊆ T n,
+  { suffices : ∀ n m, T m ⊆ T (m + n),
+    { intros m n le, simpa[show m + (n - m) = n, by omega] using this (n - m) m },
+    intros n m, induction n with n IH; simp[←nat.add_one, ←add_assoc],
+    { exact set.subset.trans IH (h (m + n)) } },
+  rw[finite_character], intros s s_ss s_fin,
+  casesI s_fin,
+  choose f hf using show ∀ x : s, ∃ i, x.1 ∈ T i, { simpa [set.subset_def] using s_ss },
+  let M := ⨆ᶠ i, f i,
+  have : s ⊆ T M,
+  { intros x hx,
+    have : f ⟨x, hx⟩ ≤ M, from le_fintype_sup _ _,
+    exact ss_of_le this (hf ⟨x, hx⟩) },
+  exact consistent_of_consistent_ss (H M) this }⟩ 
 
 end consistent
 
