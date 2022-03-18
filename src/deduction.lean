@@ -85,6 +85,8 @@ infixl ` ⨀ `:90 := axiomatic_classical_logic'.modus_ponens
 
 def theory.consistent (T : theory L) : Prop := ¬∃p : formula L, (T ⊢ p) ∧ (T ⊢ ⁻p) 
 
+lemma theory.consistent_def (T : theory L) : T.consistent ↔ ¬∃p : formula L, (T ⊢ p) ∧ (T ⊢ ⁻p) := by refl
+
 lemma theory.consistent_iff_bot (T : theory L) : T.consistent ↔ ¬T ⊢ ⊥ :=
 ⟨by { simp[theory.consistent], intros h, exact h ⊤ (by simp) },
   by { intros h, simp[theory.consistent], intros p hp hnp,
@@ -93,8 +95,6 @@ lemma theory.consistent_iff_bot (T : theory L) : T.consistent ↔ ¬T ⊢ ⊥ :=
 
 lemma theory.not_consistent_iff_bot {T : theory L} : ¬T.consistent ↔ T ⊢ ⊥ :=
 by simp[theory.consistent_iff_bot T]
-
-class consistent (T : theory L) := (consistent : theory.consistent T)
 
 def theory.le (T U : theory L) : Prop := ∀ {p : formula L}, T ⊢ p → U ⊢ p
 
