@@ -134,12 +134,12 @@ lemma formula_elim_coe : ∀ (b : ℕ) (p : formula L),
 | b (∏ p) := by { simp[formula_elim_coe (b + 1) p], 
     have : (λ x, ite (x < b) #x #(Γ.length + x) : ℕ → term L)^1 = (λ x, ite (x < b + 1) #x #(Γ.length + x)),
     { funext x, simp[rewriting_sf_itr.pow_eq'],
-      rcases x; simp[←nat.add_one], by_cases C : x < b; simp[C, add_assoc] },
+      rcases x; simp[←nat.add_one], by_cases C : x < b; simp[C, nat.add_assoc] },
     simp[this] }
 
 @[simp] lemma formula_elim_coe_0 (p : formula L) :
   elim_aux_f Γ 0 (p : formula (L + consts C)) = p^Γ.length :=
-by simp[formula_elim_coe, formula.pow_eq, show ∀ x, Γ.length + x = x + Γ.length, from λ x, add_comm (list.length Γ) x]
+by simp[formula_elim_coe, formula.pow_eq, show ∀ x, Γ.length + x = x + Γ.length, from λ x, nat.add_comm (list.length Γ) x]
 
 @[reducible] def shifting : ℕ → term L :=
 λ x, if x ≤ Γ.length + b then if x = Γ.length + b then #b else if b ≤ x then #(x + 1) else #x else #x

@@ -241,7 +241,7 @@ def shift (k : ℕ) : translation L₁ L₁ :=
 
 variables {L₁} {L₂} {L₃}
 
-def comp : translation L₁ L₂ → translation L₂ L₃ → translation L₁ L₃ := λ τ₁₂ τ₂₃,
+def comp : translation L₂ L₃ → translation L₁ L₂ → translation L₁ L₃ := λ τ₂₃ τ₁₂,
 { to_fun := λ i, τ₂₃ i ∘ τ₁₂ i,
   map_verum := by simp, map_imply := by simp, map_neg := by simp,
   map_univ := by simp, map_pow := by simp[map_pow'] }
@@ -332,7 +332,7 @@ def from_empty : ∅ ↝ᴸ L :=
 def self (L : language) : L ↝ᴸ L :=
 { fn := λ n, id, pr := λ n, id }
 
-def comp : L₁ ↝ᴸ L₂ → L₂ ↝ᴸ L₃ → L₁ ↝ᴸ L₃ := λ τ₁₂ τ₂₃,
+def comp : L₂ ↝ᴸ L₃ →L₁ ↝ᴸ L₂ →  L₁ ↝ᴸ L₃ := λ τ₂₃ τ₁₂,
 { fn := λ n, (τ₂₃.fn n) ∘ (τ₁₂.fn n),
   pr := λ n, (τ₂₃.pr n) ∘ (τ₁₂.pr n) }
 
@@ -474,9 +474,9 @@ variables (τ₁₂ σ₁₂ : L₁ ↝ᴸ L₂) (τ₂₃ : L₂ ↝ᴸ L₃)
 
 @[simp] lemma self_pr {n} (r : L.pr n) : (self L).pr n r = r := rfl
 
-@[simp] lemma comp_fn {n} (f : L₁.fn n) : (τ₁₂.comp τ₂₃).fn n f = τ₂₃.fn n (τ₁₂.fn n f) := rfl
+@[simp] lemma comp_fn {n} (f : L₁.fn n) : (τ₂₃.comp τ₁₂).fn n f = τ₂₃.fn n (τ₁₂.fn n f) := rfl
 
-@[simp] lemma comp_pr {n} (r : L₁.pr n) : (τ₁₂.comp τ₂₃).pr n r = τ₂₃.pr n (τ₁₂.pr n r) := rfl
+@[simp] lemma comp_pr {n} (r : L₁.pr n) : (τ₂₃.comp τ₁₂).pr n r = τ₂₃.pr n (τ₁₂.pr n r) := rfl
 
 @[simp] lemma self_fun_t (t : term L) : (self L).fun_t t = t :=
 by induction t; simp*
@@ -484,10 +484,10 @@ by induction t; simp*
 @[simp] lemma self_fun_p (p : formula L) : (self L).fun_p p = p :=
 by induction p; simp*
 
-lemma comp_fun_t : (τ₁₂.comp τ₂₃).fun_t = τ₂₃.fun_t ∘ τ₁₂.fun_t :=
+lemma comp_fun_t : (τ₂₃.comp τ₁₂).fun_t = τ₂₃.fun_t ∘ τ₁₂.fun_t :=
 by funext t; induction t; simp*
 
-lemma comp_fun_p  : (τ₁₂.comp τ₂₃).fun_p = τ₂₃.fun_p ∘ τ₁₂.fun_p :=
+lemma comp_fun_p  : (τ₂₃.comp τ₁₂).fun_p = τ₂₃.fun_p ∘ τ₁₂.fun_p :=
 by funext p; induction p; simp[*, comp_fun_t]
 
 lemma mk.eta : Π (τ : L₁ ↝ᴸ L₂), ({fn := τ.fn, pr := τ.pr} : L₁ ↝ᴸ L₂) = τ
@@ -908,10 +908,10 @@ end consts
 namespace extension
 open language_translation language_translation_coe
 
-def to_extension₁ : L₁ ↝ᴸ L₁ + L₂ := ⟨λ n f, sum.inl f, λ n p, sum.inl p⟩
+def add_left : L₁ ↝ᴸ L₁ + L₂ := ⟨λ n f, sum.inl f, λ n p, sum.inl p⟩
 
 instance ltr₁ : language_translation_coe L₁ (L₁ + L₂) :=
-{ ltr := to_extension₁,
+{ ltr := add_left,
   fn_inj := λ n f g, sum.inl.inj,
   pr_inj := λ n f g, sum.inl.inj }
 
@@ -919,14 +919,14 @@ lemma coe_fn₁ {n} (f : L₁.fn n) : (↑f : (L₁ + L₂).fn n) = sum.inl f:= 
 
 lemma coe_pr₁ {n} (r : L₁.pr n) : (↑r : (L₁ + L₂).pr n) = sum.inl r:= rfl
 
-lemma to_extension₁_fn_to_coe {n} (f : L₁.fn n) : (to_extension₁.fn _ f : (L₁ + L₂).fn n) = f := rfl
+lemma add_left_fn_to_coe {n} (f : L₁.fn n) : (add_left.fn _ f : (L₁ + L₂).fn n) = f := rfl
 
-lemma to_extension₁_pr_to_coe {n} (r : L₁.pr n) : (to_extension₁.pr _ r : (L₁ + L₂).pr n) = r := rfl
+lemma add_left_pr_to_coe {n} (r : L₁.pr n) : (add_left.pr _ r : (L₁ + L₂).pr n) = r := rfl
 
-def to_extension₂ : L₂ ↝ᴸ L₁ + L₂ := ⟨λ n f, sum.inr f, λ n p, sum.inr p⟩
+def add_right : L₂ ↝ᴸ L₁ + L₂ := ⟨λ n f, sum.inr f, λ n p, sum.inr p⟩
 
 instance ltr₂ : language_translation_coe L₂ (L₁ + L₂) :=
-{ ltr := to_extension₂,
+{ ltr := add_right,
   fn_inj := λ n f g, sum.inr.inj,
   pr_inj := λ n f g, sum.inr.inj }
 
@@ -934,9 +934,9 @@ lemma coe_fn₂ {n} (f : L₂.fn n) : (↑f : (L₁ + L₂).fn n) = sum.inr f:= 
 
 lemma coe_pr₂ {n} (r : L₂.pr n) : (↑r : (L₁ + L₂).pr n) = sum.inr r:= rfl
 
-lemma to_extension₂_fn_to_coe {n} (f : L₂.fn n) : (to_extension₂.fn _ f : (L₁ + L₂).fn n) = f := rfl
+lemma add_right_fn_to_coe {n} (f : L₂.fn n) : (add_right.fn _ f : (L₁ + L₂).fn n) = f := rfl
 
-lemma to_extension₂_pr_to_coe {n} (r : L₂.pr n) : (to_extension₂.pr _ r : (L₁ + L₂).pr n) = r := rfl
+lemma add_right_pr_to_coe {n} (r : L₂.pr n) : (add_right.pr _ r : (L₁ + L₂).pr n) = r := rfl
 
 class sublanguage (L₀ : language.{u}) (L : language.{u}) :=
 (map_fn : Π {n}, L.fn n → L₀.fn n)
@@ -1065,6 +1065,8 @@ def consts_of_fun (f : α → β) : consts α ↝ᴸ consts β :=
 @[simp] lemma consts_fn (f : α → β) (c : (consts α).fn 0) : (consts_of_fun f).fn 0 c = f c := rfl
 
 end language_translation
+
+namespace language_equiv
 open language_translation extension
 variables (L₁ L₂ L₃)
 
@@ -1081,8 +1083,6 @@ def add_assoc' : L₁ + L₂ + L₃ ↭ᴸ L₁ + (L₂ + L₃) :=
   left_inv_pr := λ n r, by { rcases r; simp[←coe_pr₁, ←coe_pr₂], rcases r; simp[←coe_pr₁, ←coe_pr₂] },
   right_inv_fn := λ n f, by { rcases f; simp[←coe_fn₁, ←coe_fn₂], rcases f; simp[←coe_fn₁, ←coe_fn₂] },
   right_inv_pr := λ n r, by { rcases r; simp[←coe_pr₁, ←coe_pr₂], rcases r; simp[←coe_pr₁, ←coe_pr₂] } }
-
-namespace language_equiv
 
 end language_equiv
 
