@@ -651,9 +651,6 @@ lemma fintype_sup_le {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α]
   {f : ι → α} {a : α} (h : ∀ i, f i ≤ a) : (⨆ᶠ i, f i) ≤ a :=
 finset.sup_le (λ i _, h i)
 
-lemma fintype_sup_of_mem {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α] [order_bot α]
-  
-
 class wf_lt (α : Type*) :=
 (prelt : α → α → Prop)
 (wt : α → ℕ)
@@ -804,7 +801,6 @@ begin
       { rcases set.finite_subset_Union s_fin s_ss with ⟨I, I_fin, s_ss⟩,  simp at s_ss,
         refine ⟨coe '' I, by simp, set.finite.image coe I_fin, by simpa using s_ss⟩ },
       rcases this with ⟨d, d_ss, d_fin, hs⟩,
-      --
       by_cases d_nemp : d.nonempty,
       { have : ∃ m ∈ d, ⋃₀d ⊆ m, from finite_chain_sup H hc d_fin d_nemp d_ss,
         rcases this with ⟨m, m_mem, ss_m⟩,

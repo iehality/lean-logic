@@ -6,7 +6,7 @@ namespace fopl
 variables {L : language.{u}} {T U : theory L}
 
 namespace theory
-open provable axiomatic_classical_logic'
+open provable axiomatic_classical_logic axiomatic_classical_logic'
 
 lemma consistent_of_consistent_ss {T U : theory L} (h : T.consistent) (ss : U ⊆ T) : U.consistent :=
 by { simp[consistent_iff_bot] at h ⊢, intros hU, have : T ⊢ ⊥, from weakening hU ss, contradiction }
@@ -42,6 +42,9 @@ begin
   have : ¬s ⊢ ⊥, exact (consistent_iff_bot s).mp this,
   contradiction
 end⟩
+
+lemma tukey_finite_charactor : tukey.finite_charactor (theory.consistent : theory L → Prop) :=
+λ T, finite_character
 
 lemma finite_character_union (consis : consistent T) :
   consistent (T ∪ U) ↔ ∀ (s ⊆ U) (f : s.finite), consistent (T ∪ s) :=
@@ -93,6 +96,36 @@ lemma Union_seq (T : ℕ → theory L) (h : ∀ n, T n ⊆ T (n + 1)) :
     have : f ⟨x, hx⟩ ≤ M, from le_fintype_sup _ _,
     exact ss_of_le this (hf ⟨x, hx⟩) },
   exact consistent_of_consistent_ss (H M) this }⟩ 
+
+lemma inconsistent_insert_iff_provable_neg {p : formula L} :
+  ¬theory.consistent (T +{ p }) ↔ T ⊢ ⁻p :=
+begin
+  simp [theory.consistent_iff_bot, deduction],
+  have : T ⊢ ⁻p ⟷ p ⟶ ⊥, from neg_iff p,
+  split; intros h, { exact (iff_equiv.mp this).2 ⨀ h }, { exact (iff_equiv.mp this).1 ⨀ h }
+end
+
+lemma extendable (consis : T.consistent) (p : formula L) : 
+  theory.consistent (T +{ p }) ∨ theory.consistent (T +{ ⁻p }) :=
+by { by_contradiction A, simp[not_or_distrib, inconsistent_insert_iff_provable_neg] at A, rcases A with ⟨A₁, A₂⟩,
+     exact consis ⟨p, A₂, A₁⟩ }
+
+def maximal (T : theory L) : theory L := classical.epsilon (λ M, consistent M ∧ T ⊆ M ∧ ∀ S, consistent S → M ⊆ S → S = M)
+
+theorem maximal_consistent (consis : consistent T) :  consistent (maximal T) := (classical.epsilon_spec (tukey.exists_maximum tukey_finite_charactor T consis)).1
+
+theorem ss_maximal (consis : consistent T) :  T ⊆ maximal T := (classical.epsilon_spec (tukey.exists_maximum tukey_finite_charactor T consis)).2.1
+
+theorem maximal_maximal (consis : consistent T) : ∀ S, consistent S → maximal T ⊆ S → S = maximal T := (classical.epsilon_spec (tukey.exists_maximum tukey_finite_charactor T consis)).2.2
+
+lemma mem_maximal (consis : consistent T) (p : formula L) : p ∈ maximal T ∨ ⁻p ∈ maximal T :=
+begin
+  rcases extendable (maximal_consistent consis) p,
+  { have : insert p (maximal T) = maximal T, from maximal_maximal consis _ h (set.subset_insert _ _),
+    refine or.inl _, rw[←this], exact set.mem_insert p (maximal T) },
+  { have : insert (⁻p) (maximal T) = maximal T, from maximal_maximal consis _ h (set.subset_insert _ _),
+    refine or.inr _, rw[←this], exact set.mem_insert (⁻p) (maximal T) }
+end
 
 end consistent
 
