@@ -411,10 +411,46 @@ eq.symm (τ.fun_t_rew_var t (λ x, x + i))
   (τ.fun_p (p^i) : formula L₂) = (τ.fun_p p)^i := 
 eq.symm (τ.fun_p_rew_var p (λ x, x + i))
 
+@[simp] lemma fun_p_and (p q : formula L₁) :
+  τ.fun_p (p ⊓ q) = τ.fun_p p ⊓ τ.fun_p q := rfl
+
+@[simp] lemma fun_p_or (p q : formula L₁) :
+  τ.fun_p (p ⊔ q) = τ.fun_p p ⊔ τ.fun_p q := rfl
+
+@[simp] lemma fun_p_ex (p : formula L₁)  :
+  τ.fun_p (∐ p) = ∐ τ.fun_p p := rfl
+
+@[simp] lemma fun_p_bot :
+  τ.fun_p (⊥ : formula L₁) = ⊥ := rfl
+
+@[simp] lemma fun_p_conjunction (P : list (formula L₁)) :
+  τ.fun_p (conjunction P) = conjunction (P.map τ.fun_p) :=
+by induction P with p P IH; simp[conjunction, *]
+
+@[simp] lemma fun_p_nfal (p : formula L₁) (k : ℕ) :
+  τ.fun_p (∏[k] p) = ∏[k] τ.fun_p p :=
+by { induction k with k IH; simp[*] }
+
+@[simp] lemma fun_p_conjunction' {n : ℕ} (P : finitary (formula L₁) n) :
+  τ.fun_p (⋀ j, P j) = ⋀ j, τ.fun_p (P j) :=
+by { induction n with n IH generalizing P; simp* }
+
+@[simp] lemma fun_p_disjunction' {n : ℕ} (P : finitary (formula L₁) n) :
+  τ.fun_p (⋁ j, P j) = ⋁ j, τ.fun_p (P j) :=
+by { induction n with n IH generalizing P; simp* }
+
 lemma fun_t_rew : ∀ (t : term L₁) (s : ℕ → term L₁),
   τ.fun_t (t.rew s) = (τ.fun_t t).rew (λ x, τ.fun_t (s x))
 | (#x)           s := by simp
 | (term.app p v) s := by simp[λ i, fun_t_rew (v i)]
+
+@[simp] lemma fun_t_subst (t u : term L₁) (s) : τ.fun_t (t.rew ı[s ⇝ u]) = (τ.fun_t t).rew ı[s ⇝ τ.fun_t u] :=
+begin
+  have : (λ x, τ.fun_t (ı[s ⇝ u] x)) = ı[s ⇝ τ.fun_t u],
+  { funext x, have : x < s ∨ x = s ∨ s < x, exact trichotomous x s,
+    rcases this with (lt | rfl | lt); simp* },
+  simp[fun_t_rew, this]
+end
 
 lemma fun_p_rew : ∀ (p : formula L₁) (s : ℕ → term L₁),
   τ.fun_p (p.rew s) = (τ.fun_p p).rew (λ x, τ.fun_t (s x))
@@ -425,6 +461,14 @@ lemma fun_p_rew : ∀ (p : formula L₁) (s : ℕ → term L₁),
 | (⁻p)              s := by simp[fun_p_rew p]
 | (∏ p)             s := by
     { simp[fun_p_rew p, rewriting_sf_itr.pow_eq'], congr, funext x, cases x; simp }
+
+@[simp] lemma fun_p_subst (p : formula L₁) (u : term L₁) (s) : τ.fun_p (p.rew ı[s ⇝ u]) = (τ.fun_p p).rew ı[s ⇝ τ.fun_t u] :=
+begin
+  have : (λ x, τ.fun_t (ı[s ⇝ u] x)) = ı[s ⇝ τ.fun_t u],
+  { funext x, have : x < s ∨ x = s ∨ s < x, exact trichotomous x s,
+    rcases this with (lt | rfl | lt); simp* },
+  simp[fun_p_rew, this]
+end
 
 lemma fun_t_inversion_of_le {t₁ : term L₁} {u₂ : term L₂} (le : u₂ ≤ τ.fun_t t₁) :
   ∃ (u₁ : term L₁) (le : u₁ ≤ t₁), u₂ = τ.fun_t u₁ :=
@@ -634,19 +678,19 @@ by simp [tr_app_eq, ←app_formula_extension_eq_coe 0]
 
 @[simp] lemma coe_conjunction (P : list (formula L₁)) :
   (↑(conjunction P) : formula L₂) = conjunction (P.map coe) :=
-by induction P with p P IH; simp[conjunction, *]
+fun_p_conjunction _ P
 
 @[simp] lemma coe_nfal (p : formula L₁) (k : ℕ) :
   (↑(∏[k] p) : formula L₂) = ∏[k] ↑p :=
-by { induction k with k IH; simp[*] }
+fun_p_nfal _ p k
 
 @[simp] lemma coe_conjunction' {n : ℕ} (P : finitary (formula L₁) n) :
   (↑(⋀ j, P j) : formula L₂) = ⋀ j, P j :=
-by { induction n with n IH generalizing P; simp* }
+fun_p_conjunction' _ P
 
 @[simp] lemma coe_disjunction' {n : ℕ} (P : finitary (formula L₁) n) :
   (↑(⋁ j, P j) : formula L₂) = ⋁ j, P j :=
-by { induction n with n IH generalizing P; simp* }
+fun_p_disjunction' _ P
 
 @[simp] lemma coe_tr_v1_arity : ∀ t : term L₁, (t : term L₂).arity = t.arity
 | (#x)    := rfl
@@ -1191,11 +1235,11 @@ by { rw[←s.seqs_le_commuts le], simp[comp_fun_p] }
     let tr₁ : l (s.rank_p p) ↝ᴸ l (s.rank_p (∏ p)) := s.seqs_le (by simp) in
     ∏ (tr₁.fun_p $ retruct_p p)
 
-lemma reduct_t_spec (t : term L) : (s.to_limit (s.rank_t t)).fun_t (s.retruct_t t) = t :=
+lemma retruct_t_spec (t : term L) : (s.to_limit (s.rank_t t)).fun_t (s.retruct_t t) = t :=
 by induction t; simp[s.fn_spec]; case app : n f v IH { funext i, exact IH i }
 
-lemma reduct_p_spec (p : formula L) : (s.to_limit (s.rank_p p)).fun_p (s.retruct_p p) = p :=
-by induction p; simp[s.pr_spec, reduct_t_spec, *]
+lemma retruct_p_spec (p : formula L) : (s.to_limit (s.rank_p p)).fun_p (s.retruct_p p) = p :=
+by induction p; simp[s.pr_spec, retruct_t_spec, *]
 
 end seq_limit
 
