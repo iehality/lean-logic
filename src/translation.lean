@@ -326,13 +326,25 @@ end term_formula_translation
 
 namespace language_translation
 
+lemma mk.eta : Π (τ : L₁ ↝ᴸ L₂), ({fn := τ.fn, pr := τ.pr} : L₁ ↝ᴸ L₂) = τ
+| ⟨fn, pr⟩ := rfl
+
+lemma eq_iff {τ σ : L₁ ↝ᴸ L₂} : τ = σ ↔ (∀ n f, τ.fn n f = σ.fn n f) ∧ (∀ n r, τ.pr n r = σ.pr n r) :=
+by { rw[←mk.eta τ, ←mk.eta σ], simp, split,
+     { rintros ⟨eq_fn, eq_pr⟩, simp* }, { rintros ⟨hfn, hpr⟩, refine ⟨_, _⟩; { funext, simp* } } }
+
+@[ext] lemma ext {τ σ : L₁ ↝ᴸ L₂} (eq_fn : ∀ n f, τ.fn n f = σ.fn n f) (eq_pr : ∀ n r, τ.pr n r = σ.pr n r) : τ = σ :=
+by { simp[eq_iff], exact ⟨eq_fn, eq_pr⟩ }
+
 def from_empty : ∅ ↝ᴸ L :=
 { fn := λ n f, by rcases f, pr := λ n r, by rcases r }
 
-def self (L : language) : L ↝ᴸ L :=
+def one (L : language) : L ↝ᴸ L :=
 { fn := λ n, id, pr := λ n, id }
 
-def comp : L₂ ↝ᴸ L₃ →L₁ ↝ᴸ L₂ →  L₁ ↝ᴸ L₃ := λ τ₂₃ τ₁₂,
+instance : has_one (L ↝ᴸ L) := ⟨one L⟩ 
+
+def comp : L₂ ↝ᴸ L₃ → L₁ ↝ᴸ L₂ →  L₁ ↝ᴸ L₃ := λ τ₂₃ τ₁₂,
 { fn := λ n, (τ₂₃.fn n) ∘ (τ₁₂.fn n),
   pr := λ n, (τ₂₃.pr n) ∘ (τ₁₂.pr n) }
 
@@ -468,20 +480,20 @@ begin
   case fal : p IH { simp at mem ⊢, rcases IH mem with ⟨t', mem', rfl⟩, refine ⟨t', mem', rfl⟩ }
 end
 
-variables (τ₁₂ σ₁₂ : L₁ ↝ᴸ L₂) (τ₂₃ : L₂ ↝ᴸ L₃)
+variables (τ₁₂ σ₁₂ : L₁ ↝ᴸ L₂) (τ₂₃ : L₂ ↝ᴸ L₃) {L₄ : language.{u}} (τ₃₄ : L₃ ↝ᴸ L₄)
 
-@[simp] lemma self_fn {n} (f : L.fn n) : (self L).fn n f = f := rfl
+@[simp] lemma one_fn {n} (f : L.fn n) : fn 1 n f = f := rfl
 
-@[simp] lemma self_pr {n} (r : L.pr n) : (self L).pr n r = r := rfl
+@[simp] lemma one_pr {n} (r : L.pr n) : pr 1 n r = r := rfl
 
 @[simp] lemma comp_fn {n} (f : L₁.fn n) : (τ₂₃.comp τ₁₂).fn n f = τ₂₃.fn n (τ₁₂.fn n f) := rfl
 
 @[simp] lemma comp_pr {n} (r : L₁.pr n) : (τ₂₃.comp τ₁₂).pr n r = τ₂₃.pr n (τ₁₂.pr n r) := rfl
 
-@[simp] lemma self_fun_t (t : term L) : (self L).fun_t t = t :=
+@[simp] lemma one_fun_t (t : term L) : fun_t 1 t = t :=
 by induction t; simp*
 
-@[simp] lemma self_fun_p (p : formula L) : (self L).fun_p p = p :=
+@[simp] lemma one_fun_p (p : formula L) : fun_p 1 p = p :=
 by induction p; simp*
 
 lemma comp_fun_t : (τ₂₃.comp τ₁₂).fun_t = τ₂₃.fun_t ∘ τ₁₂.fun_t :=
@@ -490,15 +502,11 @@ by funext t; induction t; simp*
 lemma comp_fun_p  : (τ₂₃.comp τ₁₂).fun_p = τ₂₃.fun_p ∘ τ₁₂.fun_p :=
 by funext p; induction p; simp[*, comp_fun_t]
 
-lemma mk.eta : Π (τ : L₁ ↝ᴸ L₂), ({fn := τ.fn, pr := τ.pr} : L₁ ↝ᴸ L₂) = τ
-| ⟨fn, pr⟩ := rfl
+@[simp] lemma comp_one : τ.comp 1 = τ := by ext; simp
 
-lemma eq_iff : τ₁₂ = σ₁₂ ↔ (∀ n f, τ₁₂.fn n f = σ₁₂.fn n f) ∧ (∀ n r, τ₁₂.pr n r = σ₁₂.pr n r) :=
-by { rw[←mk.eta τ₁₂, ←mk.eta σ₁₂], simp, split,
-     { rintros ⟨eq_fn, eq_pr⟩, simp* }, { rintros ⟨hfn, hpr⟩, refine ⟨_, _⟩; { funext, simp* } } }
+@[simp] lemma one_comp : comp 1 τ = τ := by ext; simp
 
-@[ext] lemma ext (eq_fn : ∀ n f, τ₁₂.fn n f = σ₁₂.fn n f) (eq_pr : ∀ n r, τ₁₂.pr n r = σ₁₂.pr n r) : τ₁₂ = σ₁₂ :=
-by { simp[eq_iff], exact ⟨eq_fn, eq_pr⟩ }
+@[simp] lemma comp_assoc : (τ₃₄.comp τ₂₃).comp τ₁₂ = τ₃₄.comp (τ₂₃.comp τ₁₂) := by ext; simp
 
 end language_translation
 
@@ -1085,6 +1093,114 @@ def add_assoc' : L₁ + L₂ + L₃ ↭ᴸ L₁ + (L₂ + L₃) :=
   right_inv_pr := λ n r, by { rcases r; simp[←coe_pr₁, ←coe_pr₂], rcases r; simp[←coe_pr₁, ←coe_pr₂] } }
 
 end language_equiv
+
+namespace language_translation
+open extension
+
+def seq (l : ℕ → language.{u}) := Π n, l n ↝ᴸ l (n + 1)
+
+variables {l : ℕ → language.{u}}
+
+
+structure seq_limit (l : ℕ → language.{u}) (L : language):=
+(seq : seq l)
+(to_limit : Π n, l n ↝ᴸ L)
+(commutes : ∀ n, (to_limit (n + 1)).comp (seq n) = to_limit n)
+(rank_fn : Π {n} (f : L.fn n), ℕ)
+(rank_pr : Π {n} (r : L.pr n), ℕ)
+(fn : Π {n} (f : L.fn n), (l $ rank_fn f).fn n)
+(pr : Π {n} (r : L.pr n), (l $ rank_pr r).pr n)
+(fn_spec : ∀ {n} (f : L.fn n), (to_limit _).fn _ (fn f) = f)
+(pr_spec : ∀ {n} (r : L.pr n), (to_limit _).pr _ (pr r) = r)
+
+namespace seq_limit
+variables {L} (s : seq_limit l L)
+include s
+
+def seqs : Π n m, l n ↝ᴸ l (n + m)
+| n 0       := (1 : l n ↝ᴸ l n)
+| n (m + 1) := (s.seq (n + m)).comp (seqs n m)
+
+def seqs_le {n m} (h : n ≤ m) : l n ↝ᴸ l m :=
+by { rw [show m = n + (m - n), by omega], exact s.seqs n (m - n) }
+
+@[simp] lemma to_limit_seq_commutes' (n : ℕ) : (s.to_limit (n + 1)).comp (s.seq n) = s.to_limit n := s.commutes n
+
+@[simp] lemma to_limit_seqs_commuts (n m : ℕ) : (s.to_limit (n + m)).comp (s.seqs n m) = s.to_limit n :=
+by { induction m with m IH; simp[seqs], { refl },
+  { suffices : (s.to_limit (n + m + 1)).comp ((s.seq (n + m)).comp (s.seqs n m)) = s.to_limit n, by simpa,
+    rw ← comp_assoc, simp[IH] } }
+
+lemma seqs_le_commuts {n m : ℕ} (le : n ≤ m) : (s.to_limit m).comp (s.seqs_le le) = s.to_limit n :=
+by { have := s.to_limit_seqs_commuts n (m - n), rw ←this, congr; simp[show n + (m - n) = m, by omega, seqs_le] }
+
+@[simp] lemma seqs_le_commuts'_fn {n m : ℕ} (le : n ≤ m) {k} (f : (l n).fn k) :
+  (s.to_limit m).fn _ ((s.seqs_le le).fn _ f) = (s.to_limit n).fn _ f :=
+by { rw[←s.seqs_le_commuts le], simp }
+
+@[simp] lemma seqs_le_commuts'_pr {n m : ℕ} (le : n ≤ m) {k} (r : (l n).pr k) :
+  (s.to_limit m).pr _ ((s.seqs_le le).pr _ r) = (s.to_limit n).pr _ r :=
+by { rw[←s.seqs_le_commuts le], simp }
+
+@[simp] lemma seqs_le_commuts'_t {n m : ℕ} (le : n ≤ m) (t : term (l n)) :
+  (s.to_limit m).fun_t ((s.seqs_le le).fun_t t) = (s.to_limit n).fun_t t :=
+by { rw[←s.seqs_le_commuts le], simp[comp_fun_t] }
+
+@[simp] lemma seqs_le_commuts'_p {n m : ℕ} (le : n ≤ m) (p : formula (l n)) :
+  (s.to_limit m).fun_p ((s.seqs_le le).fun_p p) = (s.to_limit n).fun_p p :=
+by { rw[←s.seqs_le_commuts le], simp[comp_fun_p] }
+
+@[simp] def rank_t : term L → ℕ
+| #n        := 0
+| (app f v) := max (s.rank_fn f) (⨆ᶠ i, rank_t (v i))
+
+@[simp, reducible] def retruct_t : Π t : term L, term (l $ s.rank_t t)
+| #n := #n
+| (@term.app L m f v) :=
+    let n := max (s.rank_fn f) (⨆ᶠ i, s.rank_t (v i)),
+        tr₀ : l (s.rank_fn f) ↝ᴸ l n := s.seqs_le (by simp[n]),
+        tr : Π i, l (s.rank_t $ v i) ↝ᴸ l n := λ i, s.seqs_le (by { simp[n], refine or.inr (le_fintype_sup _ i)}) in
+    app (tr₀.fn _ (s.fn f)) (λ i, (tr i).fun_t (retruct_t (v i)))
+
+@[simp] def rank_p : formula L → ℕ
+| (app r v)   := max (s.rank_pr r) (⨆ᶠ i, s.rank_t (v i))
+| (t ≃₀ u) := max (s.rank_t t) (s.rank_t u)
+| ⊤           := 0
+| (p ⟶ q)     := max (rank_p p) (rank_p q)
+| (⁻p)        := rank_p p
+| (∏ p)       := rank_p p
+
+@[simp, reducible] def retruct_p : Π p : formula L, formula (l $ s.rank_p p)
+| (app r v)   :=
+  let tr₀ : l (s.rank_pr r) ↝ᴸ l (s.rank_p (app r v)) := s.seqs_le (by simp),
+      tr : Π i, l (s.rank_t $ v i) ↝ᴸ l (s.rank_p (app r v)) := λ i, s.seqs_le (by { simp, refine or.inr (le_fintype_sup _ i)}) in
+    app (tr₀.pr _ (s.pr r)) (λ i, (tr i).fun_t (s.retruct_t (v i)))
+| (equal t u) :=
+    let tr₁ : l (s.rank_t t) ↝ᴸ l (s.rank_p (equal t u)) := s.seqs_le (by simp),
+        tr₂ : l (s.rank_t u) ↝ᴸ l (s.rank_p (equal t u)) := s.seqs_le (by simp) in
+    (tr₁.fun_t $ s.retruct_t t) ≃ (tr₂.fun_t $ s.retruct_t u)
+| ⊤           := ⊤
+| (p ⟶ q)     :=
+   let tr₁ : l (s.rank_p p) ↝ᴸ l (s.rank_p (p ⟶ q)) := s.seqs_le (by simp),
+       tr₂ : l (s.rank_p q) ↝ᴸ l (s.rank_p (p ⟶ q)) := s.seqs_le (by simp) in
+    (tr₁.fun_p $ retruct_p p) ⟶ (tr₂.fun_p $ retruct_p q)
+| (⁻p)        :=
+    let tr₁ : l (s.rank_p p) ↝ᴸ l (s.rank_p (⁻p)) := s.seqs_le (by simp) in
+    ⁻(tr₁.fun_p $ retruct_p p)
+| (∏ p)       :=
+    let tr₁ : l (s.rank_p p) ↝ᴸ l (s.rank_p (∏ p)) := s.seqs_le (by simp) in
+    ∏ (tr₁.fun_p $ retruct_p p)
+
+lemma reduct_t_spec (t : term L) : (s.to_limit (s.rank_t t)).fun_t (s.retruct_t t) = t :=
+by induction t; simp[s.fn_spec]; case app : n f v IH { funext i, exact IH i }
+
+lemma reduct_p_spec (p : formula L) : (s.to_limit (s.rank_p p)).fun_p (s.retruct_p p) = p :=
+by induction p; simp[s.pr_spec, reduct_t_spec, *]
+
+end seq_limit
+
+end language_translation
+
 
 end language
 
