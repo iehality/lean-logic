@@ -229,10 +229,18 @@ lemma eval_iff : ∀ {p : formula L} {e₁ e₂ : ℕ → |M|},
       cases n; simp[concat], refine eqs _ (by omega) },
     exact forall_congr this }
 
-lemma eval_sentence_iff {p : formula L} {e : ℕ → |M|} (a : sentence p) : M ⊧[e] p ↔ M ⊧ p :=
+@[simp] lemma eval_sentence_iff {p : formula L} {e : ℕ → |M|} (a : sentence p) : M ⊧[e] p ↔ M ⊧ p :=
 ⟨λ h e, by { refine (eval_iff $ λ n h, _).1 h, exfalso,
  simp[sentence] at*, rw[a] at h, exact nat.not_lt_zero n h},
  λ h, h e⟩
+
+namespace model
+
+lemma models_neg_iff_of_sentence {p : formula L} (hp : sentence p) : M ⊧ ⁻p ↔ ¬M ⊧ p :=
+by { have : M ⊧[default] ⁻p ↔ ¬M ⊧[default] p, by simp,
+     simp only [hp, show sentence (⁻p), by sorry, eval_sentence_iff] at this, exact this }
+
+end model
 
 def theory_of (M : model L) : theory L := {p | M ⊧ p}
 
@@ -258,8 +266,8 @@ by induction p generalizing e; try { simp[*, of_ltr_val_t] }
 theorem models_iff {p : formula L₁} : τ.of_ltr M₂ ⊧ p ↔ M₂ ⊧ τ.fun_p p:=
 ⟨λ h e, models_val_iff.mp (h e), λ h e, models_val_iff.mpr (h e)⟩
 
-theorem theory_models_iff {T : theory L₁} : τ.of_ltr M₂ ⊧ₜₕ T ↔ M₂ ⊧ₜₕ τ.fun_p '' T :=
-by simp[modelsth, models_iff]
+theorem theory_models_iff {T : theory L₁} : τ.of_ltr M₂ ⊧ₜₕ T ↔ M₂ ⊧ₜₕ τ.fun_theory T :=
+by simp[fun_theory, modelsth, models_iff]
 
 end language_translation
 

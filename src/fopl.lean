@@ -914,8 +914,24 @@ def fal_complete (p : formula L) := ∏[p.arity] p
 
 prefix `∏* `:64 := fal_complete
 
-lemma fal_complete_sentence (p : formula L) : sentence (∏* p) :=
+@[simp] lemma fal_complete_sentence (p : formula L) : sentence (∏* p) :=
 by simp[sentence, fal_complete]
+
+@[simp] lemma sentence_verum_iff : sentence (⊤ : formula L) := by simp[sentence]
+@[simp] lemma sentence_app_iff {n} (r : L.pr n) (v) : sentence (app r v) ↔ ∀ i, (v i).arity = 0 :=
+by {simp[sentence], sorry }
+
+@[simp] lemma sentence_neg_iff {p : formula L} : sentence (⁻p) ↔ sentence p := by simp[sentence]
+
+@[simp] lemma sentence_imply_iff {p q: formula L} : sentence (p ⟶ q) ↔ sentence p ∧ sentence q := by simp[sentence]
+
+@[simp] lemma sentence_and_iff {p q: formula L} : sentence (p ⊓ q) ↔ sentence p ∧ sentence q := by simp[sentence]
+
+@[simp] lemma sentence_or_iff {p q: formula L} : sentence (p ⊔ q) ↔ sentence p ∧ sentence q := by simp[sentence]
+
+@[simp] lemma sentence_fal_iff {p : formula L} : sentence (∏ p) ↔ p.arity ≤ 1 := by simp[sentence]
+
+@[simp] lemma sentence_ex_iff {p : formula L} : sentence (∐ p) ↔ p.arity ≤ 1 := by simp[sentence]
 
 @[simp] def fn_symbols : formula L → set (Σ n, L.fn n)
 | ⊤         := ∅

@@ -160,6 +160,12 @@ end⟩
 
 end consistent
 
+lemma provable_iff_inconsistent {p : formula L} : T ⊢ p ↔ ¬consistent (T +{⁻p}) :=
+⟨λ h, by { simp[consistent_def], refine ⟨p, by simp[h], by simp⟩ },
+λ h, by { have : T +{ ⁻p } ⊢ ⊥, from not_consistent_iff_bot.mp h,
+          have : T ⊢ ⁻⁻p, from (iff_of_equiv (neg_iff _)).mpr (deduction.mp this),
+          exact dn_iff.mp this }⟩
+
 end theory
 
 end fopl
