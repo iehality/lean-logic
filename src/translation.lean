@@ -552,6 +552,20 @@ by funext p; induction p; simp[*, comp_fun_t]
 
 @[simp] lemma comp_assoc : (τ₃₄.comp τ₂₃).comp τ₁₂ = τ₃₄.comp (τ₂₃.comp τ₁₂) := by ext; simp
 
+@[simp] lemma fun_t_arity (t : term L₁) : (τ.fun_t t).arity = t.arity :=
+by induction t; simp*
+
+@[simp] lemma fun_p_arity (p : formula L₁) : (τ.fun_p p).arity = p.arity :=
+by induction p; simp*
+
+@[simp] lemma fun_p_sentence (p : formula L₁) : sentence (τ.fun_p p) ↔ sentence p :=
+by simp[sentence]
+
+def fun_theory (T : theory L₁) : theory L₂ := τ.fun_p '' T
+
+instance (T : theory L₁) [c : closed_theory T] : closed_theory (τ.fun_theory T) :=
+⟨λ p mem, by { rcases mem with ⟨p, mem, rfl⟩, simp[closed_theory.cl mem] }⟩ 
+
 end language_translation
 
 namespace language_translation_coe
@@ -900,15 +914,15 @@ open language_translation
 variables (τ : L₁ ↝ᴸ L₂)
 
 lemma provability_pow {T : theory L₁} {p : formula L₁} {i : ℕ} :
-  T^i ⊢ p → (τ.fun_p '' T)^i ⊢ τ.fun_p p :=
+  T^i ⊢ p → (τ.fun_theory T)^i ⊢ τ.fun_p p :=
 translation.provability_pow τ.tr T p i 0
 
 lemma provability {T : theory L₁} {p : formula L₁} :
-  T ⊢ p → τ.fun_p '' T ⊢ τ.fun_p p :=
+  T ⊢ p → τ.fun_theory T ⊢ τ.fun_p p :=
 translation.provability τ.tr T p 0
 
 lemma consistency (T : theory L₁) : 
-  theory.consistent (τ.fun_p '' T) → T.consistent :=
+  theory.consistent (τ.fun_theory T) → T.consistent :=
 translation.consistency τ.tr T 0
 
 end language_translation
@@ -1038,8 +1052,8 @@ instance ltr_subtype (s : set ι) : language_translation_coe (direct_sum (λ i :
 
 @[simp] lemma theory_ext_ss_subtype_consistence {s t : set ι} (ss : s ⊆ t)
   (T : theory (direct_sum (λ i : s, l i))) :
-  (↑((ext_ss l ss).fun_p '' T) : theory (direct_sum l)) = ↑T :=
-set.ext (λ p, by { unfold_coes, simp[tr_theory, app_formula_extension_eq_coe] })
+  (↑((ext_ss l ss).fun_theory T) : theory (direct_sum l)) = ↑T :=
+set.ext (λ p, by { unfold_coes, simp[tr_theory, app_formula_extension_eq_coe, fun_theory] })
 
 end extension
 
