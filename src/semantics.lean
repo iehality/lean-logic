@@ -1,4 +1,4 @@
-import deduction
+import deduction translation
 
 universes u v
 
@@ -238,5 +238,31 @@ def theory_of (M : model L) : theory L := {p | M ⊧ p}
 
 class theory_of_model (M : model L) (T : theory L) :=
 (models : M ⊧ₜₕ T)
+
+namespace language
+namespace language_translation
+variables {L₁ L₂ : language.{u}} {τ : L₁ ↝ᴸ L₂} {M₂ : model L₂}
+
+@[reducible] def of_ltr (τ : L₁ ↝ᴸ L₂) (M₂ : model L₂) : model L₁ :=
+{ dom := |M₂|,
+  inhabited := M₂.inhabited,
+  fn := λ n f v, M₂.fn (τ.fn _ f) v,
+  pr := λ n r v, M₂.pr (τ.pr _ r) v }
+
+lemma of_ltr_val_t (e : ℕ → |M₂|) (t : term L₁) : (τ.fun_t t).val M₂ e = t.val (τ.of_ltr M₂) e :=
+by induction t; simp*
+
+lemma models_val_iff {e : ℕ → |M₂|} {p : formula L₁} : τ.of_ltr M₂ ⊧[e] p ↔ M₂ ⊧[e] τ.fun_p p :=
+by induction p generalizing e; try { simp[*, of_ltr_val_t] }
+
+theorem models_iff {p : formula L₁} : τ.of_ltr M₂ ⊧ p ↔ M₂ ⊧ τ.fun_p p:=
+⟨λ h e, models_val_iff.mp (h e), λ h e, models_val_iff.mpr (h e)⟩
+
+theorem theory_models_iff {T : theory L₁} : τ.of_ltr M₂ ⊧ₜₕ T ↔ M₂ ⊧ₜₕ τ.fun_p '' T :=
+by simp[modelsth, models_iff]
+
+end language_translation
+
+end language
 
 end fopl
