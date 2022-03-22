@@ -1,4 +1,4 @@
-import deduction lindenbaum
+import deduction
 
 universes u v
 

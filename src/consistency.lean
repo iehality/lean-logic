@@ -15,6 +15,9 @@ private lemma list_set_finite {α} (l : list α) : {a : α | a ∈ l}.finite :=
 by { induction l with a l IH, { simp },
   { simp[show {b : α | b = a ∨ b ∈ l} = insert a {b : α | b ∈ l}, by refl], exact set.finite.insert a IH } }
 
+class Consistent (T : theory L) :=
+(consis : T.consistent)
+
 namespace consistent
 
 lemma finite_character :
@@ -126,6 +129,34 @@ begin
   { have : insert (⁻p) (maximal T) = maximal T, from maximal_maximal consis _ h (set.subset_insert _ _),
     refine or.inr _, rw[←this], exact set.mem_insert (⁻p) (maximal T) }
 end
+
+lemma mem_maximal_iff (consis : consistent T) {p : formula L} : p ∈ maximal T ↔ maximal T ⊢ p :=
+⟨by_axiom,
+  λ b, by { rcases mem_maximal consis p with (h | h),
+    { exact h }, { have : maximal T ⊢ ⁻p, from by_axiom h,
+      have : ¬(consistent (maximal T)), { simp[consistent_def], refine ⟨_, b, this⟩ },
+      have : consistent (maximal T), from maximal_consistent consis, 
+      contradiction } }⟩
+
+lemma neg_mem_maximal_iff (consis : consistent T) {p : formula L} :
+  ⁻p ∈ maximal T ↔ p ∉ maximal T :=
+⟨λ b A, by { simp[mem_maximal_iff consis] at*,
+  have : ¬consistent (maximal T), { simp[consistent_def], refine ⟨p, A, b⟩ },
+  have : consistent (maximal T), from maximal_consistent consis,
+  contradiction },
+λ b, by { rcases mem_maximal consis p with (h | h), { contradiction }, { exact h } }⟩
+
+lemma imply_mem_maximal_iff (consis : consistent T) {p q : formula L} :
+  p ⟶ q ∈ maximal T ↔ (p ∈ maximal T → q ∈ maximal T) :=
+⟨λ b₁ b₂, by { simp[mem_maximal_iff consis] at*, exact b₁ ⨀ b₂ },
+λ h, begin
+  by_cases C : p ∈ maximal T,
+  { simp[mem_maximal_iff consis] at*, exact hyp_right (h C) p },
+  { have : ⁻p ∈ maximal T, from (neg_mem_maximal_iff consis).mpr C,
+    simp[mem_maximal_iff consis] at*,
+    refine deduction.mp _,
+    exact explosion (show (maximal T) +{ p } ⊢ p, by simp) (show (maximal T) +{ p } ⊢ ⁻p, by simp[this]) }
+end⟩
 
 end consistent
 

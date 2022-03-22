@@ -199,6 +199,9 @@ lemma and_imply_of_imply_right {p₁ p₂ q : F} (h : p₂ ⟶ q ∈ P) : p₁ �
 @[simp] lemma iff_equiv_p {p q : F} : (p ⟷ q ∈ P) ↔ (p ⟶ q ∈ P ∧ q ⟶ p ∈ P) :=
 by simp[lrarrow_def, iff_and_p]
 
+lemma iff_of_equiv {p q : F} (h : p ⟷ q ∈ P) : p ∈ P ↔ q ∈ P :=
+by { simp at h, refine ⟨λ hp, h.1 ⨀ hp, λ hq, h.2 ⨀ hq⟩ }
+
 lemma of_equiv_p {p₁ p₂ : F} (h : p₁ ∈ P) (hp : p₁ ⟷ p₂ ∈ P) : p₂ ∈ P :=
 by { simp[iff_equiv_p] at hp, refine hp.1 ⨀ h }
 
@@ -556,6 +559,8 @@ impl_trans
 @[simp] lemma iff_and {p q : F} : T ⊢ p ⊓ q ↔ (T ⊢ p ∧ T ⊢ q) := iff_and_p
 
 lemma iff_equiv {p q : F} : T ⊢ p ⟷ q ↔ (T ⊢ p ⟶ q ∧ T ⊢ q ⟶ p) := iff_equiv_p
+
+lemma iff_of_equiv {p q : F} (h : T ⊢ p ⟷ q) : T ⊢ p ↔ T ⊢ q := iff_of_equiv h
 
 @[refl, simp] lemma equiv_refl (p : F) : T ⊢ p ⟷ p := equiv_refl p
 

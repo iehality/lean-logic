@@ -114,6 +114,10 @@ def model (T : theory L) : model L := ⟨Herbrand T 0, ⟨⟦#0⟧ᴴ⟩, @funct
 
 notation `𝔗[`T`]` := model T
 
+ @[simp] lemma model_pr_app {n} (r : L.pr n) (v : finitary (term L) n) : (𝔗[T]).pr r (λ i, ⟦v i⟧ᴴ) ↔ T ⊢ formula.app r v :=
+by { suffices : predicate r (λ (i : fin n), ⟦(v i)⟧ᴴ) = (T ⊢ ❴r❵ v), { simpa using this },
+  refine fopl.Herbrand.lift_on_finitary_eq _ _ _ }
+
 theorem eq_of_provable_equiv {t₁ t₂} : T^i ⊢ t₁ ≃ t₂ ↔ (⟦t₁⟧ᴴ : Herbrand T i) = ⟦t₂⟧ᴴ := by simp[of_eq_of]
 
 theorem eq_of_provable_equiv_0 {t₁ t₂} : T ⊢ t₁ ≃ t₂ ↔ (⟦t₁⟧ᴴ : Herbrand T 0) = ⟦t₂⟧ᴴ := by simp[of_eq_of]
@@ -651,6 +655,12 @@ namespace provable
 open classical_logic axiomatic_classical_logic axiomatic_classical_logic' Herbrand Lindenbaum
 
 variables {T}
+
+@[simp] lemma neg_fal_equiv_ex_neg (p : formula L) : T ⊢ ⁻(∏ p) ⟷ ∐⁻p :=
+Lindenbaum.eq_of_provable_equiv_0.mpr (by simp[prenex_fal_neg])
+
+@[simp] lemma neg_ex_equiv_fal_neg (p : formula L) : T ⊢ ⁻(∐ p) ⟷ ∏⁻p :=
+Lindenbaum.eq_of_provable_equiv_0.mpr (by simp[prenex_ex_neg])
 
 @[simp] lemma ex_imply_equiv_fal_imply (p q : formula L) : T ⊢ ((∐ p) ⟶ q) ⟷ ∏ (p ⟶ q^1) :=
 Lindenbaum.eq_of_provable_equiv_0.mpr

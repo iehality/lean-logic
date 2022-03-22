@@ -96,6 +96,9 @@ lemma theory.consistent_iff_bot (T : theory L) : T.consistent ↔ ¬T ⊢ ⊥ :=
 lemma theory.not_consistent_iff_bot {T : theory L} : ¬T.consistent ↔ T ⊢ ⊥ :=
 by simp[theory.consistent_iff_bot T]
 
+lemma theory.not_consistent_iff (T : theory L) : ¬T.consistent ↔ ∃p : formula L, (T ⊢ p) ∧ (T ⊢ ⁻p) :=
+by simp[theory.consistent_def]
+
 def theory.le (T U : theory L) : Prop := ∀ {p : formula L}, T ⊢ p → U ⊢ p
 
 instance : has_le (theory L) := ⟨theory.le⟩
@@ -764,6 +767,14 @@ begin
   have := nfal_subst' (@predicate_ext _ T _ r) s,
   simp[eq_conj, eq_v₁, eq_v₂] at this, exact this
 end
+
+lemma predicate_ext'' {n} (r : L.pr n) (v₁ v₂ : finitary (term L) n) :
+  T ⊢ (⋀ i, v₁ i ≃ v₂ i) ⟶ (formula.app r v₁ ⟷ formula.app r v₂) :=
+by { refine deduction.mp _,
+     simp[iff_equiv], split,
+     { refine (predicate_ext' r v₁ v₂) ⨀ (by simp) },
+     { refine (predicate_ext' r v₂ v₁) ⨀
+       (fopl.provable.conjunction' (λ i, eq_symm (deduction.mpr $ conjunction'_mem $ finitary.index_mem _ i))) } }
 
 lemma equal_rew_equal (s₁ s₂ : ℕ → term L) (e : ∀ n, T ⊢ s₁ n ≃ s₂ n) : ∀ (t : term L) ,
   T ⊢ t.rew s₁ ≃ t.rew s₂

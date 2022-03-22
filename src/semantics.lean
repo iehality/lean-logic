@@ -19,14 +19,16 @@ local infix ` ≃₁ `:80 := ((≃) : term L → term L → formula L)
 
 instance (M : model L) : inhabited M.dom := M.inhabited
 
+variables (M)
+
 @[simp] def term.val (e : ℕ → |M|) : term L → |M|
 | (#x)           := e x
 | (term.app f v) := M.fn f (λ i, (v i).val)
 
 @[simp] def formula.val : ∀ (e : ℕ → |M|), formula L → Prop
 | _ ⊤                 := true
-| e (formula.app p v) := M.pr p (λ i, (v i).val e)
-| e (t ≃₁ u)          := t.val e = u.val e
+| e (formula.app p v) := M.pr p (λ i, (v i).val M e)
+| e (t ≃₁ u)          := t.val M e = u.val M e
 | e (p ⟶ q)          := p.val e → q.val e
 | e (⁻p)              := ¬(p.val e)
 | e (∏ p)            := ∀ d : M.dom, (p.val (d ⌢ e))
@@ -39,16 +41,18 @@ infix ` ⊧ `:50 := models
 def modelsth (M : model L) (T : theory L) : Prop := ∀ p, p ∈ T → M ⊧ p
 infix ` ⊧ₜₕ `:50 := modelsth
 
+variables {M}
+
 lemma rew_val_eq (s : ℕ → term L) (e : ℕ → |M|) : ∀ (t : term L),
-  (t.rew s).val e = t.val (λ n, (s n).val e)
+  (t.rew s).val M e = t.val M (λ n, (s n).val M e)
 | (#x)                := by simp
 | (@term.app _ n f v) := by simp[λ i : fin n, rew_val_eq (v i)]
 
-@[simp] lemma pow_val_concat (e : ℕ → |M|) (d : |M|) (t : term L) : (t^1).val (d ⌢ e) = t.val e :=
+@[simp] lemma pow_val_concat (e : ℕ → |M|) (d : |M|) (t : term L) : (t^1).val M (d ⌢ e) = t.val M e :=
 by simp[term.pow_eq, rew_val_eq]
 
 lemma rew_val_iff : ∀ (s : ℕ → term L) (p : formula L) (e : ℕ → |M|),
-  (p.rew s).val e ↔ p.val (λ n, (s n).val e)
+  (p.rew s).val M e ↔ p.val M (λ n, (s n).val M e)
 | _ ⊤                 _ := by simp
 | _ (formula.app p v) _ := by simp[formula.rew, rew_val_eq]
 | _ (t ≃₁ u)          _ := by simp[formula.rew, term.val, rew_val_eq]
@@ -56,29 +60,29 @@ lemma rew_val_iff : ∀ (s : ℕ → term L) (p : formula L) (e : ℕ → |M|),
 | _ (⁻p)              _ := by simp[formula.rew, rew_val_iff _ p]
 | s (∏ p)            e :=
   by { simp[formula.rew, rew_val_iff _ p], refine forall_congr (λ d, _),
-       have : (λ n, ((s ^ 1) n).val (d ⌢ e) ) = (d ⌢ λ n, ((s n).val e)),
+       have : (λ n, ((s ^ 1) n).val M (d ⌢ e) ) = (d ⌢ λ n, ((s n).val M e)),
        { funext n, cases n; simp[concat, term.val, term.val], exact pow_val_concat _ _ _ },
        simp[this] }
 
-@[simp] lemma pow_val_concat_iff : ∀ (p : formula L) (e : ℕ → |M|) d, (p^1).val (d ⌢ e) = p.val e :=
+@[simp] lemma pow_val_concat_iff : ∀ (p : formula L) (e : ℕ → |M|) d, (p^1).val M (d ⌢ e) = p.val M e :=
 by simp[formula.pow_eq, rew_val_iff]
 
-@[simp] lemma model_zero_val [has_zero_symbol L] {e : ℕ → |M|} : (0 : term L).val e = M.fn has_zero_symbol.zero finitary.nil :=
+@[simp] lemma model_zero_val [has_zero_symbol L] {e : ℕ → |M|} : (0 : term L).val M e = M.fn has_zero_symbol.zero finitary.nil :=
 by simp[has_zero.zero]; congr
 
 @[simp] lemma model_succ_val [has_succ_symbol L] (t : term L) {e : ℕ → |M|} :
-  (Succ t).val e = M.fn has_succ_symbol.succ ‹t.val e› :=
+  (Succ t).val M e = M.fn has_succ_symbol.succ ‹t.val M e› :=
 by simp[has_succ.succ]; congr; ext; simp
 
 private lemma modelsth_sf {T} : M ⊧ₜₕ T → M ⊧ₜₕ ⤊T := λ h p hyp_p e,
 by { rcases hyp_p with ⟨p, hyp_p', rfl⟩, simp[formula.pow_eq, rew_val_iff],
      refine h _ hyp_p' _ }
 
-@[simp] lemma models_ex {p : formula L} {e : ℕ → |M|} : (∐ p).val e ↔ ∃ d, p.val (d ⌢ e) :=
+@[simp] lemma models_ex {p : formula L} {e : ℕ → |M|} : (∐ p).val M e ↔ ∃ d, p.val M (d ⌢ e) :=
 by simp[has_exists_quantifier.ex, formula.ex, models, rew_val_iff]
 
 lemma models_univs {p : formula L} {e : ℕ → |M|} {n} :
-  (∏[n] p).val e ↔ ∀ d : finitary (|M|) n, p.val (λ i, if h : i < n then d ⟨i, h⟩ else e (i - n)) :=
+  (∏[n] p).val M e ↔ ∀ d : finitary (|M|) n, p.val M (λ i, if h : i < n then d ⟨i, h⟩ else e (i - n)) :=
 begin
   induction n with n IH generalizing e; simp,
   { refine ⟨λ h _, h, λ h, h ∅⟩ },
@@ -99,17 +103,17 @@ begin
              show i - n - 1 = i - (n + 1), from tsub_tsub i n 1] } } }
 end
 
-@[simp] lemma models_and {p q : formula L} {e : ℕ → |M|} : (p ⊓ q).val e ↔ (p.val e ∧ q.val e) :=
+@[simp] lemma models_and {p q : formula L} {e : ℕ → |M|} : (p ⊓ q).val M e ↔ (p.val M e ∧ q.val M e) :=
 by simp[has_inf.inf, formula.and]
 
-@[simp] lemma models_or {p q : formula L} {e : ℕ → |M|} : (p ⊔ q).val e ↔ (p.val e ∨ q.val e) :=
+@[simp] lemma models_or {p q : formula L} {e : ℕ → |M|} : (p ⊔ q).val M e ↔ (p.val M e ∨ q.val M e) :=
 by {simp[has_sup.sup, formula.or], exact or_iff_not_imp_left.symm }
 
-@[simp] lemma models_iff {p q : formula L} {e : ℕ → |M|} : (p ⟷ q).val e ↔ (p.val e ↔ q.val e) :=
+@[simp] lemma models_iff {p q : formula L} {e : ℕ → |M|} : (p ⟷ q).val M e ↔ (p.val M e ↔ q.val M e) :=
 by simp[lrarrow_def]; exact iff_def.symm
 
 @[simp] lemma models_conjunction' {n : ℕ} {P : finitary (formula L) n} {e : ℕ → |M|} :
-  (conjunction' n P).val e ↔ ∀ i, (P i).val e :=
+  (conjunction' n P).val M e ↔ ∀ i, (P i).val M e :=
 by { induction n with n IH; simp,
      { intros i, exfalso, exact i.val.not_lt_zero i.property },
      { simp [IH], split,
@@ -120,13 +124,13 @@ by { induction n with n IH; simp,
          { simp[←this] at*, refine h0 } },
        { intros h, refine ⟨h _, λ _, h _⟩ } } }
 
-@[simp] lemma models_pow {p : formula L} {i : ℕ} {e : ℕ → |M| } : (p^i).val e ↔ p.val (λ n, e (n + i)) :=
+@[simp] lemma models_pow {p : formula L} {i : ℕ} {e : ℕ → |M| } : (p^i).val M e ↔ p.val M (λ n, e (n + i)) :=
 by simp[formula.pow_eq, rew_val_iff]
 
 lemma models_subst {p : formula L} {i : ℕ} {t : term L} {e : ℕ → |M| } :
-  (p.rew ı[i ⇝ t]).val e ↔ p.val (λ n, if n < i then e n else if i < n then e (n - 1) else t.val e) :=
+  (p.rew ı[i ⇝ t]).val M e ↔ p.val M (λ n, if n < i then e n else if i < n then e (n - 1) else t.val M e) :=
 by { simp[rew_val_iff],
-     have : (λ (n : ℕ), term.val e (ı[i ⇝ t] n)) = (λ n, if n < i then e n else if i < n then e (n - 1) else t.val e),
+     have : (λ (n : ℕ), term.val M e (ı[i ⇝ t] n)) = (λ n, if n < i then e n else if i < n then e (n - 1) else t.val M e),
      { funext n,
        have C : n < i ∨ n = i ∨ i < n, exact trichotomous n i,
        cases C, simp[C],
@@ -134,16 +138,16 @@ by { simp[rew_val_iff],
      simp[this] }
 
 @[simp] lemma models_subst_0 {p : formula L} {t : term L} {e : ℕ → |M| } :
-  (p.rew ı[0 ⇝ t]).val e ↔ p.val (t.val e ⌢ e) :=
+  (p.rew ı[0 ⇝ t]).val M e ↔ p.val M (t.val M e ⌢ e) :=
 by { have := @models_subst _ _ p 0 t e, simp at this,
-     have eqn : (λ n, ite (0 < n) (e (n - 1)) (t.val e)) = t.val e ⌢ e,
+     have eqn : (λ n, ite (0 < n) (e (n - 1)) (t.val M e)) = t.val M e ⌢ e,
      { funext n, cases n; simp }, rw[←eqn], exact this }
 
 @[simp] lemma models_subst_1 {p : formula L} {t : term L} {e : ℕ → |M| } :
-  (p.rew ı[1 ⇝ t]).val e ↔ p.val (e 0 ⌢ t.val e ⌢ (λ x, e (x + 1))) :=
+  (p.rew ı[1 ⇝ t]).val M e ↔ p.val M (e 0 ⌢ t.val M e ⌢ (λ x, e (x + 1))) :=
 by { have := @models_subst _ _ p 1 t e,
-     have eqn : (λ n, ite (n < 1) (e n) (ite (1 < n) (e (n - 1)) (t.val e))) =
-       e 0 ⌢ t.val e ⌢ (λ x, e (x + 1)),
+     have eqn : (λ n, ite (n < 1) (e n) (ite (1 < n) (e (n - 1)) (t.val M e))) =
+       e 0 ⌢ t.val M e ⌢ (λ x, e (x + 1)),
      { funext n, cases n; simp[←nat.add_one], cases n; simp }, rw[←eqn], exact this }
 
 lemma nfal_models_iff : ∀ {n} {p : formula L}, M ⊧ nfal p n ↔ M ⊧ p
@@ -173,7 +177,7 @@ begin
   { intros M hyp_T e h₁, simp[formula.val], contrapose, exact h₁ },
   case specialize : T p t
   { intros M hyp_T e h, simp[rew_val_iff] at h ⊢,
-    have : (λ n, (ı[0 ⇝ t] n).val e) = (t.val e) ⌢ e,
+    have : (λ n, (ı[0 ⇝ t] n).val M e) = (t.val M e) ⌢ e,
     { funext n, cases n; simp[term.val, term.val, concat] },
     rw this, exact h _ },
   case univ_K : T p q
@@ -199,7 +203,7 @@ by { contrapose, simp[theory.consistent], intros p hp₁ hp₂ hyp,
      exact soundness hp₂ hyp (λ _, default) (soundness hp₁ hyp (λ _, default)) }
 
 lemma eval_eq : ∀ {t : term L} {e₁ e₂ : ℕ → |M|},
-  (∀ n, n < t.arity → e₁ n = e₂ n) → t.val e₁ = t.val e₂
+  (∀ n, n < t.arity → e₁ n = e₂ n) → t.val M e₁ = t.val M e₂
 | (#n)               _  _  eqs := by simp at *; refine eqs _ _; simp
 | (@term.app _ n f v)  e₁ e₂ eqs := by { simp at *, congr, funext i, refine @eval_eq (v i) _ _ (λ n eqn, _),
   have : (v i).arity ≤ finitary.Max 0 (λ i, (v i).arity), from finitary.Max_le 0 (λ i, (v i).arity) i,
@@ -209,7 +213,7 @@ lemma eval_iff : ∀ {p : formula L} {e₁ e₂ : ℕ → |M|},
   (∀ n, n < p.arity → e₁ n = e₂ n) → (M ⊧[e₁] p ↔ M ⊧[e₂] p)
 | ⊤                      _  _  _   := by simp
 | (@formula.app _ n p v) e₁ e₂ eqs := by { simp[sentence] at*,
-    suffices : (λ i, term.val e₁ (v i)) = (λ i, term.val e₂ (v i)), { simp[this] },
+    suffices : (λ i, term.val M e₁ (v i)) = (λ i, term.val M e₂ (v i)), { simp[this] },
     funext i, refine @eval_eq _ M (v i) _ _ (λ n eqn, eqs n _),
     have : (v i).arity ≤ finitary.Max 0 (λ i, (v i).arity), from finitary.Max_le 0 (λ i, (v i).arity) i,
     refine (lt_of_lt_of_le eqn this) }
@@ -220,7 +224,7 @@ lemma eval_iff : ∀ {p : formula L} {e₁ e₂ : ℕ → |M|},
 | (⁻p)                   e₁ e₂ eqs := by { simp[sentence, formula.arity] at*,
     simp[eval_iff eqs] }
 | (∏ p)                 e₁ e₂ eqs := by { simp[sentence, formula.arity] at*,
-    have : ∀ (d : |M|), p.val (d ⌢ e₁) ↔ p.val (d ⌢ e₂),
+    have : ∀ (d : |M|), p.val M (d ⌢ e₁) ↔ p.val M (d ⌢ e₂),
     { intros d, refine eval_iff (λ n eqn, _),
       cases n; simp[concat], refine eqs _ (by omega) },
     exact forall_congr this }
