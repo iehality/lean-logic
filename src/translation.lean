@@ -561,10 +561,15 @@ by induction p; simp*
 @[simp] lemma fun_p_sentence (p : formula L₁) : sentence (τ.fun_p p) ↔ sentence p :=
 by simp[sentence]
 
-def fun_theory (T : theory L₁) : theory L₂ := τ.fun_p '' T
+variables (T : theory L₁)
 
-instance (T : theory L₁) [c : closed_theory T] : closed_theory (τ.fun_theory T) :=
+def fun_theory : theory L₂ := τ.fun_p '' T
+
+instance [c : closed_theory T] : closed_theory (τ.fun_theory T) :=
 ⟨λ p mem, by { rcases mem with ⟨p, mem, rfl⟩, simp[closed_theory.cl mem] }⟩ 
+
+lemma fun_theory_insert (p : formula L₁) : τ.fun_theory (T+{p}) = τ.fun_theory T +{τ.fun_p p} :=
+set.image_insert_eq
 
 end language_translation
 
@@ -706,9 +711,9 @@ fun_p_conjunction' _ P
   (↑(⋁ j, P j) : formula L₂) = ⋁ j, P j :=
 fun_p_disjunction' _ P
 
-@[simp] lemma coe_tr_v1_arity : ∀ t : term L₁, (t : term L₂).arity = t.arity
-| (#x)    := rfl
-| (❨f❩ v) := by simp[λ i, coe_tr_v1_arity (v i)]
+@[simp] lemma coe_t_arity (t : term L₁) : (t : term L₂).arity = t.arity := fun_t_arity _ t
+
+@[simp] lemma coe_p_arity (p : formula L₁) : (p : formula L₂).arity = p.arity := fun_p_arity _ p
 
 @[simp] lemma coe_is_open (p : formula L₁) : (p : formula L₂).is_open ↔ p.is_open :=
 by { induction p; simp[*] }
@@ -809,6 +814,14 @@ lemma fun_p_inversion_of_le {p₁ : formula L₁} {q₂ : formula L₂} (le : q�
 
 lemma fun_p_inversion_of_mem {p₁ : formula L₁} {t₂ : term L₂} (mem : t₂ ∈ (↑p₁ : formula L₂)) :
   ∃ (t₁ : term L₁) (mem : t₁ ∈ p₁), t₂ = ↑t₁ := fun_p_inversion_of_mem _ mem
+
+variables (T : theory L₁)
+
+instance [c : closed_theory T] : closed_theory (↑T : theory L₂) :=
+language_translation.fun_theory.fopl.closed_theory _ _
+
+lemma fun_theory_insert (p : formula L₁) : (↑(T+{p}) : theory L₂) = ↑T +{↑p} :=
+set.image_insert_eq
 
 end language_translation_coe
 
@@ -967,6 +980,16 @@ lemma coe_def (a : α) : (a : term (consts α)) = term.app (consts.c a) finitary
 
 end consts
 
+def singleton_fn (m : ℕ) : language.{u} := ⟨λ n, if n = m then punit else pempty, λ n, pempty⟩
+
+namespace singleton_fn
+variables {m : ℕ}
+
+def star : (singleton_fn m).fn m := by { simp[singleton_fn]; simp[show (m = m) ↔ true, by simp], refine punit.star }
+
+
+end singleton_fn
+
 @[simp] lemma sum_fn_def {ι : Type*} (l : ι → language) (n : ℕ) : (direct_sum l).fn n = Σ i, (l i).fn n := rfl
 
 @[simp] lemma sum_pr_def {ι : Type*} (l : ι → language) (n : ℕ) : (direct_sum l).pr n = Σ i, (l i).pr n := rfl
@@ -1122,6 +1145,7 @@ def add_assoc'_inv : L₁ + (L₂ + L₃) ↝ᴸ L₁ + L₂ + L₃ :=
 @[simp] lemma add_assoc'_inv_pr₂ {n} (r : L₂.pr n) : (add_assoc'_inv L₁ L₂ L₃).pr n ↑(↑r : (L₂ + L₃).pr n) = (↑(↑r : (L₁ + L₂).pr n)) := rfl
 @[simp] lemma add_assoc'_inv_pr₃ {n} (r : L₃.pr n) : (add_assoc'_inv L₁ L₂ L₃).pr n ↑(↑r : (L₂ + L₃).pr n) = (↑r : (L₁ + L₂ + L₃).pr n) := rfl
 
+section
 variables {α β : Type*}
 
 def consts_of_fun (f : α → β) : consts α ↝ᴸ consts β :=
@@ -1129,6 +1153,16 @@ def consts_of_fun (f : α → β) : consts α ↝ᴸ consts β :=
   pr := λ n r, by { rcases r } }
 
 @[simp] lemma consts_fn (f : α → β) (c : (consts α).fn 0) : (consts_of_fun f).fn 0 c = f c := rfl
+
+end
+
+variables {L₁} {L₂} (τ : L₁ ↝ᴸ L₂)
+#check set.range
+def sub : language.{u} := { fn := λ n, (set.compl $ set.range (τ.fn n)), pr := λ n, (set.compl $ set.range (τ.pr n)) }
+
+def add_sub_refl : L₁ + sub τ ↝ᴸ L₂ :=
+{ fn := λ n f, by { rcases f, { exact τ.fn _ f }, { rcases f with ⟨f, hf⟩, exact f } },
+  pr := λ n r, by { rcases r, { exact τ.pr _ r }, { rcases r with ⟨r, hr⟩, exact r } } }
 
 end language_translation
 

@@ -24,6 +24,8 @@ by { induction j with j IH; simp[theory.sf_itr_succ, ←nat.add_one, ←add_asso
 
 class closed_theory (T : theory L) := (cl : ∀ {p}, p ∈ T → sentence p)
 
+attribute [simp] closed_theory.cl
+
 def proper_at (n : ℕ) (T : theory L) : Prop := ∀ (p : formula L) (s), p ∈ T → p.rew (s^n) ∈ T
 
 def proper_theory'_at (n : ℕ) (T : theory L) : Prop := ∀ (p : formula L) (s : ℕ → term L),
