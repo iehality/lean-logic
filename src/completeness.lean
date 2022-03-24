@@ -508,18 +508,146 @@ end henkin
 
 variables [closed_theory T] {L} {T}
 
-theorem exists_model_of_consistent (consis : T.consistent) : ∃ M, M ⊧ₜₕ T :=
-⟨_, @henkin.Henkin.ℌ_models_T _ T ⟨consis⟩ _⟩
+theorem consistent_iff_satisfiable : T.consistent ↔ ∃ M, M ⊧ₜₕ T :=
+⟨λ consis,  ⟨_, @henkin.Henkin.ℌ_models_T _ T ⟨consis⟩ _⟩, by { rintros ⟨M, hM⟩, exact model_consistent hM}⟩
 
 theorem completeness {p : formula L} (hp : sentence p) : 
   T ⊢ p ↔ (∀ M, M ⊧ₜₕ T → M ⊧ p) :=
 ⟨λ b M hM, soundness b hM,
  λ h, by { simp[theory.provable_iff_inconsistent], intros consis,
-  have : closed_theory (T +{⁻p}), from ⟨by { simp[hp], sorry}⟩,
-  have : ∃ M, M ⊧ₜₕ (T +{⁻p}), exactI exists_model_of_consistent consis,
+  have : closed_theory (T +{⁻p}), from ⟨by { simp[hp], exact λ _, closed_theory.cl }⟩,
+  have : ∃ M, M ⊧ₜₕ (T +{⁻p}), exactI consistent_iff_satisfiable.mp consis,
   rcases this with ⟨M, hM⟩,
   have : M ⊧ p, from h M (λ p mem, hM p (by simp[mem])),
   have : ¬M ⊧ p, by simpa[model.models_neg_iff_of_sentence hp] using hM (⁻p) (by simp),
   contradiction }⟩
+
+theorem completeness' {p : formula L} : 
+  T ⊢ p ↔ (∀ M, M ⊧ₜₕ T → M ⊧ p) :=
+⟨λ b M, soundness b,
+ λ h, by { have : ∀ M, M ⊧ₜₕ T → M ⊧ ∏* p, { intros M hM, simp[fal_complete, nfal_models_iff, h M hM] },
+  have : T ⊢ ∏* p, from (completeness (show sentence (∏* p), by simp)).mpr this,
+  have lmm : T ⊢ p.rew (λ x, ite (x < p.arity) #x #(x - p.arity)), from provable.nfal_subst _ _ ı ⨀ this,
+  have := @formula.rew_rew _ p (λ x, ite (x < p.arity) #x #(x - p.arity)) ı (λ m lt, by simp[lt]),
+  simpa[this] using lmm }⟩
+
+variables {L₁ L₂ : language.{u}} {T₁ : theory L₁} [closed_theory T₁]
+
+theorem coe_consistent_iff :
+  (↑T₁ : theory (L₁ + L₂)).consistent ↔ T₁.consistent :=
+⟨language.language_translation.consistency _ T₁,
+ λ h,
+begin
+  have : ∃ M₁, M₁ ⊧ₜₕ T₁, from consistent_iff_satisfiable.mp h,
+  rcases this with ⟨M₁, hM₁⟩,
+  let M₂ : model (L₁ + L₂) := M₁.extend default default,
+  have : M₁.extend default default ⊧ₜₕ (↑T₁ : theory (L₁ + L₂)), from (M₁.extend_modelsth_coe_iff default default).mpr hM₁,
+  exact consistent_iff_satisfiable.mpr ⟨_, this⟩
+end⟩
+
+theorem coe_provable_iff {p : formula L₁} (hp : sentence p) :
+  (↑T₁ : theory (L₁ + L₂)) ⊢ ↑p ↔ T₁ ⊢ p :=
+begin
+  simp[theory.provable_iff_inconsistent],
+  suffices : ¬theory.consistent (↑(T₁ +{ ⁻p } : theory L₁) : theory (L₁ + L₂)) ↔ ¬theory.consistent (T₁ +{ ⁻p }),
+    by simpa[language.language_translation_coe.fun_theory_insert] using this, 
+  have : closed_theory (T₁ +{ ⁻p }) := ⟨by { simp[hp], exact λ _, closed_theory.cl }⟩,
+  have : theory.consistent (↑(T₁ +{ ⁻p } : theory L₁) : theory (L₁ + L₂)) ↔ theory.consistent (T₁ +{ ⁻p }),
+    from @coe_consistent_iff _ _ ((T₁ +{ ⁻p } : theory L₁)) this,
+  simp[this]
+end
+
+def def_fn {n} (f : L₂.fn n) (p : formula L₁) : formula (L₁ + L₂) :=
+∏[n] rew ı[0 ⇝ app (sum.inr f) ##] ↑p
+
+def def_pr {n} (r : L₂.pr n) (p : formula L₁) : formula (L₁ + L₂) :=
+∏[n] (↑p ⟷ app (sum.inr r) ##)
+
+@[simp] lemma def_fn_sentence {n} (f : L₂.fn n) (p : formula L₁) (hp : p.arity ≤ n + 1) : sentence (def_fn f p) :=
+begin
+  simp[def_fn, sentence] at hp ⊢,
+  refine le_trans ((p : formula (L₁ + L₂)).rew_arity ı[0 ⇝ app (sum.inr f) (λ i, #i)]) (fintype_sup_le _),
+  rintros ⟨i, hi⟩, cases i; simp at hi ⊢,
+  { refine fintype_sup_le _, rintros ⟨i, hi⟩, simp[nat.succ_le_iff.mpr hi] },
+  { have : i + 1 < n + 1, from lt_of_lt_of_le hi hp,
+    exact nat.lt_succ_iff.mp this }
+end
+
+@[simp] lemma def_pr_sentence {n} (r : L₂.pr n) (p : formula L₁) (hp : p.arity ≤ n) : sentence (def_pr r p) :=
+by { simp[def_pr, sentence, hp],
+     refine fintype_sup_le _, rintros ⟨i, hi⟩, simpa using nat.succ_le_iff.mpr hi }
+
+theorem extensions_by_definitions_fn (consis : T₁.consistent) (L₂ : language)
+  (df : Π {n : ℕ}, L₂.fn n → formula L₁)
+  (hdf : ∀ {n} {f : L₂.fn n}, (df f).arity ≤ n + 1)
+  (b : ∀ {n} (f : L₂.fn n), T₁ ⊢ ∏[n] ∐ (df f)) :
+  theory.consistent (↑T₁ ∪ ⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (df f)))) :=
+begin
+  suffices : ∃ M, M ⊧ₜₕ (↑T₁ ∪ ⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (df f)))),
+  { have cl : closed_theory (↑T₁ ∪ ⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (df f)))),
+    from ⟨by { simp, rintros p (ph | ⟨n, f, rfl⟩), { exact closed_theory.cl ph }, { simp[hdf] } }⟩,
+    exactI consistent_iff_satisfiable.mpr this },  
+  have : ∃ M, M ⊧ₜₕ T₁, from consistent_iff_satisfiable.mp consis,
+  rcases this with ⟨M, hM⟩,
+  have : ∀ (n) (f : L₂.fn n) (v : finitary (|M|) n), ∃ (d : (|M|)),
+    (df f).val M (d ⌢ (λ i, if h : i < n then v ⟨i, h⟩ else default)),
+  { intros n f,
+    have : M ⊧[default] ∏[n] ∐ (df f), from (soundness (b f) hM) default,
+    simpa[models_univs] using this },
+  have : ∀ n : ℕ, ∃ F' : L₂.fn n → finitary (|M|) n → |M|,
+    ∀ (f : L₂.fn n) (v : finitary (|M|) n), (df f).val M (F' f v ⌢ (λ i, if h : i < n then v ⟨i, h⟩ else default)),
+  { intros n, choose F' hF' using this n, exact ⟨F', hF'⟩ },
+  choose F hF using this,
+  let M₂ : model (L₁ + L₂) := M.extend F default,
+  have lmm₁ : ∀ {n} (f : L₂.fn n), M₂ ⊧ def_fn f (df f),
+  { intros n f,
+    rw [←eval_sentence_iff default (show sentence (def_fn f (df f)), by simp[hdf])],
+    simp[def_fn, models_univs, ←language.extension.coe_pr₂], intros v,
+    exact (model.extend_val_coe_iff M _ _).mpr (hF n f v) },
+  have lmm₂ : M₂ ⊧ₜₕ ↑T₁, from (model.extend_modelsth_coe_iff M _ _).mpr hM, 
+  refine ⟨M₂, by { simp[lmm₂], intros n, simp[modelsth, lmm₁] }⟩
+end
+
+theorem extensions_by_definitions (consis : T₁.consistent) (L₂ : language)
+  (df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
+  (hdf_fn : ∀ {n} {f : L₂.fn n}, (df_fn f).arity ≤ n + 1)
+  (df_pr : Π {n : ℕ}, L₂.pr n → formula L₁)
+  (hdf_pr : ∀ {n} {r : L₂.pr n}, (df_pr r).arity ≤ n)
+  (b : ∀ {n} (f : L₂.fn n), T₁ ⊢ ∏[n] ∐ (df_fn f)) :
+  theory.consistent
+    (↑T₁ ∪ (⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (df_fn f))))
+         ∪ (⋃ n, (set.range (λ (r : L₂.pr n), def_pr r (df_pr r))))) :=
+begin
+  suffices : ∃ M, M ⊧ₜₕ (↑T₁ ∪ (⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (df_fn f)))) ∪ (⋃ n, (set.range (λ (r : L₂.pr n), def_pr r (df_pr r))))),
+  { have cl : closed_theory (↑T₁ ∪ (⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (df_fn f)))) ∪ (⋃ n, (set.range (λ (r : L₂.pr n), def_pr r (df_pr r))))),
+    from ⟨by { simp, rintros p ((ph | ⟨n, f, rfl⟩) | ⟨n, r, rfl⟩),
+      { exact closed_theory.cl ph }, { simp[hdf_fn] }, { simp[hdf_pr] }  }⟩,
+    exactI consistent_iff_satisfiable.mpr this },  
+  have : ∃ M, M ⊧ₜₕ T₁, from consistent_iff_satisfiable.mp consis,
+  rcases this with ⟨M, hM⟩,
+  have : ∀ (n) (f : L₂.fn n) (v : finitary (|M|) n), ∃ (d : (|M|)),
+    (df_fn f).val M (d ⌢ (λ i, if h : i < n then v ⟨i, h⟩ else default)),
+  { intros n f,
+    have : M ⊧[default] ∏[n] ∐ (df_fn f), from (soundness (b f) hM) default,
+    simpa[models_univs] using this },
+  have : ∀ n : ℕ, ∃ F' : L₂.fn n → finitary (|M|) n → |M|,
+    ∀ (f : L₂.fn n) (v : finitary (|M|) n), (df_fn f).val M (F' f v ⌢ (λ i, if h : i < n then v ⟨i, h⟩ else default)),
+  { intros n, choose F' hF' using this n, exact ⟨F', hF'⟩ },
+  choose F hF using this,
+  let R : Π n, L₂.pr n → finitary (|M|) n → Prop := λ n r v, M ⊧[λ i, if h : i < n then v ⟨i, h⟩ else default] (df_pr r),
+  let M₂ : model (L₁ + L₂) := M.extend F R,
+  have lmm₁ : ∀ {n} (f : L₂.fn n), M₂ ⊧ def_fn f (df_fn f),
+  { intros n f,
+    rw [←eval_sentence_iff default (show sentence (def_fn f (df_fn f)), by simp[hdf_fn])],
+    simp[def_fn, models_univs], intros v,
+    exact (model.extend_val_coe_iff M _ _).mpr (hF n f v) },
+  have lmm₂ : ∀ {n} (r : L₂.pr n), M₂ ⊧ def_pr r (df_pr r),
+  { intros n r,
+    rw [←eval_sentence_iff default (show sentence (def_pr r (df_pr r)), by simp[hdf_pr])],
+    simp[def_pr, models_univs, R], intros v,
+    exact model.extend_val_coe_iff M F R, exact ⟨λ _, default⟩ },
+  have lmm₃ : M₂ ⊧ₜₕ ↑T₁, from (model.extend_modelsth_coe_iff M _ _).mpr hM, 
+  refine ⟨M₂, by { simp[lmm₃], split; intros n; simp[modelsth, lmm₁, lmm₂] }⟩
+end
 
 end fopl
