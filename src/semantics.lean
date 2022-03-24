@@ -206,7 +206,7 @@ lemma eval_eq : ∀ {t : term L} {e₁ e₂ : ℕ → |M|},
   (∀ n, n < t.arity → e₁ n = e₂ n) → t.val M e₁ = t.val M e₂
 | (#n)               _  _  eqs := by simp at *; refine eqs _ _; simp
 | (@term.app _ n f v)  e₁ e₂ eqs := by { simp at *, congr, funext i, refine @eval_eq (v i) _ _ (λ n eqn, _),
-  have : (v i).arity ≤ finitary.Max 0 (λ i, (v i).arity), from finitary.Max_le 0 (λ i, (v i).arity) i,
+  have : (v i).arity ≤ ⨆ᶠ i, (v i).arity, from le_fintype_sup (λ i, (v i).arity) i,
   refine eqs n (lt_of_lt_of_le eqn this) }
   
 lemma eval_iff : ∀ {p : formula L} {e₁ e₂ : ℕ → |M|},
@@ -215,7 +215,7 @@ lemma eval_iff : ∀ {p : formula L} {e₁ e₂ : ℕ → |M|},
 | (@formula.app _ n p v) e₁ e₂ eqs := by { simp at*,
     suffices : (λ i, term.val M e₁ (v i)) = (λ i, term.val M e₂ (v i)), { simp[this] },
     funext i, refine @eval_eq _ M (v i) _ _ (λ n eqn, eqs n _),
-    have : (v i).arity ≤ finitary.Max 0 (λ i, (v i).arity), from finitary.Max_le 0 (λ i, (v i).arity) i,
+    have : (v i).arity ≤ ⨆ᶠ i, (v i).arity, from le_fintype_sup (λ i, (v i).arity) i,
     refine (lt_of_lt_of_le eqn this) }
 | (t ≃₁ u)               e₁ e₂ eqs := by { simp[formula.arity] at*,
     simp[eval_eq (λ n h, eqs _ (or.inl h)), eval_eq (λ n h, eqs _ (or.inr h))] }
