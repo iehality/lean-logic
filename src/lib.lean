@@ -647,9 +647,39 @@ notation `⨆ᶠ ` binders `, ` r:(scoped f, fintype_sup f) := r
   (f : ι → α) (i : ι) :
   f i ≤ ⨆ᶠ i, f i := finset.le_sup (by simp)
 
+@[simp] lemma le_fintype_sup' {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α] [order_bot α]
+  {a : α} {f : ι → α} (i : ι) (le : a ≤ f i) :
+  a ≤ ⨆ᶠ i, f i := le_trans le (le_fintype_sup _ _)
+
 lemma fintype_sup_le {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α] [order_bot α]
   {f : ι → α} {a : α} (h : ∀ i, f i ≤ a) : (⨆ᶠ i, f i) ≤ a :=
 finset.sup_le (λ i _, h i)
+
+namespace fintype_sup
+variables {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α] [order_bot α]
+
+@[simp] lemma finsup_eq_0_of_empty [is_empty ι] (f : ι → α) :
+  (⨆ᶠ i, f i) = ⊥ := by simp[fintype_sup]
+
+@[simp] lemma finsup_eq_of_subsingleton [subsingleton ι] [inhabited ι] (f : ι → α) :
+  (⨆ᶠ i, f i) = f default :=
+begin
+  suffices : (⨆ᶠ i, f i) ≤ f default ∧ f default ≤ (⨆ᶠ i, f i), from le_antisymm_iff.mpr this,
+  split,
+  { refine fintype_sup_le (λ i, by simp[subsingleton.elim i default]) },
+  { refine le_fintype_sup _ _ }
+end
+
+@[simp] lemma finsup_eq_of_fin2 {α : Type*} [linear_order α] [order_bot α] (f : fin 2 → α) :
+  (⨆ᶠ i, f i) = max (f 0) (f 1) :=
+begin
+  suffices : (⨆ᶠ i, f i) ≤ max (f 0) (f 1) ∧ max (f 0) (f 1) ≤ (⨆ᶠ i, f i), from le_antisymm_iff.mpr this,
+  split,
+  { refine fintype_sup_le (λ ⟨i, hi⟩, by { rcases i; simp; rcases i; simp[← nat.add_one, add_assoc] at hi ⊢, contradiction }) },
+  { simp }
+end
+
+end fintype_sup
 
 class wf_lt (α : Type*) :=
 (prelt : α → α → Prop)

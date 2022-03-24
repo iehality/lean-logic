@@ -242,7 +242,16 @@ by simp[has_exists_quantifier.ex, formula.ex]
 
 notation `∏[` i `] `:90 p := nfal p i
 
-@[simp] lemma nfal_fal (p : formula L) (i : ℕ) : nfal (∏ p : formula L) i = ∏ (nfal p i) :=
+@[simp] def nex (p : formula L) : ℕ → formula L
+| 0     := p
+| (n+1) := ∐ (nex n)
+
+notation `∐[` i `] `:90 p := nex p i
+
+@[simp] lemma nfal_fal (p : formula L) (i : ℕ) : (∏[i] (∏ p)) = ∏ (∏[i] p) :=
+by { induction i with i IH; simp, exact IH }
+
+@[simp] lemma nex_ex (p : formula L) (i : ℕ) : (∐[i] (∐ p)) = ∐ (∐[i] p) :=
 by { induction i with i IH; simp, exact IH }
 
 @[simp] def conjunction' : ∀ n, (fin n → formula L) → formula L
@@ -395,17 +404,17 @@ by simp[pow_eq]
 
 @[simp] def arity : term L → ℕ
 | (#n)    := n + 1
-| (❨f❩ v) := finitary.Max 0 (λ i, (v i).arity)
+| (❨f❩ v) := ⨆ᶠ i, (v i).arity
 
 @[simp] lemma constant_arity (c : L.fn 0) {v : finitary (term L) 0} : (app c v).arity = 0 :=
 by simp
 
 @[simp] lemma unary_arity (f : L.fn 1) {v : finitary (term L) 1} : (❨f❩ v).arity = (v 0).arity :=
-by simp[finitary.cons, finitary.Max]
+by simp
 
 @[simp] lemma binary_arity (f : L.fn 2) (v : finitary (term L) 2) :
   (❨f❩ v).arity = max (v 0).arity (v 1).arity :=
-by simp[finitary.Max, finitary.cons, fin.add']; exact max_comm _ _
+by simp
 
 @[simp] lemma zero_arity [has_zero_symbol L] : (0 : term L).arity = 0 :=
 by unfold has_zero.zero; simp
@@ -435,7 +444,7 @@ lemma rew_rew {s₀ s₁ : ℕ → term L} : ∀ (t : term L),
   (∀ m, m < t.arity → s₀ m = s₁ m) → t.rew s₀ = t.rew s₁
 | (#x)            h := by simp[rew, arity] at h ⊢; simp*
 | (@app _ n f v)  h := by simp[rew, arity] at h ⊢; refine
-  funext (λ i, rew_rew (v i) (λ m eqn, h m (lt_of_lt_of_le eqn (finitary.Max_le 0 (λ i, (v i).arity) i))))
+  funext (λ i, rew_rew (v i) (λ m eqn, h m (lt_of_lt_of_le eqn (le_fintype_sup _ i))))
 
 lemma pow_add (t : term L) (i j : ℕ) : (t^i)^j = t^(i + j) :=
 by simp[pow_eq, nested_rew, add_assoc]
@@ -463,6 +472,28 @@ by { simp[has_pow.pow, rew, nested_rew, h], congr, funext x,
 @[simp] lemma concat_pow_eq (v : term L) (t : term L) (s : ℕ → term L) :
   (v^1).rew (t ⌢ s) = v.rew s :=
 by simp[concat, rew, pow_eq, nested_rew]
+
+@[simp] lemma rew_arity (t : term L) (s : ℕ → term L) : (t.rew s).arity ≤ ⨆ᶠ (i : fin t.arity), (s i).arity :=
+begin
+  induction t,
+  case var : n { exact le_fintype_sup (λ i : fin (n + 1), (s i).arity) ⟨n, by simp⟩ },
+  case app : n r v IH
+  { simp,refine fintype_sup_le (λ i, _),
+    have : (⨆ᶠ (i : fin (v i).arity), (s i).arity) ≤ (⨆ᶠ (i : fin (❨r❩ v).arity), (s i).arity),
+    { refine fintype_sup_le _, rintros ⟨j, hj⟩,
+      exact le_fintype_sup (λ i : fin (❨r❩ v).arity, (s i).arity) ⟨j, lt_of_lt_of_le hj (le_fintype_sup _ i)⟩ },
+    refine le_trans (IH i) this }
+end
+
+@[simp] lemma pow_arity (t : term L) (n : ℕ) : (t^n).arity ≤ t.arity + n :=
+begin
+  simp[pow_eq],
+  have lmm₁ : (t.rew (λ x, #(x + n))).arity ≤ (⨆ᶠ (i : fin t.arity), i + n + 1), from rew_arity t (λ x, #(x + n)),
+  have lmm₂ :  (⨆ᶠ (i : fin t.arity), i + n + 1 : ℕ) ≤ (t.arity + n),
+  { refine fintype_sup_le _, rintros ⟨i, hi⟩, simp,
+    from nat.lt_succ_iff.mp (add_lt_add_right (add_lt_add_right hi n) 1) },
+  exact le_trans lmm₁ lmm₂
+end
 
 def vector_vars {n} : vector (term L) n := vector.of_fn $ λ i, #i
 
@@ -610,7 +641,7 @@ lemma rewriting_sf_perm {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n) : ∀ 
 
 @[simp] def formula.arity : formula L → ℕ
 | ⊤                 := 0
-| (formula.app p v) := finitary.Max 0 (λ i, (v i).arity)
+| (formula.app p v) := ⨆ᶠ i, (v i).arity
 | (t ≃₁ u)          := max t.arity u.arity
 | (p ⟶ q)           := max p.arity q.arity
 | (⁻p)              := p.arity
@@ -787,7 +818,7 @@ lemma rew_rew : ∀ (p : formula L) {s₀ s₁ : ℕ → term L},
   (∀ m, m < p.arity → s₀ m = s₁ m) → p.rew s₀ = p.rew s₁
 | ⊤         _ _ _ := by simp
 | (❴p❵ v) _ _ h := by simp[rew, arity] at h ⊢; refine funext
-    (λ i, term.rew_rew (v i) (λ m eqn, h _ $ lt_of_lt_of_le eqn (finitary.Max_le 0 _ i)))
+    (λ i, term.rew_rew (v i) (λ m eqn, h _ $ lt_of_lt_of_le eqn (le_fintype_sup _ i)))
 | (t ≃₁ u)  _ _ h := by simp[rew, arity] at h ⊢;
     { refine ⟨term.rew_rew _ (λ _ e, h _ (or.inl e)), term.rew_rew _ (λ _ e, h _ (or.inr e))⟩ }
 | (p ⟶ q)   _ _ h := by simp[rew, arity] at h ⊢;
@@ -932,6 +963,56 @@ by {simp[sentence], sorry }
 @[simp] lemma sentence_fal_iff {p : formula L} : sentence (∏ p) ↔ p.arity ≤ 1 := by simp[sentence]
 
 @[simp] lemma sentence_ex_iff {p : formula L} : sentence (∐ p) ↔ p.arity ≤ 1 := by simp[sentence]
+
+lemma rew_arity (p : formula L) (s : ℕ → term L) : (p.rew s).arity ≤ ⨆ᶠ (i : fin p.arity), (s i).arity :=
+begin
+  induction p generalizing s,
+  case app : n r v
+  { simp, refine fintype_sup_le (λ i, _),
+    have : (⨆ᶠ (j : fin (v i).arity), (s j).arity) ≤ (⨆ᶠ (i : fin (❴r❵ v).arity), (s i).arity),
+    { refine fintype_sup_le _, rintros ⟨j, hj⟩, simp,
+      refine le_fintype_sup' ⟨j, lt_of_lt_of_le hj (by simp; exact le_fintype_sup' i (by simp))⟩ (by simp) },
+    exact le_trans ((v i).rew_arity s) this },
+  case equal : t u
+  { simp, refine ⟨le_trans (t.rew_arity s) (fintype_sup_le _), le_trans (u.rew_arity s) (fintype_sup_le _)⟩,
+    { rintros ⟨i, hi⟩, refine le_fintype_sup' ⟨i, by simp[hi]⟩ (by simp) },
+    { rintros ⟨i, hi⟩, refine le_fintype_sup' ⟨i, by simp[hi]⟩ (by simp) } },
+  case verum { simp },
+  case imply : p q IH_p IH_q
+  { simp, refine ⟨le_trans (IH_p s) (fintype_sup_le _), le_trans (IH_q s) (fintype_sup_le _)⟩,
+    { rintros ⟨i, hi⟩, refine le_fintype_sup' ⟨i, by simp[hi]⟩ (by simp) },
+    { rintros ⟨i, hi⟩, refine le_fintype_sup' ⟨i, by simp[hi]⟩ (by simp) } },
+  case neg : p IH
+  { simp, refine le_trans (IH s) (fintype_sup_le _),
+    rintros ⟨i, hi⟩, refine le_fintype_sup' ⟨i, by simp[hi]⟩ (by simp) },
+  case fal : p IH
+  { have : (⨆ᶠ (i : fin p.arity), ((s ^ 1) i).arity) ≤ ((⨆ᶠ  (i : fin (∏ p).arity), (s i).arity) + 1),
+    { refine fintype_sup_le _, rintros ⟨i, hi⟩,
+      cases i; simp,
+      have : (s i).arity ≤ (⨆ᶠ (i : fin (∏ p).arity), (s i).arity), from le_fintype_sup (λ (i : fin (∏ p).arity), (s i).arity) ⟨i, by simp; omega⟩,
+      refine le_trans (show (s i ^ 1).arity ≤ (s i).arity + 1, by simp) (by simp[this]) },
+    simp, exact le_trans (IH (s^1)) this }
+end
+
+@[simp] lemma pow_arity (p : formula L) (n : ℕ) : (p^n).arity ≤ p.arity + n :=
+begin
+  simp[pow_eq],
+  have lmm₁ : (p.rew (λ x, #(x + n))).arity ≤ (⨆ᶠ (i : fin p.arity), i + n + 1), from p.rew_arity (λ x, #(x + n)),
+  have lmm₂ :  (⨆ᶠ (i : fin p.arity), i + n + 1 : ℕ) ≤ (p.arity + n),
+  { refine fintype_sup_le _, rintros ⟨i, hi⟩, simp,
+    from nat.lt_succ_iff.mp (add_lt_add_right (add_lt_add_right hi n) 1) },
+  exact le_trans lmm₁ lmm₂
+end
+
+@[simp] lemma subst_arity (p : formula L) (n : ℕ) (t : term L) :
+  (p.rew ı[n ⇝ t]).arity ≤ max t.arity (p.arity + 1) :=
+begin
+  have : (⨆ᶠ (i : fin p.arity), (ı[n ⇝ t] i).arity) ≤ max t.arity (p.arity + 1),
+  { refine fintype_sup_le _, rintros ⟨i, hi⟩, simp,
+    have : i < n ∨ i = n ∨ n < i, from trichotomous i n, rcases this with (lt | rfl | lt); simp*,
+    { simp[le_of_lt hi] }, { simp[show i ≤ p.arity + 1, from le_add_right (le_of_lt hi)] } },
+  exact le_trans (p.rew_arity ı[n ⇝ t]) this
+end
 
 @[simp] def fn_symbols : formula L → set (Σ n, L.fn n)
 | ⊤         := ∅
