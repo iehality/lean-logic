@@ -212,33 +212,84 @@ lemma eval_eq : ∀ {t : term L} {e₁ e₂ : ℕ → |M|},
 lemma eval_iff : ∀ {p : formula L} {e₁ e₂ : ℕ → |M|},
   (∀ n, n < p.arity → e₁ n = e₂ n) → (M ⊧[e₁] p ↔ M ⊧[e₂] p)
 | ⊤                      _  _  _   := by simp
-| (@formula.app _ n p v) e₁ e₂ eqs := by { simp[sentence] at*,
+| (@formula.app _ n p v) e₁ e₂ eqs := by { simp at*,
     suffices : (λ i, term.val M e₁ (v i)) = (λ i, term.val M e₂ (v i)), { simp[this] },
     funext i, refine @eval_eq _ M (v i) _ _ (λ n eqn, eqs n _),
     have : (v i).arity ≤ finitary.Max 0 (λ i, (v i).arity), from finitary.Max_le 0 (λ i, (v i).arity) i,
     refine (lt_of_lt_of_le eqn this) }
-| (t ≃₁ u)               e₁ e₂ eqs := by { simp[sentence, formula.arity] at*,
+| (t ≃₁ u)               e₁ e₂ eqs := by { simp[formula.arity] at*,
     simp[eval_eq (λ n h, eqs _ (or.inl h)), eval_eq (λ n h, eqs _ (or.inr h))] }
-| (p ⟶ q)                e₁ e₂ eqs := by { simp[sentence, formula.arity] at*,
+| (p ⟶ q)                e₁ e₂ eqs := by { simp[formula.arity] at*,
     simp[eval_iff (λ n h, eqs _ (or.inl h)), eval_iff (λ n h, eqs _ (or.inr h))] }
-| (⁻p)                   e₁ e₂ eqs := by { simp[sentence, formula.arity] at*,
+| (⁻p)                   e₁ e₂ eqs := by { simp[formula.arity] at*,
     simp[eval_iff eqs] }
-| (∏ p)                 e₁ e₂ eqs := by { simp[sentence, formula.arity] at*,
+| (∏ p)                 e₁ e₂ eqs := by { simp[formula.arity] at*,
     have : ∀ (d : |M|), p.val M (d ⌢ e₁) ↔ p.val M (d ⌢ e₂),
     { intros d, refine eval_iff (λ n eqn, _),
       cases n; simp[concat], refine eqs _ (by omega) },
     exact forall_congr this }
 
-@[simp] lemma eval_sentence_iff {p : formula L} {e : ℕ → |M|} (a : sentence p) : M ⊧[e] p ↔ M ⊧ p :=
+lemma eval_sentence_iff {p : formula L} (e : ℕ → |M|) (a : sentence p) : M ⊧[e] p ↔ M ⊧ p :=
 ⟨λ h e, by { refine (eval_iff $ λ n h, _).1 h, exfalso,
  simp[sentence] at*, rw[a] at h, exact nat.not_lt_zero n h},
  λ h, h e⟩
+
+@[simp] lemma modelsth_empty : M ⊧ₜₕ ∅ := λ _, by simp
+
+@[simp] lemma modelsth_insert {T : theory L} {p : formula L} : M ⊧ₜₕ (T+{p}) ↔ M ⊧ p ∧ M ⊧ₜₕ T :=
+by simp[modelsth]
+
+@[simp] lemma modelsth_union {T U : theory L} : M ⊧ₜₕ (T ∪ U) ↔ M ⊧ₜₕ T ∧ M ⊧ₜₕ U :=
+by simp[modelsth]; exact
+⟨λ h, ⟨λ p mem, h p (or.inl mem), λ p mem, h p (or.inr mem)⟩,
+ λ ⟨h₁, h₂⟩ p, by { rintros (mem | mem), { exact h₁ p mem }, { exact h₂ p mem } }⟩
+
+@[simp] lemma modelsth_Union {T : ℕ → theory L} : M ⊧ₜₕ (⋃ n, T n) ↔ ∀ n, M ⊧ₜₕ T n :=
+by simp[modelsth]; exact
+⟨λ h n p mem, h p n mem, λ h p n mem, h n p mem⟩
 
 namespace model
 
 lemma models_neg_iff_of_sentence {p : formula L} (hp : sentence p) : M ⊧ ⁻p ↔ ¬M ⊧ p :=
 by { have : M ⊧[default] ⁻p ↔ ¬M ⊧[default] p, by simp,
-     simp only [hp, show sentence (⁻p), by sorry, eval_sentence_iff] at this, exact this }
+     simp only [hp, show sentence (⁻p), by simp[hp], eval_sentence_iff] at this, exact this }
+
+variables {L₁ L₂ : language.{u}} (M₁ : model L₁)
+open language language.extension
+@[reducible] def extend
+  (fn : Π {n} (f : L₂.fn n) (v : finitary (|M₁|) n), |M₁|)
+  (pr : Π {n} (r : L₂.pr n) (v : finitary (|M₁|) n), Prop) : model (L₁ + L₂) :=
+{ dom := |M₁|,
+  inhabited := M₁.inhabited,
+  fn := λ n f v, by { rcases f, { exact M₁.fn f v }, { exact fn f v } },
+  pr := λ n r v, by { rcases r, { exact M₁.pr r v }, { exact pr r v } } }
+
+lemma extend_val_coe_term
+  (fn : Π {n} (f : L₂.fn n) (v : finitary (|M₁|) n), |M₁|)
+  (pr : Π {n} (r : L₂.pr n) (v : finitary (|M₁|) n), Prop) {t : term L₁} {e : ℕ → |M₁|} :
+  @term.val (L₁ + L₂) (M₁.extend @fn @pr) e (t : term (L₁ + L₂)) = @term.val L₁ M₁ e t :=
+by induction t; simp[*, coe_fn₁]
+
+lemma extend_val_coe_iff
+  (fn : Π {n} (f : L₂.fn n) (v : finitary (|M₁|) n), |M₁|)
+  (pr : Π {n} (r : L₂.pr n) (v : finitary (|M₁|) n), Prop) {p : formula L₁} {e : ℕ → |M₁|} :
+  M₁.extend @fn @pr ⊧[e] ↑p ↔ M₁ ⊧[e] p :=
+by induction p generalizing e; simp[coe_pr₁, extend_val_coe_term, *]
+
+lemma extend_models_coe_iff
+  (fn : Π {n} (f : L₂.fn n) (v : finitary (|M₁|) n), |M₁|)
+  (pr : Π {n} (r : L₂.pr n) (v : finitary (|M₁|) n), Prop) {p : formula L₁} :
+  M₁.extend @fn @pr ⊧ ↑p ↔ M₁ ⊧ p :=
+⟨λ h e, (M₁.extend_val_coe_iff @fn @pr).mp (h e), λ h e, (M₁.extend_val_coe_iff @fn @pr).mpr (h e)⟩
+
+lemma extend_modelsth_coe_iff
+  (fn : Π {n} (f : L₂.fn n) (v : finitary (|M₁|) n), |M₁|)
+  (pr : Π {n} (r : L₂.pr n) (v : finitary (|M₁|) n), Prop) {T : theory L₁} :
+  M₁.extend @fn @pr ⊧ₜₕ ↑T ↔ M₁ ⊧ₜₕ T :=
+⟨λ h p mem, (M₁.extend_models_coe_iff @fn @pr).mp (h _ (show ↑p ∈ ↑T, by simp[mem])),
+ λ h p mem,
+ by { rcases language_translation_coe.mem_coe_iff.mp mem with ⟨p, pmem, rfl⟩,
+      exact (M₁.extend_models_coe_iff @fn @pr).mpr (h _ pmem) }⟩
 
 end model
 
