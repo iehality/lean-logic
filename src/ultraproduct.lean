@@ -39,7 +39,7 @@ def to_quotient {𝔄 : I → model L} {F : ultrafilter I} (u : Π i, |𝔄 i|) 
 
 notation `⟦`u`⟧*` :max := to_quotient u
 
-instance : inhabited (Ult 𝔄 F) := ⟨⟦λ i, default _⟧*⟩
+instance : inhabited (Ult 𝔄 F) := ⟨⟦λ i, default⟧*⟩
 
 namespace Ult
 
@@ -128,20 +128,20 @@ def product_pr (n) (p : L.pr n) : finitary (Ult 𝔄 F) n → Prop :=
 λ v, fopl.Ult.lift_on_finitary F v (λ v, {i | (𝔄 i).pr p (λ x, v x i)} ∈ F) $ λ u₁ u₂ eqn,
 by { simp, exact pr_equiv F eqn p }
 
-def product (𝔄 : I → model L) (F : ultrafilter I) : model L := ⟨Ult 𝔄 F, ⟨default _⟩, product_fn F, product_pr F⟩
+def product (𝔄 : I → model L) (F : ultrafilter I) : model L := ⟨Ult 𝔄 F, ⟨default⟩, product_fn F, product_pr F⟩
 notation `ℿ `𝔄` ⫽ `F:90 := product 𝔄 F
 
 variables {F}
 
 @[simp] lemma ult_eq : Ult 𝔄 F = |ℿ 𝔄 ⫽ F| := rfl
 
-private lemma model_exists (p : formula L) {e : ∀ i, ℕ → |𝔄 i|} (h : {i | ∃ u, p.val (u ⌢ e i)} ∈ F) :
-  ∃ (u : Π i, |𝔄 i|), {i | p.val ((u i) ⌢ e i)} ∈ F :=
+private lemma model_exists (p : formula L) {e : ∀ i, ℕ → |𝔄 i|} (h : {i | ∃ u, 𝔄 i ⊧[u ⌢ e i] p } ∈ F) :
+  ∃ (u : Π i, |𝔄 i|), {i | 𝔄 i ⊧[(u i) ⌢ e i] p} ∈ F :=
 begin
-  have : ∀ i, ∃ u, i ∈ {i | ∃ u, p.val (u ⌢ e i)} → p.val (u ⌢ e i),
-  { intros i, simp, by_cases C : i ∈ {i | ∃ u, p.val (u ⌢ e i)}; simp at C,
+  have : ∀ i, ∃ u, i ∈ {i | ∃ u, 𝔄 i ⊧[u ⌢ e i] p} → 𝔄 i ⊧[u ⌢ e i] p,
+  { intros i, simp, by_cases C : i ∈ {i | ∃ u, 𝔄 i ⊧[u ⌢ e i] p}; simp at C,
     { rcases C with ⟨u, hu⟩, refine ⟨u, λ v _, hu⟩ },
-    { refine ⟨default _, λ _ h, _⟩, exfalso, refine C _ h } },
+    { refine ⟨default, λ _ h, _⟩, exfalso, refine C _ h } },
   rcases classical.skolem.mp this with ⟨u, hu⟩,
   refine ⟨u, _⟩, exact F.sets_of_superset h hu
 end
@@ -155,13 +155,13 @@ lemma models_pr_iff_lmm : ∀ (t : term L) (e : ∀ i, ℕ → |𝔄 i|),
 | (#n)                _ := by simp 
 | (@term.app _ n f v) e :=
   by { simp[model_fn_eq, product_fn],
-       let v' : finitary (Π i, |𝔄 i|) n := λ x i, (v x).val (e i),
+       let v' : finitary (Π i, |𝔄 i|) n := λ x i, (v x).val (𝔄 i) (e i),
        have : (λ x, @term.val _ (ℿ 𝔄 ⫽ F) (λ n, ⟦(λ i, e i n)⟧*) (v x)) = λ x, ⟦v' x⟧*,
        { funext x, simp[v', models_pr_iff_lmm (v x)] },
        simp[this] }
 
 lemma models_pr_iff {n} (r : L.pr n) (v : finitary (term L) n) (e : ∀ i, ℕ → |𝔄 i|) :
-  (ℿ 𝔄 ⫽ F).pr r (λ x, (v x).val (λ n, ⟦λ i, e i n⟧*)) ↔ {i | (𝔄 i).pr r (λ x, (v x).val (e i))} ∈ F :=
+  (ℿ 𝔄 ⫽ F).pr r (λ x, (v x).val (ℿ 𝔄 ⫽ F) (λ n, ⟦λ i, e i n⟧*)) ↔ {i | (𝔄 i).pr r (λ x, (v x).val (𝔄 i) (e i))} ∈ F :=
 by simp[models_pr_iff_lmm, model_pr_eq, product_pr]
 
 -- Łoś's theorem
@@ -171,17 +171,17 @@ theorem fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|),
 | (formula.app p v) e := models_pr_iff p _ _
 | (t₁ ≃₁ t₂)      e := by simp[models_pr_iff_lmm]; refl
 | (p ⟶ q)       e := by { simp[fundamental_param p, fundamental_param q],
-    show {i | p.val (e i)} ∈ F → {i | q.val (e i)} ∈ F ↔ {i | p.val (e i) → q.val (e i)} ∈ F,
+    show {i | 𝔄 i ⊧[e i] p} ∈ F → {i | 𝔄 i ⊧[e i] q} ∈ F ↔ {i | 𝔄 i ⊧[e i] p → 𝔄 i ⊧[e i] q} ∈ F,
     split,
-    { intros h, by_cases C : {i | formula.val (e i) p} ∈ F,
-      { have : {i | q.val (e i)} ⊆ {i | p.val (e i) → q.val (e i)}, { intros i hi, simp* at* },
+    { intros h, by_cases C : {i | 𝔄 i ⊧[e i] p} ∈ F,
+      { have : {i | 𝔄 i ⊧[e i] q} ⊆ {i | 𝔄 i ⊧[e i] p → 𝔄 i ⊧[e i] q}, { intros i hi, simp* at* },
         exact F.sets_of_superset (h C) this },
-      { have : {i | p.val (e i)}ᶜ ∈ F, from ultrafilter.compl_mem_iff_not_mem.mpr C,
-        have ss : {i | p.val (e i)}ᶜ ⊆ {i | p.val (e i) → q.val (e i)},
+      { have : {i | 𝔄 i ⊧[e i] p}ᶜ ∈ F, from ultrafilter.compl_mem_iff_not_mem.mpr C,
+        have ss : {i | 𝔄 i ⊧[e i] p}ᶜ ⊆ {i | 𝔄 i ⊧[e i] p → 𝔄 i ⊧[e i] q},
         { intros i hi, simp* at* },
         exact F.sets_of_superset this ss } },
     { intros h₁ h₂,
-      have : {i | p.val (e i)} ∩ {i | p.val (e i) → q.val (e i)} ⊆ {i | q.val (e i)},
+      have : {i | 𝔄 i ⊧[e i] p} ∩ {i | 𝔄 i ⊧[e i] p → 𝔄 i ⊧[e i] q} ⊆ {i | 𝔄 i ⊧[e i] q},
       { intros i hi, simp at*, refine hi.2 hi.1 },
       exact filter.mp_mem h₂ h₁ } }
 | (⁻p)          e := by { simp[fundamental_param p], exact ultrafilter.eventually_not.symm }
@@ -193,12 +193,12 @@ theorem fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|),
              { intros i, funext x, cases x; simp[concat] }, simp, split,
              { intros h u, have := h ⟦u⟧*, simp[eqn] at this, exact this },
              { intros h u, induction u using fopl.Ult.ind_on, simp[eqn, h] } }
-      ... ↔ (∀ (u : Π i, |𝔄 i|), {i | p.val ((u i) ⌢ e i)} ∈ F) :
+      ... ↔ (∀ (u : Π i, |𝔄 i|), {i | 𝔄 i ⊧[u i ⌢ e i] p} ∈ F) :
         by { split, { intros h u, simp[←fundamental_param  p _, h] }, { intros h u, simp[fundamental_param  p _, h] } }
-      ... ↔ {i | ∀ (u : |𝔄 i|), p.val (u ⌢ e i)} ∈ F : 
+      ... ↔ {i | ∀ (u : |𝔄 i|), 𝔄 i ⊧[u ⌢ e i] p} ∈ F : 
         by { split,
              { contrapose, simp[←ultrafilter.compl_mem_iff_not_mem, ←set.compl_eq_compl, set.compl], intros h,
-               show ∃ (u : Π i, |𝔄 i|), {i | ¬p.val ((u i) ⌢ e i)} ∈ F, from model_exists (⁻p) h },
+               show ∃ (u : Π i, |𝔄 i|), {i | ¬𝔄 i ⊧[u i ⌢ e i] p} ∈ F, from model_exists (⁻p) h },
              { refine λ h u, F.sets_of_superset h (λ _ _ , by simp* at*) } } }
 
 theorem fundamental {p : formula L} :
@@ -207,8 +207,7 @@ begin
   calc
     ℿ 𝔄 ⫽ F ⊧ p ↔ ℿ 𝔄 ⫽ F ⊧ nfal p p.arity : nfal_models_iff.symm
     ...         ↔ {i | 𝔄 i ⊧ nfal p p.arity} ∈ F :
-      by { have := fundamental_param (nfal p p.arity) (λ i n, default (|𝔄 i|)),
-           simp[eval_sentence_iff (formula.nfal_sentence p)] at this, exact this }
+      by simpa[eval_is_sentence_iff _ (formula.nfal_is_sentence p)] using fundamental_param (nfal p p.arity) (λ i n, default)
     ...         ↔ {i | 𝔄 i ⊧ p} ∈ F :
       by { have : {i | 𝔄 i ⊧ nfal p p.arity} = {i | 𝔄 i ⊧ p},
            { ext i, simp, refine nfal_models_iff },
@@ -234,7 +233,7 @@ noncomputable def fintheory.insert (P : fintheory T) (p : formula L) (h : p ∈ 
 @[simp] lemma fintheory.insert_val (P : fintheory T) (p : formula L) (h : T p) :
   (P.insert p h).val = insert p P.val := rfl
 
-instance : has_coe (fintheory T) (set (formula L)) := ⟨λ S, S.val⟩
+instance : has_coe (fintheory T) (set (formula L)) := ⟨λ S, {p | p ∈ S.val}⟩
 
 namespace compactness
 
@@ -282,14 +281,14 @@ theorem ultrafilter_exists (h : ∃ p, p ∈ T) (H : ∀ (i : fintheory T) p, p 
 ultrafilter.exists_ultrafilter_of_finite_inter_nonempty _ (finite_intersection _ h H)
 
 theorem compact (T : theory L) :
-  (∃ 𝔄, 𝔄 ⊧ₜₕ T) ↔ (∀ S : finset (formula L), (∀ {p}, p ∈ S → p ∈ T) → ∃ 𝔄, 𝔄 ⊧ₜₕ (S : set (formula L))) :=
+  (∃ 𝔄, 𝔄 ⊧ₜₕ T) ↔ (∀ S : finset (formula L), (∀ {p}, p ∈ S → p ∈ T) → ∃ 𝔄, 𝔄 ⊧ₜₕ {p | p ∈ S}) :=
   ⟨by { intros H S hyp_S, rcases H with ⟨𝔄, hyp⟩,
         refine ⟨𝔄, λ p h, hyp _ (hyp_S h)⟩ },
    by { suffices : (∀ S : fintheory T, ∃ 𝔄, 𝔄 ⊧ₜₕ (↑S : set (formula L))) → (∃ 𝔅, 𝔅 ⊧ₜₕ T),
         { intros h, refine this (λ S, _),
           rcases h S.val S.property with ⟨𝔄, hyp_𝔄⟩, refine ⟨𝔄, hyp_𝔄⟩ },
     intros H, by_cases C : T = ∅,
-        { simp[C], refine empty_has_model },
+        { rcases C with rfl, refine empty_has_model },
         { have ex : ∃ p, p ∈ T, { by_contra, simp at*, refine C _, { ext x, simp, refine h _ } }, 
           have : ∃ (𝔄 : fintheory T → model L), ∀ (i : fintheory T) p, p ∈ i.val → 𝔄 i ⊧ p,
           from classical.skolem.mp H, rcases this with ⟨𝔄, hyp_𝔄⟩,

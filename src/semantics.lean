@@ -3,6 +3,7 @@ import deduction translation
 universes u v
 
 namespace fopl
+open formula
 open dvector
 
 structure model (L : language.{u}) :=
@@ -229,9 +230,9 @@ lemma eval_iff : ∀ {p : formula L} {e₁ e₂ : ℕ → |M|},
       cases n; simp[concat], refine eqs _ (by omega) },
     exact forall_congr this }
 
-lemma eval_sentence_iff {p : formula L} (e : ℕ → |M|) (a : sentence p) : M ⊧[e] p ↔ M ⊧ p :=
+lemma eval_is_sentence_iff {p : formula L} (e : ℕ → |M|) (a : is_sentence p) : M ⊧[e] p ↔ M ⊧ p :=
 ⟨λ h e, by { refine (eval_iff $ λ n h, _).1 h, exfalso,
- simp[sentence] at*, rw[a] at h, exact nat.not_lt_zero n h},
+ simp[is_sentence] at*, rw[a] at h, exact nat.not_lt_zero n h},
  λ h, h e⟩
 
 @[simp] lemma modelsth_empty : M ⊧ₜₕ ∅ := λ _, by simp
@@ -250,9 +251,9 @@ by simp[modelsth]; exact
 
 namespace model
 
-lemma models_neg_iff_of_sentence {p : formula L} (hp : sentence p) : M ⊧ ⁻p ↔ ¬M ⊧ p :=
+lemma models_neg_iff_of_is_sentence {p : formula L} (hp : is_sentence p) : M ⊧ ⁻p ↔ ¬M ⊧ p :=
 by { have : M ⊧[default] ⁻p ↔ ¬M ⊧[default] p, by simp,
-     simp only [hp, show sentence (⁻p), by simp[hp], eval_sentence_iff] at this, exact this }
+     simp only [hp, show is_sentence (⁻p), by simp[hp], eval_is_sentence_iff] at this, exact this }
 
 variables {L₁ L₂ : language.{u}} (M₁ : model L₁)
 open language language.extension

@@ -3,6 +3,7 @@ import fopl theory provability
 universes u v
 
 namespace fopl
+open formula 
 variables {L : language.{u}}
 
 local infix ` ≃₁ `:80 := ((≃) : term L → term L → formula L)
@@ -13,25 +14,34 @@ def eq_axiom4 {n} (f : L.fn n) : formula L :=
 def eq_axiom5 {n} (r : L.pr n) : formula L :=
   ∏[2*n] (conjunction' n (λ i, #i ≃₁ #(n + i)) ⟶ formula.app r (λ i, #i) ⟶ formula.app r (λ i, #(n + i)))
 
-@[simp] lemma eq_axiom4_sentence {n} {f : L.fn n} :
-  sentence (eq_axiom4 f) :=
-by { simp[sentence, eq_axiom4],
-     cases n, { simp },
-     have lmm₁ : ∀ m n, finitary.Max 0 (λ (i : fin (n + 1)), m + ↑i + 1) = m + n + 1,
-     { intros m n, induction n with n0 IH, simp[finitary.Max], simp[finitary.Max, fin.add', ←nat.add_one, ←add_assoc, IH] },
-     have lmm₂ : finitary.Max 0 (λ (i : fin (n + 1)), ↑i + 1) = n + 1,
-     { have := lmm₁ 0 n, simp at this, exact this },
-     simp only [lmm₁ n.succ n, lmm₂, ← nat.add_one],
-     simp[max_add_add_left (n + 1) 0 (n + 1), two_mul, add_assoc] }
+@[simp] lemma eq_axiom4_is_sentence {n} {f : L.fn n} :
+  is_sentence (eq_axiom4 f) :=
+begin
+  simp[is_sentence, eq_axiom4],
+  cases n, { simp },
+  have lmm₁ : ∀ m n, (⨆ᶠ (i : fin (n + 1)), m + ↑i + 1) = m + n + 1,
+  { intros m n,
+    suffices : (⨆ᶠ (i : fin (n + 1)), m + ↑i + 1) ≤ m + n + 1 ∧ m + n + 1 ≤ (⨆ᶠ (i : fin (n + 1)), m + ↑i + 1), from le_antisymm_iff.mpr this,
+    split,
+    { refine fintype_sup_le _, rintros ⟨i, hi⟩, simp[show i ≤ n, from nat.lt_succ_iff.mp hi] },
+    { refine le_fintype_sup' ⟨n, by simp⟩ (by refl) }  },
+  have lmm₂ : (⨆ᶠ (i : fin (n + 1)), ↑i + 1) = n + 1,
+  { have := lmm₁ 0 n, simp at this, exact this },
+  simp only [lmm₁ n.succ n, lmm₂, ← nat.add_one],
+  simp[max_add_add_left (n + 1) 0 (n + 1), two_mul, add_assoc]
+end
 
-@[simp] lemma eq_axiom5_sentence {n} {r : L.pr n} :
-  sentence (eq_axiom5 r) :=
-by { simp[sentence, eq_axiom5],
-     cases n, { simp },
-     have lmm₁ : ∀ m n, finitary.Max 0 (λ (i : fin (n + 1)), m + ↑i + 1) = m + n + 1,
-     { intros m n, induction n with n0 IH, simp[finitary.Max], simp[finitary.Max, fin.add', ←nat.add_one, ←add_assoc, IH] },
-     have lmm₂ : finitary.Max 0 (λ (i : fin (n + 1)), ↑i + 1) = n + 1,
-     { have := lmm₁ 0 n, simp at this, exact this },
+@[simp] lemma eq_axiom5_is_sentence {n} {r : L.pr n} :
+  is_sentence (eq_axiom5 r) :=
+by { simp[is_sentence, eq_axiom5],
+     cases n, { simp },  have lmm₁ : ∀ m n, (⨆ᶠ (i : fin (n + 1)), m + ↑i + 1) = m + n + 1,
+  { intros m n,
+    suffices : (⨆ᶠ (i : fin (n + 1)), m + ↑i + 1) ≤ m + n + 1 ∧ m + n + 1 ≤ (⨆ᶠ (i : fin (n + 1)), m + ↑i + 1), from le_antisymm_iff.mpr this,
+    split,
+    { refine fintype_sup_le _, rintros ⟨i, hi⟩, simp[show i ≤ n, from nat.lt_succ_iff.mp hi] },
+    { refine le_fintype_sup' ⟨n, by simp⟩ (by refl) }  },
+  have lmm₂ : (⨆ᶠ (i : fin (n + 1)), ↑i + 1) = n + 1,
+  { have := lmm₁ 0 n, simp at this, exact this },
      simp only [lmm₁ n.succ n, lmm₂, ← nat.add_one],
      simp[max_add_add_left (n + 1) 0 (n + 1), two_mul, add_assoc] }
 
@@ -561,7 +571,7 @@ begin
   case mdp : T p q hyp_pq hyp_p IH₁ IH₂
   { intros cl s, simp[formula.rew, @closed_theory_sf_eq _ _ cl] at*, refine (IH₁ cl _) ⨀ (IH₂ cl _) },
   case by_axiom : T p hyp
-  { intros cl s, simp[@closed_theory.cl _ _ cl _ hyp], exact by_axiom hyp },
+  { intros cl s, simp[show is_sentence p, by exactI closed_theory.cl hyp], exact by_axiom hyp },
   { simp },
   { simp },
   { simp },
@@ -576,8 +586,8 @@ begin
   { simp },
   { simp },
   { simp },
-  { simp [formula.sentence_rew eq_axiom4_sentence] },
-  { simp [formula.sentence_rew eq_axiom5_sentence] }
+  { simp [formula.is_sentence_rew eq_axiom4_is_sentence] },
+  { simp [formula.is_sentence_rew eq_axiom5_is_sentence] }
 end
 
 lemma pow_of_cl [cl : closed_theory T] {p : formula L} {i : ℕ} : T ⊢ p → T^i ⊢ p :=
@@ -610,8 +620,8 @@ begin
   { simp },
   { simp },
   { simp },
-  { simp [formula.sentence_rew eq_axiom4_sentence] },
-  { simp [formula.sentence_rew eq_axiom5_sentence] },
+  { simp [formula.is_sentence_rew eq_axiom4_is_sentence] },
+  { simp [formula.is_sentence_rew eq_axiom5_is_sentence] },
 end
 
 lemma proper_theory_pow_rew (n : ℕ) [proper_theory T] : ∀ {p : formula L},
@@ -635,6 +645,12 @@ lemma conjunction_provable : ∀ {P : list (formula L)} (h : ∀ p, p ∈ P → 
 protected lemma conjunction' {n} {P : finitary (formula L) n} (h : ∀ i, T ⊢ P i) : T ⊢ conjunction' n P :=
 by { induction n with n IH; simp, refine ⟨h _, IH (λ i, _)⟩, refine h _ }
 
+protected lemma disjunction' {n} {P : finitary (formula L) n} (i) (h : T ⊢ P i) : T ⊢ disjunction' n P :=
+by { induction n with n IH; simp, { exfalso, exact i.val.not_lt_zero i.property },
+     { rcases i with ⟨i, hi⟩,
+       have : i = n ∨ i < n, exact eq_or_lt_of_le (nat.lt_succ_iff.mp hi), rcases this with (rfl | lt),
+       { refine imply_or_left _ _ ⨀ h }, { simpa using imply_or_right _ _ ⨀ (@IH (λ i, P i) ⟨i, lt⟩ (by simp; exact h)) } } }
+
 lemma sf_sf {p : formula L} : ⤊T ⊢ p^1 ↔ T ⊢ p :=
 ⟨λ h, by { have := fal_subst (generalize h) #0, simp* at* },
  λ h, by { have : ∃ P, (∀ p, p ∈ P → p ∈ T) ∧ ∅ ⊢ conjunction P ⟶ p,
@@ -643,7 +659,7 @@ lemma sf_sf {p : formula L} : ⤊T ⊢ p^1 ↔ T ⊢ p :=
   { refine conjunction_provable (λ p hyp, by_axiom _), simp at hyp, rcases hyp with ⟨p', p'_mem, rfl⟩,
     refine ⟨p', hyp_P p' p'_mem, rfl⟩ },
   have lmm₂ : ⤊T ⊢ conjunction (P.map (λ p, p^1)) ⟶ p^1,
-  { have : ∅ ⊢ (conjunction P)^1 ⟶ p^1, from cl_prove_rew prov _,
+  { have : ∅ ⊢ (conjunction P)^1 ⟶ p^1, by exactI cl_prove_rew prov _,
     simp[formula.pow_eq, conjunction_rew_eq] at this,
     refine weakening this (λ p h, _), exfalso, exact h },
   refine lmm₂ ⨀ lmm₁ }⟩

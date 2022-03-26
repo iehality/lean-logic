@@ -640,32 +640,23 @@ equiv_neg_of_equiv hp
 lemma neg_of_equiv {p₁ p₂ : F} (h : T ⊢ ⁻p₁) (hp : T ⊢ p₁ ⟷ p₂) : T ⊢ ⁻p₂ :=
 neg_of_equiv h hp
 
-/-
-lemma equiv_and_of_equiv {p₁ q₁ p₂ q₂: F} (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₁ ⊓ q₁ ⟷ p₂ ⊓ q₂ ∈ P :=
-by { simp only [and_def P], refine equiv_neg_of_equiv (equiv_imply_of_equiv hp (equiv_neg_of_equiv hq)) }
+lemma equiv_and_of_equiv {p₁ q₁ p₂ q₂ : F} (hp : T ⊢ p₁ ⟷ p₂) (hq : T ⊢ q₁ ⟷ q₂) : T ⊢ p₁ ⊓ q₁ ⟷ p₂ ⊓ q₂ :=
+equiv_and_of_equiv hp hq
 
-lemma and_of_equiv {p₁ q₁ p₂ q₂: F} (h : p₁ ⊓ q₁ ∈ P) (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₂ ⊓ q₂ ∈ P :=
-by { have : p₁ ⊓ q₁ ⟶ p₂ ⊓ q₂ ∈ P, from (iff_equiv_p.mp (equiv_and_of_equiv hp hq)).1, exact this ⨀ h }
+lemma and_of_equiv {p₁ q₁ p₂ q₂: F} (h : T ⊢ p₁ ⊓ q₁) (hp : T ⊢ p₁ ⟷ p₂) (hq : T ⊢ q₁ ⟷ q₂) : T ⊢ p₂ ⊓ q₂ :=
+and_of_equiv h hp hq
 
-lemma equiv_or_of_equiv {p₁ q₁ p₂ q₂: F} (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₁ ⊔ q₁ ⟷ p₂ ⊔ q₂ ∈ P :=
-by { simp only [or_def P], refine (equiv_imply_of_equiv (equiv_neg_of_equiv hp) hq) }
+lemma equiv_or_of_equiv {p₁ q₁ p₂ q₂: F} (hp :  T ⊢ p₁ ⟷ p₂) (hq :  T ⊢ q₁ ⟷ q₂) : T ⊢ p₁ ⊔ q₁ ⟷ p₂ ⊔ q₂ :=
+equiv_or_of_equiv hp hq
 
-lemma or_of_equiv {p₁ q₁ p₂ q₂: F} (h : p₁ ⊔ q₁ ∈ P) (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₂ ⊔ q₂ ∈ P :=
-by { have : p₁ ⊔ q₁ ⟶ p₂ ⊔ q₂ ∈ P, from (iff_equiv_p.mp (equiv_or_of_equiv hp hq)).1, exact this ⨀ h }
+lemma or_of_equiv {p₁ q₁ p₂ q₂: F} (h : T ⊢ p₁ ⊔ q₁) (hp :  T ⊢ p₁ ⟷ p₂) (hq :  T ⊢ q₁ ⟷ q₂) : T ⊢ p₂ ⊔ q₂ :=
+or_of_equiv h hp hq
 
-lemma equiv_equiv_of_equiv {p₁ q₁ p₂ q₂: F} (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : (p₁ ⟷ q₁) ⟷ (p₂ ⟷ q₂) ∈ P :=
-by { refine (equiv_and_of_equiv (equiv_imply_of_equiv hp hq) (equiv_imply_of_equiv hq hp)) }
+lemma equiv_equiv_of_equiv {p₁ q₁ p₂ q₂: F} (hp :  T ⊢ p₁ ⟷ p₂) (hq :  T ⊢ q₁ ⟷ q₂) : T ⊢ (p₁ ⟷ q₁) ⟷ (p₂ ⟷ q₂) :=
+equiv_equiv_of_equiv hp hq
 
-lemma equiv_of_equiv {p₁ q₁ p₂ q₂: F} (h : p₁ ⟷ q₁ ∈ P) (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₂ ⟷ q₂ ∈ P :=
-by { have : (p₁ ⟷ q₁) ⟶ (p₂ ⟷ q₂) ∈ P, from (iff_equiv_p.mp (equiv_equiv_of_equiv hp hq)).1, exact this ⨀ h }
-
-@[simp] lemma equiv_refl (p : F) : p ⟷ p ∈ P := by simp[iff_equiv_p]
-
-@[symm] lemma equiv_symm {p q : F} : p ⟷ q ∈ P → q ⟷ p ∈ P := by { simp[iff_equiv_p], intros, simp* }
-
-@[trans] lemma equiv_trans {p q r : F} : p ⟷ q ∈ P → q ⟷ r ∈ P → p ⟷ r ∈ P :=
-by { simp[iff_equiv_p], intros hpq hqp hqr hrq, exact ⟨impl_trans hpq hqr, impl_trans hrq hqp⟩ }
--/
+lemma equiv_of_equiv {p₁ q₁ p₂ q₂: F} (h : T ⊢ p₁ ⟷ q₁) (hp :  T ⊢ p₁ ⟷ p₂) (hq :  T ⊢ q₁ ⟷ q₂) : T ⊢ p₂ ⟷ q₂ :=
+equiv_of_equiv h hp hq
 
 lemma case_of_ax {p q r : F} (hpq : T ⊢ p ⊔ q) (hpr : T ⊢ p ⟶ r) (hqr : T ⊢ q ⟶ r) : T ⊢ r :=
 case_of_p hpq hpr hqr

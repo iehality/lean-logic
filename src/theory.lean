@@ -3,6 +3,7 @@ import fopl
 universe u
 
 namespace fopl
+open term formula
 variables {L : language.{u}}
 
 def theory.sf (T : theory L) : theory L := {p | ∃ q : formula L, q ∈ T ∧ p = q^1}
@@ -22,7 +23,7 @@ lemma theory.sf_itr_succ (T : theory L) (n) : T^(n+1) = ⤊(T^n) := rfl
 lemma theory.pow_add (T : theory L) (i j : ℕ) : (T^i)^j = T^(i + j) :=
 by { induction j with j IH; simp[theory.sf_itr_succ, ←nat.add_one, ←add_assoc], simp[IH] }
 
-class closed_theory (T : theory L) := (cl : ∀ {p}, p ∈ T → sentence p)
+class closed_theory (T : theory L) := (cl : ∀ {p}, p ∈ T → is_sentence p)
 
 attribute [simp] closed_theory.cl
 
@@ -88,9 +89,9 @@ lemma pow_eq_image {T : theory L} {i : ℕ} :
   T^i = (λ p, p^i) '' T :=
 by { ext p, simp[theory_sf_itr_eq], tauto }
 
-lemma sentence_mem_theory_sf_itr {T : theory L} {p : formula L} (a : sentence p) (n : ℕ) :
+lemma is_sentence_mem_theory_sf_itr {T : theory L} {p : formula L} (a : is_sentence p) (n : ℕ) :
   p ∈ T → p ∈ T^n := λ h,
-by { have : p.rew (λ x, #(x+n)) = p, exact formula.sentence_rew a _, rw ←this,
+by { have : p.rew (λ x, #(x+n)) = p, exact formula.is_sentence_rew a _, rw ←this,
      simp[theory_sf_itr_eq], refine ⟨p, h, rfl⟩ }
 
 lemma proper_sf_inclusion (T : theory L) [proper_theory T] : ∀ {n m : ℕ} (h : n ≤ m),
@@ -128,11 +129,11 @@ lemma closed_proper {T : theory L} [cl : closed_theory T] : proper_at 0 T :=
 @[simp] lemma closed_theory_sf_eq {T : theory L} [cl : closed_theory T] : ⤊T = T :=
 by { ext p, refine ⟨λ hyp, _, λ hyp, _⟩, rcases hyp with ⟨p, hyp_p, rfl⟩,
      simp[closed_theory.cl hyp_p, hyp_p],
-     rw ← (formula.sentence_sf (closed_theory.cl hyp)), refine ⟨p, hyp, rfl⟩ }
+     rw ← (formula.is_sentence_sf (closed_theory.cl hyp)), refine ⟨p, hyp, rfl⟩ }
 @[simp] lemma closed_theory_pow_eq (T : theory L) [cl : closed_theory T] (i : ℕ) : T^i = T :=
 by { ext p, simp[theory_sf_itr_eq], refine ⟨λ hyp, _, λ hyp, _⟩, rcases hyp with ⟨p, hyp_p, rfl⟩,
      simp[closed_theory.cl hyp_p, hyp_p],
-     rw ← (formula.sentence_sf (closed_theory.cl hyp)), refine ⟨p, hyp, rfl⟩ }
+     rw ← (formula.is_sentence_sf (closed_theory.cl hyp)), refine ⟨p, hyp, rfl⟩ }
 
 lemma sf_dsb (T : theory L) (p : formula L) : ⤊T +{ p^1 } = ⤊(T +{ p }) :=
 begin

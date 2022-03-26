@@ -1,5 +1,5 @@
 
-import fopl predicate
+import fopl lindenbaum
 
 universes u v
 

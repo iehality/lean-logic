@@ -46,7 +46,6 @@ instance [has_mul_symbol L] : has_mul (term L) := ⟨λ t u, term.app has_mul_sy
 
 postfix `˙`:max := numeral
 
-
 @[reducible] def idvar (n : ℕ) : finitary (term L) n := λ i, #i
 
 notation `##` := idvar _
@@ -647,7 +646,7 @@ lemma rewriting_sf_perm {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n) : ∀ 
 | (⁻p)              := p.arity
 | (∏ p)             := p.arity - 1
 
-@[reducible] def sentence : formula L → Prop := λ p, p.arity = 0
+@[reducible] def formula.is_sentence : formula L → Prop := λ p, p.arity = 0
 
 @[simp] lemma formula.and_arity (p q : formula L) : (p ⊓ q).arity = max p.arity q.arity :=
 by simp[has_inf.inf, formula.and]
@@ -695,11 +694,11 @@ namespace formula
 by simp
 
 @[simp] lemma unary_arity (p : L.pr 1) (v : finitary (term L) 1) : (❴p❵ v).arity = (v 0).arity :=
-by simp[finitary.cons, finitary.Max]
+by simp
 
 @[simp] lemma binary_arity (p : L.pr 2) (v : finitary (term L) 2) :
   (❴p❵ v).arity = max (v 0).arity (v 1).arity :=
-by simp[finitary.Max, finitary.cons, fin.add']; exact max_comm _ _
+by simp; exact max_comm _ _
 
 @[simp] lemma le_arity [has_le_symbol L] (t u : term L) : (t ≼ u : formula L).arity = max t.arity u.arity :=
 by unfold has_preceq.preceq; simp
@@ -782,13 +781,17 @@ by simp[pow_eq]; refl
   (t ∊ u : formula L)^i = (t^i ∊ u^i) :=
 by simp[pow_eq]; refl
 
+@[simp] lemma top_pow (i : ℕ) : (⊤ : formula L)^i = ⊤ := by refl
+@[simp] lemma bot_pow (i : ℕ) : (⊥ : formula L)^i = ⊥ := by refl
 @[simp] lemma eq_pow (t u : term L) (i : ℕ) : (t ≃₁ u)^i = (t^i ≃ u^i) := rfl
 @[simp] lemma imply_pow (p q : formula L) (i : ℕ) : (p ⟶ q)^i = p^i ⟶ q^i := rfl
 @[simp] lemma neg_pow (p : formula L) (i : ℕ) : (⁻p)^i = ⁻(p^i) := rfl
 @[simp] lemma and_pow (p q : formula L) (i : ℕ) : (p ⊓ q)^i = (p^i) ⊓ (q^i) := rfl
+@[simp] lemma conjunction'_pow {n} (P : finitary (formula L) n) (i : ℕ) : (conjunction' n P)^i = ⋀ j, (P j)^i :=
+by induction n with n IH; simp*
 @[simp] lemma or_pow (p q : formula L) (i : ℕ) : (p ⊔ q)^i = (p^i) ⊔ (q^i) := rfl
-@[simp] lemma top_pow (i : ℕ) : (⊤ : formula L)^i = ⊤ := by refl
-@[simp] lemma bot_pow (i : ℕ) : (⊥ : formula L)^i = ⊥ := by refl
+@[simp] lemma disjunction'_pow {n} (P : finitary (formula L) n) (i : ℕ) : (disjunction' n P)^i = ⋁ j, (P j)^i :=
+by induction n with n IH; simp*
 
 lemma fal_pow (p : formula L) (i : ℕ) : (∏ p)^i = ∏ p.rew (#0 ⌢ λ x, #(x + i + 1)) :=
 by simp[formula.pow_eq, rewriting_sf_itr.pow_eq]
@@ -832,12 +835,12 @@ lemma rew_rew : ∀ (p : formula L) {s₀ s₁ : ℕ → term L},
 lemma pow_add (p : formula L) (i j : ℕ) : (p^i)^j = p^(i + j) :=
 by simp[pow_eq, nested_rew, add_assoc]
 
-@[simp] lemma sentence_rew {p : formula L} (h : sentence p) (s : ℕ → term L) : p.rew s = p :=
+@[simp] lemma is_sentence_rew {p : formula L} (h : is_sentence p) (s : ℕ → term L) : p.rew s = p :=
 by { suffices : rew s p = rew ı p, { simp* },
      refine rew_rew _ _, simp[show p.arity = 0, from h] }
 
-@[simp] lemma sentence_sf {p : formula L} (h : sentence p) (i : ℕ) : p^i = p :=
-by simp[has_pow.pow, sentence_rew h]
+@[simp] lemma is_sentence_sf {p : formula L} (h : is_sentence p) (i : ℕ) : p^i = p :=
+by simp[has_pow.pow, is_sentence_rew h]
 
 @[simp] lemma sf_subst_eq (p : formula L) (t : term L) (i j : ℕ) (h : j ≤ i) : (p^(i + 1)).rew ı[j ⇝ t] = p^i :=
 by { simp[has_pow.pow, nested_rew, h], congr, funext x,
@@ -934,35 +937,65 @@ by simp[pow_eq]
 | 0     p := by simp[formula.arity]
 | (n+1) p := by {simp[formula.arity, nfal_arity n], exact (arity p).sub_sub _ _ }
 
-lemma nfal_sentence (p : formula L) : sentence (nfal p p.arity) :=
-by simp[sentence]
+lemma nfal_is_sentence (p : formula L) : is_sentence (nfal p p.arity) :=
+by simp[is_sentence]
 
 @[simp] lemma conjunction_arity {n} {v : finitary (formula L) n} :
-  (conjunction' n v).arity = finitary.Max 0 (λ i, (v i).arity) :=
-by { induction n with n IH; simp[finitary.Max, fin.add'], simp[IH] }
+  (conjunction' n v).arity = ⨆ᶠ i, (v i).arity :=
+by { induction n with n IH; simp*,
+  refine le_antisymm _ _; simp,
+  { split,
+    { refine le_fintype_sup' ⟨n, by simp[←nat.add_one]⟩ (by refl) },
+    { refine fintype_sup_le _, rintros ⟨i, hi⟩, refine le_fintype_sup' ⟨i, by omega⟩ (by refl) } },
+  { have : (v ⟨n, by simp[←nat.add_one]⟩).arity ≤  (⨆ᶠ (i : fin n), (v ⟨i, by simp[←nat.add_one]⟩).arity) ∨
+           (⨆ᶠ (i : fin n), (v ⟨i, by simp[←nat.add_one]⟩).arity) ≤ (v ⟨n, by simp[←nat.add_one]⟩).arity,
+      from le_total _ _, rcases this with (le | le),
+    { refine or.inr (fintype_sup_le _), rintros ⟨i, hi⟩,
+      have : i = n ∨ i < n, from eq_or_lt_of_le (nat.lt_succ_iff.mp hi), rcases this with (rfl | lt),
+      { simpa using le }, { refine le_fintype_sup' ⟨i, lt⟩ (by refl) } },
+    { refine or.inl (fintype_sup_le _), rintros ⟨i, hi⟩,
+      have : i = n ∨ i < n, from eq_or_lt_of_le (nat.lt_succ_iff.mp hi), rcases this with (rfl | lt),
+      { refl }, { refine le_trans _ le, refine le_fintype_sup' ⟨i, lt⟩ (by refl) } } } }
+
+@[simp] lemma disjunction_arity {n} {v : finitary (formula L) n} :
+  (disjunction' n v).arity = ⨆ᶠ i, (v i).arity :=
+by { induction n with n IH; simp*,
+  refine le_antisymm _ _; simp,
+  { split,
+    { refine le_fintype_sup' ⟨n, by simp[←nat.add_one]⟩ (by refl) },
+    { refine fintype_sup_le _, rintros ⟨i, hi⟩, refine le_fintype_sup' ⟨i, by omega⟩ (by refl) } },
+  { have : (v ⟨n, by simp[←nat.add_one]⟩).arity ≤  (⨆ᶠ (i : fin n), (v ⟨i, by simp[←nat.add_one]⟩).arity) ∨
+           (⨆ᶠ (i : fin n), (v ⟨i, by simp[←nat.add_one]⟩).arity) ≤ (v ⟨n, by simp[←nat.add_one]⟩).arity,
+      from le_total _ _, rcases this with (le | le),
+    { refine or.inr (fintype_sup_le _), rintros ⟨i, hi⟩,
+      have : i = n ∨ i < n, from eq_or_lt_of_le (nat.lt_succ_iff.mp hi), rcases this with (rfl | lt),
+      { simpa using le }, { refine le_fintype_sup' ⟨i, lt⟩ (by refl) } },
+    { refine or.inl (fintype_sup_le _), rintros ⟨i, hi⟩,
+      have : i = n ∨ i < n, from eq_or_lt_of_le (nat.lt_succ_iff.mp hi), rcases this with (rfl | lt),
+      { refl }, { refine le_trans _ le, refine le_fintype_sup' ⟨i, lt⟩ (by refl) } } } }
 
 def fal_complete (p : formula L) := ∏[p.arity] p
 
 prefix `∏* `:64 := fal_complete
 
-@[simp] lemma fal_complete_sentence (p : formula L) : sentence (∏* p) :=
-by simp[sentence, fal_complete]
+@[simp] lemma fal_complete_is_sentence (p : formula L) : is_sentence (∏* p) :=
+by simp[is_sentence, fal_complete]
 
-@[simp] lemma sentence_verum_iff : sentence (⊤ : formula L) := by simp[sentence]
-@[simp] lemma sentence_app_iff {n} (r : L.pr n) (v) : sentence (app r v) ↔ ∀ i, (v i).arity = 0 :=
-by {simp[sentence], sorry }
+@[simp] lemma is_sentence_verum_iff : is_sentence (⊤ : formula L) := by simp[is_sentence]
+@[simp] lemma is_sentence_app_iff {n} (r : L.pr n) (v) : is_sentence (app r v) ↔ ∀ i, (v i).arity = 0 :=
+by {simp[is_sentence], sorry }
 
-@[simp] lemma sentence_neg_iff {p : formula L} : sentence (⁻p) ↔ sentence p := by simp[sentence]
+@[simp] lemma is_sentence_neg_iff {p : formula L} : is_sentence (⁻p) ↔ is_sentence p := by simp[is_sentence]
 
-@[simp] lemma sentence_imply_iff {p q: formula L} : sentence (p ⟶ q) ↔ sentence p ∧ sentence q := by simp[sentence]
+@[simp] lemma is_sentence_imply_iff {p q: formula L} : is_sentence (p ⟶ q) ↔ is_sentence p ∧ is_sentence q := by simp[is_sentence]
 
-@[simp] lemma sentence_and_iff {p q: formula L} : sentence (p ⊓ q) ↔ sentence p ∧ sentence q := by simp[sentence]
+@[simp] lemma is_sentence_and_iff {p q: formula L} : is_sentence (p ⊓ q) ↔ is_sentence p ∧ is_sentence q := by simp[is_sentence]
 
-@[simp] lemma sentence_or_iff {p q: formula L} : sentence (p ⊔ q) ↔ sentence p ∧ sentence q := by simp[sentence]
+@[simp] lemma is_sentence_or_iff {p q: formula L} : is_sentence (p ⊔ q) ↔ is_sentence p ∧ is_sentence q := by simp[is_sentence]
 
-@[simp] lemma sentence_fal_iff {p : formula L} : sentence (∏ p) ↔ p.arity ≤ 1 := by simp[sentence]
+@[simp] lemma is_sentence_fal_iff {p : formula L} : is_sentence (∏ p) ↔ p.arity ≤ 1 := by simp[is_sentence]
 
-@[simp] lemma sentence_ex_iff {p : formula L} : sentence (∐ p) ↔ p.arity ≤ 1 := by simp[sentence]
+@[simp] lemma is_sentence_ex_iff {p : formula L} : is_sentence (∐ p) ↔ p.arity ≤ 1 := by simp[is_sentence]
 
 lemma rew_arity (p : formula L) (s : ℕ → term L) : (p.rew s).arity ≤ ⨆ᶠ (i : fin p.arity), (s i).arity :=
 begin

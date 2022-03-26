@@ -489,9 +489,9 @@ begin
   case fal : p IH { exact ℌ_models_Tω'_fal T IH s }
 end
 
-theorem ℌ_models_Tω'_of_sentence {p : formula Lω} (hp : sentence p) :
+theorem ℌ_models_Tω'_of_sentence {p : formula Lω} (hp : is_sentence p) :
   p ∈ Tω⁺ ↔ ℌ ⊧ p :=
-by simpa[hp, eval_sentence_iff] using ℌ_models_Tω' T p default
+by simpa[hp, eval_is_sentence_iff] using ℌ_models_Tω' T p default
 
 variables [closed_theory T]
 
@@ -499,7 +499,7 @@ theorem ℌ_models_T : add_left.of_ltr ℌ ⊧ₜₕ T :=
 begin
   simp[theory_models_iff], intros p mem,
   have : p ∈ Tω⁺, from (Tω_consistent' T).ss_maximal (T_ss_Tω T mem),  
-  exact (ℌ_models_Tω'_of_sentence T (show sentence p, from closed_theory.cl mem)).mp this
+  exact (ℌ_models_Tω'_of_sentence T (show is_sentence p, from closed_theory.cl mem)).mp this
 end 
 
 end Henkin
@@ -511,22 +511,22 @@ variables [closed_theory T] {L} {T}
 theorem consistent_iff_satisfiable : T.consistent ↔ ∃ M, M ⊧ₜₕ T :=
 ⟨λ consis,  ⟨_, @henkin.Henkin.ℌ_models_T _ T ⟨consis⟩ _⟩, by { rintros ⟨M, hM⟩, exact model_consistent hM}⟩
 
-theorem completeness {p : formula L} (hp : sentence p) : 
+theorem completeness {p : formula L} (hp : is_sentence p) : 
   T ⊢ p ↔ (∀ M, M ⊧ₜₕ T → M ⊧ p) :=
-⟨λ b M hM, soundness b hM,
+⟨λ b M, soundness b,
  λ h, by { simp[theory.provable_iff_inconsistent], intros consis,
   have : closed_theory (T +{⁻p}), from ⟨by { simp[hp], exact λ _, closed_theory.cl }⟩,
   have : ∃ M, M ⊧ₜₕ (T +{⁻p}), exactI consistent_iff_satisfiable.mp consis,
   rcases this with ⟨M, hM⟩,
   have : M ⊧ p, from h M (λ p mem, hM p (by simp[mem])),
-  have : ¬M ⊧ p, by simpa[model.models_neg_iff_of_sentence hp] using hM (⁻p) (by simp),
+  have : ¬M ⊧ p, by simpa[model.models_neg_iff_of_is_sentence hp] using hM (⁻p) (by simp),
   contradiction }⟩
 
 theorem completeness' {p : formula L} : 
   T ⊢ p ↔ (∀ M, M ⊧ₜₕ T → M ⊧ p) :=
 ⟨λ b M, soundness b,
  λ h, by { have : ∀ M, M ⊧ₜₕ T → M ⊧ ∏* p, { intros M hM, simp[fal_complete, nfal_models_iff, h M hM] },
-  have : T ⊢ ∏* p, from (completeness (show sentence (∏* p), by simp)).mpr this,
+  have : T ⊢ ∏* p, from (completeness (show is_sentence (∏* p), by simp)).mpr this,
   have lmm : T ⊢ p.rew (λ x, ite (x < p.arity) #x #(x - p.arity)), from provable.nfal_subst _ _ ı ⨀ this,
   have := @formula.rew_rew _ p (λ x, ite (x < p.arity) #x #(x - p.arity)) ı (λ m lt, by simp[lt]),
   simpa[this] using lmm }⟩
@@ -545,7 +545,7 @@ begin
   exact consistent_iff_satisfiable.mpr ⟨_, this⟩
 end⟩
 
-theorem coe_provable_iff {p : formula L₁} (hp : sentence p) :
+theorem coe_provable_iff {p : formula L₁} (hp : is_sentence p) :
   (↑T₁ : theory (L₁ + L₂)) ⊢ ↑p ↔ T₁ ⊢ p :=
 begin
   simp[theory.provable_iff_inconsistent],
@@ -563,9 +563,9 @@ def def_fn {n} (f : L₂.fn n) (p : formula L₁) : formula (L₁ + L₂) :=
 def def_pr {n} (r : L₂.pr n) (p : formula L₁) : formula (L₁ + L₂) :=
 ∏[n] (↑p ⟷ app (sum.inr r) ##)
 
-@[simp] lemma def_fn_sentence {n} (f : L₂.fn n) (p : formula L₁) (hp : p.arity ≤ n + 1) : sentence (def_fn f p) :=
+@[simp] lemma def_fn_is_sentence {n} (f : L₂.fn n) (p : formula L₁) (hp : p.arity ≤ n + 1) : is_sentence (def_fn f p) :=
 begin
-  simp[def_fn, sentence] at hp ⊢,
+  simp[def_fn, is_sentence] at hp ⊢,
   refine le_trans ((p : formula (L₁ + L₂)).rew_arity ı[0 ⇝ app (sum.inr f) (λ i, #i)]) (fintype_sup_le _),
   rintros ⟨i, hi⟩, cases i; simp at hi ⊢,
   { refine fintype_sup_le _, rintros ⟨i, hi⟩, simp[nat.succ_le_iff.mpr hi] },
@@ -573,8 +573,8 @@ begin
     exact nat.lt_succ_iff.mp this }
 end
 
-@[simp] lemma def_pr_sentence {n} (r : L₂.pr n) (p : formula L₁) (hp : p.arity ≤ n) : sentence (def_pr r p) :=
-by { simp[def_pr, sentence, hp],
+@[simp] lemma def_pr_is_sentence {n} (r : L₂.pr n) (p : formula L₁) (hp : p.arity ≤ n) : is_sentence (def_pr r p) :=
+by { simp[def_pr, is_sentence, hp],
      refine fintype_sup_le _, rintros ⟨i, hi⟩, simpa using nat.succ_le_iff.mpr hi }
 
 theorem extensions_by_definitions_fn (consis : T₁.consistent) (L₂ : language)
@@ -601,7 +601,7 @@ begin
   let M₂ : model (L₁ + L₂) := M.extend F default,
   have lmm₁ : ∀ {n} (f : L₂.fn n), M₂ ⊧ def_fn f (df f),
   { intros n f,
-    rw [←eval_sentence_iff default (show sentence (def_fn f (df f)), by simp[hdf])],
+    rw [←eval_is_sentence_iff default (show is_sentence (def_fn f (df f)), by simp[hdf])],
     simp[def_fn, models_univs, ←language.extension.coe_pr₂], intros v,
     exact (model.extend_val_coe_iff M _ _).mpr (hF n f v) },
   have lmm₂ : M₂ ⊧ₜₕ ↑T₁, from (model.extend_modelsth_coe_iff M _ _).mpr hM, 
@@ -638,12 +638,12 @@ begin
   let M₂ : model (L₁ + L₂) := M.extend F R,
   have lmm₁ : ∀ {n} (f : L₂.fn n), M₂ ⊧ def_fn f (df_fn f),
   { intros n f,
-    rw [←eval_sentence_iff default (show sentence (def_fn f (df_fn f)), by simp[hdf_fn])],
+    rw [←eval_is_sentence_iff default (show is_sentence (def_fn f (df_fn f)), by simp[hdf_fn])],
     simp[def_fn, models_univs], intros v,
     exact (model.extend_val_coe_iff M _ _).mpr (hF n f v) },
   have lmm₂ : ∀ {n} (r : L₂.pr n), M₂ ⊧ def_pr r (df_pr r),
   { intros n r,
-    rw [←eval_sentence_iff default (show sentence (def_pr r (df_pr r)), by simp[hdf_pr])],
+    rw [←eval_is_sentence_iff default (show is_sentence (def_pr r (df_pr r)), by simp[hdf_pr])],
     simp[def_pr, models_univs, R], intros v,
     exact model.extend_val_coe_iff M F R, exact ⟨λ _, default⟩ },
   have lmm₃ : M₂ ⊧ₜₕ ↑T₁, from (model.extend_modelsth_coe_iff M _ _).mpr hM, 

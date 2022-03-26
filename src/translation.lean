@@ -558,8 +558,8 @@ by induction t; simp*
 @[simp] lemma fun_p_arity (p : formula L₁) : (τ.fun_p p).arity = p.arity :=
 by induction p; simp*
 
-@[simp] lemma fun_p_sentence (p : formula L₁) : sentence (τ.fun_p p) ↔ sentence p :=
-by simp[sentence]
+@[simp] lemma fun_p_is_sentence (p : formula L₁) : is_sentence (τ.fun_p p) ↔ is_sentence p :=
+by simp[is_sentence]
 
 variables (T : theory L₁)
 

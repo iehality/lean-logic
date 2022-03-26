@@ -3,6 +3,7 @@ import deduction semantics
 universes u t
 
 namespace fopl
+open formula
 variables {L : language.{u}} (T : theory L) (i : ℕ)
 
 local infix ` ≃₁ `:80 := ((≃) : term L → term L → formula L)
@@ -146,16 +147,16 @@ def pow : Herbrand T i → Herbrand T (i+1) :=
 λ t₁ t₂ hyp, by { simp[Herbrand.of_eq_of, ←theory.pow_add] at*,
   rw [show (t₁^1) ≃₁ (t₂^1) = (t₁ ≃ t₂)^1, by simp, provable.sf_itr_sf_itr], exact hyp }
 
-lemma sentence_pow {t : term L} (a : t.arity = 0) :
+lemma is_sentence_pow {t : term L} (a : t.arity = 0) :
   (⟦t⟧ᴴ : Herbrand T i).pow = ⟦t⟧ᴴ := by simp[pow, Herbrand.of_eq_of, a]
 
 @[simp] lemma constant_pow (c : L.fn 0) (f : finitary (Herbrand T i) 0) :
-  (H❨c❩ f : Herbrand T i).pow = (H❨c❩ finitary.nil : Herbrand T (i + 1)) := sentence_pow (by simp)
+  (H❨c❩ f : Herbrand T i).pow = (H❨c❩ finitary.nil : Herbrand T (i + 1)) := is_sentence_pow (by simp)
 
 @[simp] theorem zero_pow [has_zero_symbol L] :
   (0 : Herbrand T i).pow = 0 := by unfold has_zero.zero; simp
 
-theorem succ_pow [has_succ_symbol L] (h : Herbrand T i) :
+@[simp] theorem succ_pow [has_succ_symbol L] (h : Herbrand T i) :
   (Succ h).pow = Succ h.pow :=
 by { induction h using fopl.Herbrand.ind_on,
      simp[pow, ←succ_eq_succ _, -succ_eq_succ] }
@@ -213,7 +214,7 @@ by { induction h using fopl.Herbrand.ind_on,
 
 infix ` ⊳ᴴ ` :90  := subst_sf_H
 
-@[simp] lemma subst_sf_H_sentence (h : Herbrand T i) {t : term L} (a : t.arity = 0) :
+@[simp] lemma subst_sf_H_is_sentence (h : Herbrand T i) {t : term L} (a : t.arity = 0) :
   h ⊳ᴴ (⟦t⟧ᴴ : Herbrand T (i+1)) = ⟦t⟧ᴴ :=
 by { induction h using fopl.Herbrand.ind_on, simp[subst_sf_H, Herbrand.of_eq_of, a] }
 
@@ -357,7 +358,7 @@ def pow : Lindenbaum T i → Lindenbaum T (i+1) :=
 
 lemma pow_def (p : formula L) : pow ⟦p⟧ᴸ = (⟦p^1⟧ᴸ : Lindenbaum T (i + 1)) := rfl
 
-lemma sentence_pow {p : formula L} (a : sentence p) :
+lemma is_sentence_pow {p : formula L} (a : is_sentence p) :
   pow (⟦p⟧ᴸ : Lindenbaum T i) = ⟦p⟧ᴸ := by rw [←pow_eq]; simp[-pow_eq, a]
 
 @[simp] lemma pow_compl (l : Lindenbaum T i) : pow (lᶜ) = (pow l)ᶜ :=
@@ -562,7 +563,7 @@ by { induction l using classical_logic.lindenbaum.ind_on,
      induction h using fopl.Herbrand.ind_on,
      simp[subst_sf_L, exist_def, Herbrand.pow_def, -exist_eq, -Herbrand.pow_eq, subst_pow] }
 
-lemma subst_sf_L_sentence (h : Herbrand T i) {p : formula L} (a : sentence p) :
+lemma subst_sf_L_is_sentence (h : Herbrand T i) {p : formula L} (a : is_sentence p) :
   h ⊳ (⟦p⟧ᴸ : Lindenbaum T (i+1)) = ⟦p⟧ᴸ :=
 by { induction h using fopl.Herbrand.ind_on, simp[subst_sf_L, Lindenbaum.of_eq_of, a] }
 
