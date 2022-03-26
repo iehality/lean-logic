@@ -9,10 +9,10 @@ variables {L : language.{u}}
 local infix ` ≃₁ `:80 := ((≃) : term L → term L → formula L)
 
 def eq_axiom4 {n} (f : L.fn n) : formula L :=
-  ∏[2*n] (conjunction' n (λ i, #i ≃₁ #(n + i)) ⟶ (term.app f (λ i, #i) ≃ term.app f (λ i, #(n + i))))
+  ∏[2*n] (inf_conjunction n (λ i, #i ≃₁ #(n + i)) ⟶ (term.app f (λ i, #i) ≃ term.app f (λ i, #(n + i))))
 
 def eq_axiom5 {n} (r : L.pr n) : formula L :=
-  ∏[2*n] (conjunction' n (λ i, #i ≃₁ #(n + i)) ⟶ formula.app r (λ i, #i) ⟶ formula.app r (λ i, #(n + i)))
+  ∏[2*n] (inf_conjunction n (λ i, #i ≃₁ #(n + i)) ⟶ formula.app r (λ i, #i) ⟶ formula.app r (λ i, #(n + i)))
 
 @[simp] lemma eq_axiom4_is_sentence {n} {f : L.fn n} :
   is_sentence (eq_axiom4 f) :=
@@ -464,10 +464,10 @@ begin
   { refine λ _ _ _, ⟨0, by simp⟩ }
 end
 
-lemma conjunction'_mem {n : ℕ} {P : finitary (formula L) n} :
-  ∀ {p}, p ∈ P → T ⊢ conjunction' n P ⟶ p :=
+lemma inf_conjunction_mem {n : ℕ} {P : finitary (formula L) n} :
+  ∀ {p}, p ∈ P → T ⊢ inf_conjunction n P ⟶ p :=
 begin
-  induction n with n IH; simp[conjunction'];
+  induction n with n IH; simp[inf_conjunction];
   simp[has_mem.mem, finitary.mem],
   intros p mem,
   exact and_imply_of_imply_right (IH mem)
@@ -642,10 +642,7 @@ lemma conjunction_provable : ∀ {P : list (formula L)} (h : ∀ p, p ∈ P → 
     have lmm₂ : T ⊢ conjunction P, { refine conjunction_provable (λ p hyp, h _ _), simp, right, exact hyp },
     refine ⟨lmm₁, lmm₂⟩ }
 
-protected lemma conjunction' {n} {P : finitary (formula L) n} (h : ∀ i, T ⊢ P i) : T ⊢ conjunction' n P :=
-by { induction n with n IH; simp, refine ⟨h _, IH (λ i, _)⟩, refine h _ }
-
-protected lemma disjunction' {n} {P : finitary (formula L) n} (i) (h : T ⊢ P i) : T ⊢ disjunction' n P :=
+protected lemma sup_disjunction {n} {P : finitary (formula L) n} (i) (h : T ⊢ P i) : T ⊢ sup_disjunction n P :=
 by { induction n with n IH; simp, { exfalso, exact i.val.not_lt_zero i.property },
      { rcases i with ⟨i, hi⟩,
        have : i = n ∨ i < n, exact eq_or_lt_of_le (nat.lt_succ_iff.mp hi), rcases this with (rfl | lt),
@@ -790,15 +787,15 @@ by { refine deduction.mp _,
      simp[iff_equiv], split,
      { refine (predicate_ext' r v₁ v₂) ⨀ (by simp) },
      { refine (predicate_ext' r v₂ v₁) ⨀
-       (fopl.provable.conjunction' (λ i, eq_symm (deduction.mpr $ conjunction'_mem $ finitary.index_mem _ i))) } }
+       (conjunction_iff.mpr (λ i, eq_symm (deduction.mpr $ inf_conjunction_mem $ finitary.index_mem _ i))) } }
 
 lemma equal_rew_equal (s₁ s₂ : ℕ → term L) (e : ∀ n, T ⊢ s₁ n ≃ s₂ n) : ∀ (t : term L) ,
   T ⊢ t.rew s₁ ≃ t.rew s₂
 | (#n)                := by simp; exact e _
 | (@term.app _ n f v) :=
   by { simp,
-       have : T ⊢ conjunction' n (λ i, (v i).rew s₁ ≃ (v i).rew s₂),
-       { apply provable.conjunction', intros i, refine equal_rew_equal (v i) },
+       have : T ⊢ inf_conjunction n (λ i, (v i).rew s₁ ≃ (v i).rew s₂),
+       { simp, intros i, refine equal_rew_equal (v i) },
        refine (@function_ext' _ T _ f (λ i, (v i).rew s₁) (λ i, (v i).rew s₂)) ⨀ this }
 
 lemma equal_fal_subst_equal (t : term L) {t₁ t₂} (h : T ⊢ t₁ ≃ t₂) :
@@ -814,8 +811,8 @@ begin
     suffices : ∀ (s₁ s₂ : ℕ → term L) (h : ∀ (n : ℕ), T ⊢ s₁ n ≃ s₂ n), T ⊢ formula.app p (λ i, (v i).rew s₁) ⟶ formula.app p (λ i, (v i).rew s₂),
     { refine ⟨this _ _ eqn, this s₂ s₁ (λ x, eq_symm (eqn x))⟩ },
     intros s₁ s₂ eqs,
-    have : T ⊢ conjunction' n (λ i, (v i).rew s₁ ≃ (v i).rew s₂),
-    { apply provable.conjunction', intros i,refine equal_rew_equal _ _ eqs _ },
+    have : T ⊢ ⋀ i, (v i).rew s₁ ≃ (v i).rew s₂,
+    { simp, intros i,refine equal_rew_equal _ _ eqs _ },
     refine (predicate_ext' p _ _) ⨀ this },
   case equal : t₁ t₂ { intros, simp[axiomatic_classical_logic'.iff_equiv],
     refine ⟨deduction.mp _, deduction.mp _⟩,
@@ -926,14 +923,14 @@ by { have := equiv_eq_of_equiv hp hq, simp[axiomatic_classical_logic'.iff_equiv]
 
 lemma equiv_function_of_equiv {n} (f : L.fn n) {v₁ v₂ : finitary (term L) n} (h : ∀ i, T ⊢ v₁ i ≃ v₂ i) :
   T ⊢ term.app f v₁ ≃ term.app f v₂ :=
-function_ext' f v₁ v₂ ⨀ (provable.conjunction' h)
+function_ext' f v₁ v₂ ⨀ (by simp[h])
 
 lemma equiv_predicate_of_equiv {n} (p : L.pr n) {v₁ v₂ : finitary (term L) n} (h : ∀ i, T ⊢ v₁ i ≃ v₂ i) :
   T ⊢ formula.app p v₁ ⟷ formula.app p v₂ :=
 begin
   simp[axiomatic_classical_logic'.iff_equiv],
-  refine ⟨(predicate_ext' p v₁ v₂) ⨀ (provable.conjunction' h),
-  (predicate_ext' p v₂ v₁) ⨀ (provable.conjunction' (λ x, provable.eq_symm (h x)))⟩
+  refine ⟨(predicate_ext' p v₁ v₂) ⨀ (by simp[h]),
+  (predicate_ext' p v₂ v₁) ⨀ (by simp[λ i, eq_symm (h i)])⟩
 end
 
 lemma predicate_of_equiv {n} (p : L.pr n) {v₁ v₂ : finitary (term L) n} (h : T ⊢ formula.app p v₁) 

@@ -626,13 +626,13 @@ infix ` ⊧ ` :55 := has_double_turnstile.double_turnstile
 | 0 _        := ⊤
 | (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊓ inf_conjunction n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
 
-notation `⋀*` binders `, ` r:(scoped p, inf_conjunction _ p) := r
+notation `⋀` binders `, ` r:(scoped p, inf_conjunction _ p) := r
 
 @[simp] def sup_disjunction {α : Type*} [has_bot α] [has_sup α] : ∀ n, (fin n → α) → α
 | 0 _        := ⊥
 | (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊔ sup_disjunction n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
 
-notation `⋁*` binders `, ` r:(scoped p, sup_disjunction _ p) := r
+notation `⋁` binders `, ` r:(scoped p, sup_disjunction _ p) := r
 
 instance : has_arrow Prop := ⟨(→)⟩
 

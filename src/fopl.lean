@@ -253,17 +253,6 @@ by { induction i with i IH; simp, exact IH }
 @[simp] lemma nex_ex (p : formula L) (i : ℕ) : (∐[i] (∐ p)) = ∐ (∐[i] p) :=
 by { induction i with i IH; simp, exact IH }
 
-@[simp] def conjunction' : ∀ n, (fin n → formula L) → formula L
-| 0 _        := ⊤
-| (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊓ conjunction' n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
-
-notation `⋀` binders `, ` r:(scoped p, conjunction' _ p) := r
-
-@[simp] def disjunction' : ∀ n, (fin n → formula L) → formula L
-| 0 _        := ⊥
-| (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊔ disjunction' n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
-
-notation `⋁` binders `, ` r:(scoped p, disjunction' _ p) := r
 
 def conjunction : list (formula L) → formula L
 | []        := ⊤
@@ -747,12 +736,12 @@ by { induction i with i IH generalizing s, { simp },
 @[simp] lemma rew_id (p : formula L) : p.rew ı = p :=
 by { induction p; try { simp[rew] }; try {simp*} }
 
-@[simp] lemma conjunction'_rew {n} (P : finitary (formula L) n) (s) :
-  (conjunction' n P).rew s = conjunction' n (λ i, (P i).rew s) :=
+@[simp] lemma inf_conjunction_rew {n} (P : finitary (formula L) n) (s) :
+  (inf_conjunction n P).rew s = ⋀ i, (P i).rew s :=
 by { induction n with n IH; simp* }
 
-@[simp] lemma disjunction'_rew {n} (P : finitary (formula L) n) (s) :
-  (disjunction' n P).rew s = disjunction' n (λ i, (P i).rew s) :=
+@[simp] lemma sup_disjunction_rew {n} (P : finitary (formula L) n) (s) :
+  (sup_disjunction n P).rew s = ⋁ i, (P i).rew s :=
 by { induction n with n IH; simp* }
 
 instance : has_pow (formula L) ℕ := ⟨λ p i, p.rew (λ x, #(x + i))⟩
@@ -787,10 +776,10 @@ by simp[pow_eq]; refl
 @[simp] lemma imply_pow (p q : formula L) (i : ℕ) : (p ⟶ q)^i = p^i ⟶ q^i := rfl
 @[simp] lemma neg_pow (p : formula L) (i : ℕ) : (⁻p)^i = ⁻(p^i) := rfl
 @[simp] lemma and_pow (p q : formula L) (i : ℕ) : (p ⊓ q)^i = (p^i) ⊓ (q^i) := rfl
-@[simp] lemma conjunction'_pow {n} (P : finitary (formula L) n) (i : ℕ) : (conjunction' n P)^i = ⋀ j, (P j)^i :=
+@[simp] lemma inf_conjunction_pow {n} (P : finitary (formula L) n) (i : ℕ) : (inf_conjunction n P)^i = ⋀ j, (P j)^i :=
 by induction n with n IH; simp*
 @[simp] lemma or_pow (p q : formula L) (i : ℕ) : (p ⊔ q)^i = (p^i) ⊔ (q^i) := rfl
-@[simp] lemma disjunction'_pow {n} (P : finitary (formula L) n) (i : ℕ) : (disjunction' n P)^i = ⋁ j, (P j)^i :=
+@[simp] lemma sup_disjunction_pow {n} (P : finitary (formula L) n) (i : ℕ) : (sup_disjunction n P)^i = ⋁ j, (P j)^i :=
 by induction n with n IH; simp*
 
 lemma fal_pow (p : formula L) (i : ℕ) : (∏ p)^i = ∏ p.rew (#0 ⌢ λ x, #(x + i + 1)) :=
@@ -941,7 +930,7 @@ lemma nfal_is_sentence (p : formula L) : is_sentence (nfal p p.arity) :=
 by simp[is_sentence]
 
 @[simp] lemma conjunction_arity {n} {v : finitary (formula L) n} :
-  (conjunction' n v).arity = ⨆ᶠ i, (v i).arity :=
+  (inf_conjunction n v).arity = ⨆ᶠ i, (v i).arity :=
 by { induction n with n IH; simp*,
   refine le_antisymm _ _; simp,
   { split,
@@ -958,7 +947,7 @@ by { induction n with n IH; simp*,
       { refl }, { refine le_trans _ le, refine le_fintype_sup' ⟨i, lt⟩ (by refl) } } } }
 
 @[simp] lemma disjunction_arity {n} {v : finitary (formula L) n} :
-  (disjunction' n v).arity = ⨆ᶠ i, (v i).arity :=
+  (sup_disjunction n v).arity = ⨆ᶠ i, (v i).arity :=
 by { induction n with n IH; simp*,
   refine le_antisymm _ _; simp,
   { split,

@@ -70,6 +70,9 @@ variables {T}
 @[simp] lemma hyp_right {p : F} (h : p ∈ P) (q) : q ⟶ p ∈ P :=
 by { have : p ⟶ q ⟶ p ∈ P, simp, exact this ⨀ h }
 
+@[simp] lemma T_hyp_eliminate {p} : ⊤ ⟶ p ∈ P ↔ p ∈ P :=
+⟨λ h, by { have : ⊤ ∈ P, simp, exact h ⨀ this }, λ h, by simp[h]⟩
+
 lemma modus_ponens_hyp {p q r : F} (hqr : p ⟶ q ⟶ r ∈ P) (hq : p ⟶ q ∈ P) : p ⟶ r ∈ P :=
 by { have : (p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r ∈ P, simp, exact this ⨀ hqr ⨀ hq }
 
@@ -91,6 +94,13 @@ begin
   have l₂ : (p ⟶ q ⟶ r) ∈ P, simp[h₂],
   have l₃ : (p ⟶ q) ⟶ (p ⟶ r) ∈ P, from l₁ ⨀ l₂,
   exact l₃ ⨀ h₁
+end
+
+@[simp] lemma imply₁' {p q r : F} : p ⟶ q ⟶ r ⟶ p ∈ P :=
+begin
+  have lmm₁ : p ⟶ q ⟶ p ⟶ r ⟶ p ∈ P, simp,
+  have lmm₂ : p ⟶ q ⟶ p ∈ P, simp,
+  exact lmm₁ ⨀₂ lmm₂
 end
 
 @[simp] lemma dne (p : F) : ⁻⁻p ⟶ p ∈ P :=
@@ -196,6 +206,14 @@ lemma and_imply_of_imply_right {p₁ p₂ q : F} (h : p₂ ⟶ q ∈ P) : p₁ �
    have : q ⟶ ⁻(p ⟶ ⁻q) ∈ P, from impl_trans (dni _) (contrapose.mpr this),
    exact modus_ponens this h₂ }⟩
 
+@[simp] lemma conjunction_iff {n} {p : finitary F n} : (inf_conjunction n p ∈ P) ↔ (∀ i, p i ∈ P) :=
+by { induction n with n IH; simp*, { rintros ⟨i, hi⟩, simp at hi, contradiction },
+     { split,
+       { rintros ⟨hn, h⟩ ⟨i, hi⟩,
+         have : i = n ∨ i < n, exact eq_or_lt_of_le (nat.lt_succ_iff.mp hi), rcases this with (rfl | lt),
+         { exact hn }, { simpa using h ⟨i, lt⟩ } },
+       { intros h, refine ⟨ h ⟨n, by simp[←nat.add_one]⟩, λ i, by simpa using h i⟩ } } }
+
 @[simp] lemma iff_equiv_p {p q : F} : (p ⟷ q ∈ P) ↔ (p ⟶ q ∈ P ∧ q ⟶ p ∈ P) :=
 by simp[lrarrow_def, iff_and_p]
 
@@ -226,6 +244,9 @@ by { have : ⁻p₁ ⟶ ⁻p₂ ∈ P, from (iff_equiv_p.mp (equiv_neg_of_equiv 
 
 lemma equiv_and_of_equiv {p₁ q₁ p₂ q₂: F} (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₁ ⊓ q₁ ⟷ p₂ ⊓ q₂ ∈ P :=
 by { simp only [and_def P], refine equiv_neg_of_equiv (equiv_imply_of_equiv hp (equiv_neg_of_equiv hq)) }
+
+lemma equiv_conjunction_of_equiv {n} {p₁ p₂ : finitary F n} (hp : ∀ i, p₁ i ⟷ p₂ i ∈ P) : inf_conjunction n p₁ ⟷ inf_conjunction n p₂ ∈ P :=
+by { induction n with n IH; simp[-iff_equiv_p], { simp }, { refine equiv_and_of_equiv (hp _) (IH _), intros i, exact hp _ } }
 
 lemma and_of_equiv {p₁ q₁ p₂ q₂: F} (h : p₁ ⊓ q₁ ∈ P) (hp : p₁ ⟷ p₂ ∈ P) (hq : q₁ ⟷ q₂ ∈ P) : p₂ ⊓ q₂ ∈ P :=
 by { have : p₁ ⊓ q₁ ⟶ p₂ ⊓ q₂ ∈ P, from (iff_equiv_p.mp (equiv_and_of_equiv hp hq)).1, exact this ⨀ h }
@@ -338,6 +359,12 @@ by simp[or_def P]; refine explosion_hyp₂ (show p ⟶ ⁻p ⟶ p ∈ P, by simp
 @[simp] lemma imply_or_right (p q : F) : q ⟶ p ⊔ q ∈ P :=
 by simp[or_def P]
 
+lemma disjunction_of {n} {p : finitary F n} (i) (h : p i ∈ P) : sup_disjunction n p ∈ P :=
+by { induction n with n IH; simp*,{ exfalso, exact i.val.not_lt_zero i.property },
+     { rcases i with ⟨i, hi⟩,
+       have : i = n ∨ i < n, exact eq_or_lt_of_le (nat.lt_succ_iff.mp hi), rcases this with (rfl | lt),
+       { refine imply_or_left _ _ ⨀ h }, { simpa using imply_or_right _ _ ⨀ (@IH (λ i, p i) ⟨i, lt⟩ (by simp; exact h)) } } }
+
 @[simp] lemma imply_and (p q r : F) : (p ⟶ q) ⟶ (p ⟶ r) ⟶ p ⟶ q ⊓ r ∈ P :=
 begin
   have : (p ⟶ q) ⟶ (p ⟶ r) ⟶ p ⟶ r ⟶ q ⊓ r ∈ P,
@@ -351,10 +378,28 @@ begin
   refine equiv_of_equiv (show p ⟶ ⁻q ⟷ p ⟶ ⁻q ∈ P, by simp) _ (equiv_imply_of_equiv _ _); simp
 end
 
+@[simp] lemma neg_conj_equiv_disj_neg {n} (p : finitary F n) : ⁻(inf_conjunction n p) ⟷ (⋁ i, ⁻p i) ∈ P :=
+begin
+  induction n with n IH; simp[-iff_equiv_p],
+  { simp, exact of_equiv_p (show ⁻⁻⊤ ∈ P, from dni ⊤ ⨀ by simp) (neg_iff _) },
+  { have : (⁻(p ⟨n, _⟩ ⊓ ⋀ (i : fin n), p ⟨↑i, _⟩) ⟷ ⁻p ⟨n, _⟩ ⊔ ⁻⋀ (i : fin n), p ⟨↑i, _⟩) ∈ P,
+      from neg_and_equiv_or_neg (p ⟨n, lt_add_one n⟩) ⋀ (i : fin n), p ⟨↑i, by simp⟩,
+    refine equiv_of_equiv this (by simp) (equiv_or_of_equiv (by simp) (by simpa using (IH (λ i, p i)))) }
+end
+
 @[simp] lemma neg_or_equiv_and_neg (p q : F) : ⁻(p ⊔ q) ⟷ ⁻p ⊓ ⁻q ∈ P :=
 begin
   simp only [and_def P, or_def P],
   refine equiv_of_equiv (show ⁻(⁻p ⟶ q) ⟷ ⁻(⁻p ⟶ q) ∈ P, by simp) _ (equiv_neg_of_equiv (equiv_imply_of_equiv _ _)); simp
+end
+
+@[simp] lemma neg_disj_equiv_conj_neg {n} (p : finitary F n) : ⁻(sup_disjunction n p) ⟷ (⋀ i, ⁻p i) ∈ P :=
+begin
+  induction n with n IH; simp[-iff_equiv_p],
+  { simp, exact of_equiv_p (show ⊥ ⟶ ⊥ ∈ P, by simp) (equiv_symm (neg_iff _)) },
+  { have : (⁻(p ⟨n, _⟩ ⊔ ⋁ (i : fin n), p ⟨↑i, _⟩) ⟷ ⁻p ⟨n, _⟩ ⊓ ⁻⋁ (i : fin n), p ⟨↑i, _⟩) ∈ P,
+      from neg_or_equiv_and_neg (p ⟨n, lt_add_one n⟩) ⋁ (i : fin n), p ⟨↑i, by simp⟩,
+    refine equiv_of_equiv this (by simp) (equiv_and_of_equiv (by simp) (by simpa using (IH (λ i, p i)))) }
 end
 
 @[simp] lemma or_imply (p q r : F) : (p ⟶ r) ⟶ (q ⟶ r) ⟶ p ⊔ q ⟶ r ∈ P :=
@@ -375,6 +420,30 @@ end
 
 lemma case_of_p {p q r : F} (hpq : p ⊔ q ∈ P) (hpr : p ⟶ r ∈ P) (hqr : q ⟶ r ∈ P) : r ∈ P :=
 (show (p ⟶ r) ⟶ (q ⟶ r) ⟶ p ⊔ q ⟶ r ∈ P, by simp) ⨀ hpr ⨀ hqr ⨀ hpq
+
+@[simp] lemma and_imply_equiv_imply_imply {p q r : F} : (p ⟶ q ⟶ r) ⟷ (p ⊓ q ⟶ r) ∈ P :=
+begin
+  simp, split,
+  { exact (show (p ⟶ q ⟶ r) ⟶ p ⊓ q ⟶ p ⟶ q ⟶ r ∈ P, by simp) ⨀₂ (show (p ⟶ q ⟶ r) ⟶ p ⊓ q ⟶ p ∈ P, by simp) ⨀₂ (show (p ⟶ q ⟶ r) ⟶ p ⊓ q ⟶ q ∈ P, by simp) },
+  { exact (show (p ⊓ q ⟶ r) ⟶ p ⟶ q ⟶ (p ⊓ q ⟶ r) ∈ P, by simp) ⨀₃ (show (p ⊓ q ⟶ r) ⟶ p ⟶ q ⟶ (p ⊓ q) ∈ P, by simp) }
+end
+
+@[simp] lemma imply_and_equiv_or_imply (p q r : F) : (p ⟶ r) ⊓ (q ⟶ r) ⟷ p ⊔ q ⟶ r ∈ P :=
+begin
+  simp, split,
+  { refine of_equiv_p (or_imply p q r) and_imply_equiv_imply_imply },
+  { have lmm₁ : (p ⊔ q ⟶ r) ⟶ p ⟶ r ∈ P, from (show (p ⊔ q ⟶ r) ⟶ p ⟶ p ⊔ q ⟶ r ∈ P, by simp) ⨀₂ (show (p ⊔ q ⟶ r) ⟶ p ⟶ p ⊔ q ∈ P, by simp),
+    have lmm₂ : (p ⊔ q ⟶ r) ⟶ q ⟶ r ∈ P, from (show (p ⊔ q ⟶ r) ⟶ q ⟶ p ⊔ q ⟶ r ∈ P, by simp) ⨀₂ (show (p ⊔ q ⟶ r) ⟶ q ⟶ p ⊔ q ∈ P, by simp),
+    refine imply_and _ _ _ ⨀ lmm₁ ⨀ lmm₂ }
+end
+
+@[simp] lemma disj_imply {n} (p : finitary F n) (q : F) : (⋀ i, (p i ⟶ q)) ⟷ ((⋁ i, p i) ⟶ q) ∈ P :=
+begin
+  induction n with n IH, { simp }, 
+  { simp[-iff_equiv_p],
+    have : (p ⟨n, _⟩ ⟶ q) ⊓ ((⋁ (i : fin n), p ⟨i, _⟩) ⟶ q) ⟷ (p ⟨n, _⟩ ⊔ ⋁ (i : fin n), p ⟨i, _⟩) ⟶ q ∈ P, from imply_and_equiv_or_imply (p ⟨n, by omega⟩) (⋁ (i : fin n), p ⟨i, by simp⟩) q,
+    refine equiv_of_equiv this (equiv_and_of_equiv (by simp) (equiv_symm (IH (λ i, p ⟨i, by simp⟩)))) (by simp) }
+end
 
 variables (P)
 
@@ -558,7 +627,11 @@ impl_trans
 
 @[simp] lemma iff_and {p q : F} : T ⊢ p ⊓ q ↔ (T ⊢ p ∧ T ⊢ q) := iff_and_p
 
+@[simp] lemma conjunction_iff {n} {p : finitary F n} : (T ⊢ inf_conjunction n p) ↔ (∀ i, T ⊢ p i) :=
+conjunction_iff
+
 lemma iff_equiv {p q : F} : T ⊢ p ⟷ q ↔ (T ⊢ p ⟶ q ∧ T ⊢ q ⟶ p) := iff_equiv_p
+
 
 lemma iff_of_equiv {p q : F} (h : T ⊢ p ⟷ q) : T ⊢ p ↔ T ⊢ q := iff_of_equiv h
 
@@ -602,11 +675,20 @@ lemma of_equiv {p₁ p₂ : F} (h : T ⊢ p₁) (hp : T ⊢ p₁ ⟷ p₂) : T �
 
 @[simp] lemma imply_or_right (p q : F) : T ⊢ q ⟶ p ⊔ q := imply_or_right p q
 
+lemma disjunction_of {n} {p : finitary F n} (i) (h : T ⊢ p i) : T ⊢ sup_disjunction n p :=
+disjunction_of i h
+
 @[simp] lemma imply_and (p q r : F) : T ⊢ (p ⟶ q) ⟶ (p ⟶ r) ⟶ p ⟶ q ⊓ r := imply_and p q r
 
 @[simp] lemma neg_and_equiv_or_neg (p q : F) : T ⊢ ⁻(p ⊓ q) ⟷ ⁻p ⊔ ⁻q := neg_and_equiv_or_neg p q
 
+@[simp] lemma neg_conj_equiv_disj_neg {n} (p : finitary F n) : T ⊢ ⁻(inf_conjunction n p) ⟷ (⋁ i, ⁻p i) :=
+neg_conj_equiv_disj_neg p
+
 @[simp] lemma neg_or_equiv_and_neg (p q : F) : T ⊢ ⁻(p ⊔ q) ⟷ ⁻p ⊓ ⁻q := neg_or_equiv_and_neg p q
+
+@[simp] lemma neg_disj_equiv_conj_neg {n} (p : finitary F n) : T ⊢ ⁻(sup_disjunction n p) ⟷ (⋀ i, ⁻p i) :=
+neg_disj_equiv_conj_neg p
 
 @[simp] lemma or_imply (p q r : F) : T ⊢ (p ⟶ r) ⟶ (q ⟶ r) ⟶ p ⊔ q ⟶ r := or_imply p q r
 
