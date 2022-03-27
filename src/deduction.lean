@@ -949,7 +949,7 @@ equiv_neg_of_equiv (equiv_univ_of_equiv (equiv_neg_of_equiv h))
 lemma ex_of_equiv {p₁ p₂} (h : T ⊢ ∐ p₁) (hp : ⤊T ⊢ p₁ ⟷ p₂) : T ⊢ ∐ p₂ :=
 (iff_equiv.mp (equiv_ex_of_equiv hp)).1 ⨀ h
 
-@[simp] lemma extend {T₀ T : theory L} [extend T₀ T] {p : formula L} (h : T₀ ⊢ p) : T ⊢ p :=
+@[simp] protected lemma extend {T₀ T : theory L} [extend T₀ T] {p : formula L} (h : T₀ ⊢ p) : T ⊢ p :=
 extend.le h
 
 lemma nfal_K (p q : formula L) (n) : T ⊢ (∏[n] (p ⟶ q)) ⟶ (∏[n] p) ⟶ ∏[n] q :=
@@ -1016,12 +1016,25 @@ end provable
 
 variables {T : theory L}
 
-lemma extend_of_inclusion {T₁ T₂ : theory L} (ss : T₁ ⊆ T₂) : extend T₁ T₂ :=
+def theory.extend_of_inclusion {T₁ T₂ : theory L} (ss : T₁ ⊆ T₂) : extend T₁ T₂ :=
 ⟨λ p h, by exact provable.weakening h ss⟩
 
 instance (p : formula L) : extend T (T +{p}) := ⟨λ q h, by simp[h]⟩
 
-instance extend_ax₂ (p q : formula L) : extend T (T +{ p }+{ q }) := ⟨λ _ h, by simp[h]⟩
+instance theory.extend_ax₂ (p q : formula L) : extend T (T +{ p }+{ q }) := ⟨λ _ h, by simp[h]⟩
+
+instance theory.extend_sf {T₁ T₂ : theory L} [extend T₁ T₂] : extend (⤊T₁) (⤊T₂) :=
+⟨λ p h, by {
+  have : T₁ ⊢ ∏ p, from h.generalize,
+  have : T₂ ⊢ ∏ p, from this.extend,
+  have : ⤊T₂ ⊢ (∏ p)^1, from provable.sf_sf.mpr this,
+  simpa[formula.nested_rew] using this ⊚ #0 }⟩
+
+instance theory.extend_pow {T₁ T₂ : theory L} [ex : extend T₁ T₂] (k : ℕ) : extend (T₁^k) (T₂^k) :=
+by { induction k with k IH ; simp[theory.sf_itr_succ], { exact ex }, { exactI fopl.theory.extend_sf } }
+
+lemma provable.extend_pow {T₀ T : theory L} [extend T₀ T] [closed_theory T₀] {p : formula L} (h : T₀ ⊢ p) (k : ℕ) :
+  T^k ⊢ p := by { have : T₀^k ⊢ p, by simp[h], exact this.extend }
 
 lemma proper_theory_union (T₁ T₂ : theory L) (h₁ : proper_theory T₁) (h₂ : proper_theory T₂) :
   proper_at 0 (T₁ ∪ T₂) :=

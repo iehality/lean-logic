@@ -421,7 +421,7 @@ end
 lemma case_of_p {p q r : F} (hpq : p ⊔ q ∈ P) (hpr : p ⟶ r ∈ P) (hqr : q ⟶ r ∈ P) : r ∈ P :=
 (show (p ⟶ r) ⟶ (q ⟶ r) ⟶ p ⊔ q ⟶ r ∈ P, by simp) ⨀ hpr ⨀ hqr ⨀ hpq
 
-@[simp] lemma and_imply_equiv_imply_imply {p q r : F} : (p ⟶ q ⟶ r) ⟷ (p ⊓ q ⟶ r) ∈ P :=
+@[simp] lemma and_imply_equiv_imply_imply (p q r : F) : (p ⟶ q ⟶ r) ⟷ (p ⊓ q ⟶ r) ∈ P :=
 begin
   simp, split,
   { exact (show (p ⟶ q ⟶ r) ⟶ p ⊓ q ⟶ p ⟶ q ⟶ r ∈ P, by simp) ⨀₂ (show (p ⟶ q ⟶ r) ⟶ p ⊓ q ⟶ p ∈ P, by simp) ⨀₂ (show (p ⟶ q ⟶ r) ⟶ p ⊓ q ⟶ q ∈ P, by simp) },
@@ -431,13 +431,13 @@ end
 @[simp] lemma imply_and_equiv_or_imply (p q r : F) : (p ⟶ r) ⊓ (q ⟶ r) ⟷ p ⊔ q ⟶ r ∈ P :=
 begin
   simp, split,
-  { refine of_equiv_p (or_imply p q r) and_imply_equiv_imply_imply },
+  { refine of_equiv_p (or_imply p q r) (and_imply_equiv_imply_imply _ _ _) },
   { have lmm₁ : (p ⊔ q ⟶ r) ⟶ p ⟶ r ∈ P, from (show (p ⊔ q ⟶ r) ⟶ p ⟶ p ⊔ q ⟶ r ∈ P, by simp) ⨀₂ (show (p ⊔ q ⟶ r) ⟶ p ⟶ p ⊔ q ∈ P, by simp),
     have lmm₂ : (p ⊔ q ⟶ r) ⟶ q ⟶ r ∈ P, from (show (p ⊔ q ⟶ r) ⟶ q ⟶ p ⊔ q ⟶ r ∈ P, by simp) ⨀₂ (show (p ⊔ q ⟶ r) ⟶ q ⟶ p ⊔ q ∈ P, by simp),
     refine imply_and _ _ _ ⨀ lmm₁ ⨀ lmm₂ }
 end
 
-@[simp] lemma disj_imply {n} (p : finitary F n) (q : F) : (⋀ i, (p i ⟶ q)) ⟷ ((⋁ i, p i) ⟶ q) ∈ P :=
+@[simp] lemma conj_imply_iff_disj_imply {n} (p : finitary F n) (q : F) : (⋀ i, (p i ⟶ q)) ⟷ ((⋁ i, p i) ⟶ q) ∈ P :=
 begin
   induction n with n IH, { simp }, 
   { simp[-iff_equiv_p],
@@ -609,7 +609,11 @@ impl_trans
 
 @[simp] lemma hyp_right {p : F} (h : T ⊢ p) (q) : T ⊢ q ⟶ p := hyp_right h q
 
+@[simp] lemma T_hyp_eliminate {p} : T ⊢ ⊤ ⟶ p ↔ T ⊢ p := T_hyp_eliminate
+
 @[simp] lemma dne (p : F) : T ⊢ ⁻⁻p ⟶ p := dne p
+
+@[simp] lemma imply₁' {p q r : F} : T ⊢ p ⟶ q ⟶ r ⟶ p := imply₁'
 
 @[simp] lemma dni (p : F) : T ⊢ p ⟶ ⁻⁻p := dni p
 
@@ -631,7 +635,6 @@ impl_trans
 conjunction_iff
 
 lemma iff_equiv {p q : F} : T ⊢ p ⟷ q ↔ (T ⊢ p ⟶ q ∧ T ⊢ q ⟶ p) := iff_equiv_p
-
 
 lemma iff_of_equiv {p q : F} (h : T ⊢ p ⟷ q) : T ⊢ p ↔ T ⊢ q := iff_of_equiv h
 
@@ -694,6 +697,12 @@ neg_disj_equiv_conj_neg p
 
 lemma cases_of (p q : F) (ht : T ⊢ p ⟶ q) (hf : T ⊢ ⁻p ⟶ q) : T ⊢ q :=
 or_imply p (⁻p) q ⨀ ht ⨀ hf ⨀ (by simp)
+
+@[simp] lemma and_imply_equiv_imply_imply (p q r : F) : T ⊢ (p ⟶ q ⟶ r) ⟷ (p ⊓ q ⟶ r) := and_imply_equiv_imply_imply p q r
+
+@[simp] lemma imply_and_equiv_or_imply (p q r : F) : T ⊢ (p ⟶ r) ⊓ (q ⟶ r) ⟷ p ⊔ q ⟶ r := imply_and_equiv_or_imply p q r
+
+@[simp] lemma conj_imply_iff_disj_imply {n} (p : finitary F n) (q : F) : T ⊢ (⋀ i, (p i ⟶ q)) ⟷ ((⋁ i, p i) ⟶ q) := conj_imply_iff_disj_imply p q
 
 lemma explosion {p : F} (h₁ : T ⊢ p) (h₂ : T ⊢ ⁻p) {q : F} : T ⊢ q :=
 explosion h₁ h₂

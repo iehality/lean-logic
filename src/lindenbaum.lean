@@ -642,8 +642,19 @@ by simp [eq_top_of_provable]
 theorem eq_neg_of_provable_neg_0 {p} : T ⊢ ⁻p ↔ (⟦p⟧ᴸ : Lindenbaum T 0) = ⊥ :=
 @eq_neg_of_provable_neg _ T 0 p
 
-@[simp] lemma by_axiom (t u : term L) : (⟦t⟧ᴴ : Herbrand (T +{t ≃ u}) 0) = ⟦u⟧ᴴ :=
+lemma rew_by_axiom₁ (t u : term L) : (⟦t⟧ᴴ : Herbrand (T +{t ≃ u}) 0) = ⟦u⟧ᴴ :=
 Herbrand.eq_of_provable_equiv_0.mp (show T +{t ≃ u} ⊢ t ≃ u, by simp)
+
+lemma rew_by_axiom₁_inv (t u : term L) : (⟦u⟧ᴴ : Herbrand (T +{t ≃ u}) 0) = ⟦t⟧ᴴ :=
+(rew_by_axiom₁ t u).symm
+
+lemma rew_by_axiom₂ (t u : term L) {p} : (⟦t⟧ᴴ : Herbrand (T +{t ≃ u} +{ p }) 0) = ⟦u⟧ᴴ :=
+Herbrand.eq_of_provable_equiv_0.mp (show T +{t ≃ u} +{ p } ⊢ t ≃ u, by simp)
+
+lemma rew_by_axiom₂_inv (t u : term L) {p} : (⟦u⟧ᴴ : Herbrand (T +{t ≃ u} +{ p }) 0) = ⟦t⟧ᴴ :=
+(rew_by_axiom₂ t u).symm
+
+
 
 @[simp] lemma by_axiom' (t u : term L) (h : T ⊢ t ≃ u) : (⟦t⟧ᴴ : Herbrand T 0) = ⟦u⟧ᴴ :=
 Herbrand.eq_of_provable_equiv_0.mp h
@@ -700,7 +711,7 @@ by { have : T ⊢ ((∐ p) ⟶ q) ⟷ ∏ (p ⟶ q^1), { simp },
   T ⊢ (t₁ ≃ t₂) ⟶ (Succ t₁ ≃ Succ t₂) :=
 begin
   refine deduction.mp _,
-  simp[eq_of_provable_equiv_0]
+  simp[eq_of_provable_equiv_0, rew_by_axiom₁]
 end
 
 @[simp] lemma add_ext [has_add_symbol L] (t₁ t₂ u₁ u₂ : term L) :
@@ -710,7 +721,7 @@ begin
   simp[eq_of_provable_equiv_0, axiom_and],
   have : (⟦t₁⟧ᴴ : Herbrand (T +{ (t₁ ≃ t₂) }+{ (u₁ ≃ u₂) }) 0) = ⟦t₂⟧ᴴ,
   from eq_of_provable_equiv_0.mp (by simp),
-  simp*
+  simp[*, rew_by_axiom₁]
 end
 
 end provable

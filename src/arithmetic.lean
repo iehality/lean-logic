@@ -100,7 +100,9 @@ inductive robinson : theory LA
 notation `𝐐` := robinson
 
 def succ_induction (p : formula LA) : formula LA :=
-∏* (p.rew (0 ⌢ ı) ⊓ ∏ (p ⟶ p.rew ((Succ #0) ⌢ (λ x, #(x+1)))) ⟶ ∏ p)
+∏* (p.rew (0 ⌢ ı) ⟶ ∏ (p ⟶ p.rew ((Succ #0) ⌢ (λ x, #(x+1)))) ⟶ ∏ p)
+
+@[simp] lemma succ_induction_sentence (p : formula LA) : is_sentence (succ_induction p) := by simp[succ_induction]
 
 def order_induction (p : formula LA) : formula LA :=
 (∀₁ x, ((∀₁ y ≺ᵇ x, p.rew ı-{1}) ⟶ p)) ⟶ ∀₁ x, p
@@ -129,12 +131,22 @@ prefix `𝐁`:max := collection_axiom
 
 notation `𝐏𝐀` := peano
 
-instance {C : theory LA} [proper_theory C] : closed_theory 𝐈C := 
+instance {C : theory LA} : closed_theory 𝐈C := 
 ⟨λ p h, by { rcases h with (h | ⟨p, hp, rfl⟩), { refine closed_theory.cl h }, { simp[succ_induction] } }⟩
 
-lemma Q_bd_peano (C) : 𝐐 ⊆ 𝐈C := by simp[succ_induction_axiom]
+@[simp] lemma Q_ss_I {C} : 𝐐 ⊆ 𝐈C := by simp[succ_induction_axiom]
 
-instance (C : theory LA) : extend 𝐐 𝐈C := ⟨λ p h, weakening (Q_bd_peano _) h⟩
+instance (C : theory LA) : extend 𝐐 𝐈C := ⟨λ p h, weakening Q_ss_I h⟩
+
+instance extend_ax₁ (C : theory LA) (p : formula LA) : extend 𝐐 (𝐈C +{ p }) :=
+theory.extend_of_inclusion (λ p mem, by simp[Q_ss_I mem])
+
+instance extend_ax₂ (C : theory LA) (p q : formula LA) : extend 𝐐 (𝐈C +{ p }+{ q }) :=
+theory.extend_of_inclusion (λ p mem, by simp[Q_ss_I mem])
+
+lemma I_succ_induction (p : formula LA) {C} (h : p ∈ C) : 𝐈C ⊢ p.rew (0 ⌢ ı) ⟶ ∏ (p ⟶ p.rew ((Succ #0) ⌢ (λ x, #(x+1)))) ⟶ ∏ p :=
+by { have : 𝐈C ⊢ succ_induction p, from by_axiom (by { simp[succ_induction_axiom, h], refine or.inr ⟨p, by simp[h]⟩ }),
+     simpa using provable.fal_complete_rew _ ı ⨀ this }
 
 namespace Q_model
 
@@ -223,6 +235,15 @@ by { induction h₁ using fopl.Herbrand.ind_on,
   (Succ h₁ ≼ Succ h₂ : Lindenbaum T i) = (h₁ ≼ h₂) :=
 by simp[le_iff, succ_pow]
 
+lemma add_numeral_eq_numeral_add (m n : ℕ) : (n˙ : Herbrand T i) + m˙ = (n + m)˙ :=
+by induction m with m IH; simp[numeral, *, ←nat.add_one, ←add_assoc]
+
+lemma mul_numeral_eq_numeral_mul (m n : ℕ) : (n˙ : Herbrand T i) * m˙ = (n * m)˙ :=
+by induction m with m IH; simp[numeral, *, ←nat.add_one, add_numeral_eq_numeral_add, mul_add]
+
+lemma succ_add_numeral_eq_add_succ_numeral (h : Herbrand T i) (n : ℕ) : Succ h + n˙ = h + (n + 1)˙ :=
+by induction n with n IH; simp[numeral, *]
+
 end Lindenbaum
 
 @[simp] lemma zero_ne_succ (t : term LA) : 𝐐 ⊢ 0 ≄ Succ t :=
@@ -255,9 +276,9 @@ by simpa[fal_fn, ex_fn, ←term.pow_rew_distrib] using (by_axiom robinson.q8) �
 begin
   refine generalize (generalize _), simp[fal_fn], 
   have lmm₁ : 𝐐 ⊢ (#0 ≃ 0) ⟶ (#1 + #0 ≃ 0) ⟶ (#1 ≃ 0) ⊓ (#0 ≃ 0),
-    from (deduction.mp (by simp [Lindenbaum.le_of_provable_imply_0])),
+    from (deduction.mp (by simp [le_of_provable_imply_0, rew_by_axiom₁])),
   have lmm₂ : 𝐐 ⊢ (∃₁ y, #1 ≃ Succ y) ⟶ (#1 + #0 ≃ 0) ⟶ (#1 ≃ 0) ⊓ (#0 ≃ 0),
-    from imply_ex_of_fal_imply (generalize (deduction.mp (by simp [Lindenbaum.le_of_provable_imply_0]))), 
+    from imply_ex_of_fal_imply (generalize (deduction.mp (by simp [le_of_provable_imply_0, rew_by_axiom₁]))), 
   exact case_of_ax (show 𝐐 ⊢ (#0 ≃ 0) ⊔ ∃₁ y, (#1 ≃ Succ y), from zero_or_succ #0) lmm₁ lmm₂
 end
 
@@ -282,10 +303,10 @@ begin
   { refine (deduction.mp _),
     have : (♯0 : Herbrand (𝐐 +{ #0 ≃ 0 }) 0) = 0,
       from Herbrand.eq_of_provable_equiv_0.mp (show 𝐐 +{ #0 ≃ 0 } ⊢ #0 ≃ 0,by simp),
-    refine Lindenbaum.le_of_provable_imply_0.mpr _, simp[this] },
+    refine le_of_provable_imply_0.mpr _, simp[this] },
   have lmm₂ : 𝐐 ⊢ (∃₁ y, #1 ≃ Succ y) ⟶ (#1 * #0 ≃ 0) ⟶ (#1 ≃ 0) ⊔ (#0 ≃ 0),
   { refine imply_ex_of_fal_imply (generalize (deduction.mp _)), simp,
-    simp[Lindenbaum.le_of_provable_imply_0] },
+    simp[le_of_provable_imply_0, rew_by_axiom₁] },
   exact case_of_ax (show 𝐐 ⊢ (#0 ≃ 0) ⊔ ∃₁ y, (#1 ≃ Succ y), from zero_or_succ #0) lmm₁ lmm₂
 end
 
@@ -310,7 +331,7 @@ begin
   simp[iff_equiv], split,
   { simp[pnf_imply_ex_iff_fal_imply₁], refine generalize _, simp,
     simp[Lindenbaum.le_of_provable_imply_0] },
-  { refine deduction.mp (use 0 _), simp[ı, Herbrand.eq_of_provable_equiv_0] }
+  { refine deduction.mp (use 0 _), simp[ı, Herbrand.eq_of_provable_equiv_0, rew_by_axiom₁] }
 end
 
 @[simp] lemma succ_injection_le (t u : term LA) :
@@ -325,53 +346,126 @@ begin
   simp[Lindenbaum.eq_of_provable_equiv_0] at this, exact this
 end
 
+@[simp] lemma add_numeral_eq_numeral_add (n m : ℕ) : 𝐐 ⊢ (n˙ : term LA) + m˙ ≃ (n + m)˙ :=
+by simp[Herbrand.eq_of_provable_equiv_0, Lindenbaum.add_numeral_eq_numeral_add]
+
+@[simp] lemma mul_numeral_eq_numeral_mul (n m : ℕ) : 𝐐 ⊢ (n˙ : term LA) * m˙ ≃ (n * m)˙ :=
+by simp[Herbrand.eq_of_provable_equiv_0, Lindenbaum.mul_numeral_eq_numeral_mul]
+
+lemma le_numeral_of_le {n m : ℕ} (h : n ≤ m) : 𝐐 ⊢ (n˙ : term LA) ≼ m˙ :=
+begin
+  let l := m - n,
+  have : m = l + n, from (nat.sub_eq_iff_eq_add h).mp rfl,
+  simp[this],
+  refine of_equiv (use (l˙) _) (equiv_symm $ le_iff _ _), simp,
+end
+
 lemma le_numeral_iff (n : ℕ) : 𝐐 ⊢ ∏ ((#0 ≼ n˙) ⟷ ⋁ i : fin (n+1), #0 ≃ (i : ℕ)˙) :=
 begin
   induction n with n IH,
   { refine generalize _, simp[Lindenbaum.eq_top_of_provable_0], exact Lindenbaum.le_zero_eq_eq_zero _ _ _ },
-  { refine generalize _, simp[-disjunction'] at IH ⊢,
-    simp[iff_equiv, -disjunction'], split,
+  { refine generalize _, simp[-sup_disjunction] at IH ⊢,
+    simp[iff_equiv, -sup_disjunction], split,
     { have zero : 𝐐 ⊢ (#0 ≃ 0) ⟶ (#0 ≼ (n + 1)˙) ⟶ ⋁ (i : fin (n.succ + 1)), #0 ≃ ↑i˙,
       { refine (deduction.mp $ deduction.mp $ imply_or_right _ _ ⨀ (rew_of_eq 0 0 (by simp) _)), 
-        simp, refine provable.disjunction' ⟨0, by simp⟩ (by simp[numeral]) },
+        simp, refine disjunction_of ⟨0, by simp⟩ (by simp[numeral]) },
       have succ : 𝐐 ⊢ (∃₁ y, #1 ≃ Succ y) ⟶ (#0 ≼ (n + 1)˙) ⟶ ⋁ (i : fin (n.succ + 1)), #0 ≃ ↑i˙,
       { refine (imply_ex_of_fal_imply $ generalize $ deduction.mp $ rew_of_eq (Succ #0) 1 (by simp) (deduction.mp _)),
-        simp[ -disjunction'], 
+        simp[ -sup_disjunction], 
         have : 𝐐 +{ #1 ≃ Succ #0 } +{ Succ #0 ≼ (n + 1)˙ } ⊢ #0 ≼ n˙, from of_equiv_p (show _ ⊢ Succ #0 ≼ (n + 1)˙, by simp) (by simp[numeral]), 
-        have : 𝐐 +{ #1 ≃ Succ #0 } +{ Succ #0 ≼ (n + 1)˙ } ⊢ ⋁ (i : fin (n + 1)), #0 ≃ ↑i˙,
+        have lmm₁ : 𝐐 +{ #1 ≃ Succ #0 } +{ Succ #0 ≼ (n + 1)˙ } ⊢ ⋁ (i : fin (n + 1)), #0 ≃ ↑i˙,
           from of_equiv_p this (weakening
             (show 𝐐 ⊆ 𝐐 +{ #1 ≃ Succ #0 } +{ Succ #0 ≼ (n + 1)˙ }, by { intros p mem, simp[mem] })
             (show 𝐐 ⊢ (#0 ≼ n˙) ⟷ ⋁ (i : fin (n + 1)), #0 ≃ ↑i˙, by simpa using IH ⊚ #0)),
-        sorry },
+        have lmm₂ : 𝐐 +{ #1 ≃ Succ #0 } +{ Succ #0 ≼ (n + 1)˙ } ⊢ (⋁ (i : fin (n + 1)), #0 ≃ ↑i˙) ⟶ (⋁ (i : fin (n.succ + 1)), Succ #0 ≃ ↑i˙),
+        { suffices : 𝐐 +{ #1 ≃ Succ #0 } +{ Succ #0 ≼ (n + 1)˙ } ⊢ ⋀ (i : fin (n + 1)), (#0 ≃ ↑i˙) ⟶ ⋁ (i : fin (n.succ + 1)), Succ #0 ≃ ↑i˙,
+            from of_equiv this (conj_imply_iff_disj_imply _ _),
+          refine conjunction_iff.mpr (λ i, deduction.mp $ rew_of_eq (↑i˙) 0 (by simp) _), simp[-sup_disjunction],
+          refine disjunction_of ⟨i + 1, by simp⟩ (by simp[numeral]) },
+        exact lmm₂ ⨀ lmm₁ },
       exact case_of_ax (show 𝐐 ⊢ (#0 ≃ 0) ⊔ ∃₁ y, (#1 ≃ Succ y), from zero_or_succ #0) zero succ },
-    {  }
- }
-
+    { refine of_equiv (conjunction_iff.mpr _) (conj_imply_iff_disj_imply _ _),
+      rintros ⟨i, hi⟩, refine (deduction.mp $  rew_of_eq (i˙) 0 (by simp) _),
+      simp[←nat.add_one, le_numeral_of_le (show i ≤ n + 1, from nat.lt_succ_iff.mp hi)] } }
 end
-
-#check T
-/--/
-@[simp] lemma le_refl [proper_theory T] {h : Herbrand T i} :
-  (h ≼ h : Lindenbaum T i) = ⊤ :=
-by { simp[le_iff],
-     have := Lindenbaum.proper.ex_subst_le ((h.pow + ♯0) ≃ h.pow : Lindenbaum T (i + 1)) 0,
-     simp at*, sorry }
-
-@[simp] lemma pow_0_eq : (0 : Herbrand T i).pow = 0 := by simp[has_zero.zero]
 
 end robinson
 
 namespace bd_peano
 open Herbrand Lindenbaum
 open provable
-variables {T : theory LA} {i : ℕ} [extend 𝐐 T] [proper_theory T]
-  {C : theory LA} [proper_theory C]
+variables {T : theory LA} {i : ℕ} [extend 𝐈is_open T] {C : theory LA} [proper_theory C]
 
-lemma add_symm :
-  𝐈𝚺₁ ⊢ ∏ ∏ (#0 + #1 ≃ #1 + #0) :=
+lemma zero_add :
+  𝐈is_open ⊢ ∀₁ x, (0 + x ≃ x) :=
 begin
-  
+  have lmm₁ : 𝐈is_open ⊢ (0 + 0 ≃₀ 0) ⟶ ∏ ((0 + #0 ≃₀ #0) ⟶ (0 + Succ #0 ≃₀ Succ #0)) ⟶ ∏ (0 + #0 ≃₀ #0), 
+    by simpa using @I_succ_induction (0 + #0 ≃ #0) is_open (by simp[set.mem_def]),
+  have lmm₂ : 𝐈is_open ⊢ ∏ ((0 + #0 ≃ #0) ⟶ (0 + Succ #0 ≃ Succ #0)),
+  { refine generalize (deduction.mp _), 
+    have : 𝐈is_open +{ 0 + #0 ≃ #0 } ⊢ 0 + #0 ≃ #0, by simp,
+    simp[Herbrand.eq_of_provable_equiv_0] at this ⊢, 
+    simp[this] },
+  exact lmm₁ ⨀ (by simp[Herbrand.eq_of_provable_equiv_0]) ⨀ lmm₂,
 end
+
+@[simp] lemma Lindenbaum.zero_add (h : Herbrand T i) : 0 + h = h :=
+begin
+  induction h using fopl.Herbrand.ind_on with t,
+  have : T^i ⊢ 0 + t ≃ t, from provable.extend_pow (show 𝐈is_open ⊢ 0 + t ≃ t, by simpa using zero_add ⊚ t) i,
+  simpa using Herbrand.eq_of_provable_equiv.mp this
+end 
+
+lemma succ_add : 𝐈is_open ⊢ ∀₁ x y, Succ x + y ≃ Succ (x + y) :=
+begin
+  have ind : 𝐈is_open ⊢ (Succ #0 + 0 ≃ Succ (#0 + 0)) ⟶
+                     ∏ ((Succ #1 + #0 ≃ Succ (#1 + #0)) ⟶ (Succ #1 + Succ #0 ≃ Succ (#1 + Succ #0))) ⟶
+                     ∏ (Succ #1 + #0 ≃ Succ (#1 + #0)), 
+  by simpa using @I_succ_induction (Succ #1 + #0 ≃ Succ (#1 + #0)) is_open (by simp[set.mem_def]),
+  have zero : 𝐈is_open ⊢ Succ #0 + 0 ≃ Succ (#0 + 0),  by simp[Herbrand.eq_of_provable_equiv_0],
+  have succ : 𝐈is_open ⊢ ∏ ((Succ #1 + #0 ≃ Succ (#1 + #0)) ⟶ (Succ #1 + Succ #0 ≃ Succ (#1 + Succ #0))),
+  { refine (generalize $ deduction.mp _), simp,
+    have : 𝐈is_open +{ Succ #1 + #0 ≃ Succ (#1 + #0) } ⊢ Succ #1 + #0 ≃ Succ (#1 + #0), by simp,
+    simp[Herbrand.eq_of_provable_equiv_0] at this ⊢,  simp[this] },
+  refine (generalize _), simp[fal_fn], exact ind ⨀ zero ⨀ succ
+end
+
+@[simp] lemma Lindenbaum.succ_add (h₁ h₂ : Herbrand T i) : Succ h₁ + h₂ = Succ (h₁ + h₂) :=
+begin
+  induction h₁ using fopl.Herbrand.ind_on with t, induction h₂ using fopl.Herbrand.ind_on with u,
+  have : T^i ⊢ Succ t + u ≃ Succ (t + u),
+    from provable.extend_pow (show 𝐈is_open ⊢ Succ t + u ≃ Succ (t + u), by simpa[fal_fn] using succ_add ⊚ t ⊚ u) i,
+   simpa using Herbrand.eq_of_provable_equiv.mp this
+end
+
+lemma add_symm : 𝐈is_open ⊢ ∀₁ x y, (x + y ≃ y + x) :=
+begin
+  have ind : 𝐈is_open ⊢ (#0 + 0 ≃ 0 + #0) ⟶ ∏ ((#1 + #0 ≃ #0 + #1) ⟶ (#1 + Succ #0 ≃ Succ #0 + #1)) ⟶ ∏ (#1 + #0 ≃ #0 + #1),
+    by simpa using @I_succ_induction (#1 + #0 ≃ #0 + #1) is_open (by simp[set.mem_def]),
+  have zero : 𝐈is_open ⊢ #0 + 0 ≃ 0 + #0, by simp[ Herbrand.eq_of_provable_equiv_0],
+  have succ : 𝐈is_open ⊢ ∏ ((#1 + #0 ≃ #0 + #1) ⟶ (#1 + Succ #0 ≃ Succ #0 + #1)),
+  { refine (generalize $ deduction.mp _), simp,
+    have : 𝐈is_open +{ #1 + #0 ≃ #0 + #1 } ⊢ #1 + #0 ≃ #0 + #1, by simp,
+    simp[Herbrand.eq_of_provable_equiv_0] at this ⊢,  simp[this] },
+  refine (generalize _), simp[fal_fn], exact ind ⨀ zero ⨀ succ
+end
+
+#check 0
+/--/
+
+
+lemma add_symm : 𝐈is_open ⊢ ∀₁ x y, (x + y ≃ y + x) :=
+begin
+  refine (generalize _), simp[fal_fn],
+  have zero : 𝐈is_open ⊢ (#0 ≃ 0) ⟶ ∏ (#1 + #0 ≃ #0 + #1),
+  { refine (deduction.mp $ generalize _), simp[←sf_dsb, Herbrand.eq_of_provable_equiv_0, rew_by_axiom₁] },
+  have succ : 𝐈is_open ⊢ (∃₁ y, #1 ≃ Succ y) ⟶ ∏ (#1 + #0 ≃ #0 + #1),
+  { refine (imply_ex_of_fal_imply $ generalize $ deduction.mp $ rew_of_eq (Succ #0) 1 (by simp) $ generalize _), simp[formula.pow_eq, ←sf_dsb],
+    suffices : 𝐈is_open ⊢ Succ #1 + #0 ≃ #0 + Succ #1, by simp[this],
+     
+     }
+end
+
 
 
 
