@@ -18,7 +18,7 @@ def bfal_le [has_preceq (term L) (formula L)] (t : term L) (p : formula L) : for
 notation `∏{≼ ` t `} `:64 p := bfal_le t p
 
 def bex_le [has_preceq (term L) (formula L)] (t : term L) (p : formula L) : formula L :=
-∐ ((#0 ≼ t^1) ⊓ p)
+⁻∏{≼ t}⁻p
 
 notation `∐{≼ ` t `} `:64 p := bex_le t p
 
@@ -28,7 +28,7 @@ def bfal_lt [has_prec (term L) (formula L)] (t : term L) (p : formula L) : formu
 notation `∏{≺ ` t `} `:64 p := bfal_lt t p
 
 def bex_lt [has_prec (term L) (formula L)] (t : term L) (p : formula L) : formula L :=
-∐ ((#0 ≺ t^1) ⊓ p)
+⁻∏{≺ t}⁻p
 
 notation `∐{≺ ` t `} `:64 p := bex_lt t p
 
@@ -180,12 +180,17 @@ inductive bounded : theory L
 | imply {p q} : bounded p → bounded q → bounded (p ⟶ q)
 | neg {p} : bounded p → bounded (⁻p)
 | bfal {t} {p} : bounded p → bounded ∏{≼ t} p
-| bex  {t} {p} : bounded p → bounded ∐{≼ t} p
 
 attribute [simp] bounded.verum bounded.predicate bounded.equal bounded.neg
 
+@[simp] lemma bounded_preceq (t u : term L) : bounded (t ≼ u : formula L) :=
+bounded.predicate
+
 @[simp] lemma bounded_imply_iff (p q : formula L) : bounded (p ⟶ q) ↔ bounded p ∧ bounded q :=
 ⟨λ h, by { cases h, simp* }, λ ⟨hp, hq⟩, bounded.imply hp hq⟩
+
+@[simp] lemma bounded_neg_iff (p : formula L) : bounded (⁻p) ↔ bounded p :=
+⟨λ h, by { cases h, simp* }, bounded.neg⟩
 
 lemma bounded_of_open {p : formula L} (h : p.is_open) : bounded p :=
 begin
@@ -198,6 +203,28 @@ begin
   case fal { simp at h, contradiction }
 end
 
+lemma bounded_of_lt {p q : formula L} (hq : bounded q) (h : p < q) : bounded p :=
+begin
+  induction q; try { simp at h, contradiction },
+  case imply : q₁ q₂ IH₁ IH₂
+  { simp at h hq, rcases h with (le | le),
+    { rcases lt_or_eq_of_le le with (lt | rfl), { exact IH₁ hq.1 lt }, { exact hq.1 } },
+    { rcases lt_or_eq_of_le le with (lt | rfl), { exact IH₂ hq.2 lt }, { exact hq.2 } } },
+  case neg : q IH
+  { simp at h hq, rcases lt_or_eq_of_le h with (lt | rfl), { refine IH hq lt }, { exact hq } },
+  case fal : p IH
+  { rcases hq with ⟨lo, loo⟩, simp at h,
+    rcases lt_or_eq_of_le h with (lt | rfl), { refine IH (by { simp, exact hq_ᾰ}) lt }, { simp, exact hq_ᾰ } }
+end
+
+@[simp] lemma bounded_bfal_iff {p : formula L} {t : term L} : bounded (∏{≼ t} p) ↔ bounded p :=
+⟨λ h, bounded_of_lt h (by { simp[bfal_le], refine le_of_lt (by simp) }), bounded.bfal⟩
+
+lemma bounded_bex_iff {p : formula L} {t : term L} : bounded (∐{≼ t} p) ↔ bounded p :=
+by simp[bex_le]
+
+#check 0
+/--/
 instance bounded_proper : proper_theory (bounded : theory L) :=
 ⟨λ p s mem, by { simp[set.mem_def] at mem ⊢, induction mem generalizing s; try {simp*}, 
   case bfal : t p bp IH { exact bounded.bfal (IH (s^1)) },

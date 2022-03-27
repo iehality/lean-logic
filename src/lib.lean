@@ -609,6 +609,10 @@ lemma lrarrow_def {α : Type*} [has_arrow α] [has_inf α] (a b : α) : a ⟷ b 
 
 notation T` +{ ` :max p ` }` := set.insert p T
 
+@[reducible] def set.insert' {α} (T : set α) (a : α) := set.insert a T
+
+infixl `❟ ` :46 := set.insert'
+
 @[simp] lemma set.insert_mem {α : Sort*} (T : set α) (a : α) : a ∈ T +{ a } :=
 by simp[set.insert]
 

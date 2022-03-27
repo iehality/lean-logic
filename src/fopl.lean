@@ -899,17 +899,21 @@ lemma total_rew_inv :
 @[simp] lemma pow_inj : ∀ {p q : formula L} {i : ℕ}, p^i = q^i ↔ p = q :=
 λ p q i, by { simp[has_pow.pow], refine rew_var_inj_of_inj (λ x y, by simp) }
 
-@[simp] def is_open : formula L → bool
-| ⊤          := tt
-| (❴p❵ v)  := tt
-| (t ≃₁ u)   := tt
-| (p ⟶ q)    := p.is_open && q.is_open
+@[simp] def is_open : theory L
+| ⊤          := true
+| (❴p❵ v)  := true
+| (t ≃₁ u)   := true
+| (p ⟶ q)    := p.is_open ∧ q.is_open
 | (⁻p)       := p.is_open
-| (∏ p)      := ff
+| (∏ p)      := false
 
-@[simp] lemma op.and (p q : formula L) : (p ⊓ q).is_open = p.is_open && q.is_open := rfl
+@[simp] lemma is_open.and (p q : formula L) : (p ⊓ q).is_open ↔ p.is_open ∧ q.is_open := by refl
 
-@[simp] lemma op.or (p q : formula L) : (p ⊔ q).is_open = p.is_open && q.is_open := rfl
+@[simp] lemma is_open.or (p q : formula L) : (p ⊔ q).is_open ↔ p.is_open ∧ q.is_open := by refl
+
+@[simp] lemma is_open.bot : (⊥ : formula L).is_open := by simp[has_bot.bot]
+
+@[simp] lemma is_open.ex (p : formula L) : ¬(∐ p).is_open := by simp[formula.ex_eq]
 
 @[simp] def is_open_rew : ∀ {p : formula L} {s}, (p.rew s).is_open ↔ p.is_open
 | ⊤        s := by simp
