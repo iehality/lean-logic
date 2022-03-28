@@ -92,55 +92,66 @@ quotient.lift_on_finitary_2_eq t u f h
 lemma of_eq_of {t u : term L} : (⟦t⟧ᴴ : Herbrand T i) = ⟦u⟧ᴴ ↔ (T^i ⊢ t ≃ u) :=
 by simp[term.quo, term.equiv, quotient.eq']
 
-def function {n} (f : L.fn n) : finitary (Herbrand T i) n → Herbrand T i :=
+def function_of {n} (f : L.fn n) : finitary (Herbrand T i) n → Herbrand T i :=
 λ v, fopl.Herbrand.lift_on_finitary v (λ u : finitary (term L) n, ⟦term.app f u⟧ᴴ) 
   $ λ v₁ v₂ eqs, by simp[of_eq_of]; exact provable.equiv_function_of_equiv f eqs
 
-notation `H❨` c `❩` v :84 := function c v
+notation `H❨` c `❩` v :84 := function_of c v
 
-instance [has_zero_symbol L] : has_zero (Herbrand T i) := ⟨function has_zero_symbol.zero finitary.nil⟩
+instance [has_zero_symbol L] : has_zero (Herbrand T i) := ⟨function_of has_zero_symbol.zero finitary.nil⟩
 
-instance [has_succ_symbol L] : has_succ (Herbrand T i) := ⟨λ h, function has_succ_symbol.succ ‹h›⟩
+instance [has_succ_symbol L] : has_succ (Herbrand T i) := ⟨λ h, function_of has_succ_symbol.succ ‹h›⟩
 
-instance [has_add_symbol L] : has_add (Herbrand T i) := ⟨λ h₁ h₂, function has_add_symbol.add ‹h₁, h₂›⟩
+instance [has_add_symbol L] : has_add (Herbrand T i) := ⟨λ h₁ h₂, function_of has_add_symbol.add ‹h₁, h₂›⟩
 
-instance [has_mul_symbol L] : has_mul (Herbrand T i) := ⟨λ h₁ h₂, function has_mul_symbol.mul ‹h₁, h₂›⟩
+instance [has_mul_symbol L] : has_mul (Herbrand T i) := ⟨λ h₁ h₂, function_of has_mul_symbol.mul ‹h₁, h₂›⟩
 
-def predicate {n} (p : L.pr n) : finitary (Herbrand T i) n → Prop :=
+def predicate_of {n} (p : L.pr n) : finitary (Herbrand T i) n → Prop :=
 λ v, fopl.Herbrand.lift_on_finitary v (λ u : finitary (term L) n, T^i ⊢ formula.app p u) 
   $ λ v₁ v₂ eqs, by simp[of_eq_of]; 
   exact ⟨λ h, provable.predicate_of_equiv p h eqs, λ h, provable.predicate_of_equiv p h (λ i, provable.eq_symm (eqs i))⟩
 
-def model (T : theory L) : model L := ⟨Herbrand T 0, ⟨⟦#0⟧ᴴ⟩, @function _ T 0, @predicate _ T 0⟩
+def model (T : theory L) : model L := ⟨Herbrand T 0, ⟨⟦#0⟧ᴴ⟩, @function_of _ T 0, @predicate_of _ T 0⟩
 
 notation `𝔗[`T`]` := model T
-
- @[simp] lemma model_pr_app {n} (r : L.pr n) (v : finitary (term L) n) : (𝔗[T]).pr r (λ i, ⟦v i⟧ᴴ) ↔ T ⊢ formula.app r v :=
-by { suffices : predicate r (λ (i : fin n), ⟦(v i)⟧ᴴ) = (T ⊢ ❴r❵ v), { simpa using this },
-  refine fopl.Herbrand.lift_on_finitary_eq _ _ _ }
 
 theorem eq_of_provable_equiv {t₁ t₂} : T^i ⊢ t₁ ≃ t₂ ↔ (⟦t₁⟧ᴴ : Herbrand T i) = ⟦t₂⟧ᴴ := by simp[of_eq_of]
 
 theorem eq_of_provable_equiv_0 {t₁ t₂} : T ⊢ t₁ ≃ t₂ ↔ (⟦t₁⟧ᴴ : Herbrand T 0) = ⟦t₂⟧ᴴ := by simp[of_eq_of]
 
+variables (T) (i)
+
+lemma predicate_of_iff {n} (r : L.pr n) (v : finitary (term L) n) : predicate_of r (λ j, (⟦v j⟧ᴴ : Herbrand T i)) ↔ T^i ⊢ formula.app r v :=
+by simp[predicate_of]
+
+variables {T} {i}
+
+instance [has_le_symbol L] : has_le (Herbrand T i) := ⟨λ h₁ h₂, predicate_of has_le_symbol.le ‹h₁, h₂›⟩
+
+lemma le_iff_provable_le [has_le_symbol L] {t₁ t₂ : term L} : T^i ⊢ t₁ ≼ t₂ ↔ (⟦t₁⟧ᴴ : Herbrand T i) ≤ ⟦t₂⟧ᴴ :=
+by simpa[has_le.le] using iff.symm (predicate_of_iff T i (has_le_symbol.le : L.pr 2) ‹t₁, t₂›)
+
+lemma le_iff_provable_le_0 [has_le_symbol L] {t₁ t₂ : term L} : T ⊢ t₁ ≼ t₂ ↔ (⟦t₁⟧ᴴ : Herbrand T 0) ≤ ⟦t₂⟧ᴴ :=
+by simpa[has_le.le] using iff.symm (predicate_of_iff T 0 (has_le_symbol.le : L.pr 2) ‹t₁, t₂›)
+
 theorem constant_term (c : L.fn 0) (v : finitary (term L) 0):
-  (⟦❨c❩ v⟧ᴴ : Herbrand T i) = function c finitary.nil := by simp[function, show v = finitary.nil, by ext; simp]
+  (⟦❨c❩ v⟧ᴴ : Herbrand T i) = function_of c finitary.nil := by simp[function_of, show v = finitary.nil, by ext; simp]
 
 @[simp] theorem zero_eq_zero [has_zero_symbol L] :
-  (⟦(0 : term L)⟧ᴴ : Herbrand T i) = 0 := by unfold has_zero.zero; simp[function]
+  (⟦(0 : term L)⟧ᴴ : Herbrand T i) = 0 := by unfold has_zero.zero; simp[function_of]
 
 @[simp] theorem succ_eq_succ [has_succ_symbol L] (t : term L) :
-  (⟦Succ t⟧ᴴ : Herbrand T i) = Succ ⟦t⟧ᴴ := by unfold has_succ.succ; simp[function]
+  (⟦Succ t⟧ᴴ : Herbrand T i) = Succ ⟦t⟧ᴴ := by unfold has_succ.succ; simp[function_of]
 
 @[simp] theorem numeral_eq_numeral [has_zero_symbol L] [has_succ_symbol L] (n : ℕ) :
   (⟦(n˙ : term L)⟧ᴴ : Herbrand T i) = numeral n :=
 by induction n; simp[*,numeral]
 
 @[simp] theorem add_eq_add [has_add_symbol L] (t u : term L) :
-  (⟦t + u⟧ᴴ : Herbrand T i) = ⟦t⟧ᴴ + ⟦u⟧ᴴ := by unfold has_add.add; simp[function]
+  (⟦t + u⟧ᴴ : Herbrand T i) = ⟦t⟧ᴴ + ⟦u⟧ᴴ := by unfold has_add.add; simp[function_of]
 
 @[simp] theorem mul_eq_mul [has_mul_symbol L] (t u : term L) :
-  (⟦t * u⟧ᴴ : Herbrand T i) = ⟦t⟧ᴴ * ⟦u⟧ᴴ := by unfold has_mul.mul; simp[function]
+  (⟦t * u⟧ᴴ : Herbrand T i) = ⟦t⟧ᴴ * ⟦u⟧ᴴ := by unfold has_mul.mul; simp[function_of]
 
 def pow : Herbrand T i → Herbrand T (i+1) :=
 λ h, Herbrand.lift_on h (λ u, ⟦u^1⟧ᴴ : term L → Herbrand T (i+1)) $
@@ -280,21 +291,21 @@ lemma bot_def : (⊥ : Lindenbaum T i) = ⟦⊥⟧ᴸ := rfl
 protected lemma of_eq_of {p q : formula L} : (⟦p⟧ᴸ : Lindenbaum T i) = ⟦q⟧ᴸ ↔ T^i ⊢ p ⟷ q :=
 by simp[formula.equiv, quotient.eq']
 
-def predicate {n} (p : L.pr n) : finitary (Herbrand T i) n → Lindenbaum T i :=
+def predicate_of {n} (p : L.pr n) : finitary (Herbrand T i) n → Lindenbaum T i :=
 λ v, fopl.Herbrand.lift_on_finitary v (λ u : finitary (term L) n, ⟦formula.app p u⟧ᴸ) 
   $ λ v₁ v₂ eqs, by simp; exact equiv_predicate_of_equiv p eqs
 
-notation `L❴` f `❵` := predicate f
+notation `L❴` f `❵` := predicate_of f
 
-instance [has_le_symbol L] : has_preceq (Herbrand T i) (Lindenbaum T i) := ⟨λ h₁ h₂, predicate has_le_symbol.le ‹h₁, h₂›⟩
+instance [has_le_symbol L] : has_preceq (Herbrand T i) (Lindenbaum T i) := ⟨λ h₁ h₂, predicate_of has_le_symbol.le ‹h₁, h₂›⟩
 
-instance [has_mem_symbol L] : has_elem (Herbrand T i) (Lindenbaum T i) := ⟨λ h₁ h₂, predicate has_mem_symbol.mem ‹h₁, h₂›⟩
+instance [has_mem_symbol L] : has_elem (Herbrand T i) (Lindenbaum T i) := ⟨λ h₁ h₂, predicate_of has_mem_symbol.mem ‹h₁, h₂›⟩
 
-@[simp] theorem predicate_app_1_iff {p : L.pr 1} {v : finitary (term L) 1} :
-  (⟦❴p❵ v⟧ᴸ : Lindenbaum T i) = L❴p❵ ‹⟦v 0⟧ᴴ› := by simp[predicate, show ‹v 0› = v, by ext; simp]
+@[simp] theorem predicate_of_app_1_iff {p : L.pr 1} {v : finitary (term L) 1} :
+  (⟦❴p❵ v⟧ᴸ : Lindenbaum T i) = L❴p❵ ‹⟦v 0⟧ᴴ› := by simp[predicate_of, show ‹v 0› = v, by ext; simp]
 
-@[simp] theorem predicate_app_2_iff {p : L.pr 2} {v : finitary (term L) 2} :
-  (⟦❴p❵ v⟧ᴸ : Lindenbaum T i) = L❴p❵ ‹⟦v 0⟧ᴴ, ⟦v 1⟧ᴴ› := by simp[predicate, show ‹v 0, v 1› = v, by ext; simp]
+@[simp] theorem predicate_of_app_2_iff {p : L.pr 2} {v : finitary (term L) 2} :
+  (⟦❴p❵ v⟧ᴸ : Lindenbaum T i) = L❴p❵ ‹⟦v 0⟧ᴴ, ⟦v 1⟧ᴴ› := by simp[predicate_of, show ‹v 0, v 1› = v, by ext; simp]
 
 @[simp] theorem le_iff_le [has_le_symbol L] (t u : term L) :
   (⟦t ≼ u⟧ᴸ : Lindenbaum T i) = ((⟦t⟧ᴴ : Herbrand T i) ≼ ⟦u⟧ᴴ) := by unfold has_preceq.preceq; simp
@@ -653,8 +664,6 @@ Herbrand.eq_of_provable_equiv_0.mp (show T +{t ≃ u} +{ p } ⊢ t ≃ u, by sim
 
 lemma rew_by_axiom₂_inv (t u : term L) {p} : (⟦u⟧ᴴ : Herbrand (T +{t ≃ u} +{ p }) 0) = ⟦t⟧ᴴ :=
 (rew_by_axiom₂ t u).symm
-
-
 
 @[simp] lemma by_axiom' (t u : term L) (h : T ⊢ t ≃ u) : (⟦t⟧ᴴ : Herbrand T 0) = ⟦u⟧ᴴ :=
 Herbrand.eq_of_provable_equiv_0.mp h
