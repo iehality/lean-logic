@@ -381,7 +381,7 @@ begin
   have b₂ : Tω⁺ ⊢ app f (λ i, (v₂ i)) ≃∘ Consts.fn f v₂, from (Tω_consistent' T).mem_maximal_iff.mp (Consts.fn_eq T f v₂),
   have b  : Tω⁺ ⊢ app f (λ i, (v₁ i)) ≃∘ app f (λ i, (v₂ i)),
   { have : ∀ i, Tω⁺ ⊢ v₁ i ≃∘ v₂ i, from λ i, (Tω_consistent' T).mem_maximal_iff.mp (eqs i),
-    have : Tω⁺ ⊢ ⋀ i, v₁ i ≃∘ v₂ i, refine fopl.provable.conjunction' this,
+    have : Tω⁺ ⊢ ⋀ i, v₁ i ≃∘ v₂ i, refine conjunction_iff.mpr this,
     exact function_ext' f (λ i, (v₁ i)) (λ i, (v₂ i)) ⨀ this },
   exact eq_trans (eq_trans b₁.eq_symm b) b₂
 end
@@ -397,7 +397,7 @@ begin
   suffices : Tω⁺ ⊢ app r (λ i, (v₁ i)) ⟷ app r (λ i, (v₂ i)),
   { split; intros h, { exact (iff_equiv.mp this).1 ⨀ h }, { exact (iff_equiv.mp this).2 ⨀ h } },
   have : ∀ i, Tω⁺ ⊢ v₁ i ≃∘ v₂ i, from λ i, (Tω_consistent' T).mem_maximal_iff.mp (eqs i),
-  have : Tω⁺ ⊢ ⋀ i, v₁ i ≃∘ v₂ i, refine fopl.provable.conjunction' this,
+  have : Tω⁺ ⊢ ⋀ i, v₁ i ≃∘ v₂ i, refine conjunction_iff.mpr this,
   exact predicate_ext'' r (λ i, (v₁ i)) (λ i, (v₂ i)) ⨀ this
 end
 
@@ -437,7 +437,7 @@ begin
     { have : ∀ i, Tω⁺ ⊢ Consts.of ((v i).rew (λ x, (e x))) ≃∘ (v i).rew (λ x, (e x)),
         from λ i, eq_symm (by_axiom (Consts.of_eq T ((v i).rew (λ x, (e x))))),
       have : Tω⁺ ⊢ ⋀ i, Consts.of ((v i).rew (λ x, (e x))) ≃∘ (v i).rew (λ x, (e x)),
-        from fopl.provable.conjunction' this,
+        from conjunction_iff.mpr this,
       exact function_ext' f _ _ ⨀ this },
     refine (eq_Consts_of_eq _).mpr this }
 end
@@ -480,7 +480,7 @@ begin
     have : ∀ i, Tω⁺ ⊢ (v i).rew (λ x, (s x)) ≃∘ Consts.of ((v i).rew (λ x, (s x))),
       from λ i, (by_axiom (Consts.of_eq T ((v i).rew (λ x, (s x))))),
     have :      Tω⁺ ⊢ ⋀ i, (v i).rew (λ x, (s x)) ≃∘ Consts.of ((v i).rew (λ x, (s x))),
-      from fopl.provable.conjunction' this,
+      from conjunction_iff.mpr this,
     exact predicate_ext'' r _ _ ⨀ this },
   case equal : t u { simp[term_val_eq_quotient, (Tω_consistent' T).mem_maximal_iff], exact iff.symm (eq_Consts_of_eq _) },
   case imply : p q IH_p IH_q { simp[(Tω_consistent' T).imply_mem_maximal_iff] at*, simp[IH_p s, IH_q s] },
@@ -608,20 +608,38 @@ begin
   refine ⟨M₂, by { simp[lmm₂], intros n, simp[modelsth, lmm₁] }⟩
 end
 
-theorem extensions_by_definitions (consis : T₁.consistent) (L₂ : language)
+variables (L₁) (L₂)
+
+def definitions 
+  (df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
+  (df_pr : Π {n : ℕ}, L₂.pr n → formula L₁) : theory (L₁ + L₂) :=
+(⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (df_fn f)))) ∪ (⋃ n, (set.range (λ (r : L₂.pr n), def_pr r (df_pr r))))
+
+lemma definitions_def
+  (df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
+  (df_pr : Π {n : ℕ}, L₂.pr n → formula L₁) :
+  definitions L₁ L₂ @df_fn @df_pr = (⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (df_fn f)))) ∪ (⋃ n, (set.range (λ (r : L₂.pr n), def_pr r (df_pr r)))) := rfl
+
+def definitions_closed
+  (df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
+  (hdf_fn : ∀ {n} {f : L₂.fn n}, (df_fn f).arity ≤ n + 1)
+  (df_pr : Π {n : ℕ}, L₂.pr n → formula L₁)
+  (hdf_pr : ∀ {n} {r : L₂.pr n}, (df_pr r).arity ≤ n) : closed_theory (definitions L₁ L₂ @df_fn @df_pr) :=
+⟨by { simp[definitions_def], rintros p (⟨n, f, rfl⟩ | ⟨n, r, rfl⟩),  { simp[hdf_fn] }, { simp[hdf_pr] } }⟩
+
+variables {L₁}
+
+theorem extensions_by_definitions_consistent (consis : T₁.consistent)
   (df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
   (hdf_fn : ∀ {n} {f : L₂.fn n}, (df_fn f).arity ≤ n + 1)
   (df_pr : Π {n : ℕ}, L₂.pr n → formula L₁)
   (hdf_pr : ∀ {n} {r : L₂.pr n}, (df_pr r).arity ≤ n)
   (b : ∀ {n} (f : L₂.fn n), T₁ ⊢ ∏[n] ∐ (df_fn f)) :
-  theory.consistent
-    (↑T₁ ∪ (⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (df_fn f))))
-         ∪ (⋃ n, (set.range (λ (r : L₂.pr n), def_pr r (df_pr r))))) :=
+  theory.consistent (↑T₁ ∪ definitions L₁ L₂ @df_fn @df_pr) :=
 begin
-  suffices : ∃ M, M ⊧ₜₕ (↑T₁ ∪ (⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (df_fn f)))) ∪ (⋃ n, (set.range (λ (r : L₂.pr n), def_pr r (df_pr r))))),
-  { have cl : closed_theory (↑T₁ ∪ (⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (df_fn f)))) ∪ (⋃ n, (set.range (λ (r : L₂.pr n), def_pr r (df_pr r))))),
-    from ⟨by { simp, rintros p ((ph | ⟨n, f, rfl⟩) | ⟨n, r, rfl⟩),
-      { exact closed_theory.cl ph }, { simp[hdf_fn] }, { simp[hdf_pr] }  }⟩,
+  suffices : ∃ M, M ⊧ₜₕ (↑T₁ ∪ definitions L₁ L₂ @df_fn @df_pr),
+  { have cl : closed_theory (↑T₁ ∪ definitions L₁ L₂ @df_fn @df_pr),
+    from @union_closed _ _ _ _ (definitions_closed L₁ L₂ @df_fn @hdf_fn @df_pr @hdf_pr),
     exactI consistent_iff_satisfiable.mpr this },  
   have : ∃ M, M ⊧ₜₕ T₁, from consistent_iff_satisfiable.mp consis,
   rcases this with ⟨M, hM⟩,
@@ -647,7 +665,39 @@ begin
     simp[def_pr, models_univs, R], intros v,
     exact model.extend_val_coe_iff M F R, exact ⟨λ _, default⟩ },
   have lmm₃ : M₂ ⊧ₜₕ ↑T₁, from (model.extend_modelsth_coe_iff M _ _).mpr hM, 
-  refine ⟨M₂, by { simp[lmm₃], split; intros n; simp[modelsth, lmm₁, lmm₂] }⟩
+  refine ⟨M₂, by { simp[lmm₃, definitions_def], split; intros n; simp[modelsth, lmm₁, lmm₂] }⟩
+end
+
+variables (T₁)
+
+theorem extensions_by_definitions_consistent_iff
+  (df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
+  (hdf_fn : ∀ {n} {f : L₂.fn n}, (df_fn f).arity ≤ n + 1)
+  (df_pr : Π {n : ℕ}, L₂.pr n → formula L₁)
+  (hdf_pr : ∀ {n} {r : L₂.pr n}, (df_pr r).arity ≤ n)
+  (b : ∀ {n} (f : L₂.fn n), T₁ ⊢ ∏[n] ∐ (df_fn f)) :
+  theory.consistent (↑T₁ ∪ definitions L₁ L₂ @df_fn @df_pr) ↔ T₁.consistent :=
+⟨λ h, begin
+  have : (↑T₁ : theory (L₁ + L₂)).consistent, from theory.consistent_of_consistent_ss h (by simp),
+  exact coe_consistent_iff.mp this
+end, λ h,  extensions_by_definitions_consistent L₂ h @df_fn @hdf_fn @df_pr @hdf_pr @b⟩
+
+theorem extensions_by_definitions_conservative
+  (df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
+  (hdf_fn : ∀ {n} {f : L₂.fn n}, (df_fn f).arity ≤ n + 1)
+  (df_pr : Π {n : ℕ}, L₂.pr n → formula L₁)
+  (hdf_pr : ∀ {n} {r : L₂.pr n}, (df_pr r).arity ≤ n)
+  (b : ∀ {n} (f : L₂.fn n), T₁ ⊢ ∏[n] ∐ (df_fn f))
+  (p : formula L₁) (hp : p.is_sentence) :
+  ↑T₁ ∪ definitions L₁ L₂ @df_fn @df_pr ⊢ p ↔ T₁ ⊢ p :=
+begin
+  simp[theory.provable_iff_inconsistent],
+  suffices : ¬theory.consistent (↑(T₁+{ ⁻p }) ∪ definitions L₁ L₂ @df_fn @df_pr) ↔ ¬theory.consistent (T₁+{ ⁻p }),
+  { have eq : ((↑T₁ ∪ definitions L₁ L₂ @df_fn @df_pr) +{ ⁻↑p }) = (↑(T₁+{ ⁻p }) ∪ definitions L₁ L₂ @df_fn @df_pr),
+    { ext q, simp[language.language_translation_coe.fun_theory_insert, or_assoc] },
+    simpa[eq] using this },
+  have : closed_theory (T₁ +{ ⁻p }) := ⟨by { simp[hp], exact λ _, closed_theory.cl }⟩,
+  exact iff.not (by exactI extensions_by_definitions_consistent_iff L₂ (T₁+{ ⁻p }) @df_fn @hdf_fn @df_pr @hdf_pr (λ n f, by simp[b f]))
 end
 
 end fopl
