@@ -111,11 +111,15 @@ by simp[theory.consistent_def]
 
 def theory.le (T U : theory L) : Prop := ∀ {p : formula L}, T ⊢ p → U ⊢ p
 
+@[trans] lemma theory.le.trans {T₁ T₂ T₃ : theory L} : T₁ ≤ T₂ → T₂ ≤ T₃ → T₁ ≤ T₃ := λ le₁₂ le₂₃ p b, le₂₃ (le₁₂ b)
+
 instance : has_le (theory L) := ⟨theory.le⟩
 
 class extend (T₀ T : theory L) := (le : T₀ ≤ T)
 
-instance extend_refl (T : theory L) : extend T T := ⟨λ p h, h⟩
+instance extend.refl (T : theory L) : extend T T := ⟨λ p h, h⟩
+
+@[trans] def extend.trans (T₁ T₂ T₃ : theory L) [extend T₁ T₂]  [extend T₂ T₃] : extend T₁ T₃ := ⟨λ p b, extend.le (extend.le b : T₂ ⊢ p)⟩
 
 def theory.th (T : theory L) : theory L := {p | T ⊢ p}
 
@@ -1022,6 +1026,10 @@ def theory.extend_of_inclusion {T₁ T₂ : theory L} (ss : T₁ ⊆ T₂) : ext
 instance (p : formula L) : extend T (T +{p}) := ⟨λ q h, by simp[h]⟩
 
 instance theory.extend_ax₂ (p q : formula L) : extend T (T +{ p }+{ q }) := ⟨λ _ h, by simp[h]⟩
+
+instance theory.extend_ax₃ (p q r : formula L) : extend T (T +{ p }+{ q }+{ r }) := ⟨λ _ h, by simp[h]⟩
+
+instance theory.extend_ax₄ (p q r s : formula L) : extend T (T +{ p }+{ q }+{ r }+{ s }) := ⟨λ _ h, by simp[h]⟩
 
 instance theory.extend_sf {T₁ T₂ : theory L} [extend T₁ T₂] : extend (⤊T₁) (⤊T₂) :=
 ⟨λ p h, by {

@@ -926,6 +926,10 @@ lemma total_rew_inv :
 @[simp] def is_open_pow : ∀ {p : formula L} {i : ℕ}, (p^i).is_open ↔ p.is_open :=
 by simp[pow_eq]
 
+@[simp] lemma is_open.le [has_le_symbol L] (t u : term L) : (t ≼ u : formula L).is_open := by simp[has_preceq.preceq]
+
+@[simp] lemma is_open.mem [has_mem_symbol L] (t u : term L) : (t ∊ u : formula L).is_open := by simp[has_elem.elem]
+
 @[simp] lemma nfal_arity : ∀ (n) (p : formula L), (nfal p n).arity = p.arity - n
 | 0     p := by simp[formula.arity]
 | (n+1) p := by {simp[formula.arity, nfal_arity n], exact (arity p).sub_sub _ _ }

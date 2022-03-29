@@ -547,6 +547,10 @@ def numeral {α : Type*} [has_zero α] [has_succ α] : ℕ → α
 | 0       := 0
 | (n + 1) := Succ (numeral n)
 
+instance numeral_has_one {α : Type*} [has_zero α] [has_succ α] : has_one α := ⟨Succ 0⟩
+
+lemma numeral_one_def  {α : Type*} [has_zero α] [has_succ α] : (1 : α) = Succ 0 := rfl 
+
 @[notation_class] class has_eq (α : Sort*) (β : Sort*) := (eq : α → α → β)
 
 infix ` ≃ `:50 := has_eq.eq
