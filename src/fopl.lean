@@ -52,6 +52,24 @@ notation `##` := idvar _
 
 @[simp] lemma idvar_app (n : ℕ) (i : fin n) : (## : finitary (term L) n) i = #i := rfl
 
+@[simp] lemma idvar_eq_nil : (## : finitary (term L) 0) = finitary.nil := by ext
+
+@[simp] lemma idvar_eq_singleton : (## : finitary (term L) 1) = ‹#0› := by ext; by simp
+
+@[simp] lemma idvar_eq_doubleton : (## : finitary (term L) 2) = ‹#0, #1› := by ext; by simp
+
+@[reducible] def idvar_inv (n : ℕ) : finitary (term L) n := λ i, #(n - i - 1)
+
+notation `##'` := idvar_inv _
+
+@[simp] lemma idvar_inv_app (n : ℕ) (i : fin n) : (##' : finitary (term L) n) i = #(n - i - 1) := rfl
+
+@[simp] lemma idvar_inv_nil : (##' : finitary (term L) 0) = finitary.nil := by ext
+
+@[simp] lemma idvar_inv_eq_singleton : (##' : finitary (term L) 1) = ‹#0› := by ext; by simp
+
+@[simp] lemma idvar_inv_eq_doubleton : (##' : finitary (term L) 2) = ‹#1, #0› := by ext; by simp
+
 variables (L)
 
 def term_to_string [∀ n, has_to_string (L.fn n)] : term L → string
@@ -1368,6 +1386,23 @@ end
 @[simp] lemma formula.ite_pow (p : Prop) [decidable p] (q r : formula L) (k : ℕ) :
   (ite p q r)^k = ite p (q^k) (r^k) :=
 by by_cases C : p; simp[C]
+
+class abberavation₁ (f : term L → formula L) :=
+(map_rew : ∀ s t, (f t).rew s = f (t.rew s))
+
+attribute [simp] abberavation₁.map_rew
+
+class abberavation₂ (f : term L → term L → formula L) :=
+(representable : ∀ s t u, (f t u).rew s = f (t.rew s) (u.rew s))
+
+namespace abberavation₁
+variables (f : term L → formula L) [abberavation₁ f]
+
+lemma map_pow (t : term L) (n : ℕ) : (f t)^n = f (t^n) := by simp[formula.pow_eq, term.pow_eq]
+
+lemma eq_rew (t : term L) : f t = (f #0).rew (t ⌢ ı) := by simp 
+
+end abberavation₁
 
 end formula
 
