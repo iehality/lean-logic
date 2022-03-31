@@ -1023,7 +1023,7 @@ variables {T : theory L}
 def theory.extend_of_inclusion {T₁ T₂ : theory L} (ss : T₁ ⊆ T₂) : extend T₁ T₂ :=
 ⟨λ p h, by exact provable.weakening h ss⟩
 
-instance (p : formula L) : extend T (T +{p}) := ⟨λ q h, by simp[h]⟩
+instance theory.extend_ax₁ (p : formula L) : extend T (T +{ p }) := ⟨λ q h, by simp[h]⟩
 
 instance theory.extend_ax₂ (p q : formula L) : extend T (T +{ p }+{ q }) := ⟨λ _ h, by simp[h]⟩
 
@@ -1037,6 +1037,12 @@ instance theory.extend_sf {T₁ T₂ : theory L} [extend T₁ T₂] : extend (�
   have : T₂ ⊢ ∏ p, from this.extend,
   have : ⤊T₂ ⊢ (∏ p)^1, from provable.sf_sf.mpr this,
   simpa[formula.nested_rew] using this ⊚ #0 }⟩
+
+instance theory.extend_union_left (T₁ T₂ : theory L) : extend T₁ (T₁ ∪ T₂) := theory.extend_of_inclusion (by simp)
+
+instance theory.extend_union_right (T₁ T₂ : theory L) : extend T₂ (T₁ ∪ T₂) := theory.extend_of_inclusion (by simp)
+
+instance theory.extend_empty : extend ∅ T := theory.extend_of_inclusion (by simp)
 
 instance theory.extend_pow {T₁ T₂ : theory L} [ex : extend T₁ T₂] (k : ℕ) : extend (T₁^k) (T₂^k) :=
 by { induction k with k IH ; simp[theory.sf_itr_succ], { exact ex }, { exactI fopl.theory.extend_sf } }

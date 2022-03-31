@@ -130,6 +130,7 @@ lemma closed_proper {T : theory L} [cl : closed_theory T] : proper_at 0 T :=
 by { ext p, refine ⟨λ hyp, _, λ hyp, _⟩, rcases hyp with ⟨p, hyp_p, rfl⟩,
      simp[closed_theory.cl hyp_p, hyp_p],
      rw ← (formula.is_sentence_sf (closed_theory.cl hyp)), refine ⟨p, hyp, rfl⟩ }
+
 @[simp] lemma closed_theory_pow_eq (T : theory L) [cl : closed_theory T] (i : ℕ) : T^i = T :=
 by { ext p, simp[theory_sf_itr_eq], refine ⟨λ hyp, _, λ hyp, _⟩, rcases hyp with ⟨p, hyp_p, rfl⟩,
      simp[closed_theory.cl hyp_p, hyp_p],
@@ -171,5 +172,8 @@ by induction k with k IH; simp[←nat.add_one, theory.sf_itr_succ, sf_union, *]
 
 @[simp] lemma pow_ss {T U : theory L} {i : ℕ} : T^i ⊆ U^i ↔ T ⊆ U :=
 by induction i with i; simp[←nat.add_one, theory.sf_itr_succ, *]
+
+def union_closed (T U : theory L) [closed_theory T] [closed_theory U] : closed_theory (T ∪ U) :=
+⟨λ p, by { simp, rintros (mem | mem), { exact closed_theory.cl mem }, {  exact closed_theory.cl mem } }⟩
 
 end fopl

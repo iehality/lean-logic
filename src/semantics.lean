@@ -114,7 +114,7 @@ by {simp[has_sup.sup, formula.or], exact or_iff_not_imp_left.symm }
 by simp[lrarrow_def]; exact iff_def.symm
 
 @[simp] lemma models_conjunction' {n : ℕ} {P : finitary (formula L) n} {e : ℕ → |M|} :
-  (conjunction' n P).val M e ↔ ∀ i, (P i).val M e :=
+  (inf_conjunction n P).val M e ↔ ∀ i, (P i).val M e :=
 by { induction n with n IH; simp,
      { intros i, exfalso, exact i.val.not_lt_zero i.property },
      { simp [IH], split,

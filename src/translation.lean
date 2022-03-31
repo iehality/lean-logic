@@ -1008,6 +1008,16 @@ lemma coe_fn₁ {n} (f : L₁.fn n) : (↑f : (L₁ + L₂).fn n) = sum.inl f:= 
 
 lemma coe_pr₁ {n} (r : L₁.pr n) : (↑r : (L₁ + L₂).pr n) = sum.inl r:= rfl
 
+lemma zero_symbol_eq₁ [has_zero_symbol L₁] : (has_zero_symbol.zero : (L₁ + L₂).fn 0) = sum.inl has_zero_symbol.zero := rfl
+
+lemma succ_symbol_eq₁ [has_succ_symbol L₁] : (has_succ_symbol.succ : (L₁ + L₂).fn 1) = sum.inl has_succ_symbol.succ := rfl
+
+lemma add_symbol_eq₁ [has_add_symbol L₁] : (has_add_symbol.add : (L₁ + L₂).fn 2) = sum.inl has_add_symbol.add := rfl
+
+lemma mul_symbol_eq₁ [has_mul_symbol L₁] : (has_mul_symbol.mul : (L₁ + L₂).fn 2) = sum.inl has_mul_symbol.mul := rfl
+
+lemma le_symbol_eq₁ [has_le_symbol L₁] : (has_le_symbol.le : (L₁ + L₂).pr 2) = sum.inl has_le_symbol.le := rfl
+
 lemma add_left_fn_to_coe {n} (f : L₁.fn n) : (add_left.fn _ f : (L₁ + L₂).fn n) = f := rfl
 
 lemma add_left_pr_to_coe {n} (r : L₁.pr n) : (add_left.pr _ r : (L₁ + L₂).pr n) = r := rfl
@@ -1022,6 +1032,16 @@ instance ltr₂ : language_translation_coe L₂ (L₁ + L₂) :=
 lemma coe_fn₂ {n} (f : L₂.fn n) : (↑f : (L₁ + L₂).fn n) = sum.inr f:= rfl
 
 lemma coe_pr₂ {n} (r : L₂.pr n) : (↑r : (L₁ + L₂).pr n) = sum.inr r:= rfl
+
+lemma zero_symbol_eq₂ [has_zero_symbol L₂] : (has_zero_symbol.zero : (L₁ + L₂).fn 0) = sum.inr has_zero_symbol.zero := rfl
+
+lemma succ_symbol_eq₂ [has_succ_symbol L₂] : (has_succ_symbol.succ : (L₁ + L₂).fn 1) = sum.inr has_succ_symbol.succ := rfl
+
+lemma add_symbol_eq₂ [has_add_symbol L₂] : (has_add_symbol.add : (L₁ + L₂).fn 2) = sum.inr has_add_symbol.add := rfl
+
+lemma mul_symbol_eq₂ [has_mul_symbol L₂] : (has_mul_symbol.mul : (L₁ + L₂).fn 2) = sum.inr has_mul_symbol.mul := rfl
+
+lemma le_symbol_eq₂ [has_le_symbol L₂] : (has_le_symbol.le : (L₁ + L₂).pr 2) = sum.inr has_le_symbol.le := rfl
 
 lemma add_right_fn_to_coe {n} (f : L₂.fn n) : (add_right.fn _ f : (L₁ + L₂).fn n) = f := rfl
 

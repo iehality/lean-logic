@@ -561,7 +561,7 @@ def def_fn {n} (f : L₂.fn n) (p : formula L₁) : formula (L₁ + L₂) :=
 ∏[n] rew ı[0 ⇝ app (sum.inr f) ##] ↑p
 
 def def_pr {n} (r : L₂.pr n) (p : formula L₁) : formula (L₁ + L₂) :=
-∏[n] (↑p ⟷ app (sum.inr r) ##)
+∏[n] (app (sum.inr r) ## ⟷ ↑p)
 
 @[simp] lemma def_fn_is_sentence {n} (f : L₂.fn n) (p : formula L₁) (hp : p.arity ≤ n + 1) : is_sentence (def_fn f p) :=
 begin
@@ -627,6 +627,18 @@ def definitions_closed
   (hdf_pr : ∀ {n} {r : L₂.pr n}, (df_pr r).arity ≤ n) : closed_theory (definitions L₁ L₂ @df_fn @df_pr) :=
 ⟨by { simp[definitions_def], rintros p (⟨n, f, rfl⟩ | ⟨n, r, rfl⟩),  { simp[hdf_fn] }, { simp[hdf_pr] } }⟩
 
+@[simp] lemma definitions_mem_fn
+  (df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
+  (df_pr : Π {n : ℕ}, L₂.pr n → formula L₁) {n} (f : L₂.fn n) :
+  (∏[n] (df_fn f : formula (L₁ + L₂)).rew ı[0 ⇝ app (sum.inr f) ##]) ∈ definitions L₁ L₂ @df_fn @df_pr :=
+by simp[definitions_def, def_fn]; refine or.inl ⟨n, f, by refl⟩
+
+@[simp] lemma definitions_mem_pr
+  (df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
+  (df_pr : Π {n : ℕ}, L₂.pr n → formula L₁) {n} (r : L₂.pr n) :
+  (∏[n] ((app (sum.inr r) ## : formula (L₁ + L₂)) ⟷ (df_pr r))) ∈ definitions L₁ L₂ @df_fn @df_pr :=
+by simp[definitions_def, def_pr]; refine or.inr ⟨n, r, by refl⟩
+
 variables {L₁}
 
 theorem extensions_by_definitions_consistent (consis : T₁.consistent)
@@ -663,7 +675,7 @@ begin
   { intros n r,
     rw [←eval_is_sentence_iff default (show is_sentence (def_pr r (df_pr r)), by simp[hdf_pr])],
     simp[def_pr, models_univs, R], intros v,
-    exact model.extend_val_coe_iff M F R, exact ⟨λ _, default⟩ },
+    exact iff.symm (model.extend_val_coe_iff M F R), exact ⟨λ _, default⟩ },
   have lmm₃ : M₂ ⊧ₜₕ ↑T₁, from (model.extend_modelsth_coe_iff M _ _).mpr hM, 
   refine ⟨M₂, by { simp[lmm₃, definitions_def], split; intros n; simp[modelsth, lmm₁, lmm₂] }⟩
 end

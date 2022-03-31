@@ -7,8 +7,8 @@ namespace fopl
 variables {L : language}
 
 local infix ` ≃₁ `:50 := ((≃) : term L → term L → formula L)
-local prefix `∏₁ `:64 := (has_univ_quantifier.univ : formula L → formula L)
-local prefix `∐₁ `:64 := (has_exists_quantifier.ex : formula L → formula L)
+
+
 
 namespace formula
 
@@ -53,7 +53,7 @@ by simp[bex_le, term.pow_rew_distrib]
 @[simp] def fal_rank : formula L → ℕ
 | (p ⟶ q) := max (fal_rank p) (fal_rank q)
 | (⁻p)     := fal_rank p
-| (∏₁ p)  := fal_rank p + 1
+| (∏ p)  := fal_rank p + 1
 | _        := 0
 
 @[simp] lemma fal_rank_and (p q : formula L) :
@@ -63,7 +63,7 @@ by simp[bex_le, term.pow_rew_distrib]
   fal_rank (p ⊔ q) = max (fal_rank p) (fal_rank q) := rfl
 
 @[simp] lemma fal_rank_ex (p : formula L) :
-  fal_rank (∐₁ p) = fal_rank p + 1 := rfl
+  fal_rank (∐ p) = fal_rank p + 1 := rfl
 
 @[simp] lemma fal_rank_eq (t u : term L) :
   fal_rank (t ≃₁ u) = 0 := rfl
@@ -80,14 +80,14 @@ by simp[bex_le, term.pow_rew_distrib]
 
 @[simp] def unary_inv : formula L → option (formula L)
 | ⁻p := some p
-| ∏₁p := some p
+| ∏ p := some p
 | _  := none
 
 @[simp] def quantifier_fn_aux : ℕ → (term L → formula L) → formula L → formula L
 | s f ⊤        := ⊤
 | s f (p ⟶ q) := quantifier_fn_aux s (λ t, (f t).binary_inv.iget.1) p ⟶ quantifier_fn_aux s (λ t, (f t).binary_inv.iget.2) q
 | s f ⁻p       := ⁻quantifier_fn_aux s (λ t, (f t).unary_inv.iget) p
-| s f (∏₁ p)  := ∏ quantifier_fn_aux (s + 1) (λ t, (f t).unary_inv.iget) p
+| s f (∏ p)  := ∏ quantifier_fn_aux (s + 1) (λ t, (f t).unary_inv.iget) p
 | s f _        := f #s
 
 @[simp] lemma quantifier_fn_aux_imply (s) (f g : term L → formula L) (p q : formula L) :
@@ -223,12 +223,11 @@ end
 lemma bounded_bex_iff {p : formula L} {t : term L} : bounded (∐{≼ t} p) ↔ bounded p :=
 by simp[bex_le]
 
-#check 0
-/--/
+lemma bounded_rew (s : ℕ → term L) (p : formula L) (h : bounded p) : bounded (rew s p) :=
+by induction h generalizing s; simp*
+
 instance bounded_proper : proper_theory (bounded : theory L) :=
-⟨λ p s mem, by { simp[set.mem_def] at mem ⊢, induction mem generalizing s; try {simp*}, 
-  case bfal : t p bp IH { exact bounded.bfal (IH (s^1)) },
-  case bex  : t p bp IH { exact bounded.bex (IH (s^1)) } }⟩
+⟨λ p s mem, by { simp[set.mem_def] at mem ⊢, induction mem generalizing s; try {simp*} }⟩
 
 mutual inductive is_sigma, is_pi
 with is_sigma : ℕ → formula L → Prop
