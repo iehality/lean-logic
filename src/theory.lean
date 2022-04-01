@@ -173,7 +173,7 @@ by induction k with k IH; simp[←nat.add_one, theory.sf_itr_succ, sf_union, *]
 @[simp] lemma pow_ss {T U : theory L} {i : ℕ} : T^i ⊆ U^i ↔ T ⊆ U :=
 by induction i with i; simp[←nat.add_one, theory.sf_itr_succ, *]
 
-def union_closed (T U : theory L) [closed_theory T] [closed_theory U] : closed_theory (T ∪ U) :=
+instance union_closed (T U : theory L) [closed_theory T] [closed_theory U] : closed_theory (T ∪ U) :=
 ⟨λ p, by { simp, rintros (mem | mem), { exact closed_theory.cl mem }, {  exact closed_theory.cl mem } }⟩
 
 end fopl

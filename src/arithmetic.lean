@@ -11,10 +11,12 @@ inductive langf : ℕ → Type
 | add  : langf 2
 | mul : langf 2
 
-@[reducible] def LA : language := ⟨langf, λ _, pempty⟩
+inductive langp : ℕ → Type
+| le : langp 2
+
+@[reducible] def LA : language := ⟨langf, langp⟩
 
 inductive additional_pr : ℕ → Type
-| le : additional_pr 2
 | lt : additional_pr 2
 | dvd : additional_pr 2
 | prime : additional_pr 1
@@ -37,7 +39,7 @@ instance : has_zero_symbol LA := ⟨langf.zero⟩
 instance : has_succ_symbol LA := ⟨langf.succ⟩
 instance : has_add_symbol LA := ⟨langf.add⟩
 instance : has_mul_symbol LA := ⟨langf.mul⟩
-instance : has_le_symbol additional := ⟨additional_pr.le⟩
+instance : has_le_symbol LA := ⟨langp.le⟩
 
 local infix ` ≃₀ `:50 := ((≃) : term LA → term LA → formula LA)
 local infix ` ≃₁ `:50 := ((≃) : term LA' → term LA' → formula LA')
@@ -69,39 +71,35 @@ inductive robinson : theory LA
 | q5 : robinson ∀₁ x y, x + Succ y ≃ Succ (x + y)
 | q6 : robinson ∀₁ x, x * 0 ≃ 0
 | q7 : robinson ∀₁ x y, x * Succ y ≃ x * y + x
+| q8 : robinson ∀₁ x y, ((x ≼ y) ⟷ ∃₁ z, z + x ≃ y)
 
 notation `𝐐` := robinson
 
 namespace additional
 
 @[simp] def definition_fn : Π {n} (r : additional.pr n), formula LA
-| 2 additional_pr.le := ∐ (#0 + #1 ≃₀ #2)
-| 2 additional_pr.lt := (∐ (#0 + #1 ≃₀ #2)) ⊓ ((#0 : term LA) ≄ #1)
+| 2 additional_pr.lt := ((#0 : term LA) ≼ #1) ⊓ ((#0 : term LA) ≄ #1)
 | 2 additional_pr.dvd := ∐ (#0 * #1 ≃₀ #2)
 | 1 additional_pr.prime := ∐ (#0 + 1 ≃₀ #1) ⊓ ∏ (∐ (#0 * #2 ≃₀ #1) ⟶ (#0 ≃₀ 1) ⊔ (#0 ≃₀ #1))
 
-@[reducible] def additional.theory : theory LA' := definitions LA additional (λ n f, by { rcases f }) @definition_fn
+@[reducible] def thy : theory LA' := definitions LA additional (λ n f, by { rcases f }) @definition_fn
 
-@[simp] lemma additional.theory.le : (∀₁ y x, (x ≼ y) ⟷ ∃₁ z, z + x ≃ y) ∈ additional.theory :=
+@[simp] lemma thy.lt : (∀₁ y x, (x ≺ y) ⟷ (x ≼ y) ⊓ (x ≄ y)) ∈ thy :=
 by { simp[fal_fn, ex_fn],
-     have : _ ∈ additional.theory, from definitions_mem_pr LA additional _ _ additional_pr.le, simp at this,
+     have : _ ∈ thy, from definitions_mem_pr LA additional _ _ additional_pr.lt, simp at this,
      exact this }
 
-@[simp] lemma additional.theory.lt : (∀₁ y x, (x ≺ y) ⟷ (∃₁ z, z + x ≃ y) ⊓ (x ≄ y)) ∈ additional.theory :=
+@[simp] lemma thy.dvd : (∀₁ y x, (x ⍭ y) ⟷ ∃₁ z, z * x ≃ y) ∈ thy :=
 by { simp[fal_fn, ex_fn],
-     have : _ ∈ additional.theory, from definitions_mem_pr LA additional _ _ additional_pr.lt, simp at this,
+     have : _ ∈ thy, from definitions_mem_pr LA additional _ _ additional_pr.dvd, simp at this,
      exact this }
-
-@[simp] lemma additional.theory.dvd : (∀₁ y x, (x ⍭ y) ⟷ ∃₁ z, z * x ≃ y) ∈ additional.theory :=
-by { simp[fal_fn, ex_fn],
-     have : _ ∈ additional.theory, from definitions_mem_pr LA additional _ _ additional_pr.dvd, simp at this,
-     exact this }
-
-notation `𝐐'` := (robinson : theory LA') ∪ additional.theory
 
 end additional
-#check 0
-/--/
+
+@[reducible] def robinson' : theory LA' := (↑𝐐 : theory LA') ∪ additional.thy
+
+notation `𝐐'` := robinson'
+
 def succ_induction (p : formula LA) : formula LA :=
 ∏* (p.rew (0 ⌢ ı) ⟶ ∏ (p ⟶ p.rew ((Succ #0) ⌢ (λ x, #(x+1)))) ⟶ ∏ p)
 
@@ -116,15 +114,15 @@ def collection (p : formula LA) : formula LA :=
 instance : closed_theory 𝐐 := ⟨λ p h,
   by cases h; simp[is_sentence, lrarrow_def, formula.ex, formula.and, fal_fn, ex_fn]⟩
 
-def succ_induction_axiom (C : theory LA) : theory LA := 𝐐 ∪ succ_induction '' C
+def succ_induction_axiom (C : theory LA) : theory LA := 𝐐 ∪ (succ_induction '' C)
 
 prefix `𝐈`:max := succ_induction_axiom
 
-def order_induction_axiom (C : theory LA) : theory LA := 𝐐 ∪ order_induction '' C
+def order_induction_axiom (C : theory LA) : theory LA := 𝐐 ∪ (order_induction '' C)
 
 prefix `𝐈′`:max := order_induction_axiom
 
-def collection_axiom (C : theory LA) : theory LA := 𝐐 ∪ collection '' C
+def collection_axiom (C : theory LA) : theory LA := 𝐐 ∪ (collection '' C)
 
 prefix `𝐁`:max := collection_axiom
 
@@ -154,20 +152,6 @@ theory.extend_of_inclusion (λ p mem, by simp[Q_ss_I mem])
 lemma I_succ_induction (p : formula LA) {C} (h : p ∈ C) : 𝐈C ⊢ p.rew (0 ⌢ ı) ⟶ ∏ (p ⟶ p.rew ((Succ #0) ⌢ (λ x, #(x+1)))) ⟶ ∏ p :=
 by { have : 𝐈C ⊢ succ_induction p, from by_axiom (by { simp[succ_induction_axiom, h], refine or.inr ⟨p, by simp[h]⟩ }),
      simpa using provable.fal_complete_rew _ ı ⨀ this }
-
-
-
-def LA.lessthan (t u : term LA) : formula LA := (t ≼ u) ⊓ (t ≄ u)
-local infix ` ≺ `:50 := LA.lessthan
-
-lemma lessthan_def : (≺) = λ t u, (t ≼ u) ⊓ (t ≄ u) := rfl
-
-def LA.divides (t u : term LA) : formula LA := ∐ (#0 * t^1 ≃ u^1)
-infix ` ⍭ `: 50 := LA.divides
-
-lemma divides_def : (⍭) = λ t u, ∐ (#0 * t^1 ≃ u^1) := rfl
-
-def is_prime (t : term LA) : formula LA := (1 ≼ t) ⊓ ∀₁ u, ((u ⍭ t) ⟶ (u ≃ 1) ⊔ (u ≃ t))
 
 namespace Q_model
 
@@ -206,7 +190,8 @@ by { induction h using fopl.Herbrand.ind_on,
      have : (0 : Herbrand T i) ≃ Succ ⟦h⟧ᴴ = (⊥ : Lindenbaum T i),
        from cast (by simp)  (Lindenbaum.eq_neg_of_provable_neg.mp this),
      exact this }
-
+#check 0
+/--/
 @[simp] lemma succ_ne_zero (h : Herbrand T i) : Succ h ≃ 0 = (⊥ : Lindenbaum T i) :=
 by simp [Lindenbaum.equal_symm (Succ h) 0]
 

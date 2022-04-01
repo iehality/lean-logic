@@ -1,5 +1,5 @@
 import
-  tactic data.equiv.encodable.basic
+  tactic
   computability.primrec
   computability.partrec
   computability.partrec_code
@@ -10,8 +10,6 @@ import
   init.data.subtype
   data.list.dedup
   order.zorn
-
-
 
 universes u v
 
@@ -805,7 +803,7 @@ end
 lemma empty_of_nonempty (H : finite_charactor F) {a} (ha : F a) : F ∅ :=
 of_ss H ha (by simp)
 
-lemma finite_chain_sup (H : finite_charactor F) {c : set (set α)} (ch : zorn.chain has_subset.subset c) :
+lemma finite_chain_sup (H : finite_charactor F) {c : set (set α)} (ch : is_chain has_subset.subset c) :
   ∀ {d : set (set α)} (hs : d.finite) (nemp : d.nonempty) (ss : d ⊆ c), ∃ m ∈ d, ⋃₀d ⊆ m :=
 begin
   intros d d_fin,
@@ -814,7 +812,7 @@ begin
   by_cases nemp : s.nonempty,
   { have : ∃ (m ∈ s), ⋃₀ s ⊆ m, from IH nemp (set.subset.trans (by simp) ss),
     rcases this with ⟨m, mem, hs⟩,
-    have : m ⊆ a ∨ a ⊆ m, from zorn.chain.total_of_refl ch (show m ∈ c, from ss (by simp[mem])) (show a ∈ c, from ss (by simp)),
+    have : m ⊆ a ∨ a ⊆ m, from is_chain.total ch (show m ∈ c, from ss (by simp[mem])) (show a ∈ c, from ss (by simp)),
     rcases this,
     { refine ⟨a, by simp, _⟩,
       simp at hs ⊢, refine ⟨by refl, λ t ht, set.subset.trans (hs t ht) this⟩ },
@@ -830,7 +828,7 @@ begin
   suffices : ∃ (m : set α) (H : m ∈ {x : set α | F x}),
   a ⊆ m ∧ ∀ (a : set α), a ∈ {x : set α | F x} → m ⊆ a → a = m,
   { simp at this, exact this },
-  refine zorn.zorn_subset_nonempty {x | F x} _ a ha, simp,
+  refine zorn_subset_nonempty {x | F x} _ a ha, simp,
   rintros c hF hc nemp,
   have : F (⋃₀ c),
   { have : ∀ s ⊆ ⋃₀ c, s.finite → F s,

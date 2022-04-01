@@ -594,8 +594,11 @@ begin
   { simp [formula.is_sentence_rew eq_axiom5_is_sentence] }
 end
 
-lemma pow_of_cl [cl : closed_theory T] {p : formula L} {i : ℕ} : T ⊢ p → T^i ⊢ p :=
+lemma pow_of_cl [closed_theory T] {p : formula L} (i : ℕ) : T ⊢ p → T^i ⊢ p :=
 by simp[closed_theory_pow_eq]
+
+lemma iff_fal_complete [closed_theory T] {p : formula L} : T ⊢ p ↔ T ⊢ ∏* p :=
+⟨λ h, generalize_itr (pow_of_cl p.arity h), λ h, by simpa using fal_complete_rew p ı ⨀ h⟩
 
 lemma pp_prove_rew {n} (pp : proper_at n T) :
   ∀ {p : formula L}, T ⊢ p → ∀ s, T ⊢ p.rew (s^n) :=

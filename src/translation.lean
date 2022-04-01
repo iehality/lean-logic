@@ -394,6 +394,12 @@ def tr : translation L₁ L₂ :=
   map_univ := by simp,
   map_pow := λ p i, eq.symm (τ.fun_p_rew_var p (λ x, x + 1)) }
 
+@[simp] lemma fun_t_arity (t : term L₁) : (τ.fun_t t).arity = t.arity :=
+by induction t; simp*
+
+@[simp] lemma fun_p_arity (p : formula L₁) : (τ.fun_p p).arity = p.arity :=
+by induction p; simp*
+
 lemma tr_term_app_eq (k) (t) : 
   τ.tr_term k t = τ.fun_t t := by refl
 
@@ -430,6 +436,10 @@ by induction P with p P IH; simp[conjunction, *]
 @[simp] lemma fun_p_nfal (p : formula L₁) (k : ℕ) :
   τ.fun_p (∏[k] p) = ∏[k] τ.fun_p p :=
 by { induction k with k IH; simp[*] }
+
+@[simp] lemma fun_p_fal_complete (p : formula L₁) :
+  τ.fun_p (∏* p) = ∏* τ.fun_p p :=
+by simp[fal_complete]
 
 @[simp] lemma fun_p_conjunction' {n : ℕ} (P : finitary (formula L₁) n) :
   τ.fun_p (⋀ j, P j) = ⋀ j, τ.fun_p (P j) :=
@@ -552,12 +562,6 @@ by funext p; induction p; simp[*, comp_fun_t]
 
 @[simp] lemma comp_assoc : (τ₃₄.comp τ₂₃).comp τ₁₂ = τ₃₄.comp (τ₂₃.comp τ₁₂) := by ext; simp
 
-@[simp] lemma fun_t_arity (t : term L₁) : (τ.fun_t t).arity = t.arity :=
-by induction t; simp*
-
-@[simp] lemma fun_p_arity (p : formula L₁) : (τ.fun_p p).arity = p.arity :=
-by induction p; simp*
-
 @[simp] lemma fun_p_is_sentence (p : formula L₁) : is_sentence (τ.fun_p p) ↔ is_sentence p :=
 by simp[is_sentence]
 
@@ -565,7 +569,7 @@ variables (T : theory L₁)
 
 def fun_theory : theory L₂ := τ.fun_p '' T
 
-instance [c : closed_theory T] : closed_theory (τ.fun_theory T) :=
+instance [closed_theory T] : closed_theory (τ.fun_theory T) :=
 ⟨λ p mem, by { rcases mem with ⟨p, mem, rfl⟩, simp[closed_theory.cl mem] }⟩ 
 
 lemma fun_theory_insert (p : formula L₁) : τ.fun_theory (T+{p}) = τ.fun_theory T +{τ.fun_p p} :=
@@ -702,6 +706,10 @@ fun_p_conjunction _ P
 @[simp] lemma coe_nfal (p : formula L₁) (k : ℕ) :
   (↑(∏[k] p) : formula L₂) = ∏[k] ↑p :=
 fun_p_nfal _ p k
+
+@[simp] lemma coe_fal_complete (p : formula L₁) :
+  (↑(∏* p) : formula L₂) = ∏* ↑p :=
+fun_p_fal_complete _ p
 
 @[simp] lemma coe_conjunction' {n : ℕ} (P : finitary (formula L₁) n) :
   (↑(⋀ j, P j) : formula L₂) = ⋀ j, P j :=
@@ -1177,7 +1185,7 @@ def consts_of_fun (f : α → β) : consts α ↝ᴸ consts β :=
 end
 
 variables {L₁} {L₂} (τ : L₁ ↝ᴸ L₂)
-#check set.range
+
 def sub : language.{u} := { fn := λ n, (set.compl $ set.range (τ.fn n)), pr := λ n, (set.compl $ set.range (τ.pr n)) }
 
 def add_sub_refl : L₁ + sub τ ↝ᴸ L₂ :=
