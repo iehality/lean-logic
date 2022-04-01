@@ -257,13 +257,13 @@ by simp[has_exists_quantifier.ex, formula.ex]
 | 0     := p
 | (n+1) := ∏ (nfal n)
 
-notation `∏[` i `] `:90 p := nfal p i
+notation `∏[` i `] `:0 p := nfal p i
 
 @[simp] def nex (p : formula L) : ℕ → formula L
 | 0     := p
 | (n+1) := ∐ (nex n)
 
-notation `∐[` i `] `:90 p := nex p i
+notation `∐[` i `] `:0 p := nex p i
 
 @[simp] lemma nfal_fal (p : formula L) (i : ℕ) : (∏[i] (∏ p)) = ∏ (∏[i] p) :=
 by { induction i with i IH; simp, exact IH }
@@ -280,26 +280,25 @@ notation `ı` := term.var
 
 def slide {α : Type*} (s : ℕ → α) (a : α) (n : ℕ) : ℕ → α :=
 λ x, if x < n then s x else if n < x then s (x - 1) else a
-notation s `[`:1200 n ` ⇝ `:95 t `]`:0 := slide s t n
+--notation s `[`:1200 n ` ⇝ `:95 t `]`:0 := slide s t n
 
-@[simp] lemma slide_eq {α : Type*} (s : ℕ → α) (a : α) (n) : s[n ⇝ a] n = a := by simp[slide]
+@[simp] lemma slide_eq {α : Type*} (s : ℕ → α) (a : α) (n) : slide s a n n = a := by simp[slide]
 
-@[simp] lemma slide_lt {α : Type*} (s : ℕ → α) (a : α) (n m) (h : m < n) : s[n ⇝ a] m = s m := by simp[slide, h]
+@[simp] lemma slide_lt {α : Type*} (s : ℕ → α) (a : α) (n m) (h : m < n) : slide s a n m = s m := by simp[slide, h]
 
-@[simp] lemma slide_gt {α : Type*} (s : ℕ → α) (a : α) (n m) (h : n < m) : s[n ⇝ a] m = s (m - 1) :=
+@[simp] lemma slide_gt {α : Type*} (s : ℕ → α) (a : α) (n m) (h : n < m) : slide s a n m = s (m - 1) :=
 by {simp[slide, h], intros hh, exfalso, exact nat.lt_asymm h hh }
 
-def concat {α : Type*} (s : ℕ → α) (a : α) : ℕ → α := s [0 ⇝ a]
+@[simp] def concat {α : Type*} (s : ℕ → α) (a : α) : ℕ → α
+| 0       := a
+| (n + 1) := s n
+
 notation a ` ⌢ `:90 s := concat s a
 
-@[simp] lemma concat_0 {α : Type*} (s : ℕ → α) (a : α) : (a ⌢ s) 0 = a := rfl
-@[simp] lemma concat_succ {α : Type*} (s : ℕ → α) (a : α) (n : ℕ) :
-  (a ⌢ s) (n + 1) = s n := rfl
-
-lemma slide_perm (i : ℕ) (t : term L) : ∀ n, ∃ m, ı[i ⇝ t] m = #n := λ n,
-by { have C : n < i ∨ i ≤ n, exact lt_or_ge n i,
-     cases C, refine ⟨n, by simp[C]⟩, 
-     refine ⟨n + 1, _⟩, simp[nat.lt_succ_iff.mpr C] }
+--lemma slide_perm (i : ℕ) (t : term L) : ∀ n, ∃ m, ı[i ⇝ t] m = #n := λ n,
+--by { have C : n < i ∨ i ≤ n, exact lt_or_ge n i,
+--     cases C, refine ⟨n, by simp[C]⟩, 
+--     refine ⟨n + 1, _⟩, simp[nat.lt_succ_iff.mpr C] }
 
 def discard {α : Type*} (s : ℕ → α) (n : ℕ) : ℕ → α :=
 λ x, if x < n then s x else s (x + 1)
@@ -469,16 +468,91 @@ lemma total_rew_inv
 
 @[simp] lemma pow_0 (t : term L) : t^0 = t := by simp[has_pow.pow]
 
+end term
+
+def rewriting_sf_itr (s : ℕ → term L) : ℕ → ℕ → term L
+| 0     := s
+| (n+1) := #0 ⌢ λ x, (rewriting_sf_itr n x)^1
+
+instance : has_pow (ℕ → term L) ℕ := ⟨rewriting_sf_itr⟩
+
+@[simp] lemma rewriting_sf_pow0 (s : ℕ → term L) : (s^0) = s := rfl
+@[simp] lemma rewriting_sf_0 (s : ℕ → term L) (i : ℕ) : (s^(i + 1)) 0 = #0 := rfl
+@[simp] lemma rewriting_sf_1_0 (s : ℕ → term L) (i : ℕ) : (s^1) 0 = #0 := rfl
+@[simp] lemma rewriting_sf_succ (s : ℕ → term L) (n : ℕ) (i : ℕ) : (s^(i + 1)) (n + 1) = (s^i $ n)^1 :=
+by simp[concat, has_pow.pow, rewriting_sf_itr]
+
+lemma rewriting_sf_itr.pow_eq (s : ℕ → term L) (i : ℕ) : (s^(i + 1)) = #0 ⌢ λ x, (s^i $ x)^1 := rfl
+
+lemma rewriting_sf_itr.pow_add (s : ℕ → term L) (i j : ℕ) : (s^i)^j = s^(i + j) :=
+by { induction j with j IH generalizing s i, { simp },
+     simp[←nat.add_one, ←add_assoc, rewriting_sf_itr.pow_eq, IH] }
+
+@[simp] lemma rewriting_sf_itr_0 (s : ℕ → term L) : s^0 = s := rfl
+
+lemma rewriting_sf_itr_succ (s : ℕ → term L) (n) : s^(n+1) = (s^n)^1 := rfl
+
+lemma rewriting_sf_itr.pow_eq' (s : ℕ → term L) (i : ℕ) :
+  (s^i) = (λ x, if x < i then #x else (s (x - i))^i) :=
+by { induction i with i IH generalizing s, { simp },
+     simp[←nat.add_one, rewriting_sf_itr.pow_eq, IH], funext x,
+     cases x; simp[concat, ←nat.add_one],
+     by_cases C : x < i; simp[C, term.pow_add] }
+
+@[simp] lemma rewriting_sf_itr.pow_app_lt (s : ℕ → term L) {i : ℕ} {x : ℕ} (h : x < i) :
+  (s^i $ x) = #x := by simp[rewriting_sf_itr.pow_eq', h]
+
+@[simp] lemma rewriting_sf_itr.pow_app_ge (s : ℕ → term L) {i : ℕ} {x : ℕ} (h : i ≤ x) :
+  (s^i $ x) = (s (x - i))^i :=
+by {simp[rewriting_sf_itr.pow_eq'], intros lt, exfalso, exact nat.lt_le_antisymm lt h}
+
+@[simp] lemma id_pow (i : ℕ) : (ı : ℕ → term L)^i = ı :=
+by { induction i with i IH, { simp },
+     { simp[rewriting_sf_itr_succ _ i, IH], funext x, cases x; simp } }
+
+def of_fin {n : ℕ} (v : finitary (term L) n) : ℕ → term L :=
+λ x, if h : x < n then v ⟨x, h⟩ else #(x - n)
+prefix `⧸`:max := of_fin
+
+@[simp] lemma of_fin_app_of_lt {n : ℕ} (v : finitary (term L) n) {x : ℕ} (lt : x < n) :
+  ⧸ v x = v ⟨x, lt⟩ :=
+by simp[of_fin, lt]
+
+@[simp] lemma of_fin_app_of_le {n : ℕ} (v : finitary (term L) n) {x : ℕ} (le : n ≤ x) :
+  ⧸ v x = #(x - n) :=
+by simp[of_fin, le]
+
+@[simp] lemma of_fin_0 (t : term L) : ⧸‹t› 0 = t := by simp
+
+@[simp] lemma of_fin_eq_nil (v : finitary (term L) 0) : ⧸v = ı :=
+by funext x; simp
+
+@[simp] lemma of_fin_of_lt {n} (v : finitary (term L) n) (m : ℕ) {x} (lt : x < m) : (⧸v^m) x = #x :=
+by simp[rewriting_sf_itr.pow_eq', lt]
+
+@[simp] lemma of_fin_of_ge {n} (v : finitary (term L) n) (m : ℕ) {x} (ge : m + n ≤ x) : (⧸v^m) x = #(x - n) :=
+by { simp[rewriting_sf_itr.pow_eq', ge, show ¬x < m, by omega, show n ≤ x - m, by omega], omega }
+
+@[simp] lemma of_fin_of_eq (t : term L) (m : ℕ) : (⧸‹t›^m) m = t^m := by simp
+
+@[simp] lemma of_fin_of_gt (t : term L) (m : ℕ) {x} (ge : m < x) : (⧸‹t›^m) x = #(x - 1) :=
+of_fin_of_ge ‹t› m (nat.succ_le_iff.mpr ge)
+
+namespace term
+
 @[simp] lemma sf_subst_eq (v : term L) (t : term L) (i j : ℕ) (h : j ≤ i) :
-  (v^(i + 1)).rew (ı [j ⇝ t]) = v^i :=
-by { simp[has_pow.pow, rew, nested_rew, h], congr, funext x,
-     have : j < x + (i + 1), from nat.lt_add_left _ _ _ (nat.lt_succ_iff.mpr h),
-     simp[this] }
+  (v^(i + 1)).rew (⧸‹t›^j) = v^i :=
+by { simp[term.pow_eq, nested_rew, h, rewriting_sf_itr.pow_eq'], congr, funext x,
+     simp[show ¬x + (i + 1) < j, by omega, show 1 ≤ x + (i + 1) - j, by omega], omega }
+
+@[simp] lemma sf_subst_eq' (v : term L) (t : term L) (i : ℕ) :
+  (v^(i + 1)).rew ⧸‹t› = v^i :=
+by simpa using sf_subst_eq v t i 0 (by simp)
 
 @[simp] lemma concat_pow_eq (v : term L) (t : term L) (s : ℕ → term L) :
   (v^1).rew (t ⌢ s) = v.rew s :=
 by simp[concat, rew, pow_eq, nested_rew]
-
+/--/
 @[simp] lemma rew_arity (t : term L) (s : ℕ → term L) : (t.rew s).arity ≤ ⨆ᶠ (i : fin t.arity), (s i).arity :=
 begin
   induction t,
@@ -583,46 +657,6 @@ begin
 end
 
 end term
-
-def rewriting_sf_itr (s : ℕ → term L) : ℕ → ℕ → term L
-| 0     := s
-| (n+1) := #0 ⌢ λ x, (rewriting_sf_itr n x)^1
-
-instance : has_pow (ℕ → term L) ℕ := ⟨rewriting_sf_itr⟩
-
-@[simp] lemma rewriting_sf_pow0 (s : ℕ → term L) : (s^0) = s := rfl
-@[simp] lemma rewriting_sf_0 (s : ℕ → term L) (i : ℕ) : (s^(i + 1)) 0 = #0 := rfl
-@[simp] lemma rewriting_sf_1_0 (s : ℕ → term L) (i : ℕ) : (s^1) 0 = #0 := rfl
-@[simp] lemma rewriting_sf_succ (s : ℕ → term L) (n : ℕ) (i : ℕ) : (s^(i + 1)) (n + 1) = (s^i $ n)^1 :=
-by simp[concat, has_pow.pow, rewriting_sf_itr]
-
-lemma rewriting_sf_itr.pow_eq (s : ℕ → term L) (i : ℕ) : (s^(i + 1)) = #0 ⌢ λ x, (s^i $ x)^1 := rfl
-
-lemma rewriting_sf_itr.pow_add (s : ℕ → term L) (i j : ℕ) : (s^i)^j = s^(i + j) :=
-by { induction j with j IH generalizing s i, { simp },
-     simp[←nat.add_one, ←add_assoc, rewriting_sf_itr.pow_eq, IH] }
-
-@[simp] lemma rewriting_sf_itr_0 (s : ℕ → term L) : s^0 = s := rfl
-
-lemma rewriting_sf_itr_succ (s : ℕ → term L) (n) : s^(n+1) = (s^n)^1 := rfl
-
-lemma rewriting_sf_itr.pow_eq' (s : ℕ → term L) (i : ℕ) :
-  (s^i) = (λ x, if x < i then #x else (s (x - i))^i) :=
-by { induction i with i IH generalizing s, { simp },
-     simp[←nat.add_one, rewriting_sf_itr.pow_eq, IH], funext x,
-     cases x; simp[concat, ←nat.add_one],
-     by_cases C : x < i; simp[C, term.pow_add] }
-
-@[simp] lemma rewriting_sf_itr.pow_app_lt (s : ℕ → term L) {i : ℕ} {x : ℕ} (h : x < i) :
-  (s^i $ x) = #x := by simp[rewriting_sf_itr.pow_eq', h]
-
-@[simp] lemma rewriting_sf_itr.pow_app_ge (s : ℕ → term L) {i : ℕ} {x : ℕ} (h : i ≤ x) :
-  (s^i $ x) = (s (x - i))^i :=
-by {simp[rewriting_sf_itr.pow_eq'], intros lt, exfalso, exact nat.lt_le_antisymm lt h}
-
-@[simp] lemma id_pow (i : ℕ) : (ı : ℕ → term L)^i = ı :=
-by { induction i with i IH, { simp },
-     { simp[rewriting_sf_itr_succ _ i, IH], funext x, cases x; simp } }
 
 lemma id_discard_pow (k i : ℕ) : ((ı-{k})^i : ℕ → term L) = ı-{k + i} :=
 begin
@@ -1410,6 +1444,8 @@ namespace language
 
 class predicate (L : language.{u}) :=
 (fun_empty : ∀ n, is_empty (L.fn n))
+
+instance [L.predicate] (n : ℕ) : is_empty (L.fn n) := predicate.fun_empty n
 
 end language
 
