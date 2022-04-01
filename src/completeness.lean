@@ -608,72 +608,64 @@ begin
   refine ⟨M₂, by { simp[lmm₂], intros n, simp[modelsth, lmm₁] }⟩
 end
 
-variables (L₁) (L₂)
+variables (L₁ L₂)
 
-def definitions 
-  (df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
-  (df_pr : Π {n : ℕ}, L₂.pr n → formula L₁) : theory (L₁ + L₂) :=
-(⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (df_fn f)))) ∪ (⋃ n, (set.range (λ (r : L₂.pr n), def_pr r (df_pr r))))
+structure language.definitions :=
+(df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
+(hdf_fn : ∀ {n} {f : L₂.fn n}, (df_fn f).arity ≤ n + 1)
+(df_pr : Π {n : ℕ}, L₂.pr n → formula L₁)
+(hdf_pr : ∀ {n} {r : L₂.pr n}, (df_pr r).arity ≤ n)
 
-lemma definitions_def
-  (df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
-  (df_pr : Π {n : ℕ}, L₂.pr n → formula L₁) :
-  definitions L₁ L₂ @df_fn @df_pr = (⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (df_fn f)))) ∪ (⋃ n, (set.range (λ (r : L₂.pr n), def_pr r (df_pr r)))) := rfl
+variables {L₁ L₂} (D : L₁.definitions L₂)
 
-def definitions_closed
-  (df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
-  (hdf_fn : ∀ {n} {f : L₂.fn n}, (df_fn f).arity ≤ n + 1)
-  (df_pr : Π {n : ℕ}, L₂.pr n → formula L₁)
-  (hdf_pr : ∀ {n} {r : L₂.pr n}, (df_pr r).arity ≤ n) : closed_theory (definitions L₁ L₂ @df_fn @df_pr) :=
-⟨by { simp[definitions_def], rintros p (⟨n, f, rfl⟩ | ⟨n, r, rfl⟩),  { simp[hdf_fn] }, { simp[hdf_pr] } }⟩
+def language.definitions.thy : theory (L₁ + L₂) :=
+(⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (D.df_fn f)))) ∪
+(⋃ n, (set.range (λ (r : L₂.pr n), def_pr r (D.df_pr r))))
 
-@[simp] lemma definitions_mem_fn
-  (df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
-  (df_pr : Π {n : ℕ}, L₂.pr n → formula L₁) {n} (f : L₂.fn n) :
-  (∏[n] (df_fn f : formula (L₁ + L₂)).rew ı[0 ⇝ app (sum.inr f) ##]) ∈ definitions L₁ L₂ @df_fn @df_pr :=
+lemma definitions_def :
+  D.thy = (⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (D.df_fn f)))) ∪
+          (⋃ n, (set.range (λ (r : L₂.pr n), def_pr r (D.df_pr r)))) := rfl
+
+instance language.definitions.closed : closed_theory D.thy :=
+⟨by { simp[definitions_def], rintros p (⟨n, f, rfl⟩ | ⟨n, r, rfl⟩),  { simp[D.hdf_fn] }, { simp[D.hdf_pr] } }⟩
+
+@[simp] lemma language.definitions.mem_fn {n} (f : L₂.fn n) :
+  (∏[n] (D.df_fn f : formula (L₁ + L₂)).rew ı[0 ⇝ app (sum.inr f) ##]) ∈ D.thy :=
 by simp[definitions_def, def_fn]; refine or.inl ⟨n, f, by refl⟩
 
-@[simp] lemma definitions_mem_pr
-  (df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
-  (df_pr : Π {n : ℕ}, L₂.pr n → formula L₁) {n} (r : L₂.pr n) :
-  (∏[n] ((app (sum.inr r) ## : formula (L₁ + L₂)) ⟷ (df_pr r))) ∈ definitions L₁ L₂ @df_fn @df_pr :=
+@[simp] lemma dlanguage.definitions.mem_pr {n} (r : L₂.pr n) :
+  (∏[n] ((app (sum.inr r) ## : formula (L₁ + L₂)) ⟷ (D.df_pr r))) ∈ D.thy :=
 by simp[definitions_def, def_pr]; refine or.inr ⟨n, r, by refl⟩
 
-variables {L₁}
-
 theorem extensions_by_definitions_consistent (consis : T₁.consistent)
-  (df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
-  (hdf_fn : ∀ {n} {f : L₂.fn n}, (df_fn f).arity ≤ n + 1)
-  (df_pr : Π {n : ℕ}, L₂.pr n → formula L₁)
-  (hdf_pr : ∀ {n} {r : L₂.pr n}, (df_pr r).arity ≤ n)
-  (b : ∀ {n} (f : L₂.fn n), T₁ ⊢ ∏[n] ∐ (df_fn f)) :
-  theory.consistent (↑T₁ ∪ definitions L₁ L₂ @df_fn @df_pr) :=
+  (b : ∀ {n} (f : L₂.fn n), T₁ ⊢ ∏[n] ∐ (D.df_fn f)) :
+  theory.consistent (↑T₁ ∪ D.thy) :=
 begin
-  suffices : ∃ M, M ⊧ₜₕ (↑T₁ ∪ definitions L₁ L₂ @df_fn @df_pr),
-  { have cl : closed_theory (↑T₁ ∪ definitions L₁ L₂ @df_fn @df_pr),
-    from @union_closed _ _ _ _ (definitions_closed L₁ L₂ @df_fn @hdf_fn @df_pr @hdf_pr),
+  suffices : ∃ M, M ⊧ₜₕ (↑T₁ ∪ D.thy),
+  { have cl : closed_theory (↑T₁ ∪ D.thy),
+    from @union_closed _ _ _ _ _,
     exactI consistent_iff_satisfiable.mpr this },  
   have : ∃ M, M ⊧ₜₕ T₁, from consistent_iff_satisfiable.mp consis,
   rcases this with ⟨M, hM⟩,
   have : ∀ (n) (f : L₂.fn n) (v : finitary (|M|) n), ∃ (d : (|M|)),
-    (df_fn f).val M (d ⌢ (λ i, if h : i < n then v ⟨i, h⟩ else default)),
+    (D.df_fn f).val M (d ⌢ (λ i, if h : i < n then v ⟨i, h⟩ else default)),
   { intros n f,
-    have : M ⊧[default] ∏[n] ∐ (df_fn f), from (soundness (b f) hM) default,
+    have : M ⊧[default] ∏[n] ∐ (D.df_fn f), from (soundness (b f) hM) default,
     simpa[models_univs] using this },
   have : ∀ n : ℕ, ∃ F' : L₂.fn n → finitary (|M|) n → |M|,
-    ∀ (f : L₂.fn n) (v : finitary (|M|) n), (df_fn f).val M (F' f v ⌢ (λ i, if h : i < n then v ⟨i, h⟩ else default)),
+    ∀ (f : L₂.fn n) (v : finitary (|M|) n), (D.df_fn f).val M (F' f v ⌢ (λ i, if h : i < n then v ⟨i, h⟩ else default)),
   { intros n, choose F' hF' using this n, exact ⟨F', hF'⟩ },
   choose F hF using this,
-  let R : Π n, L₂.pr n → finitary (|M|) n → Prop := λ n r v, M ⊧[λ i, if h : i < n then v ⟨i, h⟩ else default] (df_pr r),
+  let R : Π n, L₂.pr n → finitary (|M|) n → Prop := λ n r v, M ⊧[λ i, if h : i < n then v ⟨i, h⟩ else default] (D.df_pr r),
   let M₂ : model (L₁ + L₂) := M.extend F R,
-  have lmm₁ : ∀ {n} (f : L₂.fn n), M₂ ⊧ def_fn f (df_fn f),
+  have lmm₁ : ∀ {n} (f : L₂.fn n), M₂ ⊧ def_fn f (D.df_fn f),
   { intros n f,
-    rw [←eval_is_sentence_iff default (show is_sentence (def_fn f (df_fn f)), by simp[hdf_fn])],
+    rw [←eval_is_sentence_iff default (show is_sentence (def_fn f (D.df_fn f)), by simp[D.hdf_fn])],
     simp[def_fn, models_univs], intros v,
     exact (model.extend_val_coe_iff M _ _).mpr (hF n f v) },
-  have lmm₂ : ∀ {n} (r : L₂.pr n), M₂ ⊧ def_pr r (df_pr r),
+  have lmm₂ : ∀ {n} (r : L₂.pr n), M₂ ⊧ def_pr r (D.df_pr r),
   { intros n r,
-    rw [←eval_is_sentence_iff default (show is_sentence (def_pr r (df_pr r)), by simp[hdf_pr])],
+    rw [←eval_is_sentence_iff default (show is_sentence (def_pr r (D.df_pr r)), by simp[D.hdf_pr])],
     simp[def_pr, models_univs, R], intros v,
     exact iff.symm (model.extend_val_coe_iff M F R), exact ⟨λ _, default⟩ },
   have lmm₃ : M₂ ⊧ₜₕ ↑T₁, from (model.extend_modelsth_coe_iff M _ _).mpr hM, 
@@ -683,33 +675,26 @@ end
 variables (T₁)
 
 theorem extensions_by_definitions_consistent_iff
-  (df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
-  (hdf_fn : ∀ {n} {f : L₂.fn n}, (df_fn f).arity ≤ n + 1)
-  (df_pr : Π {n : ℕ}, L₂.pr n → formula L₁)
-  (hdf_pr : ∀ {n} {r : L₂.pr n}, (df_pr r).arity ≤ n)
-  (b : ∀ {n} (f : L₂.fn n), T₁ ⊢ ∏[n] ∐ (df_fn f)) :
-  theory.consistent (↑T₁ ∪ definitions L₁ L₂ @df_fn @df_pr) ↔ T₁.consistent :=
+  (b : ∀ {n} (f : L₂.fn n), T₁ ⊢ ∏[n] ∐ (D.df_fn f)) :
+  theory.consistent (↑T₁ ∪ D.thy) ↔ T₁.consistent :=
 ⟨λ h, begin
   have : (↑T₁ : theory (L₁ + L₂)).consistent, from theory.consistent_of_consistent_ss h (by simp),
   exact coe_consistent_iff.mp this
-end, λ h,  extensions_by_definitions_consistent L₂ h @df_fn @hdf_fn @df_pr @hdf_pr @b⟩
+end, λ h,  extensions_by_definitions_consistent D h @b⟩
 
 theorem extensions_by_definitions_conservative
-  (df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
-  (hdf_fn : ∀ {n} {f : L₂.fn n}, (df_fn f).arity ≤ n + 1)
-  (df_pr : Π {n : ℕ}, L₂.pr n → formula L₁)
-  (hdf_pr : ∀ {n} {r : L₂.pr n}, (df_pr r).arity ≤ n)
-  (b : ∀ {n} (f : L₂.fn n), T₁ ⊢ ∏[n] ∐ (df_fn f))
+  (b : ∀ {n} (f : L₂.fn n), T₁ ⊢ ∏[n] ∐ (D.df_fn f))
   (p : formula L₁) (hp : p.is_sentence) :
-  ↑T₁ ∪ definitions L₁ L₂ @df_fn @df_pr ⊢ p ↔ T₁ ⊢ p :=
+  ↑T₁ ∪ D.thy ⊢ p ↔ T₁ ⊢ p :=
 begin
   simp[theory.provable_iff_inconsistent],
-  suffices : ¬theory.consistent (↑(T₁+{ ⁻p }) ∪ definitions L₁ L₂ @df_fn @df_pr) ↔ ¬theory.consistent (T₁+{ ⁻p }),
-  { have eq : ((↑T₁ ∪ definitions L₁ L₂ @df_fn @df_pr) +{ ⁻↑p }) = (↑(T₁+{ ⁻p }) ∪ definitions L₁ L₂ @df_fn @df_pr),
+  suffices : ¬theory.consistent (↑(T₁+{ ⁻p }) ∪ D.thy) ↔ ¬theory.consistent (T₁+{ ⁻p }),
+  { have eq : ((↑T₁ ∪ D.thy) +{ ⁻↑p }) = (↑(T₁+{ ⁻p }) ∪ D.thy),
     { ext q, simp[language.language_translation_coe.fun_theory_insert, or_assoc] },
     simpa[eq] using this },
   have : closed_theory (T₁ +{ ⁻p }) := ⟨by { simp[hp], exact λ _, closed_theory.cl }⟩,
-  exact iff.not (by exactI extensions_by_definitions_consistent_iff L₂ (T₁+{ ⁻p }) @df_fn @hdf_fn @df_pr @hdf_pr (λ n f, by simp[b f]))
+  exact iff.not (by exactI extensions_by_definitions_consistent_iff (T₁+{ ⁻p }) D (λ n f, by simp[b f]))
 end
+
 
 end fopl
