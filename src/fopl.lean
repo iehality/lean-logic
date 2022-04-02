@@ -540,19 +540,20 @@ of_fin_of_ge ‹t› m (nat.succ_le_iff.mpr ge)
 
 namespace term
 
-@[simp] lemma sf_subst_eq (v : term L) (t : term L) (i j : ℕ) (h : j ≤ i) :
-  (v^(i + 1)).rew (⧸‹t›^j) = v^i :=
-by { simp[term.pow_eq, nested_rew, h, rewriting_sf_itr.pow_eq'], congr, funext x,
-     simp[show ¬x + (i + 1) < j, by omega, show 1 ≤ x + (i + 1) - j, by omega], omega }
+@[simp] lemma sf_subst_eq (t : term L) {n} (v : finitary (term L) n) (i j : ℕ) (h : j ≤ i) :
+  (t^(i + n)).rew (⧸v^j) = t^i :=
+by { simp[term.pow_eq, nested_rew, h], congr, funext x,
+     have : j + n ≤ x + (i + n), omega,
+     simp[this], omega }
 
-@[simp] lemma sf_subst_eq' (v : term L) (t : term L) (i : ℕ) :
-  (v^(i + 1)).rew ⧸‹t› = v^i :=
-by simpa using sf_subst_eq v t i 0 (by simp)
+@[simp] lemma sf_subst_eq' (t : term L) {n} (v : finitary (term L) n) (i : ℕ) :
+  (t^(i + n)).rew ⧸v = t^i :=
+by simpa using sf_subst_eq t v i 0 (by simp)
 
 @[simp] lemma concat_pow_eq (v : term L) (t : term L) (s : ℕ → term L) :
   (v^1).rew (t ⌢ s) = v.rew s :=
 by simp[concat, rew, pow_eq, nested_rew]
-/--/
+
 @[simp] lemma rew_arity (t : term L) (s : ℕ → term L) : (t.rew s).arity ≤ ⨆ᶠ (i : fin t.arity), (s i).arity :=
 begin
   induction t,
@@ -704,25 +705,16 @@ by simp[has_bot.bot]
 @[simp] lemma formula.ex_arity (p : formula L) : (∐ p : formula L).arity = p.arity - 1 :=
 by simp[has_exists_quantifier.ex, formula.ex]
 
-lemma subst_pow (t : term L) (n i : ℕ) : ı[n ⇝ t]^i = ı[n + i ⇝ t^i] :=
-begin
-  induction i with i IH, { simp }, funext x,
-  cases x; simp[←nat.add_one, ←add_assoc, IH],
-  { have T : x < n + i ∨ x = n + i ∨ n + i < x, exact trichotomous _ _,
-    cases T, { simp[T], }, cases T; simp[T, pow_add, term.pow_add],
-    { have : 0 < x, exact pos_of_gt T, exact (nat.pos_succ this).symm} }
-end
-
 lemma term.pow_rew_distrib (t : term L) (s : ℕ → term L) (i : ℕ): (t.rew s)^i = (t^i).rew (s^i) :=
 by { induction i with i IH generalizong s i, { simp, },
      { simp[←nat.add_one, term.pow_add, rewriting_sf_itr.pow_add, rewriting_sf_itr.pow_eq',
          IH, term.pow_eq, term.nested_rew] } }
 
-@[simp] lemma rew_subst_id : (λ x, (((λ x, #(x + 1)) ^ 1) x).rew ı[0 ⇝ #0]  : ℕ → term L) = ı :=
-by { funext x, cases x; simp }
+--@[simp] lemma rew_subst_id : (λ x, (((λ x, #(x + 1)) ^ 1) x).rew ı[0 ⇝ #0]  : ℕ → term L) = ı :=
+--by { funext x, cases x; simp }
 
 @[simp] lemma rew_slide_eq_concat (s : ℕ → term L) (t : term L) :
-  (λ x, ((s^1) x).rew ı[0 ⇝ t]) = t ⌢ s :=
+  (λ x, ((s^1) x).rew ⧸‹t›) = t ⌢ s :=
 funext (λ y, by cases y; simp)
 
 @[simp] lemma concat_eq_id :
@@ -883,17 +875,25 @@ by { suffices : rew s p = rew ı p, { simp* },
 @[simp] lemma is_sentence_sf {p : formula L} (h : is_sentence p) (i : ℕ) : p^i = p :=
 by simp[has_pow.pow, is_sentence_rew h]
 
-@[simp] lemma sf_subst_eq (p : formula L) (t : term L) (i j : ℕ) (h : j ≤ i) : (p^(i + 1)).rew ı[j ⇝ t] = p^i :=
-by { simp[has_pow.pow, nested_rew, h], congr, funext x,
+@[simp] lemma sf_subst_eq (p : formula L) (t : term L) (i j : ℕ) (h : j ≤ i) : (p^(i + 1)).rew (⧸‹t›^j) = p^i :=
+by { simp[formula.pow_eq, nested_rew, h], congr, funext x,
      have : j < x + (i + 1), from nat.lt_add_left _ _ _ (nat.lt_succ_iff.mpr h),
      simp[this] }
 
-lemma subst_sf_rew (p : formula L) (t : term L) (s : ℕ → term L) :
-  (p.rew ı[0 ⇝ t]).rew s = (p.rew (s^1)).rew ı[0 ⇝ t.rew s] :=
-by { simp[formula.rew, nested_rew], congr, ext n, cases n; simp }
+@[simp] lemma sf_subst_eq' (p : formula L) (t : term L) (i : ℕ) : (p^(i + 1)).rew ⧸‹t› = p^i :=
+by simpa using sf_subst_eq p t i 0 (by simp)
 
-@[simp] lemma sf_subst_eq_0 (p : formula L) (t) : (p^1).rew ı[0 ⇝ t] = p :=
-by simp[nested_rew]
+lemma subst_sf_rew (p : formula L) (t : term L) (s : ℕ → term L) :
+  (p.rew ⧸‹t›).rew s = (p.rew (s^1)).rew ⧸‹t.rew s› :=
+by { simp[nested_rew], congr, ext n, cases n; simp[←nat.add_one] }
+
+lemma subst_vec_sf_rew (p : formula L) {n} (v : finitary (term L) n) (s : ℕ → term L) :
+  (p.rew ⧸v).rew s = (p.rew (s^n)).rew ⧸(λ i, (v i).rew s) :=
+by { simp[nested_rew], congr, ext x, have : x < n ∨ n ≤ x, exact lt_or_ge x n, rcases this; simp[this],
+     }
+
+@[simp] lemma sf_subst_eq_0 (p : formula L) (t) : (p^1).rew ⧸‹t› = p :=
+by simp
 
 lemma pow_rew_distrib  (p : formula L) (s : ℕ → term L) (i : ℕ): (p.rew s)^i = (p^i).rew (s^i) :=
 by { induction i with i IH generalizong s i, { simp },
