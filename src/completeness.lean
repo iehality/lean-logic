@@ -557,96 +557,7 @@ begin
   simp[this]
 end
 
-def def_fn {n} (f : L₂.fn n) (p : formula L₁) : formula (L₁ + L₂) :=
-∏[n] rew ı[0 ⇝ app (sum.inr f) ##] ↑p
-
-def def_pr {n} (r : L₂.pr n) (p : formula L₁) : formula (L₁ + L₂) :=
-∏[n] (app (sum.inr r) ## ⟷ ↑p)
-
-@[simp] lemma def_fn_is_sentence {n} (f : L₂.fn n) (p : formula L₁) (hp : p.arity ≤ n + 1) : is_sentence (def_fn f p) :=
-begin
-  simp[def_fn, is_sentence] at hp ⊢,
-  refine le_trans ((p : formula (L₁ + L₂)).rew_arity ı[0 ⇝ app (sum.inr f) (λ i, #i)]) (fintype_sup_le _),
-  rintros ⟨i, hi⟩, cases i; simp at hi ⊢,
-  { refine fintype_sup_le _, rintros ⟨i, hi⟩, simp[nat.succ_le_iff.mpr hi] },
-  { have : i + 1 < n + 1, from lt_of_lt_of_le hi hp,
-    exact nat.lt_succ_iff.mp this }
-end
-
-@[simp] lemma def_pr_is_sentence {n} (r : L₂.pr n) (p : formula L₁) (hp : p.arity ≤ n) : is_sentence (def_pr r p) :=
-by { simp[def_pr, is_sentence, hp],
-     refine fintype_sup_le _, rintros ⟨i, hi⟩, simpa using nat.succ_le_iff.mpr hi }
-
-theorem extensions_by_definitions_fn (consis : T₁.consistent) (L₂ : language)
-  (df : Π {n : ℕ}, L₂.fn n → formula L₁)
-  (hdf : ∀ {n} {f : L₂.fn n}, (df f).arity ≤ n + 1)
-  (b : ∀ {n} (f : L₂.fn n), T₁ ⊢ ∏[n] ∐ (df f)) :
-  theory.consistent (↑T₁ ∪ ⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (df f)))) :=
-begin
-  suffices : ∃ M, M ⊧ₜₕ (↑T₁ ∪ ⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (df f)))),
-  { have cl : closed_theory (↑T₁ ∪ ⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (df f)))),
-    from ⟨by { simp, rintros p (ph | ⟨n, f, rfl⟩), { exact closed_theory.cl ph }, { simp[hdf] } }⟩,
-    exactI consistent_iff_satisfiable.mpr this },  
-  have : ∃ M, M ⊧ₜₕ T₁, from consistent_iff_satisfiable.mp consis,
-  rcases this with ⟨M, hM⟩,
-  have : ∀ (n) (f : L₂.fn n) (v : finitary (|M|) n), ∃ (d : (|M|)),
-    (df f).val M (d ⌢ (λ i, if h : i < n then v ⟨i, h⟩ else default)),
-  { intros n f,
-    have : M ⊧[default] ∏[n] ∐ (df f), from (soundness (b f) hM) default,
-    simpa[models_univs] using this },
-  have : ∀ n : ℕ, ∃ F' : L₂.fn n → finitary (|M|) n → |M|,
-    ∀ (f : L₂.fn n) (v : finitary (|M|) n), (df f).val M (F' f v ⌢ (λ i, if h : i < n then v ⟨i, h⟩ else default)),
-  { intros n, choose F' hF' using this n, exact ⟨F', hF'⟩ },
-  choose F hF using this,
-  let M₂ : model (L₁ + L₂) := M.extend F default,
-  have lmm₁ : ∀ {n} (f : L₂.fn n), M₂ ⊧ def_fn f (df f),
-  { intros n f,
-    rw [←eval_is_sentence_iff default (show is_sentence (def_fn f (df f)), by simp[hdf])],
-    simp[def_fn, models_univs, ←language.extension.coe_pr₂], intros v,
-    exact (model.extend_val_coe_iff M _ _).mpr (hF n f v) },
-  have lmm₂ : M₂ ⊧ₜₕ ↑T₁, from (model.extend_modelsth_coe_iff M _ _).mpr hM, 
-  refine ⟨M₂, by { simp[lmm₂], intros n, simp[modelsth, lmm₁] }⟩
-end
-
-variables (L₁ L₂)
-
-structure language.definitions :=
-(df_fn : Π {n : ℕ}, L₂.fn n → formula L₁)
-(hdf_fn : ∀ {n} {f : L₂.fn n}, (df_fn f).arity ≤ n + 1)
-(df_pr : Π {n : ℕ}, L₂.pr n → formula L₁)
-(hdf_pr : ∀ {n} {r : L₂.pr n}, (df_pr r).arity ≤ n)
-
 variables {L₁ L₂} (D : L₁.definitions L₂)
-
-def language.definitions.thy : theory (L₁ + L₂) :=
-(⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (D.df_fn f)))) ∪
-(⋃ n, (set.range (λ (r : L₂.pr n), def_pr r (D.df_pr r))))
-
-lemma definitions_def :
-  D.thy = (⋃ n, (set.range (λ (f : L₂.fn n), def_fn f (D.df_fn f)))) ∪
-          (⋃ n, (set.range (λ (r : L₂.pr n), def_pr r (D.df_pr r)))) := rfl
-
-instance language.definitions.closed : closed_theory D.thy :=
-⟨by { simp[definitions_def], rintros p (⟨n, f, rfl⟩ | ⟨n, r, rfl⟩),  { simp[D.hdf_fn] }, { simp[D.hdf_pr] } }⟩
-
-@[simp] lemma language.definitions.mem_fn {n} (f : L₂.fn n) :
-  (∏[n] (D.df_fn f : formula (L₁ + L₂)).rew ı[0 ⇝ app (sum.inr f) ##]) ∈ D.thy :=
-by simp[definitions_def, def_fn]; refine or.inl ⟨n, f, by refl⟩
-
-@[simp] lemma language.definitions.fn {n} (f : L₂.fn n) (v : finitary (term (L₁ + L₂)) n) :
-  D.thy ⊢ (D.df_fn f : formula (L₁ + L₂)).rew (app (sum.inr f) v ⌢ of_fin v) :=
-by { have := provable.nfal_subst'_finitary (axiomatic_classical_logic'.by_axiom (language.definitions.mem_fn D f)) v,
-     simp[formula.nested_rew] at this,
-     refine cast (by { congr, funext x, rcases x; simp }) this }
-
-@[simp] lemma language.definitions.mem_pr {n} (r : L₂.pr n) :
-  (∏[n] ((app (sum.inr r) ## : formula (L₁ + L₂)) ⟷ (D.df_pr r))) ∈ D.thy :=
-by simp[definitions_def, def_pr]; refine or.inr ⟨n, r, by refl⟩
-
-@[simp] lemma language.definitions.pr {n} (r : L₂.pr n) (v : finitary (term (L₁ + L₂)) n) :
-  D.thy ⊢ app (sum.inr r) v ⟷ (D.df_pr r).rew (of_fin v) :=
-by { have := provable.nfal_subst'_finitary (axiomatic_classical_logic'.by_axiom (language.definitions.mem_pr D r)) v,
-     simpa using this }
 
 theorem extensions_by_definitions_consistent (consis : T₁.consistent)
   (b : ∀ {n} (f : L₂.fn n), T₁ ⊢ ∏[n] ∐ (D.df_fn f)) :
@@ -732,7 +643,7 @@ by { induction t; simp[term.coe_inv],
 
 def formula.coe_inv [language.predicate L₂] (D : L₁.definitions L₂) : formula (L₁ + L₂) → formula L₁
 | (app r v) := by { rcases r, { exact app r (λ i, (v i).coe_inv) },
-                              { exact (D.df_pr r).rew (finitary.to_total (λ i, (v i).coe_inv)) } }
+                              { exact (D.df_pr r).rew (of_fin (λ i, (v i).coe_inv)) } }
 | ((t : term (L₁ + L₂)) ≃ u) := t.coe_inv ≃ u.coe_inv
 | ⊤ := ⊤
 | (p ⟶ q) := p.coe_inv ⟶ q.coe_inv
@@ -740,12 +651,23 @@ def formula.coe_inv [language.predicate L₂] (D : L₁.definitions L₂) : form
 | (∏ p) := ∏ p.coe_inv
 
 lemma coe_inv_equiv [language.predicate L₂]
-  (p : formula (L₁ + L₂)) : ↑T₁ ∪ D.thy ⊢ p ⟷ ↑(formula.coe_inv D p : formula L₁) :=
+  (p : formula (L₁ + L₂)) : D.thy ⊢ p ⟷ ↑(formula.coe_inv D p : formula L₁) :=
 begin
   induction p; simp[formula.coe_inv],
   case app : n r v
-  { rcases r; simp[language.extension.coe_pr₁],
-    have := language.definitions.mem_pr, } 
+  { rcases r; simp[language.extension.coe_pr₁, language.language_translation_coe.coe_p_rew],
+    have : (λ x, ↑(of_fin (λ i, (v i).coe_inv) x)) = of_fin v,
+    { funext x, have : x < n ∨ n ≤ x, exact lt_or_ge x n,
+      rcases this with (C | C);  simp[C] },
+    simp[this] },
+  case imply : p q IH_p IH_q
+  { simp[Lindenbaum.eq_of_provable_equiv_0,
+      Lindenbaum.eq_of_provable_equiv_0.mp IH_p, Lindenbaum.eq_of_provable_equiv_0.mp IH_q] },
+  case neg : p IH
+  { refine Lindenbaum.eq_of_provable_equiv_0.mpr (by simp[IH]) },
+  case fal : p IH
+  { have : D.thy^1 ⊢ p ⟷ ↑(formula.coe_inv D p), by simpa using IH,
+    simp[Lindenbaum.eq_of_provable_equiv_0, Lindenbaum.eq_of_provable_equiv.mp this] } 
 end
 
 end fopl
