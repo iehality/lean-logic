@@ -519,7 +519,7 @@ theorem completeness {p : formula L} (hp : is_sentence p) :
   have : ∃ M, M ⊧ₜₕ (T +{⁻p}), exactI consistent_iff_satisfiable.mp consis,
   rcases this with ⟨M, hM⟩,
   have : M ⊧ p, from h M (λ p mem, hM p (by simp[mem])),
-  have : ¬M ⊧ p, by simpa[model.models_neg_iff_of_is_sentence hp] using hM (⁻p) (by simp),
+  have : ¬M ⊧ p, by simpa[models_neg_iff_of_is_sentence hp] using hM (⁻p) (by simp),
   contradiction }⟩
 
 theorem completeness' {p : formula L} : 
@@ -626,48 +626,5 @@ by { have := extensions_by_definitions_conservative T₁ D @b (∏* p) (by simp)
 theorem extensions_by_definitions_consistent_iff_of_predicate [language.predicate L₂] :
   theory.consistent (↑T₁ ∪ D.thy) ↔ T₁.consistent :=
 extensions_by_definitions_consistent_iff T₁ D (λ n f, by { exfalso, exact is_empty.false f })
-
-def term.coe_inv [language.predicate L₂] : term (L₁ + L₂) → term L₁
-| (#n) := #n
-| (app f v) := by { rcases f, { refine app f (λ i, term.coe_inv (v i)) },
-  { exfalso, exact is_empty.false f } }
-
-@[simp] lemma coe_inv_coe (t : term L₁) [language.predicate L₂] : term.coe_inv (↑t : term (L₁ + L₂)) = t :=
-by { induction t; simp[term.coe_inv],
-     case app : n f v IH { rw [language.extension.coe_fn₁ f], simp, funext i, exact IH i } }
-
-@[simp] lemma coe_coe_inv (t : term (L₁ + L₂)) [language.predicate L₂] : (↑(term.coe_inv t) : term (L₁ + L₂)) = t :=
-by { induction t; simp[term.coe_inv],
-     case app : n f v IH
-     { rcases f; simp, { refine ⟨rfl, _⟩, funext i, exact IH i }, { exfalso, exact is_empty.false f } } }
-
-def formula.coe_inv [language.predicate L₂] (D : L₁.definitions L₂) : formula (L₁ + L₂) → formula L₁
-| (app r v) := by { rcases r, { exact app r (λ i, (v i).coe_inv) },
-                              { exact (D.df_pr r).rew (of_fin (λ i, (v i).coe_inv)) } }
-| ((t : term (L₁ + L₂)) ≃ u) := t.coe_inv ≃ u.coe_inv
-| ⊤ := ⊤
-| (p ⟶ q) := p.coe_inv ⟶ q.coe_inv
-| (⁻p) := ⁻p.coe_inv
-| (∏ p) := ∏ p.coe_inv
-
-lemma coe_inv_equiv [language.predicate L₂]
-  (p : formula (L₁ + L₂)) : D.thy ⊢ p ⟷ ↑(formula.coe_inv D p : formula L₁) :=
-begin
-  induction p; simp[formula.coe_inv],
-  case app : n r v
-  { rcases r; simp[language.extension.coe_pr₁, language.language_translation_coe.coe_p_rew],
-    have : (λ x, ↑(of_fin (λ i, (v i).coe_inv) x)) = of_fin v,
-    { funext x, have : x < n ∨ n ≤ x, exact lt_or_ge x n,
-      rcases this with (C | C);  simp[C] },
-    simp[this] },
-  case imply : p q IH_p IH_q
-  { simp[Lindenbaum.eq_of_provable_equiv_0,
-      Lindenbaum.eq_of_provable_equiv_0.mp IH_p, Lindenbaum.eq_of_provable_equiv_0.mp IH_q] },
-  case neg : p IH
-  { refine Lindenbaum.eq_of_provable_equiv_0.mpr (by simp[IH]) },
-  case fal : p IH
-  { have : D.thy^1 ⊢ p ⟷ ↑(formula.coe_inv D p), by simpa using IH,
-    simp[Lindenbaum.eq_of_provable_equiv_0, Lindenbaum.eq_of_provable_equiv.mp this] } 
-end
 
 end fopl

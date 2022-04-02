@@ -1437,13 +1437,9 @@ end
 
 
 namespace model
-
-lemma models_neg_iff_of_is_sentence {p : formula L} (hp : is_sentence p) : M ⊧ ⁻p ↔ ¬M ⊧ p :=
-by { have : M ⊧[default] ⁻p ↔ ¬M ⊧[default] p, by simp,
-     simp only [hp, show is_sentence (⁻p), by simp[hp], eval_is_sentence_iff] at this, exact this }
-
-variables {L₁ L₂ : language.{u}} (M₁ : model L₁)
+variables {L₁ L₂} (M₁ : model L₁)
 open language language.extension
+
 @[reducible] def extend
   (fn : Π {n} (f : L₂.fn n) (v : finitary (|M₁|) n), |M₁|)
   (pr : Π {n} (r : L₂.pr n) (v : finitary (|M₁|) n), Prop) : model (L₁ + L₂) :=
@@ -1488,7 +1484,7 @@ class theory_of_model (M : model L) (T : theory L) :=
 
 namespace language
 namespace language_translation
-variables {L₁ L₂ : language.{u}} {τ : L₁ ↝ᴸ L₂} {M₂ : model L₂}
+variables {L₁ L₂} {τ : L₁ ↝ᴸ L₂} {M₂ : model L₂}
 
 @[reducible] def of_ltr (τ : L₁ ↝ᴸ L₂) (M₂ : model L₂) : model L₁ :=
 { dom := |M₂|,

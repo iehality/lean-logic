@@ -249,4 +249,8 @@ by simp[modelsth]; exact
 by simp[modelsth]; exact
 ⟨λ h n p mem, h p n mem, λ h p n mem, h n p mem⟩
 
+lemma models_neg_iff_of_is_sentence {p : formula L} (hp : is_sentence p) : M ⊧ ⁻p ↔ ¬M ⊧ p :=
+by { have : M ⊧[default] ⁻p ↔ ¬M ⊧[default] p, by simp,
+     simp only [hp, show is_sentence (⁻p), by simp[hp], eval_is_sentence_iff] at this, exact this }
+
 end fopl
