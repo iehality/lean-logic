@@ -104,8 +104,6 @@ instance : has_arrow (formula L) := ⟨formula.imply⟩
 
 instance : has_eq (term L) (formula L) := ⟨formula.equal⟩
 
-local infix ` ≃₁ `:80 := ((≃) : term L → term L → formula L)
-
 instance : has_negation (formula L) := ⟨formula.neg⟩
 
 instance : has_univ_quantifier (formula L) := ⟨formula.fal⟩
@@ -119,7 +117,7 @@ def formula_to_string [has_to_string (term L)] [∀ n, has_to_string (L.pr n)] :
 | (@formula.app _ 2 p v) := has_to_string.to_string (v 0) ++ has_to_string.to_string p ++ has_to_string.to_string (v 1)
 | (@formula.app _ (n + 3) p v) :=
     has_to_string.to_string p ++ "(" ++ @has_to_string.to_string (finitary _ _) _ v ++ ")"
-| (t ≃₁ u) := has_to_string.to_string t ++ " = " ++ has_to_string.to_string u
+| (t ≃ u) := has_to_string.to_string t ++ " = " ++ has_to_string.to_string u
 | (p ⟶ q) := formula_to_string p ++ " → " ++ formula_to_string q
 | (⁻p) := "¬(" ++ formula_to_string p ++ ")"
 | (∏ p) := "∀(" ++ formula_to_string p ++ ")"
@@ -675,7 +673,7 @@ lemma rewriting_sf_perm {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n) : ∀ 
 @[simp] def formula.arity : formula L → ℕ
 | ⊤                 := 0
 | (formula.app p v) := ⨆ᶠ i, (v i).arity
-| (t ≃₁ u)          := max t.arity u.arity
+| (t ≃ u)          := max t.arity u.arity
 | (p ⟶ q)           := max p.arity q.arity
 | (⁻p)              := p.arity
 | (∏ p)             := p.arity - 1
@@ -743,7 +741,7 @@ by unfold has_elem.elem; simp
 @[simp] def rew : (ℕ → term L) → formula L → formula L
 | s ⊤         := ⊤
 | s (app p v) := app p (λ i, (v i).rew s)
-| s (t ≃₁ u)  := (t.rew s) ≃ (u.rew s)
+| s (t ≃ u)  := (t.rew s) ≃ (u.rew s)
 | s (p ⟶ q)  := p.rew s ⟶ q.rew s
 | s (⁻p)      := ⁻(p.rew s)
 | s (∏ p)   := ∏ (p.rew (s^1))
@@ -817,7 +815,7 @@ by simp[pow_eq]; refl
 
 @[simp] lemma top_pow (i : ℕ) : (⊤ : formula L)^i = ⊤ := by refl
 @[simp] lemma bot_pow (i : ℕ) : (⊥ : formula L)^i = ⊥ := by refl
-@[simp] lemma eq_pow (t u : term L) (i : ℕ) : (t ≃₁ u)^i = (t^i ≃ u^i) := rfl
+@[simp] lemma eq_pow (t u : term L) (i : ℕ) : (t ≃ u : formula L)^i = (t^i ≃ u^i) := rfl
 @[simp] lemma imply_pow (p q : formula L) (i : ℕ) : (p ⟶ q)^i = p^i ⟶ q^i := rfl
 @[simp] lemma neg_pow (p : formula L) (i : ℕ) : (⁻p)^i = ⁻(p^i) := rfl
 @[simp] lemma and_pow (p q : formula L) (i : ℕ) : (p ⊓ q)^i = (p^i) ⊓ (q^i) := rfl
@@ -845,7 +843,7 @@ lemma nested_rew : ∀ (p : formula L) (s₀ s₁),
   (p.rew s₀).rew s₁ = p.rew (λ x, (s₀ x).rew s₁)
 | ⊤         _ _ := by simp
 | (❴p❵ v) _ _ := by simp[rew]
-| (t ≃₁ u)  _ _ := by simp[rew]
+| (t ≃ u)  _ _ := by simp[rew]
 | (p ⟶ q)   _ _ := by simp[rew, nested_rew p, nested_rew q]
 | (⁻p)      _ _ := by simp[rew]; refine nested_rew p _ _
 | (∏ p)     _ _ := by { simp[rew, nested_rew p], congr,
@@ -856,7 +854,7 @@ lemma rew_rew : ∀ (p : formula L) {s₀ s₁ : ℕ → term L},
 | ⊤         _ _ _ := by simp
 | (❴p❵ v) _ _ h := by simp[rew, arity] at h ⊢; refine funext
     (λ i, term.rew_rew (v i) (λ m eqn, h _ $ lt_of_lt_of_le eqn (le_fintype_sup _ i)))
-| (t ≃₁ u)  _ _ h := by simp[rew, arity] at h ⊢;
+| (t ≃ u)  _ _ h := by simp[rew, arity] at h ⊢;
     { refine ⟨term.rew_rew _ (λ _ e, h _ (or.inl e)), term.rew_rew _ (λ _ e, h _ (or.inr e))⟩ }
 | (p ⟶ q)   _ _ h := by simp[rew, arity] at h ⊢;
     refine ⟨rew_rew _ (λ _ e, h _ (or.inl e)), rew_rew _ (λ _ e, h _ (or.inr e))⟩
@@ -898,7 +896,7 @@ lemma total_rew_inv :
 | _ _ ⊤              := ⟨⊤, by simp⟩
 | s h (@app _ n p v) := by rcases classical.skolem.mp (λ i : fin n, @term.total_rew_inv _ s h (v i : term L)) with ⟨w, w_p⟩;
     refine ⟨❴p❵ w, by simp[w_p]⟩
-| s h (t ≃₁ u)       := 
+| s h (t ≃ u)       := 
     by rcases term.total_rew_inv s h t with ⟨w₁, e_w₁⟩;
        rcases term.total_rew_inv s h u with ⟨w₂, e_w₂⟩; refine ⟨w₁ ≃ w₂, by simp[e_w₁, e_w₂]⟩
 | s h (p ⟶ q)        := 
@@ -918,18 +916,18 @@ lemma total_rew_inv :
       have : term.rew_var s (v₁ i) = term.rew_var s (v₂ i), from congr_fun h i,
       exact (term.rew_var_inj_of_inj I).mp this },
     { rintros rfl, simp } }
-| (formula.app p v)   (t ≃₁ u)            s I := by simp[rew_var]
+| (formula.app p v)   (t ≃ u)            s I := by simp[rew_var]
 | (formula.app r v)   (p ⟶ q)             s I := by simp[rew_var]
 | (formula.app r v)   (⁻p)                s I := by simp[rew_var]
 | (formula.app r v)   (∏ p)               s I := by simp[rew_var, fal_pow]
-| (t ≃₁ u)            p                   s I := by cases p; simp[rew_var, fal_pow, I]
+| (t ≃ u)            p                   s I := by cases p; simp[rew_var, fal_pow, I]
 | (p ⟶ q)             r                   s I :=
     by cases r; simp[rew_var, fal_pow, @rew_var_inj_of_inj p _ s I, @rew_var_inj_of_inj q _ s I]
 | (⁻p)                q                   s I :=
     by cases q; simp[rew_var, fal_pow, @rew_var_inj_of_inj p _ s I]
 | (∏ p)               ⊤                   s I := by simp[rew_var]
 | (∏ p)               (formula.app r v)   s I := by simp[rew_var]
-| (∏ p)               (t ≃₁ u)            s I := by simp[rew_var]
+| (∏ p)               (t ≃ u)            s I := by simp[rew_var]
 | (∏ p)               (q ⟶ r)             s I := by simp[rew_var]
 | (∏ p)               (⁻q)                s I := by simp[rew_var]
 | (∏ p)               (∏ q)               s I := by {simp[rew_var, fal_pow], 
@@ -947,7 +945,7 @@ lemma total_rew_inv :
 @[simp] def is_open : theory L
 | ⊤          := true
 | (❴p❵ v)  := true
-| (t ≃₁ u)   := true
+| (t ≃ u)   := true
 | (p ⟶ q)    := p.is_open ∧ q.is_open
 | (⁻p)       := p.is_open
 | (∏ p)      := false
@@ -963,7 +961,7 @@ lemma total_rew_inv :
 @[simp] def is_open_rew : ∀ {p : formula L} {s}, (p.rew s).is_open ↔ p.is_open
 | ⊤        s := by simp
 | (❴p❵ v)  s := by simp
-| (t ≃₁ u) s := by simp
+| (t ≃ u) s := by simp
 | (p ⟶ q) s  := by simp[@is_open_rew p s, @is_open_rew q s]
 | (⁻p)     s := by simp[@is_open_rew p s]
 | (∏ p)  s   := by simp
@@ -1092,7 +1090,7 @@ end
 @[simp] def fn_symbols : formula L → set (Σ n, L.fn n)
 | ⊤         := ∅
 | (app r v) := ⋃ i, (v i).symbols
-| (t ≃₁ u)  := t.symbols ∪ u.symbols
+| (t ≃ u)  := t.symbols ∪ u.symbols
 | (p ⟶ q)   := fn_symbols p ∪ q.fn_symbols
 | (⁻p)      := p.fn_symbols
 | (∏ p)     := p.fn_symbols
@@ -1106,7 +1104,7 @@ by simp[fn_symbols']
 @[simp] def pr_symbols : formula L → set (Σ n, L.pr n)
 | ⊤         := ∅
 | (app r v) := {⟨_, r⟩}
-| (t ≃₁ u)  := ∅
+| (t ≃ u)  := ∅
 | (p ⟶ q)   := p.pr_symbols ∪ q.pr_symbols
 | (⁻p)      := p.pr_symbols
 | (∏ p)     := p.pr_symbols
@@ -1120,7 +1118,7 @@ by simp[pr_symbols']
 lemma fn_symbols_finite : ∀ p : formula L, p.fn_symbols.finite
 | ⊤         := by simp
 | (app r v) := set.finite_Union (λ i, (v i).symbols_finite)
-| (t ≃₁ u)  := set.finite.union t.symbols_finite u.symbols_finite
+| (t ≃ u)  := set.finite.union t.symbols_finite u.symbols_finite
 | (p ⟶ q)   := set.finite.union p.fn_symbols_finite q.fn_symbols_finite
 | (⁻p)      := p.fn_symbols_finite
 | (∏ p)     := p.fn_symbols_finite
@@ -1132,7 +1130,7 @@ by { have : p.fn_symbols' n = (λ f : L.fn n, (⟨n, f⟩ : Σ n, L.fn n))⁻¹'
 lemma pr_symbols_finite : ∀ p : formula L, p.pr_symbols.finite
 | ⊤         := by simp
 | (app r v) := by simp
-| (t ≃₁ u)  := by simp
+| (t ≃ u)  := by simp
 | (p ⟶ q)   := set.finite.union p.pr_symbols_finite q.pr_symbols_finite
 | (⁻p)      := p.pr_symbols_finite
 | (∏ p)     := p.pr_symbols_finite
@@ -1150,7 +1148,7 @@ inductive subformula : formula L → formula L → Prop
 @[simp] def complexity : formula L → ℕ
 | ⊤         := 0
 | (app r v) := 0
-| (t ≃₁ u)  := 0
+| (t ≃ u)  := 0
 | (⁻p)      := p.complexity + 1
 | (p ⟶ q)  := max p.complexity q.complexity + 1
 | (∏ p)     := p.complexity + 1
@@ -1167,10 +1165,10 @@ by { simp [wf_lt.lt_iff], intros p h, rcases h }
 
 @[simp] lemma le_app {p : formula L} {n} {r : L.pr n} {v} : p ≤ app r v ↔ p = app r v := by simp[le_iff_lt_or_eq]
 
-@[simp] lemma lt_equal {p : formula L} {t u : term L} : ¬p < t ≃₁ u :=
+@[simp] lemma lt_equal {p : formula L} {t u : term L} : ¬p < (t ≃ u) :=
 by { simp [wf_lt.lt_iff], intros p h, rcases h }
 
-@[simp] lemma le_equal {p : formula L} {t u : term L} : p ≤ t ≃₁ u ↔ p = t ≃₁ u := by simp[le_iff_lt_or_eq]
+@[simp] lemma le_equal {p : formula L} {t u : term L} : p ≤ (t ≃ u) ↔ p = (t ≃ u) := by simp[le_iff_lt_or_eq]
 
 @[simp] lemma lt_verum {p : formula L} : ¬p < ⊤ :=
 by { simp [wf_lt.lt_iff], intros p h, rcases h }
@@ -1241,16 +1239,16 @@ by { induction h; try { simp },
 
 inductive subterm : term L → formula L → Prop
 | app    : ∀ {n} (r : L.pr n) (v : finitary (term L) n) (i), subterm (v i) (app r v)
-| equall : ∀ {t u : term L}, subterm t (t ≃₁ u)
-| equalr : ∀ {t u : term L}, subterm u (t ≃₁ u)
+| equall : ∀ {t u : term L}, subterm t (t ≃ u)
+| equalr : ∀ {t u : term L}, subterm u (t ≃ u)
 
 instance : has_mem (term L) (formula L) := ⟨λ t p, ∃ (t' ≥ t) (p' ≤ p), subterm t' p'⟩
 
 lemma mem_def {t : term L} {p : formula L} : t ∈ p ↔ ∃ (t' ≥ t) (p' ≤ p), subterm t' p' := by refl
 
-@[simp] lemma mem_equall (t u : term L) : t ∈ (t ≃₁ u) := ⟨t, by simp, t ≃₁ u, by simp, subterm.equall⟩ 
+@[simp] lemma mem_equall (t u : term L) : t ∈ (t ≃ u : formula L) := ⟨t, by simp, t ≃ u, by simp, subterm.equall⟩ 
 
-@[simp] lemma mem_equalr (t u : term L) : u ∈ (t ≃₁ u) := ⟨u, by simp, t ≃₁ u, by simp, subterm.equalr⟩ 
+@[simp] lemma mem_equalr (t u : term L) : u ∈ (t ≃ u : formula L) := ⟨u, by simp, t ≃ u, by simp, subterm.equalr⟩ 
 
 lemma mem_of_formula_le_mem {t : term L} {p q : formula L} : t ∈ p → p ≤ q → t ∈ q :=
 by { rintros ⟨t', ht', p', hp', sb⟩ le, refine ⟨t', ht', p', (le_trans hp' le), sb⟩ }
@@ -1266,13 +1264,13 @@ by { rintros ⟨t', ht', p', hp', sb⟩ le, refine ⟨t', le_trans le ht', p', h
  by { rintros ⟨i, le⟩, refine mem_of_term_le_mem ⟨v i, by simp, app r v, by simp, subterm.app r v i⟩ le }⟩
 
 @[simp] lemma mem_equal {s t u : term L} :
-  s ∈ t ≃₁ u ↔ s ≤ t ∨ s ≤ u :=
+  s ∈ (t ≃ u : formula L) ↔ s ≤ t ∨ s ≤ u :=
 ⟨by { rintros ⟨t', ht', p', hp', sb⟩,
-      have hp' : p' = t ≃₁ u ∨ p' <t ≃₁ u, exact eq_or_lt_of_le hp', simp at hp',
+      have hp' : p' = (t ≃ u) ∨ p' < (t ≃ u), exact eq_or_lt_of_le hp', simp at hp',
       rcases hp' with rfl, cases sb, { exact or.inl ht' }, { exact or.inr ht' } },
  by { rintros (le | le),
-      { refine mem_of_term_le_mem ⟨t, by simp, t ≃₁ u, by simp, subterm.equall⟩ le },
-      { refine mem_of_term_le_mem ⟨u, by simp, t ≃₁ u, by simp, subterm.equalr⟩ le } }⟩
+      { refine mem_of_term_le_mem ⟨t, by simp, t ≃ u, by simp, subterm.equall⟩ le },
+      { refine mem_of_term_le_mem ⟨u, by simp, t ≃ u, by simp, subterm.equalr⟩ le } }⟩
 
 @[simp] lemma mem_verum {t : term L} :
   ¬t ∈ (⊤ : formula L) :=

@@ -533,7 +533,7 @@ theorem completeness' {p : formula L} :
 
 variables {L₁ L₂ : language.{u}} {T₁ : theory L₁} [closed_theory T₁]
 
-theorem coe_consistent_iff :
+@[simp] theorem coe_consistent_iff :
   (↑T₁ : theory (L₁ + L₂)).consistent ↔ T₁.consistent :=
 ⟨language.language_translation.consistency _ T₁,
  λ h,
@@ -545,7 +545,7 @@ begin
   exact consistent_iff_satisfiable.mpr ⟨_, this⟩
 end⟩
 
-theorem coe_provable_iff {p : formula L₁} (hp : is_sentence p) :
+theorem coe_provable_iff (p : formula L₁) (hp : is_sentence p) :
   (↑T₁ : theory (L₁ + L₂)) ⊢ ↑p ↔ T₁ ⊢ p :=
 begin
   simp[theory.provable_iff_inconsistent],
@@ -556,6 +556,11 @@ begin
     from @coe_consistent_iff _ _ ((T₁ +{ ⁻p } : theory L₁)) this,
   simp[this]
 end
+
+@[simp] theorem coe_provable_iff' {p : formula L₁} :
+  (↑T₁ : theory (L₁ + L₂)) ⊢ ↑p ↔ T₁ ⊢ p :=
+by { have : (↑T₁ : theory (L₁ + L₂)) ⊢ ↑∏* p ↔ T₁ ⊢ ∏* p, from coe_provable_iff (∏* p) (by simp),
+      simpa[←provable.iff_fal_complete] using this }
 
 variables {L₁ L₂} (D : L₁.definitions L₂)
 

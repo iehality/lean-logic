@@ -6,10 +6,6 @@ namespace fopl
 
 variables {L : language}
 
-local infix ` ≃₁ `:50 := ((≃) : term L → term L → formula L)
-
-
-
 namespace formula
 
 def bfal_le [has_preceq (term L) (formula L)] (t : term L) (p : formula L) : formula L :=
@@ -66,7 +62,7 @@ by simp[bex_le, term.pow_rew_distrib]
   fal_rank (∐ p) = fal_rank p + 1 := rfl
 
 @[simp] lemma fal_rank_eq (t u : term L) :
-  fal_rank (t ≃₁ u) = 0 := rfl
+  fal_rank (t ≃ u : formula L) = 0 := rfl
 
 @[simp] lemma fal_rank_le [has_le_symbol L] (t u : term L) :
   fal_rank (t ≼ u : formula L) = 0 := rfl

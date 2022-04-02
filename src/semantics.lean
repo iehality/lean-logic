@@ -16,8 +16,6 @@ notation `|`M`|` := model.dom M
 
 variables {L : language.{u}} {M : model L}
 
-local infix ` ≃₁ `:80 := ((≃) : term L → term L → formula L)
-
 instance (M : model L) : inhabited M.dom := M.inhabited
 
 variables (M)
@@ -29,7 +27,7 @@ variables (M)
 @[simp] def formula.val : ∀ (e : ℕ → |M|), formula L → Prop
 | _ ⊤                 := true
 | e (formula.app p v) := M.pr p (λ i, (v i).val M e)
-| e (t ≃₁ u)          := t.val M e = u.val M e
+| e (t ≃ u)          := t.val M e = u.val M e
 | e (p ⟶ q)          := p.val e → q.val e
 | e (⁻p)              := ¬(p.val e)
 | e (∏ p)            := ∀ d : M.dom, (p.val (d ⌢ e))
@@ -56,7 +54,7 @@ lemma rew_val_iff : ∀ (s : ℕ → term L) (p : formula L) (e : ℕ → |M|),
   (p.rew s).val M e ↔ p.val M (λ n, (s n).val M e)
 | _ ⊤                 _ := by simp
 | _ (formula.app p v) _ := by simp[formula.rew, rew_val_eq]
-| _ (t ≃₁ u)          _ := by simp[formula.rew, term.val, rew_val_eq]
+| _ (t ≃ u)          _ := by simp[formula.rew, term.val, rew_val_eq]
 | _ (p ⟶ q)           _ := by simp[formula.rew, rew_val_iff _ p, rew_val_iff _ q]
 | _ (⁻p)              _ := by simp[formula.rew, rew_val_iff _ p]
 | s (∏ p)            e :=
@@ -218,7 +216,7 @@ lemma eval_iff : ∀ {p : formula L} {e₁ e₂ : ℕ → |M|},
     funext i, refine @eval_eq _ M (v i) _ _ (λ n eqn, eqs n _),
     have : (v i).arity ≤ ⨆ᶠ i, (v i).arity, from le_fintype_sup (λ i, (v i).arity) i,
     refine (lt_of_lt_of_le eqn this) }
-| (t ≃₁ u)               e₁ e₂ eqs := by { simp[formula.arity] at*,
+| (t ≃ u)               e₁ e₂ eqs := by { simp[formula.arity] at*,
     simp[eval_eq (λ n h, eqs _ (or.inl h)), eval_eq (λ n h, eqs _ (or.inr h))] }
 | (p ⟶ q)                e₁ e₂ eqs := by { simp[formula.arity] at*,
     simp[eval_iff (λ n h, eqs _ (or.inl h)), eval_iff (λ n h, eqs _ (or.inr h))] }

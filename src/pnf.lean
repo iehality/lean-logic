@@ -8,12 +8,6 @@ namespace fopl
 
 variables (L : language.{u})
 
-local infix ` ≃₁ `:80 := ((≃) : term L → term L → formula L)
-
-local prefix `∏₁ `:64 := (has_univ_quantifier.univ : formula L → formula L)
-
-local prefix `∐₁ `:64 := (has_exists_quantifier.ex : formula L → formula L)
-
 structure pnf : Type u := 
 (quantifier : list bool)
 (form : formula L)
@@ -248,7 +242,7 @@ open axiomatic_classical_logic'
 lemma equiv_normalize : ∀ (p : formula L) {T : theory L},  T ⊢ p ⟷ p.normalize
 | ⊤                 T := by simp[formula.normalize]
 | (formula.app p v) T := by simp[formula.normalize]
-| (t ≃₁ u)          T := by simp[formula.normalize]
+| (t ≃ u)          T := by simp[formula.normalize]
 | (p ⟶ q)          T :=
     by { simp[formula.normalize], 
          have : T ⊢ p ⟶ q ⟷ (p.to_pnf.to_formula ⟶ q.to_pnf.to_formula) :=  (equiv_imply_of_equiv (equiv_normalize p) (equiv_normalize q)),
@@ -256,7 +250,7 @@ lemma equiv_normalize : ∀ (p : formula L) {T : theory L},  T ⊢ p ⟷ p.norma
 | (⁻p)              T := by { simp[formula.normalize],
     have : T ⊢ ⁻p ⟷ ⁻p.to_pnf.to_formula, from equiv_neg_of_equiv (equiv_normalize p),
     exact equiv_trans this (equiv_symm (equiv_normalize_neg p.to_pnf T)) }
-| (∏₁ p)           T := by { simp[formula.normalize], refine provable.equiv_univ_of_equiv (equiv_normalize p) }
+| (∏ p)           T := by { simp[formula.normalize], refine provable.equiv_univ_of_equiv (equiv_normalize p) }
 
 def formula.rank (p : formula L) : ℕ := p.to_pnf.rank
 

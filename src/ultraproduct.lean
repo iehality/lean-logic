@@ -1,12 +1,10 @@
-import deduction semantics lindenbaum data.equiv.encodable.basic order.filter.ultrafilter
+import deduction semantics lindenbaum order.filter.ultrafilter
 open encodable
 
 universes u v
 
 namespace fopl
 variables {L : language.{u}} {I : Type u} [inhabited I] (F : ultrafilter I) {𝔄 : I → model L}
-
-local infix ` ≃₁ `:80 := ((≃) : term L → term L → formula L)
 
 def uequiv : (Π i, |𝔄 i|) → (Π i, |𝔄 i|) → Prop :=
 λ u₁ u₂, {i | u₁ i = u₂ i} ∈ F
@@ -169,7 +167,7 @@ theorem fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|),
   ℿ 𝔄 ⫽ F ⊧[λ n, ⟦λ i, e i n⟧*] p ↔ {i | 𝔄 i ⊧[e i] p} ∈ F
 | ⊤                 _ := by { simp, exact F.univ_sets }
 | (formula.app p v) e := models_pr_iff p _ _
-| (t₁ ≃₁ t₂)      e := by simp[models_pr_iff_lmm]; refl
+| (t₁ ≃ t₂)      e := by simp[models_pr_iff_lmm]; refl
 | (p ⟶ q)       e := by { simp[fundamental_param p, fundamental_param q],
     show {i | 𝔄 i ⊧[e i] p} ∈ F → {i | 𝔄 i ⊧[e i] q} ∈ F ↔ {i | 𝔄 i ⊧[e i] p → 𝔄 i ⊧[e i] q} ∈ F,
     split,

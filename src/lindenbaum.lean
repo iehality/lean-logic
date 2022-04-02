@@ -6,8 +6,6 @@ namespace fopl
 open formula
 variables {L : language.{u}} (T : theory L) (i : ℕ)
 
-local infix ` ≃₁ `:80 := ((≃) : term L → term L → formula L)
-
 notation t` ≃[`:50 T :50`] `:0 u:50 := term.equiv T t u
 
 @[symm] lemma term.equiv_refl (T : theory L) (t : term L) : t ≃[T] t := by simp[term.equiv]
@@ -29,8 +27,6 @@ def term.quo (T : theory L) (n : ℕ) (t : term L) : Herbrand T n := quotient.mk
 notation `⟦`t`⟧ᴴ` :max := term.quo _ _ t
 
 instance (T : theory L) (n) : inhabited (Herbrand T n) := ⟨⟦#0⟧ᴴ⟩
-
-local infix ` ≃₁ `:80 := ((≃) : term L → term L → formula L)
 
 namespace Herbrand
 variables {T} {i}
@@ -156,7 +152,7 @@ by induction n; simp[*,numeral]
 def pow : Herbrand T i → Herbrand T (i+1) :=
 λ h, Herbrand.lift_on h (λ u, ⟦u^1⟧ᴴ : term L → Herbrand T (i+1)) $
 λ t₁ t₂ hyp, by { simp[Herbrand.of_eq_of, ←theory.pow_add] at*,
-  rw [show (t₁^1) ≃₁ (t₂^1) = (t₁ ≃ t₂)^1, by simp, provable.sf_itr_sf_itr], exact hyp }
+  rw [show ((t₁^1) ≃ (t₂^1): formula L) = (t₁ ≃ t₂)^1, by simp, provable.sf_itr_sf_itr], exact hyp }
 
 lemma is_sentence_pow {t : term L} (a : t.arity = 0) :
   (⟦t⟧ᴴ : Herbrand T i).pow = ⟦t⟧ᴴ := by simp[pow, Herbrand.of_eq_of, a]
@@ -670,7 +666,7 @@ Herbrand.eq_of_provable_equiv_0.mp h
 
 end Lindenbaum
 
-lemma Lindenbaum.theory (C : theory L) (i : ℕ) : set (Lindenbaum T i) := {l | ∃ p, p ∈ C ∧ l = ⟦p⟧ᴸ}
+noncomputable lemma Lindenbaum.theory (C : theory L) (i : ℕ) : set (Lindenbaum T i) := {l | ∃ p, p ∈ C ∧ l = ⟦p⟧ᴸ}
 
 namespace provable
 open classical_logic axiomatic_classical_logic axiomatic_classical_logic' Herbrand Lindenbaum

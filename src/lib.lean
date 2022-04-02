@@ -549,19 +549,19 @@ instance numeral_has_one {α : Type*} [has_zero α] [has_succ α] : has_one α :
 
 lemma numeral_one_def  {α : Type*} [has_zero α] [has_succ α] : (1 : α) = Succ 0 := rfl 
 
-@[notation_class] class has_eq (α : Sort*) (β : Sort*) := (eq : α → α → β)
+@[notation_class] class has_eq (α : out_param (Sort*)) (β : Sort*) := (eq : α → α → β)
 
 infix ` ≃ `:50 := has_eq.eq
 
-@[notation_class] class has_preceq (α : Sort*) (β : Sort*) := (preceq : α → α → β)
+@[notation_class] class has_preceq (α : out_param (Sort*)) (β : Sort*) := (preceq : α → α → β)
 
 infix ` ≼ `:50 := has_preceq.preceq
 
-@[notation_class] class has_prec (α : Sort*) (β : Sort*) := (prec : α → α → β)
+@[notation_class] class has_prec (α : out_param (Sort*)) (β : Sort*) := (prec : α → α → β)
 
 infix ` ≺ `:50 := has_prec.prec
 
-@[notation_class] class has_elem (α : Sort*) (β : Sort*) := (elem : α → α → β)
+@[notation_class] class has_elem (α : out_param (Sort*)) (β : Sort*) := (elem : α → α → β)
 
 infix ` ∊ `:50 := has_elem.elem
 
@@ -569,7 +569,7 @@ infix ` ∊ `:50 := has_elem.elem
 
 prefix `⁻`:75 := has_negation.neg
 
-@[reducible] def has_eq.ineq {α : Sort*} {β : Sort*} [has_eq α β] [has_negation β] (a b : α) : β := ⁻(a ≃ b)
+@[reducible] def has_eq.ineq {α : out_param (Sort*)} {β : Sort*} [has_eq α β] [has_negation β] (a b : α) : β := ⁻(a ≃ b)
 
 infix ` ≄ `:50 := has_eq.ineq
 

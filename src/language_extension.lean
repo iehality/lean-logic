@@ -6,9 +6,6 @@ namespace fopl
 open term formula
 
 variables {L L₁ L₂ L₃ : language.{u}}
-local infix ` ≃₀ `:50 := ((≃) : term L → term L → formula L)
-local infix ` ≃₁ `:50 := ((≃) : term L₁ → term L₁ → formula L₁)
-local infix ` ≃₂ `:50 := ((≃) : term L₂ → term L₂ → formula L₂)
 
 namespace language
 variables {C : Type u} [decidable_eq C]
