@@ -1438,6 +1438,8 @@ namespace language
 class predicate (L : language.{u}) :=
 (fun_empty : ∀ n, is_empty (L.fn n))
 
+instance [predicate L] (n) : is_empty (L.fn n) := predicate.fun_empty n
+
 end language
 
 end fopl
