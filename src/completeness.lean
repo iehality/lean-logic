@@ -633,16 +633,21 @@ instance language.definitions.closed : closed_theory D.thy :=
   (∏[n] (D.df_fn f : formula (L₁ + L₂)).rew ı[0 ⇝ app (sum.inr f) ##]) ∈ D.thy :=
 by simp[definitions_def, def_fn]; refine or.inl ⟨n, f, by refl⟩
 
-@[simp] lemma language.definitions.equiv_fn {n} (f : L₂.fn n) (v : finitary (term (L₁ + L₂)) n) :
-  D.thy ⊢ (D.df_fn f : formula (L₁ + L₂)).rew (app (sum.inr f) v ⌢ v) :=
-by { have := axiomatic_classical_logic'.by_axiom (language.definitions.mem_fn D f),
-  have := provable.nfal_subst'_finitary this v, simp[formula.nested_rew] at this,
-   }
+@[simp] lemma language.definitions.fn {n} (f : L₂.fn n) (v : finitary (term (L₁ + L₂)) n) :
+  D.thy ⊢ (D.df_fn f : formula (L₁ + L₂)).rew (app (sum.inr f) v ⌢ of_fin v) :=
+by { have := provable.nfal_subst'_finitary (axiomatic_classical_logic'.by_axiom (language.definitions.mem_fn D f)) v,
+     simp[formula.nested_rew] at this,
+     refine cast (by { congr, funext x, rcases x; simp }) this }
 
 @[simp] lemma language.definitions.mem_pr {n} (r : L₂.pr n) :
   (∏[n] ((app (sum.inr r) ## : formula (L₁ + L₂)) ⟷ (D.df_pr r))) ∈ D.thy :=
 by simp[definitions_def, def_pr]; refine or.inr ⟨n, r, by refl⟩
-/--/
+
+@[simp] lemma language.definitions.pr {n} (r : L₂.pr n) (v : finitary (term (L₁ + L₂)) n) :
+  D.thy ⊢ app (sum.inr r) v ⟷ (D.df_pr r).rew (of_fin v) :=
+by { have := provable.nfal_subst'_finitary (axiomatic_classical_logic'.by_axiom (language.definitions.mem_pr D r)) v,
+     simpa using this }
+
 theorem extensions_by_definitions_consistent (consis : T₁.consistent)
   (b : ∀ {n} (f : L₂.fn n), T₁ ⊢ ∏[n] ∐ (D.df_fn f)) :
   theory.consistent (↑T₁ ∪ D.thy) :=

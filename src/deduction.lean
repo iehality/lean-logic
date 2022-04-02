@@ -327,9 +327,10 @@ lemma nfal_subst' {n} {p : formula L} (h : T ⊢ ∏[n] p ) (s : ℕ → term L)
   T ⊢ p.rew (λ x, if x < n then s x else #(x-n)) := (nfal_subst n p s) ⨀ h
 
 lemma nfal_subst'_finitary {n} {p : formula L} (h : T ⊢ ∏[n] p ) (s : finitary (term L) n) :
-  T ⊢ p.rew (λ x, if h : x < n then s ⟨x, h⟩ else #(x-n)) :=
+  T ⊢ p.rew (of_fin s) :=
 by { let s' : ℕ → term L := λ x, if h : x < n then s ⟨x, h⟩ else default,
-     exact cast (by { congr, ext x, by_cases C : x < n; simp[C, s'] }) (nfal_subst' h s')}
+     exact cast (by { congr, ext x, by_cases C : x < n; simp[C, s'],
+       simp[show n ≤ x, from not_lt.mp C] }) (nfal_subst' h s')}
 
 lemma fal_complete_rew (p : formula L) (s : ℕ → term L) :
   T ⊢ (∏* p) ⟶ p.rew s :=

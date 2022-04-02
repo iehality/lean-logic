@@ -641,6 +641,33 @@ begin
                      ... = x + 1 : by simp[add_comm 1 x] } }
 end
 
+def of_fin {n : ℕ} (v : finitary (term L) n) : ℕ → term L :=
+λ x, if h : x < n then v ⟨x, h⟩ else #(x - n)
+
+@[simp] lemma of_fin_app_of_lt {n : ℕ} (v : finitary (term L) n) {x : ℕ} (lt : x < n) :
+  of_fin v x = v ⟨x, lt⟩ :=
+by simp[of_fin, lt]
+
+@[simp] lemma of_fin_app_of_le {n : ℕ} (v : finitary (term L) n) {x : ℕ} (le : n ≤ x) :
+  of_fin v x = #(x - n) :=
+by simp[of_fin, le]
+
+@[simp] lemma of_fin_0 (t : term L) : of_fin‹t› 0 = t := by simp
+
+@[simp] lemma of_fin_eq_nil (v : finitary (term L) 0) : of_fin v = ı :=
+by funext x; simp
+
+@[simp] lemma of_fin_of_lt {n} (v : finitary (term L) n) (m : ℕ) {x} (lt : x < m) : (of_fin v^m) x = #x :=
+by simp[rewriting_sf_itr.pow_eq', lt]
+
+@[simp] lemma of_fin_of_ge {n} (v : finitary (term L) n) (m : ℕ) {x} (ge : m + n ≤ x) : (of_fin v^m) x = #(x - n) :=
+by { simp[rewriting_sf_itr.pow_eq', ge, show ¬x < m, by omega, show n ≤ x - m, by omega], omega }
+
+@[simp] lemma of_fin_of_eq (t : term L) (m : ℕ) : (of_fin ‹t›^m) m = t^m := by simp
+
+@[simp] lemma of_fin_of_gt (t : term L) (m : ℕ) {x} (ge : m < x) : (of_fin ‹t›^m) x = #(x - 1) :=
+of_fin_of_ge ‹t› m (nat.succ_le_iff.mpr ge)
+
 lemma rewriting_sf_perm {s : ℕ → term L} (h : ∀ n, ∃ m, s m = #n) : ∀ n, ∃ m, (s^1) m = #n :=
 λ n, by { cases n, refine ⟨0, by simp⟩,
           rcases h n with ⟨m, e_m⟩, refine ⟨m+1, _⟩, simp[e_m] }
