@@ -1,4 +1,4 @@
-import deduction translation
+import deduction
 
 universes u v
 
@@ -248,81 +248,5 @@ by simp[modelsth]; exact
 @[simp] lemma modelsth_Union {T : ℕ → theory L} : M ⊧ₜₕ (⋃ n, T n) ↔ ∀ n, M ⊧ₜₕ T n :=
 by simp[modelsth]; exact
 ⟨λ h n p mem, h p n mem, λ h p n mem, h n p mem⟩
-
-namespace model
-
-lemma models_neg_iff_of_is_sentence {p : formula L} (hp : is_sentence p) : M ⊧ ⁻p ↔ ¬M ⊧ p :=
-by { have : M ⊧[default] ⁻p ↔ ¬M ⊧[default] p, by simp,
-     simp only [hp, show is_sentence (⁻p), by simp[hp], eval_is_sentence_iff] at this, exact this }
-
-variables {L₁ L₂ : language.{u}} (M₁ : model L₁)
-open language language.extension
-@[reducible] def extend
-  (fn : Π {n} (f : L₂.fn n) (v : finitary (|M₁|) n), |M₁|)
-  (pr : Π {n} (r : L₂.pr n) (v : finitary (|M₁|) n), Prop) : model (L₁ + L₂) :=
-{ dom := |M₁|,
-  inhabited := M₁.inhabited,
-  fn := λ n f v, by { rcases f, { exact M₁.fn f v }, { exact fn f v } },
-  pr := λ n r v, by { rcases r, { exact M₁.pr r v }, { exact pr r v } } }
-
-lemma extend_val_coe_term
-  (fn : Π {n} (f : L₂.fn n) (v : finitary (|M₁|) n), |M₁|)
-  (pr : Π {n} (r : L₂.pr n) (v : finitary (|M₁|) n), Prop) {t : term L₁} {e : ℕ → |M₁|} :
-  @term.val (L₁ + L₂) (M₁.extend @fn @pr) e (t : term (L₁ + L₂)) = @term.val L₁ M₁ e t :=
-by induction t; simp[*, coe_fn₁]
-
-lemma extend_val_coe_iff
-  (fn : Π {n} (f : L₂.fn n) (v : finitary (|M₁|) n), |M₁|)
-  (pr : Π {n} (r : L₂.pr n) (v : finitary (|M₁|) n), Prop) {p : formula L₁} {e : ℕ → |M₁|} :
-  M₁.extend @fn @pr ⊧[e] ↑p ↔ M₁ ⊧[e] p :=
-by induction p generalizing e; simp[coe_pr₁, extend_val_coe_term, *]
-
-lemma extend_models_coe_iff
-  (fn : Π {n} (f : L₂.fn n) (v : finitary (|M₁|) n), |M₁|)
-  (pr : Π {n} (r : L₂.pr n) (v : finitary (|M₁|) n), Prop) {p : formula L₁} :
-  M₁.extend @fn @pr ⊧ ↑p ↔ M₁ ⊧ p :=
-⟨λ h e, (M₁.extend_val_coe_iff @fn @pr).mp (h e), λ h e, (M₁.extend_val_coe_iff @fn @pr).mpr (h e)⟩
-
-lemma extend_modelsth_coe_iff
-  (fn : Π {n} (f : L₂.fn n) (v : finitary (|M₁|) n), |M₁|)
-  (pr : Π {n} (r : L₂.pr n) (v : finitary (|M₁|) n), Prop) {T : theory L₁} :
-  M₁.extend @fn @pr ⊧ₜₕ ↑T ↔ M₁ ⊧ₜₕ T :=
-⟨λ h p mem, (M₁.extend_models_coe_iff @fn @pr).mp (h _ (show ↑p ∈ ↑T, by simp[mem])),
- λ h p mem,
- by { rcases language_translation_coe.mem_coe_iff.mp mem with ⟨p, pmem, rfl⟩,
-      exact (M₁.extend_models_coe_iff @fn @pr).mpr (h _ pmem) }⟩
-
-end model
-
-def theory_of (M : model L) : theory L := {p | M ⊧ p}
-
-class theory_of_model (M : model L) (T : theory L) :=
-(models : M ⊧ₜₕ T)
-
-namespace language
-namespace language_translation
-variables {L₁ L₂ : language.{u}} {τ : L₁ ↝ᴸ L₂} {M₂ : model L₂}
-
-@[reducible] def of_ltr (τ : L₁ ↝ᴸ L₂) (M₂ : model L₂) : model L₁ :=
-{ dom := |M₂|,
-  inhabited := M₂.inhabited,
-  fn := λ n f v, M₂.fn (τ.fn _ f) v,
-  pr := λ n r v, M₂.pr (τ.pr _ r) v }
-
-lemma of_ltr_val_t (e : ℕ → |M₂|) (t : term L₁) : (τ.fun_t t).val M₂ e = t.val (τ.of_ltr M₂) e :=
-by induction t; simp*
-
-lemma models_val_iff {e : ℕ → |M₂|} {p : formula L₁} : τ.of_ltr M₂ ⊧[e] p ↔ M₂ ⊧[e] τ.fun_p p :=
-by induction p generalizing e; try { simp[*, of_ltr_val_t] }
-
-theorem models_iff {p : formula L₁} : τ.of_ltr M₂ ⊧ p ↔ M₂ ⊧ τ.fun_p p:=
-⟨λ h e, models_val_iff.mp (h e), λ h e, models_val_iff.mpr (h e)⟩
-
-theorem theory_models_iff {T : theory L₁} : τ.of_ltr M₂ ⊧ₜₕ T ↔ M₂ ⊧ₜₕ τ.fun_theory T :=
-by simp[fun_theory, modelsth, models_iff]
-
-end language_translation
-
-end language
 
 end fopl
