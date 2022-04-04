@@ -28,8 +28,8 @@ structure language_equiv (L₁ : language) (L₂ : language) :=
 (inv : L₂ ↝ᴸ L₁)
 (left_inv_fn : ∀ n, function.left_inverse (inv.fn n) (ltr.fn n))
 (left_inv_pr : ∀ n, function.left_inverse (inv.pr n) (ltr.pr n))
-(right_inv_fn : ∀ n, function.left_inverse (inv.fn n) (ltr.fn n))
-(right_inv_pr : ∀ n, function.left_inverse (inv.pr n) (ltr.pr n))
+(right_inv_fn : ∀ n, function.right_inverse (inv.fn n) (ltr.fn n))
+(right_inv_pr : ∀ n, function.right_inverse (inv.pr n) (ltr.pr n))
 
 infix ` ↭ᴸ `:25 := language_equiv
 
@@ -222,7 +222,7 @@ by { induction n with n IH generalizing P; simp* }
 
 variables (L₁) (L₂) (L₃)
 
-def refl : translation L₁ L₁ :=
+protected def refl : translation L₁ L₁ :=
 { to_fun := λ _, id,
   map_verum := by simp, map_imply := by simp, map_neg := by simp, map_univ := by simp, map_pow := by simp }
 
@@ -911,8 +911,8 @@ by { simp[theory.consistent_iff_bot], contrapose, simp,
      have := provability τ T ⊥ k, simp at this,
      exact this }
 
-instance refl_conservative : conservative (refl L₁) :=
-{ ax := λ k T, tr_theory (refl L₁) k T,
+instance refl_conservative : conservative (fopl.language.translation.refl L₁) :=
+{ ax := λ k T, tr_theory (fopl.language.translation.refl L₁) k T,
   ax_ss := by { intros, refl },
   specialize := by simp[translation.refl],
   eq_reflexivity := by simp[translation.refl],
@@ -1200,6 +1200,20 @@ def add_sub_refl : L₁ + sub τ ↝ᴸ L₂ :=
 { fn := λ n f, by { rcases f, { exact τ.fn _ f }, { rcases f with ⟨f, hf⟩, exact f } },
   pr := λ n r, by { rcases r, { exact τ.pr _ r }, { rcases r with ⟨r, hr⟩, exact r } } }
 
+noncomputable def add_sub_refl_inv : L₂ ↝ᴸ L₁ + sub τ :=
+{ fn := λ n f, if h : f ∈ set.range (τ.fn n) then
+  by { simp at h, 
+       have : nonempty (L₁.fn n), from nonempty_of_exists h,
+       let f₁ := by exactI classical.epsilon (λ y, τ.fn n y = f),
+       exact f₁ } else
+  by { refine sum.inr ⟨f, by simp[h]⟩ },
+  pr := λ n r, if h : r ∈ set.range (τ.pr n) then
+  by { simp at h, 
+       have : nonempty (L₁.pr n), from nonempty_of_exists h,
+       let r₁ := by exactI classical.epsilon (λ y, τ.pr n y = r),
+       exact r₁ } else
+  by { refine sum.inr ⟨r, by simp[h]⟩ } }
+
 end language_translation
 
 namespace language_equiv
@@ -1219,6 +1233,50 @@ def add_assoc' : L₁ + L₂ + L₃ ↭ᴸ L₁ + (L₂ + L₃) :=
   left_inv_pr := λ n r, by { rcases r; simp[←coe_pr₁, ←coe_pr₂], rcases r; simp[←coe_pr₁, ←coe_pr₂] },
   right_inv_fn := λ n f, by { rcases f; simp[←coe_fn₁, ←coe_fn₂], rcases f; simp[←coe_fn₁, ←coe_fn₂] },
   right_inv_pr := λ n r, by { rcases r; simp[←coe_pr₁, ←coe_pr₂], rcases r; simp[←coe_pr₁, ←coe_pr₂] } }
+
+variables {L₁ L₂}
+
+def of_equivs (Fn : Π n, equiv (L₁.fn n) (L₂.fn n)) (Pr : Π n, equiv (L₁.pr n) (L₂.pr n)) : language_equiv L₁ L₂ :=
+{ ltr := { fn := λ n f, (Fn n).to_fun f, pr := λ n r, (Pr n).to_fun r },
+  inv := { fn := λ n f, (Fn n).inv_fun f, pr := λ n r, (Pr n).inv_fun r },
+  left_inv_fn := λ n, equiv.left_inverse_symm (Fn n),
+  left_inv_pr := λ n, equiv.left_inverse_symm (Pr n),
+  right_inv_fn := λ n, equiv.right_inverse_symm (Fn n),
+  right_inv_pr := λ n, equiv.right_inverse_symm (Pr n) }
+
+@[simp] lemma of_equivs_fn (Fn : Π n, equiv (L₁.fn n) (L₂.fn n)) (Pr : Π n, equiv (L₁.pr n) (L₂.pr n)) {n} (f : L₁.fn n) :
+  (of_equivs Fn Pr).ltr.fn n f = (Fn n) f := rfl
+
+@[simp] lemma of_equivs_pr (Fn : Π n, equiv (L₁.fn n) (L₂.fn n)) (Pr : Π n, equiv (L₁.pr n) (L₂.pr n)) {n} (r : L₁.pr n) :
+  (of_equivs Fn Pr).ltr.pr n r = (Pr n) r := rfl
+
+@[simp] lemma of_equivs_inv_fn (Fn : Π n, equiv (L₁.fn n) (L₂.fn n)) (Pr : Π n, equiv (L₁.pr n) (L₂.pr n)) {n} (f : L₂.fn n) :
+  (of_equivs Fn Pr).inv.fn n f = (Fn n).inv_fun f := rfl
+
+@[simp] lemma of_equivs_inv_pr (Fn : Π n, equiv (L₁.fn n) (L₂.fn n)) (Pr : Π n, equiv (L₁.pr n) (L₂.pr n)) {n} (r : L₂.pr n) :
+  (of_equivs Fn Pr).inv.pr n r = (Pr n).inv_fun r := rfl
+
+variables (τ : language_equiv L₁ L₂)
+
+@[simp] lemma inv_ltr_fn {n} (f : L₁.fn n) : τ.inv.fn n (τ.ltr.fn n f) = f := τ.left_inv_fn n f
+
+@[simp] lemma inv_ltr_pr {n} (r : L₁.pr n) : τ.inv.pr n (τ.ltr.pr n r) = r := τ.left_inv_pr n r
+
+@[simp] lemma ltr_inv_fn {n} (f : L₂.fn n) : τ.ltr.fn n (τ.inv.fn n f) = f := τ.right_inv_fn n f
+
+@[simp] lemma ltr_inv_pr {n} (r : L₂.pr n) : τ.ltr.pr n (τ.inv.pr n r) = r := τ.right_inv_pr n r
+
+@[simp] lemma inv_ltr_t (t : term L₁) : τ.inv.fun_t (τ.ltr.fun_t t) = t :=
+by induction t; simp*
+
+@[simp] lemma ltr_inv_t (t : term L₂) : τ.ltr.fun_t (τ.inv.fun_t t) = t :=
+by induction t; simp*
+
+@[simp] lemma inv_ltr_p (p : formula L₁) : τ.inv.fun_p (τ.ltr.fun_p p) = p :=
+by induction p; simp*
+
+@[simp] lemma ltr_inv_p (p : formula L₂) : τ.ltr.fun_p (τ.inv.fun_p p) = p :=
+by induction p; simp*
 
 end language_equiv
 
@@ -1435,7 +1493,6 @@ begin
     simp[Lindenbaum.eq_of_provable_equiv_0, Lindenbaum.eq_of_provable_equiv.mp this] } 
 end
 
-
 namespace model
 variables {L₁ L₂} (M₁ : model L₁)
 open language language.extension
@@ -1474,6 +1531,32 @@ lemma extend_modelsth_coe_iff
  λ h p mem,
  by { rcases language_translation_coe.mem_coe_iff.mp mem with ⟨p, pmem, rfl⟩,
       exact (M₁.extend_models_coe_iff @fn @pr).mpr (h _ pmem) }⟩
+
+variables (τ : language_equiv L₁ L₂)
+
+@[reducible] def of_equiv : model L₂ :=
+{ dom := |M₁|, inhabited := M₁.inhabited,
+  fn := λ n f, M₁.fn (τ.inv.fn _ f),
+  pr := λ n r, M₁.pr (τ.inv.pr _ r) }
+
+variables {M₁ τ}
+
+@[simp] lemma equiv_term {t : term L₁} {e : ℕ → |M₁|} :
+  @term.val L₂ (M₁.of_equiv τ) e (τ.ltr.fun_t t) = @term.val L₁ M₁ e t :=
+by induction t; simp*
+
+lemma equiv_val_iff {p : formula L₁} {e : ℕ → |M₁|} :
+  M₁.of_equiv τ ⊧[e] τ.ltr.fun_p p ↔ M₁ ⊧[e] p :=
+by induction p generalizing e; simp[of_equiv, *]
+
+@[simp] lemma equiv_models_iff {p : formula L₁} :
+  M₁.of_equiv τ ⊧ τ.ltr.fun_p p ↔ M₁ ⊧ p :=
+⟨λ h e, equiv_val_iff.mp (h e), λ h e, equiv_val_iff.mpr (h e)⟩
+
+@[simp] lemma equiv_modelsth_iff {T : theory L₁} :
+  M₁.of_equiv τ ⊧ₜₕ τ.ltr.fun_theory T ↔ M₁ ⊧ₜₕ T :=
+⟨λ h p mem, equiv_models_iff.mp (h (τ.ltr.fun_p p) ⟨p, by simp[mem]⟩),
+ λ h p mem, by { rcases mem with ⟨p', mem, rfl⟩, exact equiv_models_iff.mpr (h p' mem) }⟩
 
 end model
 
