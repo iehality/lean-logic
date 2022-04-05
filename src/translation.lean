@@ -35,8 +35,8 @@ infix ` ↭ᴸ `:25 := language_equiv
 
 class language_translation_coe (L₁ : language) (L₂ : language) :=
 (ltr : L₁ ↝ᴸ L₂)
-(fn_inj : ∀ {n} (f g : L₁.fn n), ltr.fn n f = ltr.fn n g → f = g)
-(pr_inj : ∀ {n} (p q : L₁.pr n), ltr.pr n p = ltr.pr n q → p = q)
+(fn_inj : ∀ n (f g : L₁.fn n), ltr.fn n f = ltr.fn n g → f = g)
+(pr_inj : ∀ n (p q : L₁.pr n), ltr.pr n p = ltr.pr n q → p = q)
 
 class synonym (L₁ L₂ : language) 
 (leq : L₁ ↭ᴸ L₂)
@@ -341,7 +341,7 @@ def one (L : language) : L ↝ᴸ L :=
 
 instance : has_one (L ↝ᴸ L) := ⟨one L⟩ 
 
-def comp : L₂ ↝ᴸ L₃ → L₁ ↝ᴸ L₂ →  L₁ ↝ᴸ L₃ := λ τ₂₃ τ₁₂,
+def comp : L₂ ↝ᴸ L₃ → L₁ ↝ᴸ L₂ → L₁ ↝ᴸ L₃ := λ τ₂₃ τ₁₂,
 { fn := λ n, (τ₂₃.fn n) ∘ (τ₁₂.fn n),
   pr := λ n, (τ₂₃.pr n) ∘ (τ₁₂.pr n) }
 
@@ -363,6 +363,8 @@ def tr_term : term_homomorphism L₁ L₂ :=
 | (p ⟶ q)              := fun_p p ⟶ fun_p q
 | (⁻p)                 := ⁻fun_p p
 | (∏ (p : formula L₁)) := ∏ fun_p p
+
+def fun_theory (T : theory L₁) : theory L₂ := τ.fun_p '' T
 
 lemma fun_t_rew_var : ∀ (t : term L₁) (s : ℕ → ℕ),
   (fun_t τ t).rew (λ x, #(s x)) = fun_t τ (t.rew (λ x, #(s x)))
@@ -550,8 +552,11 @@ by induction p; simp*
 lemma comp_fun_t : (τ₂₃.comp τ₁₂).fun_t = τ₂₃.fun_t ∘ τ₁₂.fun_t :=
 by funext t; induction t; simp*
 
-lemma comp_fun_p  : (τ₂₃.comp τ₁₂).fun_p = τ₂₃.fun_p ∘ τ₁₂.fun_p :=
+lemma comp_fun_p : (τ₂₃.comp τ₁₂).fun_p = τ₂₃.fun_p ∘ τ₁₂.fun_p :=
 by funext p; induction p; simp[*, comp_fun_t]
+
+lemma comp_fun_theory : (τ₂₃.comp τ₁₂).fun_theory = τ₂₃.fun_theory ∘ τ₁₂.fun_theory :=
+by ext q; simp[fun_theory, comp_fun_p]
 
 @[simp] lemma comp_one : τ.comp 1 = τ := by ext; simp
 
@@ -563,8 +568,6 @@ by funext p; induction p; simp[*, comp_fun_t]
 by simp[is_sentence]
 
 variables (T : theory L₁)
-
-def fun_theory : theory L₂ := τ.fun_p '' T
 
 instance [closed_theory T] : closed_theory (τ.fun_theory T) :=
 ⟨λ p mem, by { rcases mem with ⟨p, mem, rfl⟩, simp[closed_theory.cl mem] }⟩ 
@@ -580,7 +583,10 @@ open language_translation
 instance : language_translation_coe ∅ L :=
 {ltr := from_empty, fn_inj := λ n f g, by rcases f, pr_inj := λ n r s, by rcases r }
 
-variables [σ : language_translation_coe L₁ L₂]
+instance coe_one : language_translation_coe L L :=
+{ltr := 1, fn_inj := λ n f g, by simp, pr_inj := λ n r s, by simp }
+
+variables [σ : language_translation_coe L₁ L₂] (τ : language_translation_coe L₁ L₂)
 include σ
 
 instance {n} : has_coe (L₁.fn n) (L₂.fn n) := ⟨λ n, σ.ltr.fn _ n⟩
@@ -592,10 +598,14 @@ instance : has_coe (term L₁) (term L₂) := ⟨σ.ltr.fun_t⟩
 lemma app_term_extension_eq (t : term L₁) (i : ℕ) :
   (σ.ltr.tr_term i t : term L₂) = ↑t := rfl
 
+lemma coe_def_t (t : term L₁) : (↑t : term L₂) = σ.ltr.fun_t t := rfl
+
 instance : has_coe (formula L₁) (formula L₂) := ⟨σ.ltr.fun_p⟩
 
 lemma app_formula_extension_eq (p : formula L₁) (i : ℕ) :
   (σ.ltr.tr i p : formula L₂) = ↑p := rfl
+
+lemma coe_def_p (p : formula L₁) : (↑p : formula L₂) = σ.ltr.fun_p p := rfl
 
 instance : has_coe (theory L₁) (theory L₂) := ⟨tr_theory σ.ltr.tr 0⟩
 
@@ -658,8 +668,26 @@ by { unfold has_elem.elem, simp [←app_formula_extension_eq_coe 0, tr_app_eq],
 @[simp] lemma coe_term_app {i} (f : L₁.fn i) (v : finitary (term L₁) i) :
   (↑(term.app f v : term L₁) : term L₂) = term.app (f : L₂.fn i) (λ i, v i) := rfl
 
+@[simp] lemma coe_term_app_nullary (c : L₁.fn 0) (v : finitary (term L₁) 0) :
+  (↑(term.app c v : term L₁) : term L₂) = term.app (c : L₂.fn 0) finitary.nil := by simp
+
+@[simp] lemma coe_term_app_unary (f : L₁.fn 1) (v : finitary (term L₁) 1) :
+  (↑(term.app f v : term L₁) : term L₂) = term.app (f : L₂.fn 1) ‹v 0› := by simp; ext; simp
+
+@[simp] lemma coe_term_app_binary (f : L₁.fn 2) (v : finitary (term L₁) 2) :
+  (↑(term.app f v : term L₁) : term L₂) = term.app (f : L₂.fn 2) ‹v 0, v 1› := by simp; ext; simp
+
 @[simp] lemma coe_formula_app {i} (p : L₁.pr i) (v : finitary (term L₁) i) :
   (↑(formula.app p v : formula L₁) : formula L₂) = formula.app (p : L₂.pr i) (λ i, v i) := rfl
+
+@[simp] lemma coe_formula_app_nullary (p : L₁.pr 0) (v : finitary (term L₁) 0) :
+  (↑(formula.app p v : formula L₁) : formula L₂) = formula.app (p : L₂.pr 0) finitary.nil := by simp
+
+@[simp] lemma coe_formula_app_uniary (p : L₁.pr 1) (v : finitary (term L₁) 1) :
+  (↑(formula.app p v : formula L₁) : formula L₂) = formula.app (p : L₂.pr 1) ‹v 0› := by simp; ext; simp
+
+@[simp] lemma coe_formula_app_biary (p : L₁.pr 2) (v : finitary (term L₁) 2) :
+  (↑(formula.app p v : formula L₁) : formula L₂) = formula.app (p : L₂.pr 2) ‹v 0, v 1› := by simp; ext; simp
 
 @[simp] lemma coe_equal (t u : term L₁) :
   (↑(t ≃ u : formula L₁) : formula L₂) = ((↑t : term L₂) ≃ ↑u) := rfl
@@ -734,11 +762,17 @@ fun_p_rew _ p s
 @[simp] lemma coe_is_open (p : formula L₁) : (p : formula L₂).is_open ↔ p.is_open :=
 by { induction p; simp[*] }
 
+@[simp] lemma function_inj {n} {f g : L₁.fn n} : τ.ltr.fn n f = τ.ltr.fn n g ↔ f = g :=
+⟨by { have := τ.fn_inj, exact this _ f g }, congr_arg _⟩
+
+@[simp] lemma predicate_inj {n} {r s : L₁.pr n} : τ.ltr.pr n r = τ.ltr.pr n s ↔ r = s :=
+⟨by { have := τ.pr_inj, exact this _ r s }, congr_arg _⟩
+
 @[simp] lemma function_coe_inj {n} {f g : L₁.fn n} : (f : L₂.fn n) = g ↔ f = g :=
-⟨by { have := σ.fn_inj, exact this f g }, congr_arg _⟩
+⟨by { have := σ.fn_inj, exact this _ f g }, congr_arg _⟩
 
 @[simp] lemma predicate_coe_inj {n} {r s : L₁.pr n} : (r : L₂.pr n) = s ↔ r = s :=
-⟨by { have := σ.pr_inj, exact this r s }, congr_arg _⟩
+⟨by { have := σ.pr_inj, exact this _ r s }, congr_arg _⟩
 
 @[simp] lemma term_coe_inj : ∀ {t u : term L₁}, (t : term L₂) = u ↔ t = u
 | (#m)                   (#n)                   := by simp
@@ -831,7 +865,14 @@ lemma fun_p_inversion_of_le {p₁ : formula L₁} {q₂ : formula L₂} (le : q�
 lemma fun_p_inversion_of_mem {p₁ : formula L₁} {t₂ : term L₂} (mem : t₂ ∈ (↑p₁ : formula L₂)) :
   ∃ (t₁ : term L₁) (mem : t₁ ∈ p₁), t₂ = ↑t₁ := fun_p_inversion_of_mem _ mem
 
-variables (T : theory L₁)
+variables (L₁ L₂ L₃) [language_translation_coe L₁ L₂] [language_translation_coe L₂ L₃]
+
+@[reducible] def comp : language_translation_coe L₁ L₃ :=
+{ ltr := (ltr : L₂ ↝ᴸ L₃).comp (ltr : L₁ ↝ᴸ L₂),
+  fn_inj := λ n f g, by simp,
+  pr_inj := λ n r s, by simp }
+
+variables {L₁} (T : theory L₁)
 
 instance [c : closed_theory T] : closed_theory (↑T : theory L₂) :=
 language_translation.fun_theory.fopl.closed_theory _ _
@@ -840,6 +881,45 @@ lemma fun_theory_insert (p : formula L₁) : (↑(T+{p}) : theory L₂) = ↑T +
 set.image_insert_eq
 
 end language_translation_coe
+
+class commutes (L₁ L₂ L₃) [language_translation_coe L₁ L₂] [language_translation_coe L₂ L₃] [language_translation_coe L₁ L₃] :=
+(comm : (language_translation_coe.ltr : L₂ ↝ᴸ L₃).comp (language_translation_coe.ltr : L₁ ↝ᴸ L₂) = language_translation_coe.ltr)
+
+namespace commutes
+open language_translation language_translation_coe
+variables
+  {L₁ L₂ L₃}
+  [language_translation_coe L₁ L₂] [language_translation_coe L₂ L₃] [language_translation_coe L₁ L₃]
+  [commutes L₁ L₂ L₃]
+
+@[simp] lemma coe_coe_fn_of_commute {n} (f : L₁.fn n) : (↑(↑f : L₂.fn n) : L₃.fn n) = ↑f :=
+by { have : ((ltr : L₂ ↝ᴸ L₃).comp (ltr : L₁ ↝ᴸ L₂)).fn n f = ltr.fn n f,
+       from congr (congr_fun (congr_arg language_translation.fn comm) n) rfl,
+     simpa using this }
+
+@[simp] lemma coe_coe_pr_of_commute {n} (r : L₁.pr n) : (↑(↑r : L₂.pr n) : L₃.pr n) = ↑r :=
+by { have : ((ltr : L₂ ↝ᴸ L₃).comp (ltr : L₁ ↝ᴸ L₂)).pr n r = ltr.pr n r,
+       from congr (congr_fun (congr_arg language_translation.pr comm) n) rfl,
+     simpa using this }
+
+@[simp] lemma coe_coe_t_of_commute (t : term L₁) : (↑(↑t : term L₂) : term L₃) = ↑t :=
+by { have : ((ltr : L₂ ↝ᴸ L₃).comp (ltr : L₁ ↝ᴸ L₂)).fun_t t = ltr.fun_t t,
+       from congr (congr_arg language_translation.fun_t comm) rfl,
+     simpa[comp_fun_t] using this }
+
+@[simp] lemma coe_coe_p_of_commute (p : formula L₁) : (↑(↑p : formula L₂) : formula L₃) = ↑p :=
+by { have : ((ltr : L₂ ↝ᴸ L₃).comp (ltr : L₁ ↝ᴸ L₂)).fun_p p = ltr.fun_p p,
+       from congr (congr_arg language_translation.fun_p comm) rfl,
+     simpa[comp_fun_p] using this }
+
+@[simp] lemma coe_coe_th_of_commute (T : theory L₁) : (↑(↑T : theory L₂) : theory L₃) = ↑T :=
+by { have : ((ltr : L₂ ↝ᴸ L₃).comp (ltr : L₁ ↝ᴸ L₂)).fun_theory T = ltr.fun_theory T,
+       from congr (congr_arg language_translation.fun_theory comm) rfl,
+     simpa[comp_fun_theory] using this }
+
+instance comp_commutes : @commutes L₁ L₂ L₃ _ _ (comp L₁ L₂ L₃) := { comm := by refl }
+
+end commutes
 
 namespace language_translation
 variables (τ : L₁ ↝ᴸ L₂)
@@ -1194,30 +1274,29 @@ end
 
 variables {L₁} {L₂} (τ : L₁ ↝ᴸ L₂)
 
-def sub : language.{u} := { fn := λ n, (set.compl $ set.range (τ.fn n)), pr := λ n, (set.compl $ set.range (τ.pr n)) }
-
-def add_sub_refl : L₁ + sub τ ↝ᴸ L₂ :=
-{ fn := λ n f, by { rcases f, { exact τ.fn _ f }, { rcases f with ⟨f, hf⟩, exact f } },
-  pr := λ n r, by { rcases r, { exact τ.pr _ r }, { rcases r with ⟨r, hr⟩, exact r } } }
-
-noncomputable def add_sub_refl_inv : L₂ ↝ᴸ L₁ + sub τ :=
-{ fn := λ n f, if h : f ∈ set.range (τ.fn n) then
-  by { simp at h, 
-       have : nonempty (L₁.fn n), from nonempty_of_exists h,
-       let f₁ := by exactI classical.epsilon (λ y, τ.fn n y = f),
-       exact f₁ } else
-  by { refine sum.inr ⟨f, by simp[h]⟩ },
-  pr := λ n r, if h : r ∈ set.range (τ.pr n) then
-  by { simp at h, 
-       have : nonempty (L₁.pr n), from nonempty_of_exists h,
-       let r₁ := by exactI classical.epsilon (λ y, τ.pr n y = r),
-       exact r₁ } else
-  by { refine sum.inr ⟨r, by simp[h]⟩ } }
-
 end language_translation
 
+namespace language_translation_coe
+variables (L₁ L₂) [language_translation_coe L₂ L₁]
+
+def sub : language.{u} :=
+{ fn := λ n, (set.compl $ set.range (coe : L₂.fn n → L₁.fn n)),
+  pr := λ n, (set.compl $ set.range (coe : L₂.pr n → L₁.pr n)) }
+
+end language_translation_coe
+
 namespace language_equiv
-open language_translation extension
+open language_translation language_translation_coe extension
+variables {L₁ L₂}
+
+def of_equivs (Fn : Π n, equiv (L₁.fn n) (L₂.fn n)) (Pr : Π n, equiv (L₁.pr n) (L₂.pr n)) : language_equiv L₁ L₂ :=
+{ ltr := { fn := λ n f, (Fn n).to_fun f, pr := λ n r, (Pr n).to_fun r },
+  inv := { fn := λ n f, (Fn n).inv_fun f, pr := λ n r, (Pr n).inv_fun r },
+  left_inv_fn := λ n, equiv.left_inverse_symm (Fn n),
+  left_inv_pr := λ n, equiv.left_inverse_symm (Pr n),
+  right_inv_fn := λ n, equiv.right_inverse_symm (Fn n),
+  right_inv_pr := λ n, equiv.right_inverse_symm (Pr n) }
+
 variables (L₁ L₂ L₃)
 
 def add_comm' : L₁ + L₂ ↭ᴸ L₂ + L₁ :=
@@ -1234,16 +1313,6 @@ def add_assoc' : L₁ + L₂ + L₃ ↭ᴸ L₁ + (L₂ + L₃) :=
   right_inv_fn := λ n f, by { rcases f; simp[←coe_fn₁, ←coe_fn₂], rcases f; simp[←coe_fn₁, ←coe_fn₂] },
   right_inv_pr := λ n r, by { rcases r; simp[←coe_pr₁, ←coe_pr₂], rcases r; simp[←coe_pr₁, ←coe_pr₂] } }
 
-variables {L₁ L₂}
-
-def of_equivs (Fn : Π n, equiv (L₁.fn n) (L₂.fn n)) (Pr : Π n, equiv (L₁.pr n) (L₂.pr n)) : language_equiv L₁ L₂ :=
-{ ltr := { fn := λ n f, (Fn n).to_fun f, pr := λ n r, (Pr n).to_fun r },
-  inv := { fn := λ n f, (Fn n).inv_fun f, pr := λ n r, (Pr n).inv_fun r },
-  left_inv_fn := λ n, equiv.left_inverse_symm (Fn n),
-  left_inv_pr := λ n, equiv.left_inverse_symm (Pr n),
-  right_inv_fn := λ n, equiv.right_inverse_symm (Fn n),
-  right_inv_pr := λ n, equiv.right_inverse_symm (Pr n) }
-
 @[simp] lemma of_equivs_fn (Fn : Π n, equiv (L₁.fn n) (L₂.fn n)) (Pr : Π n, equiv (L₁.pr n) (L₂.pr n)) {n} (f : L₁.fn n) :
   (of_equivs Fn Pr).ltr.fn n f = (Fn n) f := rfl
 
@@ -1256,7 +1325,8 @@ def of_equivs (Fn : Π n, equiv (L₁.fn n) (L₂.fn n)) (Pr : Π n, equiv (L₁
 @[simp] lemma of_equivs_inv_pr (Fn : Π n, equiv (L₁.fn n) (L₂.fn n)) (Pr : Π n, equiv (L₁.pr n) (L₂.pr n)) {n} (r : L₂.pr n) :
   (of_equivs Fn Pr).inv.pr n r = (Pr n).inv_fun r := rfl
 
-variables (τ : language_equiv L₁ L₂)
+section
+variables (τ : L₁ ↭ᴸ L₂)
 
 @[simp] lemma inv_ltr_fn {n} (f : L₁.fn n) : τ.inv.fn n (τ.ltr.fn n f) = f := τ.left_inv_fn n f
 
@@ -1277,6 +1347,58 @@ by induction p; simp*
 
 @[simp] lemma ltr_inv_p (p : formula L₂) : τ.ltr.fun_p (τ.inv.fun_p p) = p :=
 by induction p; simp*
+
+end
+
+section
+variables [τ : language.language_translation_coe L₁ L₂]
+include τ
+
+@[reducible] noncomputable def add_sub' : L₁ + sub L₂ L₁ ↭ᴸ L₂ :=
+of_equivs (λ n, 
+  let F : L₂.fn n → (L₁ + sub L₂ L₁).fn n :=
+        λ f, if h : f ∈ set.range (τ.ltr.fn n) then
+          by { have : nonempty (L₁.fn n), from nonempty_of_exists h,
+               exact ↑(by exactI classical.epsilon (λ y, τ.ltr.fn n y = f)) }
+        else sum.inr ⟨f, h⟩ in
+    { to_fun := λ f, by { rcases f, { exact τ.ltr.fn _ f }, { rcases f with ⟨f, hf⟩, exact f } },
+      inv_fun := F,
+      left_inv := λ f,
+        by{ rcases f with (f | ⟨f, hf⟩); simp,
+            { simp[F, ←coe_fn₁], exact classical.epsilon_singleton f },
+            { simp[F, -set.mem_range, show f ∉ (set.range (τ.ltr.fn n)), from hf], refl } }, 
+      right_inv := λ f,
+        by{ simp, by_cases C : f ∈ set.range (τ.ltr.fn n),
+            { rcases C with ⟨f, rfl⟩, 
+              have : F (τ.ltr.fn n f) = sum.inl f,
+              { simp[F, ←coe_fn₁], exact classical.epsilon_singleton f },
+              rw[this] },
+            { have : F f = sum.inr ⟨f, C⟩, by simp[F, -set.mem_range, C],
+              rw[this] } } })
+(λ n,
+  let F : L₂.pr n → (L₁ + sub L₂ L₁).pr n :=
+        λ f, if h : f ∈ set.range (τ.ltr.pr n) then
+          by { have : nonempty (L₁.pr n), from nonempty_of_exists h,
+               exact ↑(by exactI classical.epsilon (λ y, τ.ltr.pr n y = f)) }
+        else sum.inr ⟨f, h⟩ in
+    { to_fun := λ f, by { rcases f, { exact τ.ltr.pr _ f }, { rcases f with ⟨f, hf⟩, exact f } },
+      inv_fun := F,
+      left_inv := λ f,
+        by{ rcases f with (f | ⟨f, hf⟩); simp,
+            { simp[F, ←coe_pr₁], exact classical.epsilon_singleton f },
+            { simp[F, -set.mem_range, show f ∉ (set.range (τ.ltr.pr n)), from hf], refl } },      
+      right_inv := λ f,
+        by{ simp, by_cases C : f ∈ set.range (τ.ltr.pr n),
+            { rcases C with ⟨f, rfl⟩, 
+              have : F (τ.ltr.pr n f) = sum.inl f,
+              { simp[F, ←coe_pr₁], exact classical.epsilon_singleton f },
+              rw[this] },
+            { have : F f = sum.inr ⟨f, C⟩, by simp[F, -set.mem_range, C],
+              rw[this] } } })
+
+lemma add_sub'_add_left_commute : (add_sub' L₁ L₂).ltr.comp (extension.add_left) = τ.ltr := by ext n f; simp[add_sub', add_left]
+
+end
 
 end language_equiv
 
@@ -1532,14 +1654,14 @@ lemma extend_modelsth_coe_iff
  by { rcases language_translation_coe.mem_coe_iff.mp mem with ⟨p, pmem, rfl⟩,
       exact (M₁.extend_models_coe_iff @fn @pr).mpr (h _ pmem) }⟩
 
-variables (τ : language_equiv L₁ L₂)
+variables (τ : L₁ ↭ᴸ L₂)
 
 @[reducible] def of_equiv : model L₂ :=
 { dom := |M₁|, inhabited := M₁.inhabited,
   fn := λ n f, M₁.fn (τ.inv.fn _ f),
   pr := λ n r, M₁.pr (τ.inv.pr _ r) }
 
-variables {M₁ τ}
+variables {M₁}
 
 @[simp] lemma equiv_term {t : term L₁} {e : ℕ → |M₁|} :
   @term.val L₂ (M₁.of_equiv τ) e (τ.ltr.fun_t t) = @term.val L₁ M₁ e t :=
@@ -1551,12 +1673,12 @@ by induction p generalizing e; simp[of_equiv, *]
 
 @[simp] lemma equiv_models_iff {p : formula L₁} :
   M₁.of_equiv τ ⊧ τ.ltr.fun_p p ↔ M₁ ⊧ p :=
-⟨λ h e, equiv_val_iff.mp (h e), λ h e, equiv_val_iff.mpr (h e)⟩
+⟨λ h e, (equiv_val_iff τ).mp (h e), λ h e, (equiv_val_iff τ).mpr (h e)⟩
 
 @[simp] lemma equiv_modelsth_iff {T : theory L₁} :
   M₁.of_equiv τ ⊧ₜₕ τ.ltr.fun_theory T ↔ M₁ ⊧ₜₕ T :=
-⟨λ h p mem, equiv_models_iff.mp (h (τ.ltr.fun_p p) ⟨p, by simp[mem]⟩),
- λ h p mem, by { rcases mem with ⟨p', mem, rfl⟩, exact equiv_models_iff.mpr (h p' mem) }⟩
+⟨λ h p mem, (equiv_models_iff τ).mp (h (τ.ltr.fun_p p) ⟨p, by simp[mem]⟩),
+ λ h p mem, by { rcases mem with ⟨p', mem, rfl⟩, exact (equiv_models_iff τ).mpr (h p' mem) }⟩
 
 end model
 

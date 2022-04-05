@@ -1,7 +1,7 @@
 import language_extension consistency lindenbaum
 open encodable
 
-universes u
+universes u v
 
 namespace fopl
 
@@ -531,9 +531,11 @@ theorem completeness' {p : formula L} :
   have := @formula.rew_rew _ p (λ x, ite (x < p.arity) #x #(x - p.arity)) ı (λ m lt, by simp[lt]),
   simpa[this] using lmm }⟩
 
+section
 variables {L₁ L₂ : language.{u}} {T₁ : theory L₁} [closed_theory T₁]
+open language language.language_translation language.language_translation_coe
 
-@[simp] theorem coe_consistent_iff :
+@[simp] theorem add_coe_consistent_iff :
   (↑T₁ : theory (L₁ + L₂)).consistent ↔ T₁.consistent :=
 ⟨language.language_translation.consistency _ T₁,
  λ h,
@@ -541,27 +543,51 @@ begin
   have : ∃ M₁, M₁ ⊧ₜₕ T₁, from consistent_iff_satisfiable.mp h,
   rcases this with ⟨M₁, hM₁⟩,
   let M₂ : model (L₁ + L₂) := M₁.extend default default,
-  have : M₁.extend default default ⊧ₜₕ (↑T₁ : theory (L₁ + L₂)), from (M₁.extend_modelsth_coe_iff default default).mpr hM₁,
+  have : M₂ ⊧ₜₕ (↑T₁ : theory (L₁ + L₂)), from (M₁.extend_modelsth_coe_iff default default).mpr hM₁,
   exact consistent_iff_satisfiable.mpr ⟨_, this⟩
 end⟩
 
+section
+variables (L₁ L₂) [language.language_translation_coe L₁ L₂]
+
+@[simp] theorem coe_consistent_iff  :
+  (↑T₁ : theory L₂).consistent ↔ T₁.consistent :=
+⟨language.language_translation.consistency _ T₁,
+λ h, begin
+  have : ∃ M₁, M₁ ⊧ₜₕ T₁, from consistent_iff_satisfiable.mp h,
+  rcases this with ⟨M₁, hM₁⟩,
+  let M₂ : model (L₁ + sub L₂ L₁) := M₁.extend default default,
+  have : M₂ ⊧ₜₕ (↑T₁ : theory (L₁ + sub L₂ L₁)), from (M₁.extend_modelsth_coe_iff default default).mpr hM₁,
+  have e : (language_equiv.add_sub' L₁ L₂).ltr.fun_theory ↑T₁ = ↑T₁,
+  { have : ((language_equiv.add_sub' L₁ L₂).ltr.comp extension.add_left).fun_theory T₁ = ltr.fun_theory T₁,
+      by simp[language_equiv.add_sub'_add_left_commute L₁ L₂],
+    simpa[comp_fun_theory] using this },
+  have : M₂.of_equiv (language_equiv.add_sub' L₁ L₂) ⊧ₜₕ ↑T₁,
+    by simpa[e] using (model.equiv_modelsth_iff (language.language_equiv.add_sub' L₁ L₂)).mpr this,
+  exact model_consistent this
+end⟩
+
 theorem coe_provable_iff (p : formula L₁) (hp : is_sentence p) :
-  (↑T₁ : theory (L₁ + L₂)) ⊢ ↑p ↔ T₁ ⊢ p :=
+  (↑T₁ : theory L₂) ⊢ ↑p ↔ T₁ ⊢ p :=
 begin
   simp[theory.provable_iff_inconsistent],
-  suffices : ¬theory.consistent (↑(T₁ +{ ⁻p } : theory L₁) : theory (L₁ + L₂)) ↔ ¬theory.consistent (T₁ +{ ⁻p }),
+  suffices : ¬theory.consistent (↑(T₁ +{ ⁻p } : theory L₁) : theory L₂) ↔ ¬theory.consistent (T₁ +{ ⁻p }),
     by simpa[language.language_translation_coe.fun_theory_insert] using this, 
   have : closed_theory (T₁ +{ ⁻p }) := ⟨by { simp[hp], exact λ _, closed_theory.cl }⟩,
-  have : theory.consistent (↑(T₁ +{ ⁻p } : theory L₁) : theory (L₁ + L₂)) ↔ theory.consistent (T₁ +{ ⁻p }),
-    from @coe_consistent_iff _ _ ((T₁ +{ ⁻p } : theory L₁)) this,
+  have : theory.consistent (↑(T₁ +{ ⁻p } : theory L₁) : theory L₂) ↔ theory.consistent (T₁ +{ ⁻p }),
+    by exactI coe_consistent_iff L₁ L₂,
   simp[this]
 end
 
 @[simp] theorem coe_provable_iff' {p : formula L₁} :
-  (↑T₁ : theory (L₁ + L₂)) ⊢ ↑p ↔ T₁ ⊢ p :=
-by { have : (↑T₁ : theory (L₁ + L₂)) ⊢ ↑∏* p ↔ T₁ ⊢ ∏* p, from coe_provable_iff (∏* p) (by simp),
+  (↑T₁ : theory L₂) ⊢ ↑p ↔ T₁ ⊢ p :=
+by { have : (↑T₁ : theory L₂) ⊢ ↑∏* p ↔ T₁ ⊢ ∏* p, from coe_provable_iff L₁ L₂ (∏* p) (by simp),
       simpa[←provable.iff_fal_complete] using this }
 
+end
+  
+section
+-- Extensions by definitions
 variables {L₁ L₂} (D : L₁.definitions L₂)
 
 theorem extensions_by_definitions_consistent (consis : T₁.consistent)
@@ -604,7 +630,7 @@ theorem extensions_by_definitions_consistent_iff
   theory.consistent (↑T₁ ∪ D.thy) ↔ T₁.consistent :=
 ⟨λ h, begin
   have : (↑T₁ : theory (L₁ + L₂)).consistent, from theory.consistent_of_consistent_ss h (by simp),
-  exact coe_consistent_iff.mp this
+  exact add_coe_consistent_iff.mp this
 end, λ h,  extensions_by_definitions_consistent D h @b⟩
 
 theorem extensions_by_definitions_conservative
@@ -631,5 +657,112 @@ by { have := extensions_by_definitions_conservative T₁ D @b (∏* p) (by simp)
 theorem extensions_by_definitions_consistent_iff_of_predicate [language.predicate L₂] :
   theory.consistent (↑T₁ ∪ D.thy) ↔ T₁.consistent :=
 extensions_by_definitions_consistent_iff T₁ D (λ n f, by { exfalso, exact is_empty.false f })
+
+end
+
+end
+
+variables {L₁ L₂ : language.{u}} {T₁ U₁ : theory L₁}
+open language language.language_translation language.language_translation_coe
+
+namespace theory
+
+section
+variables [closed_theory T₁] [closed_theory U₁]
+open axiomatic_classical_logic' axiomatic_classical_logic
+
+@[simp] lemma le_coe_iff : (↑T₁ : theory (L₁ + L₂)) ≤ ↑U₁ ↔ T₁ ≤ U₁ :=
+⟨λ h p b,
+  by { have : (↑T₁ : theory (L₁ + L₂)) ⊢ ↑p, by simp[b],
+       have : ↑U₁ ⊢ ↑p, from h this,
+       simpa using this },
+ λ h p b,
+begin
+  rcases provable.proof_conjunction b with ⟨P, hP, b⟩,
+  have : ∀ p, ∃ p₁ : formula L₁, p ∉ P ∨ p = ↑p₁ ∧ p₁ ∈ T₁,
+  { intros p, by_cases hp : p ∈ P,
+    { rcases language.language_translation_coe.mem_coe_iff.mp (hP p hp) with ⟨p₁, hp₁, rfl⟩,
+      refine ⟨p₁, by simp[hp₁]⟩ },
+    { simp[hp] } },
+  choose coe_inv hcoe_inv using this,
+  have : ↑U₁ ⊢ conjunction P,
+    from provable.conjunction_provable
+      (λ p hp, by { rcases language.language_translation_coe.mem_coe_iff.mp (hP p hp) with ⟨p₁, hp₁, rfl⟩,
+        simpa using h (by_axiom hp₁) }),
+  exact b.extend ⨀ this
+end⟩
+
+instance extend_coe [extend T₁ U₁] : extend (↑T₁ : theory (L₁ + L₂)) ↑U₁ := ⟨le_coe_iff.mpr extend.le⟩
+
+end
+
+variables [language_translation_coe L₁ L₂] {T₁ U₁} {T₂ U₂ : theory L₂} {L₃ : language.{u}}
+
+def lle (T₁ : theory L₁) (T₂ : theory L₂) : Prop := ∀ ⦃p : formula L₁⦄, T₁ ⊢ p → T₂ ⊢ p
+
+@[simp] lemma lle_refl (T : theory L) : lle T T := λ p h, by simp[coe_def_p, ltr]; exact h
+
+@[trans] lemma lle_trans [language_translation_coe L₁ L₂] [language_translation_coe L₂ L₃] [language_translation_coe L₁ L₃]
+  {T₁ : theory L₁} {T₂ : theory L₂} {T₃ : theory L₃} [commutes L₁ L₂ L₃] :
+  lle T₁ T₂ → lle T₂ T₃ → lle T₁ T₃ :=
+λ le₁₂ le₂₃ p₁ b₁, by simpa[commutes.coe_coe_p_of_commute p₁] using le₂₃ (le₁₂ b₁)
+
+lemma lle_of_le (h : T₁ ≤ U₁) : lle T₁ U₁ := λ p b, by simp[coe_def_p, ltr]; exact h b
+
+variables {T₁ U₂} (T₂)
+
+lemma lle_of_lle_of_le (h : lle T₁ T₂) (le : T₂ ≤ U₂) : lle T₁ U₂ := λ p b, le (h b)
+
+variables {T₁ T₂} (U₁)
+
+lemma lle_of_le_of_lle (le : T₁ ≤ U₁) (h : lle U₁ T₂) : lle T₁ T₂ := λ p b, h (le b)
+
+end theory
+
+class lextend {L₁ : language.{u}} {L₂ : language.{u}} [language_translation_coe L₁ L₂] (T₁ : theory L₁) (T₂ : theory L₂) :=
+(le : theory.lle T₁ T₂)
+
+lemma provable.lextend [language_translation_coe L₁ L₂] {T₁ : theory L₁} {p} (b : T₁ ⊢ p) (T₂ : theory L₂)
+  [lextend T₁ T₂] : T₂ ⊢ p := lextend.le b
+
+namespace theory
+variables  [language_translation_coe L₁ L₂] (T₁ U₁) (T₂ U₂ : theory L₂) 
+
+instance lextend_refl : lextend T₁ T₁ := ⟨by simp⟩
+
+instance lextend_of_extend [extend T₁ U₁] : lextend T₁ U₁ := ⟨lle_of_le extend.le⟩
+
+instance lextend_sf [lextend T₁ T₂] : lextend (⤊T₁) (⤊T₂) :=
+⟨λ p h, by {
+  have : T₁ ⊢ ∏ p, from h.generalize,
+  have : T₂ ⊢ ∏ p, from provable.lextend this T₂,
+  have : ⤊T₂ ⊢ (∏ p)^1, from provable.sf_sf.mpr this,
+  simpa[formula.nested_rew] using this ⊚ #0 }⟩
+
+instance lextend_pow [ex : lextend T₁ T₂] (k : ℕ) : lextend (T₁^k) (T₂^k) :=
+by { induction k with k IH ; simp[theory.sf_itr_succ], { exact ex }, { exactI fopl.theory.lextend_sf _ _ } }
+
+instance lextend_pow_closed [closed_theory T₁] [ex : lextend T₁ T₂] (k : ℕ) : lextend T₁ (T₂^k) :=
+by simpa using theory.lextend_pow T₁ T₂ k
+
+variables {T₁ U₂} (T₂)
+
+def lextend_of_lextend_of_extend [lextend T₁ T₂] [extend T₂ U₂] : lextend T₁ U₂ := ⟨lle_of_lle_of_le T₂ lextend.le extend.le⟩
+
+variables {T₁ T₂} (U₁)
+
+def lextend_of_extend_of_lextend [extend T₁ U₁] [lextend U₁ T₂] : lextend T₁ T₂ := ⟨lle_of_le_of_lle U₁ extend.le lextend.le⟩
+
+variables {T₁ T₂} [lextend T₁ T₂]
+
+instance lextend_insert₁ (p) : lextend T₁ (T₂+{p}) := lextend_of_lextend_of_extend T₂
+
+instance lextend_insert₂ (p q) : lextend T₁ (T₂+{p}+{q}) := lextend_of_lextend_of_extend T₂
+
+instance lextend_insert₃ (p q r) : lextend T₁ (T₂+{p}+{q}+{r}) := lextend_of_lextend_of_extend T₂
+
+instance lextend_insert₄ (p q r s) : lextend T₁ (T₂+{p}+{q}+{r}+{s}) := lextend_of_lextend_of_extend T₂
+
+end theory
 
 end fopl
