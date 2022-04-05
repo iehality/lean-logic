@@ -1414,18 +1414,22 @@ by by_cases C : p; simp[C]
 
 class abberavation₁ (f : term L → formula L) :=
 (map_rew : ∀ s t, (f t).rew s = f (t.rew s))
+(arity : ∀ t, (f t).arity = t.arity)
 
-attribute [simp] abberavation₁.map_rew
+attribute [simp] abberavation₁.map_rew abberavation₁.arity
 
 class abberavation₂ (f : term L → term L → formula L) :=
-(representable : ∀ s t u, (f t u).rew s = f (t.rew s) (u.rew s))
+(map_rew : ∀ s t u, (f t u).rew s = f (t.rew s) (u.rew s))
+(arity : ∀ t u, (f t u).arity = max t.arity u.arity)
+
+attribute [simp] abberavation₂.map_rew abberavation₂.arity
 
 namespace abberavation₁
-variables (f : term L → formula L) [abberavation₁ f]
+variables (f : term L → formula L) [abberavation₁ f] (t : term L)
 
-lemma map_pow (t : term L) (n : ℕ) : (f t)^n = f (t^n) := by simp[formula.pow_eq, term.pow_eq]
+lemma map_pow (n : ℕ) : (f t)^n = f (t^n) := by simp[formula.pow_eq, term.pow_eq]
 
-lemma eq_rew (t : term L) : f t = (f #0).rew (t ⌢ ı) := by simp 
+lemma eq_rew : f t = (f #0).rew (t ⌢ ı) := by simp
 
 end abberavation₁
 

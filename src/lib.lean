@@ -557,10 +557,6 @@ infix ` ≃ `:50 := has_eq.eq
 
 infix ` ≼ `:50 := has_preceq.preceq
 
-@[notation_class] class has_prec (α : out_param (Sort*)) (β : Sort*) := (prec : α → α → β)
-
-infix ` ≺ `:50 := has_prec.prec
-
 @[notation_class] class has_elem (α : out_param (Sort*)) (β : Sort*) := (elem : α → α → β)
 
 infix ` ∊ `:50 := has_elem.elem
