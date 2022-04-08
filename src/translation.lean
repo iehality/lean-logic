@@ -751,9 +751,16 @@ lemma coe_t_rew (t : term L₁) (s : ℕ → term L₁) :
   (↑(t.rew s) : term L₂) = (↑t : term L₂).rew (λ x, ↑(s x)) :=
 fun_t_rew _ t s
 
+@[simp] lemma coe_t_subst (t u : term L₁) (s) : (↑(t.rew ı[s ⇝ u]) : term L₂) = (↑t : term L₂).rew ı[s ⇝ ↑u] :=
+fun_t_subst _ t u s
+
 lemma coe_p_rew (p : formula L₁) (s : ℕ → term L₁) :
   (↑(p.rew s) : formula L₂) = (↑p : formula L₂).rew (λ x, ↑(s x)) :=
 fun_p_rew _ p s
+
+@[simp] lemma fun_p_subst (p : formula L₁) (u : term L₁) (s) :
+  (↑(p.rew ı[s ⇝ u]) : formula L₂) = (↑p : formula L₂).rew ı[s ⇝ ↑u] :=
+fun_p_subst _ p u s
 
 @[simp] lemma coe_t_arity (t : term L₁) : (t : term L₂).arity = t.arity := fun_t_arity _ t
 
@@ -918,6 +925,12 @@ by { have : ((ltr : L₂ ↝ᴸ L₃).comp (ltr : L₁ ↝ᴸ L₂)).fun_theory 
      simpa[comp_fun_theory] using this }
 
 instance comp_commutes : @commutes L₁ L₂ L₃ _ _ (comp L₁ L₂ L₃) := { comm := by refl }
+
+@[simp] lemma ltc_self_eq_one : (ltr : L₁ ↝ᴸ L₁) = 1 := by { ext; simp, { refl }, { intros n r, refl } }
+
+instance self_commutes : commutes L₁ L₁ L₂ := ⟨by simp⟩
+
+instance commutes_self : commutes L₁ L₂ L₂ := ⟨by simp⟩
 
 end commutes
 
@@ -1572,31 +1585,35 @@ by simp[definitions_def, def_pr]; refine or.inr ⟨n, r, by refl⟩
 by { have := provable.nfal_subst'_finitary (axiomatic_classical_logic'.by_axiom (language.definitions.mem_pr D r)) v,
      simpa using this }
 
-def term.coe_inv [language.predicate L₂] : term (L₁ + L₂) → term L₁
-| (#n) := #n
+
+section
+variables [language.predicate L₂]
+
+def term.coe_inv : term (L₁ + L₂) → term L₁
+| (#n)      := #n
 | (app f v) := by { rcases f, { refine app f (λ i, term.coe_inv (v i)) },
   { exfalso, exact is_empty.false f } }
 
-@[simp] lemma coe_inv_coe (t : term L₁) [language.predicate L₂] : term.coe_inv (↑t : term (L₁ + L₂)) = t :=
+@[simp] lemma coe_inv_coe (t : term L₁) : term.coe_inv (↑t : term (L₁ + L₂)) = t :=
 by { induction t; simp[term.coe_inv],
      case app : n f v IH { rw [language.extension.coe_fn₁ f], simp, funext i, exact IH i } }
 
-@[simp] lemma coe_coe_inv (t : term (L₁ + L₂)) [language.predicate L₂] : (↑(term.coe_inv t) : term (L₁ + L₂)) = t :=
+@[simp] lemma coe_coe_inv (t : term (L₁ + L₂)) : (↑(term.coe_inv t) : term (L₁ + L₂)) = t :=
 by { induction t; simp[term.coe_inv],
      case app : n f v IH
      { rcases f; simp, { refine ⟨rfl, _⟩, funext i, exact IH i }, { exfalso, exact is_empty.false f } } }
 
-def formula.coe_inv [language.predicate L₂] (D : L₁.definitions L₂) : formula (L₁ + L₂) → formula L₁
-| (app r v) := by { rcases r, { exact app r (λ i, (v i).coe_inv) },
-                              { exact (D.df_pr r).rew (of_fin (λ i, (v i).coe_inv)) } }
+def formula.coe_inv (D : L₁.definitions L₂) : formula (L₁ + L₂) → formula L₁
+| (app r v)                  := by { rcases r, { exact app r (λ i, (v i).coe_inv) },
+                                               { exact (D.df_pr r).rew (of_fin (λ i, (v i).coe_inv)) } }
 | ((t : term (L₁ + L₂)) ≃ u) := t.coe_inv ≃ u.coe_inv
-| ⊤ := ⊤
-| (p ⟶ q) := p.coe_inv ⟶ q.coe_inv
-| (⁻p) := ⁻p.coe_inv
-| (∏ p) := ∏ p.coe_inv
+| ⊤                          := ⊤
+| (p ⟶ q)                    := p.coe_inv ⟶ q.coe_inv
+| (⁻p)                       := ⁻p.coe_inv
+| (∏ p)                      := ∏ p.coe_inv
 
-lemma coe_inv_equiv [language.predicate L₂] (p : formula (L₁ + L₂)) :
-  D.thy ⊢ p ⟷ ↑(formula.coe_inv D p : formula L₁) :=
+lemma coe_inv_equiv (p : formula (L₁ + L₂)) :
+  D.thy ⊢ p ⟷ ↑(formula.coe_inv D p) :=
 begin
   induction p; simp[formula.coe_inv],
   case app : n r v
@@ -1615,10 +1632,26 @@ begin
     simp[Lindenbaum.eq_of_provable_equiv_0, Lindenbaum.eq_of_provable_equiv.mp this] } 
 end
 
+@[simp] def formula.coe_inv_is_open (D : L₁.definitions L₂) : theory (L₁ + L₂)
+| (app r v)                  := by { rcases r, { exact true },
+                                               { exact (D.df_pr r).is_open } }
+| ((t : term (L₁ + L₂)) ≃ u) := true
+| ⊤                          := true
+| (p ⟶ q)                    := p.coe_inv_is_open ∧ q.coe_inv_is_open
+| (⁻p)                       := p.coe_inv_is_open
+| (∏ p)                      := false
+
+@[simp] lemma coe_inv_open (p : formula (L₁ + L₂)) :
+  (formula.coe_inv D p).is_open ↔ formula.coe_inv_is_open D p :=
+by { induction p; simp[formula.coe_inv, *],
+     case app : n r v { rcases r; simp, },  }
+
+end
+
 namespace model
 variables {L₁ L₂} (M₁ : model L₁)
 open language language.extension
-
+/--/
 @[reducible] def extend
   (fn : Π {n} (f : L₂.fn n) (v : finitary (|M₁|) n), |M₁|)
   (pr : Π {n} (r : L₂.pr n) (v : finitary (|M₁|) n), Prop) : model (L₁ + L₂) :=
