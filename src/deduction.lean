@@ -751,7 +751,6 @@ begin
   refine this ⨀ h
 end
 
-
 lemma eq_trans {t₁ t₂ t₃ : term L} : (T ⊢ t₁ ≃ t₂) → (T ⊢ t₂ ≃ t₃) → (T ⊢ t₁ ≃ t₃) := λ h₁ h₂,
 by { have : T ⊢ (t₁ ≃ t₂) ⟶ (t₂ ≃ t₃) ⟶ (t₁ ≃ t₃),
      { have := (@eq_transitivity _ T) ⊚ t₃ ⊚ t₂ ⊚ t₁, simp[←term.pow_rew_distrib] at*,
@@ -968,6 +967,9 @@ by { simp[axiomatic_classical_logic'.iff_equiv] at h ⊢, refine ⟨univ_K _ _ �
 lemma univ_of_equiv {p₁ p₂} (h : T ⊢ ∏ p₁) (hp : ⤊T ⊢ p₁ ⟷ p₂) : T ⊢ ∏ p₂ :=
 (iff_equiv.mp (equiv_univ_of_equiv hp)).1 ⨀ h
 
+lemma equiv_univs_of_equiv {p₁ p₂} {n : ℕ} (h : T^n ⊢ p₁ ⟷ p₂) : T ⊢ (∏[n] p₁) ⟷ (∏[n] p₂) :=
+by { induction n with n IH generalizing p₁ p₂; simp, { exact h }, { simpa using IH (equiv_univ_of_equiv h) } }
+
 lemma equiv_ex_of_equiv {p₁ p₂} (h : ⤊T ⊢ p₁ ⟷ p₂) : T ⊢ ∐ p₁ ⟷ ∐ p₂ :=
 equiv_neg_of_equiv (equiv_univ_of_equiv (equiv_neg_of_equiv h))
 
@@ -994,6 +996,28 @@ begin
     { simp[show (∏[n] p.rew (λ x, ite (x < n) #x #(x + n))) = (∏[n] p)^n, by simp[formula.nfal_pow]] },
     have := nfal_subst' this ı, simp[eqn] at this, exact this },
   exact lmm₁ ⨀ lmm₂
+end
+
+lemma fal_complete_K (p q : formula L) : T ⊢ (∏* (p ⟶ q)) ⟶ (∏* p) ⟶ ∏* q :=
+begin
+  refine (deduction.mp $ deduction.mp $ generalize_itr _), simp[pow_dsb],
+  have lmm₁ : (T ^ q.arity) +{ ∏* (p ⟶ q) } +{ ∏* p } ⊢ p ⟶ q,
+  { have : (T ^ q.arity) +{ ∏* (p ⟶ q) } +{ ∏* p } ⊢ ∏* (p ⟶ q), by simp,
+    simpa using fal_complete_rew (p ⟶ q) ı ⨀ this },
+  have lmm₂ : (T ^ q.arity) +{ ∏* (p ⟶ q) } +{ ∏* p } ⊢ p,
+  { have : (T ^ q.arity) +{ ∏* (p ⟶ q) } +{ ∏* p } ⊢ ∏* p, by simp,
+    simpa using fal_complete_rew p ı ⨀ this },
+  exact lmm₁ ⨀ lmm₂
+end
+
+lemma equiv_fal_complete_of_equiv {p₁ p₂ : formula L} (h : T^(max p₁.arity p₂.arity) ⊢ p₁ ⟷ p₂) :
+  T ⊢ (∏* p₁) ⟷ (∏* p₂) :=
+begin
+  simp[iff_equiv] at h ⊢, split,
+  { have : T ⊢ ∏* (p₁ ⟶ p₂), from generalize_itr (by simp[h]),
+    exact fal_complete_K _ _ ⨀ this },
+  { have : T ⊢ ∏* (p₂ ⟶ p₁), from generalize_itr (by simp[max_comm, h]),
+    exact fal_complete_K _ _ ⨀ this }
 end
 
 lemma nfal_rew {n} {p : formula L} (s : ℕ → term L) :
