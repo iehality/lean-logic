@@ -172,13 +172,13 @@ by { induction h using fopl.Herbrand.ind_on,
   (numeral n : Herbrand T i).pow = numeral n :=
 by induction n; simp[*,numeral, succ_pow]
 
-theorem add_pow [has_add_symbol L] (h₁ h₂ : Herbrand T i) :
+@[simp] theorem add_pow [has_add_symbol L] (h₁ h₂ : Herbrand T i) :
   (h₁ + h₂).pow = h₁.pow + h₂.pow :=
 by { induction h₁ using fopl.Herbrand.ind_on with t,
      induction h₂ using fopl.Herbrand.ind_on with u,
     simp[pow, ←add_eq_add _ _, -add_eq_add] }
 
-theorem mul_pow [has_mul_symbol L] (h₁ h₂ : Herbrand T i) :
+@[simp] theorem mul_pow [has_mul_symbol L] (h₁ h₂ : Herbrand T i) :
   (h₁ * h₂).pow = h₁.pow * h₂.pow :=
 by { induction h₁ using fopl.Herbrand.ind_on with t,
      induction h₂ using fopl.Herbrand.ind_on with u,
@@ -649,19 +649,33 @@ by simp [eq_top_of_provable]
 theorem eq_neg_of_provable_neg_0 {p} : T ⊢ ⁻p ↔ (⟦p⟧ᴸ : Lindenbaum T 0) = ⊥ :=
 @eq_neg_of_provable_neg _ T 0 p
 
+variables (T)
+
 lemma rew_by_axiom₁ (t u : term L) : (⟦t⟧ᴴ : Herbrand (T +{t ≃ u}) 0) = ⟦u⟧ᴴ :=
 Herbrand.eq_of_provable_equiv_0.mp (show T +{t ≃ u} ⊢ t ≃ u, by simp)
 
 lemma rew_by_axiom₁_inv (t u : term L) : (⟦u⟧ᴴ : Herbrand (T +{t ≃ u}) 0) = ⟦t⟧ᴴ :=
-(rew_by_axiom₁ t u).symm
+(rew_by_axiom₁ _ t u).symm
 
 lemma rew_by_axiom₂ (t u : term L) {p} : (⟦t⟧ᴴ : Herbrand (T +{t ≃ u} +{ p }) 0) = ⟦u⟧ᴴ :=
 Herbrand.eq_of_provable_equiv_0.mp (show T +{t ≃ u} +{ p } ⊢ t ≃ u, by simp)
 
 lemma rew_by_axiom₂_inv (t u : term L) {p} : (⟦u⟧ᴴ : Herbrand (T +{t ≃ u} +{ p }) 0) = ⟦t⟧ᴴ :=
-(rew_by_axiom₂ t u).symm
+(rew_by_axiom₂ _ t u).symm
 
-@[simp] lemma by_axiom' (t u : term L) (h : T ⊢ t ≃ u) : (⟦t⟧ᴴ : Herbrand T 0) = ⟦u⟧ᴴ :=
+lemma rew_by_axiom₁_var (x : ℕ) (t : term L) : (♯x : Herbrand (T +{#x ≃ t}) 0) = ⟦t⟧ᴴ :=
+Herbrand.eq_of_provable_equiv_0.mp (show T +{#x ≃ t} ⊢ #x ≃ t, by simp)
+
+lemma rew_by_axiom₁_inv_var (x : ℕ) (t : term L) : (♯x : Herbrand (T +{t ≃ #x}) 0) = ⟦t⟧ᴴ :=
+(Herbrand.eq_of_provable_equiv_0.mp (show T +{t ≃ #x} ⊢ t ≃ #x, by simp)).symm
+
+lemma rew_by_axiom₂_var (x : ℕ) (t : term L) {p} : (♯x : Herbrand (T +{#x ≃ t}+{p}) 0) = ⟦t⟧ᴴ :=
+Herbrand.eq_of_provable_equiv_0.mp (show T +{#x ≃ t}+{p} ⊢ #x ≃ t, by simp)
+
+lemma rew_by_axiom₂_inv_var (x : ℕ) (t : term L) {p} : (♯x : Herbrand (T +{t ≃ #x}+{p}) 0) = ⟦t⟧ᴴ :=
+(Herbrand.eq_of_provable_equiv_0.mp (show T +{t ≃ #x}+{p} ⊢ t ≃ #x, by simp)).symm
+
+@[simp] lemma eq_by_axiom (t u : term L) (h : T ⊢ t ≃ u) : (⟦t⟧ᴴ : Herbrand T 0) = ⟦u⟧ᴴ :=
 Herbrand.eq_of_provable_equiv_0.mp h
 
 end Lindenbaum
