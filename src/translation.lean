@@ -774,14 +774,14 @@ fun_p_conjunction' _ P
   (↑(⋁ j, P j) : formula L₂) = ⋁ j, P j :=
 fun_p_disjunction' _ P
 
-lemma coe_t_rew (t : term L₁) (s : ℕ → term L₁) :
+@[simp] lemma coe_t_rew (t : term L₁) (s : ℕ → term L₁) :
   (↑(t.rew s) : term L₂) = (↑t : term L₂).rew (λ x, ↑(s x)) :=
 fun_t_rew _ t s
 
 @[simp] lemma coe_t_subst (t u : term L₁) (s) : (↑(t.rew ı[s ⇝ u]) : term L₂) = (↑t : term L₂).rew ı[s ⇝ ↑u] :=
 fun_t_subst _ t u s
 
-lemma coe_p_rew (p : formula L₁) (s : ℕ → term L₁) :
+@[simp] lemma coe_p_rew (p : formula L₁) (s : ℕ → term L₁) :
   (↑(p.rew s) : formula L₂) = (↑p : formula L₂).rew (λ x, ↑(s x)) :=
 fun_p_rew _ p s
 
@@ -903,6 +903,14 @@ lemma fun_theory_insert (p : formula L₁) : (↑(T+{p}) : theory L₂) = ↑T +
 set.image_insert_eq
 
 @[simp] lemma ltc_self_eq_one : (ltr : L₁ ↝ᴸ L₁) = 1 := by { ext; simp, { refl }, { intros n r, refl } }
+
+@[simp] lemma coe_t_eq_self (t : term L) : (coe : term L → term L) t = t := one_fun_t t
+
+@[simp] lemma coe_t_eq_id : (coe : term L → term L) = id := by funext t; simp
+
+@[simp] lemma coe_p_eq_self (p : formula L) : (coe : formula L → formula L) p = p := one_fun_p p
+
+@[simp] lemma coe_p_eq_id : (coe : formula L → formula L) = id := by funext t; simp
 
 end language_translation_coe
 
@@ -1700,7 +1708,7 @@ end
 @[simp] lemma coe_inv_open (p : formula (L₁ + L₂)) :
   (formula.coe_inv D p).is_open ↔ formula.coe_inv_is_open D p :=
 by { induction p; simp[formula.coe_inv, *],
-     case app : n r v { rcases r; simp, },  }
+     case app : n r v { rcases r; simp, } }
 
 end
 
