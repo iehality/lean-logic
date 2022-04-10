@@ -117,7 +117,8 @@ theorem eq_of_provable_equiv_0 {t₁ t₂} : T ⊢ t₁ ≃ t₂ ↔ (⟦t₁⟧
 
 variables (T) (i)
 
-lemma predicate_of_iff {n} (r : L.pr n) (v : finitary (term L) n) : predicate_of r (λ j, (⟦v j⟧ᴴ : Herbrand T i)) ↔ T^i ⊢ formula.app r v :=
+lemma predicate_of_iff {n} (r : L.pr n) (v : finitary (term L) n) :
+  predicate_of r (λ j, (⟦v j⟧ᴴ : Herbrand T i)) ↔ T^i ⊢ formula.app r v :=
 by simp[predicate_of]
 
 variables {T} {i}
@@ -129,6 +130,53 @@ by simpa[has_le.le] using iff.symm (predicate_of_iff T i (has_le_symbol.le : L.p
 
 lemma le_iff_provable_le_0 [has_le_symbol L] {t₁ t₂ : term L} : T ⊢ t₁ ≼ t₂ ↔ (⟦t₁⟧ᴴ : Herbrand T 0) ≤ ⟦t₂⟧ᴴ :=
 by simpa[has_le.le] using iff.symm (predicate_of_iff T 0 (has_le_symbol.le : L.pr 2) ‹t₁, t₂›)
+
+section
+variables (f : term L → formula L) [formula.abberavation₁ f]
+
+def abberavation₁ (h : Herbrand T i) : Prop :=
+fopl.Herbrand.lift_on h (λ t, T^i ⊢ f t)
+(λ t u h, by { simp, suffices : T ^ i ⊢ (f #0).rew (t ⌢ ı) ↔ T ^ i ⊢ (f #0).rew (u ⌢ ı), by simpa using this,
+  refine provable.iff_of_eqs (λ n, by rcases n; simp[h]) _ })
+
+variables (T) (i)
+
+lemma abberavation₁_iff (t : term L) :
+  abberavation₁ f (⟦t⟧ᴴ : Herbrand T i) ↔ T^i ⊢ f t :=
+by simp[abberavation₁]
+
+lemma iff_abberavation₁ [has_le_symbol L] (t : term L) : T^i ⊢ f t ↔ abberavation₁ f (⟦t⟧ᴴ : Herbrand T i) :=
+iff.symm (abberavation₁_iff T i f t)
+
+lemma iff_abberavation₁_0 [has_le_symbol L] (t : term L) : T ⊢ f t ↔ abberavation₁ f (⟦t⟧ᴴ : Herbrand T 0) :=
+by simpa using iff_abberavation₁ T 0 f t
+
+end
+
+section
+variables (f : term L → term L → formula L) [formula.abberavation₂ f]
+
+def abberavation₂ (h₁ h₂ : Herbrand T i) : Prop :=
+fopl.Herbrand.lift_on₂ h₁ h₂ (λ t u, T^i ⊢ f t u)
+(λ t₁ t₂ u₁ u₂ h₁ h₂, by { simp,
+  suffices : T ^ i ⊢ (f #0 #1).rew (t₁ ⌢ t₂ ⌢ ı) ↔ T ^ i ⊢ (f #0 #1).rew (u₁ ⌢ u₂ ⌢ ı), by simpa using this,
+  refine provable.iff_of_eqs (λ n, by {rcases n; simp*; rcases n; simp*}) _ })
+
+variables (T) (i)
+
+lemma abberavation₂_iff (t u : term L) :
+  abberavation₂ f (⟦t⟧ᴴ : Herbrand T i) ⟦u⟧ᴴ ↔ T^i ⊢ f t u :=
+by simp[abberavation₂]
+
+variables {f} {T} {i}
+
+lemma iff_abberavation₂ [has_le_symbol L] {t u : term L} : T^i ⊢ f t u ↔ abberavation₂ f (⟦t⟧ᴴ : Herbrand T i) ⟦u⟧ᴴ :=
+iff.symm (abberavation₂_iff T i f t u)
+
+lemma iff_abberavation₂_0 [has_le_symbol L] {t u : term L} : T ⊢ f t u ↔ abberavation₂ f (⟦t⟧ᴴ : Herbrand T 0) ⟦u⟧ᴴ :=
+by simpa using @iff_abberavation₂ _ T 0
+
+end
 
 theorem constant_term (c : L.fn 0) (v : finitary (term L) 0):
   (⟦❨c❩ v⟧ᴴ : Herbrand T i) = function_of c finitary.nil := by simp[function_of, show v = finitary.nil, by ext; simp]
@@ -320,6 +368,42 @@ local infix ` ≃ᴸ `:80 := ((≃) : Herbrand T i → Herbrand T i → Lindenba
 @[simp] lemma equal_eq (t u : term L) : ⟦t ≃ u⟧ᴸ = (⟦t⟧ᴴ ≃ᴸ ⟦u⟧ᴴ) := rfl
 
 lemma equal_def (t u : term L) : (⟦t⟧ᴴ ≃ᴸ ⟦u⟧ᴴ) = ⟦t ≃ u⟧ᴸ := rfl
+
+section
+variables (f : term L → formula L) [formula.abberavation₁ f]
+
+def abberavation₁ (h : Herbrand T i) : Lindenbaum T i :=
+fopl.Herbrand.lift_on h (λ t, (⟦f t⟧ᴸ : Lindenbaum T i))
+(λ t u h, by { simp, suffices : T^i ⊢ (f #0).rew (t ⌢ ı) ⟷ (f #0).rew (u ⌢ ı), by simpa using this,
+  refine provable.equal_rew_iff _ _, intros n, rcases n; simp* })
+
+variables (T) (i)
+
+lemma abberavation₁_def (t : term L) : abberavation₁ f (⟦t⟧ᴴ : Herbrand T i) = ⟦f t⟧ᴸ :=
+by simp[abberavation₁]
+
+@[simp] lemma eq_abberavation₁ [has_le_symbol L] (t : term L) : (⟦f t⟧ᴸ : Lindenbaum T i) = abberavation₁ f ⟦t⟧ᴴ :=
+eq.symm (abberavation₁_def T i f t)
+
+end
+
+section
+variables (f : term L → term L → formula L) [formula.abberavation₂ f]
+
+def abberavation₂ (h₁ h₂ : Herbrand T i) : Lindenbaum T i :=
+fopl.Herbrand.lift_on₂ h₁ h₂ (λ t u, (⟦f t u⟧ᴸ : Lindenbaum T i))
+(λ t₁ t₂ u₁ u₂ h₁ h₂, by { simp, suffices : T^i ⊢ (f #0 #1).rew (t₁ ⌢ t₂ ⌢ ı) ⟷ (f #0 #1).rew (u₁ ⌢ u₂ ⌢ ı), by simpa using this,
+  refine provable.equal_rew_iff _ _, intros n, rcases n; simp*, rcases n; simp* })
+
+variables (T) (i)
+
+lemma abberavation₂_def (t u : term L) : abberavation₂ f (⟦t⟧ᴴ : Herbrand T i) ⟦u⟧ᴴ = ⟦f t u⟧ᴸ :=
+by simp[abberavation₂]
+
+@[simp] lemma eq_abberavation₂ [has_le_symbol L] (t u : term L) : (⟦f t u⟧ᴸ : Lindenbaum T i) = abberavation₂ f ⟦t⟧ᴴ ⟦u⟧ᴴ :=
+eq.symm (abberavation₂_def T i f t u)
+
+end
 
 def univ : Lindenbaum T (i+1) → Lindenbaum T i :=
 λ p, classical_logic.lindenbaum.lift_on p (λ p, (⟦∏ p⟧ᴸ : Lindenbaum T i)) $

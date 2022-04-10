@@ -878,6 +878,10 @@ begin
     refine ⟨univ_K _ _ ⨀ (generalize this.1), univ_K _ _ ⨀ (generalize this.2)⟩ }
 end
 
+lemma iff_of_eqs {s₁ s₂ : ℕ → term L} (eqn : ∀ n, T ⊢ s₁ n ≃ s₂ n) (p : formula L) :
+  T ⊢ p.rew s₁ ↔ T ⊢ p.rew s₂ :=
+⟨λ h, of_equiv_p h (equal_rew_iff eqn p), λ h, of_equiv_p h (equal_rew_iff (λ n, eq_symm $ eqn n) p)⟩
+
 lemma iff_rew_of_eq {t : term L} {n : ℕ} (eqn : T ⊢ #n ≃ t) (p : formula L) :
   T ⊢ p ⟷ p.rew (λ x, if x = n then t else #x) :=
 begin

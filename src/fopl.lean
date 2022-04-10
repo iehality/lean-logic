@@ -1426,11 +1426,20 @@ attribute [simp] abberavation₂.map_rew abberavation₂.arity
 namespace abberavation₁
 variables (f : term L → formula L) [abberavation₁ f] (t : term L)
 
-lemma map_pow (n : ℕ) : (f t)^n = f (t^n) := by simp[formula.pow_eq, term.pow_eq]
+@[simp] lemma map_pow (n : ℕ) : (f t)^n = f (t^n) := by simp[formula.pow_eq, term.pow_eq]
 
-lemma eq_rew : f t = (f #0).rew (t ⌢ ı) := by simp
+lemma eq_rew : (f #0).rew (t ⌢ ı) = f t := by simp
 
 end abberavation₁
+
+namespace abberavation₂
+variables (f : term L → term L → formula L) [abberavation₂ f] (t u : term L)
+
+@[simp] lemma map_pow (n : ℕ) : (f t u)^n = f (t^n) (u^n) := by simp[formula.pow_eq, term.pow_eq]
+
+lemma eq_rew : f t u = (f #0 #1).rew (t ⌢ u ⌢ ı) := by simp
+
+end abberavation₂
 
 end formula
 

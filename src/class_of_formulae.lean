@@ -1,4 +1,4 @@
-import lindenbaum
+import completeness
 
 universes u v
 
@@ -168,6 +168,11 @@ notation `∃₁` binders ` ∊ᵇ ` t `, ` r:(scoped p, bex_mem_fn t p) := r
 variables [has_le_symbol L]
 
 namespace formula
+
+section
+variables {L₁ L₂ : language.{u}} [L₁.language_translation_coe L₂]
+
+end
 
 inductive bounded : theory L
 | verum : bounded ⊤

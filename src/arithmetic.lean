@@ -60,15 +60,21 @@ instance commutes_LA : language.commutes LA LA' L := ⟨by refl⟩
 
 instance commutes_additional : language.commutes additional LA' L := ⟨by refl⟩
 
-@[reducible] def lt (t u : term L) : formula L :=
+def lt (t u : term L) : formula L :=
 app ((coe : LA'.pr 2 → L.pr 2) (sum.inr additional_pr.lt)) ‹t, u›
 
-@[reducible] def dvd (t u : term L) : formula L :=
+def dvd (t u : term L) : formula L :=
 app ((coe : LA'.pr 2 → L.pr 2) (sum.inr additional_pr.dvd)) ‹t, u›
 
-@[reducible] def prime (t : term LA') : formula LA' := app (sum.inr additional_pr.prime) ‹t›
+def prime (t : term L) : formula L := app ((coe : LA'.pr 1 → L.pr 1) (sum.inr additional_pr.prime)) ‹t›
 
 notation t ` is_prime`:80 := prime t
+
+instance lt_abb : abberavation₂ (@lt L _) := { map_rew := by simp[lt], arity := by simp[lt] }
+
+instance dvd_abb : abberavation₂ (@dvd L _) := { map_rew := by simp[dvd], arity := by simp[dvd] }
+
+instance is_prime_abb : abberavation₁ (@prime L _) := { map_rew := by simp[prime], arity := by simp[prime] }
 
 end additional
 
@@ -126,7 +132,7 @@ infix ` ≺' `:50 := Herbrand.lt
 lemma Lindenbaum.lt_eq (h₁ h₂ : Herbrand T i) : (h₁ ≺' h₂) = (h₁ ≼ h₂) ⊓ (h₁ ≃ h₂)ᶜ :=
 by induction h₁ using fopl.Herbrand.ind_on with t;
    induction h₂ using fopl.Herbrand.ind_on with u;
-   simpa using Lindenbaum.eq_of_provable_equiv.mp (thy.lt _ t u)
+   simpa[lt] using Lindenbaum.eq_of_provable_equiv.mp (thy.lt _ t u)
 
 def Herbrand.dvd (h₁ h₂ : Herbrand T i) : Lindenbaum T i :=
 Lindenbaum.predicate_of ((coe : LA'.pr 2 → L.pr 2) (sum.inr additional_pr.dvd)) ‹h₁, h₂›
@@ -139,7 +145,7 @@ infix ` ⍭' `:50 := Herbrand.dvd
 lemma Lindenbaum.dvd_eq (h₁ h₂ : Herbrand T i) : (h₁ ⍭' h₂) = ∐' (♯0 * h₁.pow ≃ h₂.pow : Lindenbaum T (i + 1)) :=
 by induction h₁ using fopl.Herbrand.ind_on with t;
    induction h₂ using fopl.Herbrand.ind_on with u;
-   simpa using Lindenbaum.eq_of_provable_equiv.mp (thy.dvd _ t u)
+   simpa[dvd] using Lindenbaum.eq_of_provable_equiv.mp (thy.dvd _ t u)
 
 end additional
 
@@ -461,6 +467,24 @@ end
   (↑(succ_induction p : formula L₁) : formula L₂) = succ_induction (↑p : formula L₂) :=
 by simp[succ_induction, language.language_translation_coe.coe_p_rew, function.comp]
 
+section
+variables {L₁ L₂ : language.{0}}
+  [LA'.language_translation_coe L₁] [LA'.language_translation_coe L₂] [L₁.language_translation_coe L₂] [LA'.commutes L₁ L₂]
+
+@[simp] lemma coe_lt (t u : term L₁) : ((t ≺ u : formula L₁) : formula L₂) = (t ≺ u) :=
+by simp[additional.lt]; refine language.commutes.coe_coe_pr_of_commute _
+
+@[simp] lemma coe_dvd (t u : term L₁) : ((t ⍭ u : formula L₁) : formula L₂) = (t ⍭ u) :=
+by simp[additional.dvd]; refine language.commutes.coe_coe_pr_of_commute _
+
+@[simp] lemma quantifier_fn_aux_lt (s) (f g : term L₁ → term L₁) (t u : term L₁) :
+  quantifier_fn_aux s (λ x, f x ≺ g x) (t ≺ u) = (f #s ≺ g #s) := rfl
+
+@[simp] lemma quantifier_fn_aux_dvd (s) (f g : term L₁ → term L₁) (t u : term L₁) :
+  quantifier_fn_aux s (λ x, f x ⍭ g x) (t ⍭ u) = (f #s ⍭ g #s) := rfl
+
+end
+
 end Ind
 
 namespace Iopen
@@ -736,7 +760,7 @@ lemma lt_equiv : Iₒₚₑₙ' ⊢ ∀₁ x y, (x ≺ y) ⟷ ∃₁ z, (Succ z 
 begin
   refine (generalize $ generalize _), simp[fal_fn, ex_fn],
   suffices : ⤊⤊Iₒₚₑₙ' ⊢ (#1 ≼ #0) ⊓ (#1 ≄ #0) ⟷ ∐ (Succ #0 + #(1 + 1) ≃ #1),
-    by simpa[Lindenbaum.eq_of_provable_equiv_0, Lindenbaum.lt_eq] using this,
+    by simpa[lt, Lindenbaum.eq_of_provable_equiv_0, Lindenbaum.lt_eq] using this,
   simp[iff_equiv], split,
   { suffices : ⤊⤊Iₒₚₑₙ' ⊢ (∐ (#0 + #2 ≃ #1)) ⟶ ⁻(#1 ≃ #0) ⟶ ∐ (Succ #0 + #2 ≃ #1),
     { simp[Lindenbaum.le_of_provable_imply_0, Lindenbaum.le_iff] at this ⊢,
@@ -755,13 +779,13 @@ begin
 end
 
 lemma lt_equiv' (x y) : Iₒₚₑₙ' ⊢ (x ≺ y) ⟷ ∃₁ z, (Succ z + x^1 ≃ y^1) :=
-by simpa[fal_fn, ex_fn, ←term.pow_rew_distrib] using (lt_equiv _) ⊚ x ⊚ y 
+by simpa[lt, fal_fn, ex_fn, ←term.pow_rew_distrib] using (lt_equiv _) ⊚ x ⊚ y 
 
 lemma Lindenbaum.lt_eq (h₁ h₂ : Herbrand Iₒₚₑₙ' i) :
   (h₁ ≺' h₂) = ∐' (Succ ♯0 + h₁.pow ≃ h₂.pow : Lindenbaum Iₒₚₑₙ' (i + 1)) :=
 by induction h₁ using fopl.Herbrand.ind_on with t;
    induction h₂ using fopl.Herbrand.ind_on with u;
-   simpa[fal_fn, ex_fn] using Lindenbaum.eq_of_provable_equiv.mp ((lt_equiv' (Iₒₚₑₙ'^i) t u))
+   simpa[lt, fal_fn, ex_fn] using Lindenbaum.eq_of_provable_equiv.mp ((lt_equiv' (Iₒₚₑₙ'^i) t u))
 
 @[simp, refl] lemma Lindenbaum.le_refl (h : Herbrand Iₒₚₑₙ i) : h ≤ h :=
 by { have : h ≤ 0 + h, from robinson.Lindenbaum.le_add_self Iₒₚₑₙ i h 0,
@@ -798,7 +822,7 @@ begin
   refine (generalize $ generalize $ generalize $ generalize _), simp[fal_fn],
   show Iₒₚₑₙ'^4 ⊢ (#3 ≺ #2) ⟶ (#1 ≺ #0) ⟶ (#3 + #1 ≺ #2 + #0),
   suffices : Iₒₚₑₙ'^4 ⊢ ∐ (Succ #0 + #4 ≃ #3) ⟶ ∐ (Succ #0 + #2 ≃ #1) ⟶ ∐ (Succ #0 + #4 + #2 ≃ #3 + #1),
-  { simp[Lindenbaum.eq_top_of_provable_0, Lindenbaum.lt_eq, add_pow, add_assoc] at this ⊢, simpa using this },
+  { simp[lt, Lindenbaum.eq_top_of_provable_0, Lindenbaum.lt_eq, add_pow, add_assoc] at this ⊢, simpa using this },
   refine (imply_ex_of_fal_imply $ generalize $ deduction.mp $ imply_ex_of_fal_imply $ generalize $ deduction.mp $ use (Succ #1 + #0) _),
   simp[←sf_dsb, formula.pow_eq],
   show (Iₒₚₑₙ'^6)+{ Succ #1 + #5 ≃ #4 }+{ Succ #0 + #3 ≃ #2 } ⊢ Succ (Succ #1 + #0) + #5 + #3 ≃ #4 + #2,
@@ -853,44 +877,49 @@ begin
   refine (generalize _), simp[fal_fn], exact ind ⨀ zero ⨀ succ
 end
 
+@[simp] lemma prec_open (t u : term LA') : coe_inv_is_open defs (t ≺ u) :=
+by { have : ((coe : LA'.pr 2 → LA'.pr 2) (sum.inr additional_pr.lt)) = sum.inr additional_pr.lt,
+       from language.language_translation_coe.coe_pr_eq_self _,
+     simp[lt, this] }
+
 lemma lt_mul_of_nonzero_of_lt :
   Iₒₚₑₙ' ⊢ ∀₁ x y z, (x ≺ y) ⟶ (z ≄ 0) ⟶ (x * z ≺ y * z) :=
 begin
-  have := I_succ_induction_LA (Iₒₚₑₙ'^2) ((#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0)) (by { 
-    simp[language.extension.coe_pr₁],
-   }),
   have ind : Iₒₚₑₙ'^2 ⊢
        ((#1 ≺ #0) ⟶ ((0 : term LA) ≄ 0) ⟶ (#1 * 0 ≺ #0 * 0)) ⟶
     ∏ (((#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0)) ⟶ (#2 ≺ #1) ⟶ (Succ #0 ≄ 0) ⟶ (#2 * Succ #0 ≺ #1 * Succ #0)) ⟶
     ∏ ((#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0)),
   by simpa[additional.lt] using
-    I_succ_induction_LA (Iₒₚₑₙ'^2) ((#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0)) (by simp[lessthan_def, set.mem_def]),
-  have zero : Iₒₚₑₙ ⊢ (#1 ≺ #0) ⟶ ((0 : term LA) ≄ 0) ⟶ (#1 * 0 ≺ #0 * 0), by simp[Lindenbaum.eq_top_of_provable_0],
-  have succ : Iₒₚₑₙ ⊢ ∏ (((#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0)) ⟶ (#2 ≺ #1) ⟶ (Succ #0 ≄ 0) ⟶ (#2 * Succ #0 ≺ #1 * Succ #0)),
+    I_succ_induction_LA (Iₒₚₑₙ'^2) ((#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0)) (by simp),
+  have zero : Iₒₚₑₙ'^2 ⊢ (#1 ≺ #0) ⟶ ((0 : term LA) ≄ 0) ⟶ (#1 * 0 ≺ #0 * 0), by simp[Lindenbaum.eq_top_of_provable_0],
+  have succ : Iₒₚₑₙ'^2 ⊢ ∏ (((#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0)) ⟶ (#2 ≺ #1) ⟶ (Succ #0 ≄ 0) ⟶ (#2 * Succ #0 ≺ #1 * Succ #0)),
   { refine (generalize $ deduction.mp $ deduction.mp $ deduction.mp _), simp[-iff_and],
-    have zero : Iₒₚₑₙ +{ (#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0) } +{ #2 ≺ #1 } +{ Succ #0 ≄ 0 } ⊢ (#0 ≃ 0) ⟶ (#2 * Succ #0 ≺ #1 * Succ #0),
+    have zero : (Iₒₚₑₙ'^3) +{ (#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0) } +{ #2 ≺ #1 } +{ Succ #0 ≄ 0 } ⊢ (#0 ≃ 0) ⟶ (#2 * Succ #0 ≺ #1 * Succ #0),
     { refine (deduction.mp $ rew_of_eq 0 0 (by simp) _),
-      have : Iₒₚₑₙ +{ (#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0) } +{ #2 ≺ #1 } +{ Succ #0 ≄ 0 }+{ #0 ≃ 0 } ⊢  #2 ≺ #1, by simp,
-      simp[lessthan_def, Herbrand.le_iff_provable_le_0, Lindenbaum.eq_neg_of_provable_neg_0] at this ⊢, exact this },
-    have nonzero : Iₒₚₑₙ +{ (#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0) } +{ #2 ≺ #1 } +{ Succ #0 ≄ 0 } ⊢ (#0 ≄ 0) ⟶ (#2 * Succ #0 ≺ #1 * Succ #0),
+      have : (Iₒₚₑₙ'^3) +{ (#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0) } +{ #2 ≺ #1 } +{ Succ #0 ≄ 0 }+{ #0 ≃ 0 } ⊢ #2 ≺ #1, by simp,
+      simpa[Herbrand.iff_abberavation₂_0] using this },
+    have nonzero : (Iₒₚₑₙ'^3) +{ (#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0) } +{ #2 ≺ #1 } +{ Succ #0 ≄ 0 } ⊢ (#0 ≄ 0) ⟶ (#2 * Succ #0 ≺ #1 * Succ #0),
     { refine (deduction.mp _),
-      have lt : Iₒₚₑₙ +{ (#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0) } +{ #2 ≺ #1 } +{ Succ #0 ≄ 0 } +{ #0 ≄ 0 } ⊢ #2 * #0 ≺ #1 * #0,
+      have lt : (Iₒₚₑₙ'^3) +{ (#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0) } +{ #2 ≺ #1 } +{ Succ #0 ≄ 0 } +{ #0 ≄ 0 } ⊢ #2 * #0 ≺ #1 * #0,
         from (show _ ⊢ (#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0), by simp) ⨀ (by simp) ⨀ (by simp),
-      have : Iₒₚₑₙ ⊢ (#2 * #0 ≺ #1 * #0) ⟶ (#2 ≺ #1) ⟶ (#2 * #0 + #2 ≺ #1 * #0 + #1),
-        by simpa[lessthan_def, fal_fn] using add_lt_of_lt_of_lt ⊚ (#2 * #0) ⊚ (#1 * #0) ⊚ #2 ⊚ #1, 
-      have : Iₒₚₑₙ +{ (#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0) } +{ #2 ≺ #1 } +{ Succ #0 ≄ 0 } +{ #0 ≄ 0 } ⊢ #2 * #0 + #2 ≺ #1 * #0 + #1,
+      have : (Iₒₚₑₙ'^3) ⊢ (#2 * #0 ≺ #1 * #0) ⟶ (#2 ≺ #1) ⟶ (#2 * #0 + #2 ≺ #1 * #0 + #1),
+      by simpa[fal_fn] using ((add_lt_of_lt_of_lt (Iₒₚₑₙ'^3)) ⊚ (#2 * #0) ⊚ (#1 * #0) ⊚ #2 ⊚ #1),
+      have : (Iₒₚₑₙ'^3) +{ (#2 ≺ #1) ⟶ (#0 ≄ 0) ⟶ (#2 * #0 ≺ #1 * #0) } +{ #2 ≺ #1 } +{ Succ #0 ≄ 0 } +{ #0 ≄ 0 } ⊢ #2 * #0 + #2 ≺ #1 * #0 + #1,
         from this.extend ⨀ lt ⨀ (by simp),
-      simp[lessthan_def, Lindenbaum.eq_top_of_provable_0] at this ⊢, exact this },
+      simp[Lindenbaum.eq_top_of_provable_0] at this ⊢, exact this },
     refine cases_of _ _ zero nonzero },
   refine (generalize $ generalize _), simp[fal_fn], exact ind ⨀ zero ⨀ succ
 end
 
-lemma mul_right_cancel_of_nonzero : Iₒₚₑₙ ⊢ ∀₁ x y z, (z ≄ 0) ⟶ (x * z ≃ y * z) ⟶ (x ≃ y) :=
+lemma mul_right_cancel_of_nonzero_aux : Iₒₚₑₙ' ⊢ ∀₁ x y z, (z ≄ 0) ⟶ (x * z ≃ y * z) ⟶ (x ≃ y) :=
 begin
   refine (generalize $ generalize $ generalize _), simp[fal_fn],
-  suffices : Iₒₚₑₙ ⊢ (#0 ≄ 0) ⟶ (#2 ≄ #1) ⟶ (#2 * #0 ≄ #1 * #0),
+  suffices : Iₒₚₑₙ'^3 ⊢ (#0 ≄ 0) ⟶ (#2 ≄ #1) ⟶ (#2 * #0 ≄ #1 * #0),
   {  simp[Lindenbaum.eq_top_of_provable_0] at this ⊢, simpa[sup_comm] using this },
-  have : Iₒₚₑₙ ⊢ ∀₁ x y z, (x ≺ y) ⟶ (z ≄ 0) ⟶ (x * z ≺ y * z), from lt_mul_of_nonzero_of_lt,
+  have : Iₒₚₑₙ'^3 ⊢ ∀₁ x y z, (x ≺ y) ⟶ (z ≄ 0) ⟶ (x * z ≺ y * z),
+  have := (lt_mul_of_nonzero_of_lt (Iₒₚₑₙ'^3)),
+
+  simp[fal_fn] at this,
   have orl : Iₒₚₑₙ ⊢ (#1 ≼ #2) ⟶ ⁻(#0 ≃ 0) ⟶ ⁻(#2 ≃ #1) ⟶ ⁻(#2 * #0 ≃ #1 * #0),
   { refine (deduction.mp $ deduction.mp $ deduction.mp $ ne_symm _),
     have : Iₒₚₑₙ +{ #1 ≼ #2 } +{ #0 ≄ 0 } +{ #2 ≄ #1 } ⊢ _, from provable.extend (this ⊚ #1 ⊚ #2 ⊚ #0), 

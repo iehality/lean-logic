@@ -600,18 +600,24 @@ instance coe_one : language_translation_coe L L :=
 section
 variables [language_translation_coe L₁ L₂]
 
-instance {n} : has_coe (L₁.fn n) (L₂.fn n) := ⟨λ n, ltr.fn _ n⟩
+instance {n} : has_coe (L₁.fn n) (L₂.fn n) := ⟨λ f, ltr.fn n f⟩
+
+lemma coe_fn_def {n} (f : L₁.fn n) : (↑f : L₂.fn n) = ltr.fn n f := rfl
 
 instance {n} : has_coe (L₁.pr n) (L₂.pr n) := ⟨λ n, ltr.pr _ n⟩
 
+lemma coe_pr_def {n} (r : L₁.pr n) : (↑r : L₂.pr n) = ltr.pr n r := rfl
+
 instance : has_coe (term L₁) (term L₂) := ⟨ltr.fun_t⟩
+
+lemma coe_t_def (t : term L₁) : (↑t : term L₂) = ltr.fun_t t := rfl
 
 lemma app_term_extension_eq (t : term L₁) (i : ℕ) :
   (ltr.tr_term i t : term L₂) = ↑t := rfl
 
-lemma coe_def_t (t : term L₁) : (↑t : term L₂) = ltr.fun_t t := rfl
-
 instance : has_coe (formula L₁) (formula L₂) := ⟨ltr.fun_p⟩
+
+lemma coe_p_def (p : formula L₁) : (↑p : formula L₂) = ltr.fun_p p := rfl
 
 lemma app_formula_extension_eq (p : formula L₁) (i : ℕ) :
   (ltr.tr i p : formula L₂) = ↑p := rfl
@@ -904,6 +910,10 @@ set.image_insert_eq
 
 @[simp] lemma ltc_self_eq_one : (ltr : L₁ ↝ᴸ L₁) = 1 := by { ext; simp, { refl }, { intros n r, refl } }
 
+@[simp] lemma coe_fn_eq_self {n} (f : L.fn n) : (coe : L.fn n → L.fn n) f = f := by refl
+
+@[simp] lemma coe_pr_eq_self {n} (r : L.pr n) : (coe : L.pr n → L.pr n) r = r := by refl
+
 @[simp] lemma coe_t_eq_self (t : term L) : (coe : term L → term L) t = t := one_fun_t t
 
 @[simp] lemma coe_t_eq_id : (coe : term L → term L) = id := by funext t; simp
@@ -992,9 +1002,6 @@ instance comp_commutes : @commutes L₁ L₂ L₃ _ _ (comp L₁ L₂ L₃) := {
 instance self_commutes : commutes L₁ L₁ L₂ := ⟨by simp⟩
 
 instance commutes_self : commutes L₁ L₂ L₂ := ⟨by simp⟩
-
-lemma buibibi [has_zero_symbol L₁] : ((0 : term L₂) : term L₃) = (0 : term L₃) :=
-by { simp,  }
 
 end commutes
 
