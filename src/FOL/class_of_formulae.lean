@@ -1,8 +1,8 @@
-import completeness
+import FOL.completeness
 
 universes u v
 
-namespace fopl
+namespace fol
 
 variables {L : language}
 
@@ -290,4 +290,4 @@ notation `𝜟`:60 n ` in ` T :60 := arithmetical_delta T n
 
 
 
-end fopl
+end fol

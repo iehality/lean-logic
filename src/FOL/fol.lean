@@ -1,8 +1,8 @@
-import tactic lib data.set_like.basic
+import lib.lib tactic data.set_like.basic
 
 universe u
 
-namespace fopl
+namespace fol
 
 structure language : Type (u+1) :=
 (fn : ℕ → Type u)
@@ -1452,4 +1452,4 @@ instance [predicate L] (n) : is_empty (L.fn n) := predicate.fun_empty n
 
 end language
 
-end fopl
+end fol

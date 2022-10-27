@@ -1,8 +1,8 @@
-import lindenbaum
+import FOL.lindenbaum
 
 universes u v
 
-namespace fopl
+namespace fol
 open formula term
 
 variables {L L₁ L₂ L₃ : language.{u}}
@@ -11,7 +11,7 @@ namespace language
 
 protected def pempty : language.{u} := ⟨λ n, pempty, λ n, pempty⟩
 
-instance : has_emptyc (language.{u}) := ⟨fopl.language.pempty⟩
+instance : has_emptyc (language.{u}) := ⟨fol.language.pempty⟩
 
 @[simp] lemma pempty_fn_def (n) : (∅ : language.{u}).fn n = pempty := rfl
 
@@ -903,7 +903,7 @@ variables (L₁ L₂ L₃) [language_translation_coe L₁ L₂] [language_transl
 variables {L₁} (T : theory L₁)
 
 instance [c : closed_theory T] : closed_theory (↑T : theory L₂) :=
-language_translation.fun_theory.fopl.closed_theory _ _
+language_translation.fun_theory.fol.closed_theory _ _
 
 lemma fun_theory_insert (p : formula L₁) : (↑(T+{p}) : theory L₂) = ↑T +{↑p} :=
 set.image_insert_eq
@@ -1075,8 +1075,8 @@ by { simp[theory.consistent_iff_bot], contrapose, simp,
      have := provability τ T ⊥ k, simp at this,
      exact this }
 
-instance refl_conservative : conservative (fopl.language.translation.refl L₁) :=
-{ ax := λ k T, tr_theory (fopl.language.translation.refl L₁) k T,
+instance refl_conservative : conservative (fol.language.translation.refl L₁) :=
+{ ax := λ k T, tr_theory (fol.language.translation.refl L₁) k T,
   ax_ss := by { intros, refl },
   specialize := by simp[translation.refl],
   eq_reflexivity := by simp[translation.refl],
@@ -1817,4 +1817,4 @@ end language_translation
 
 end language
 
-end fopl
+end fol

@@ -1,8 +1,8 @@
-import fopl
+import FOL.fol
 
 universe u
 
-namespace fopl
+namespace fol
 open term formula
 variables {L : language.{u}}
 
@@ -44,7 +44,7 @@ instance ordered_theory_sf {T : theory L} [od : ordered T] :
 
 instance ordered_theory_sf_itr {T : theory L} [od : ordered T] : ∀ n : ℕ, ordered (T^n)
 | 0 := od
-| (n+1) := @fopl.ordered_theory_sf _ _  (ordered_theory_sf_itr n)
+| (n+1) := @fol.ordered_theory_sf _ _  (ordered_theory_sf_itr n)
 
 -- 自由変項の書き換えによって変化しない論理式の集合
 class proper_theory (T : theory L) := (proper : ∀ (p : formula L) (s), p ∈ T → p.rew s ∈ T)
@@ -176,4 +176,4 @@ by induction i with i; simp[←nat.add_one, theory.sf_itr_succ, *]
 instance union_closed (T U : theory L) [closed_theory T] [closed_theory U] : closed_theory (T ∪ U) :=
 ⟨λ p, by { simp, rintros (mem | mem), { exact closed_theory.cl mem }, {  exact closed_theory.cl mem } }⟩
 
-end fopl
+end fol

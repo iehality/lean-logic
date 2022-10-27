@@ -1,8 +1,8 @@
-import lindenbaum
+import FOL.lindenbaum
 
 universes u
 
-namespace fopl
+namespace fol
 variables {L : language.{u}} {T U : theory L}
 
 namespace theory
@@ -168,4 +168,4 @@ lemma provable_iff_inconsistent {p : formula L} : T ⊢ p ↔ ¬consistent (T +{
 
 end theory
 
-end fopl
+end fol

@@ -1,9 +1,9 @@
-import language_extension consistency lindenbaum
+import FOL.language_extension FOL.consistency FOL.lindenbaum
 open encodable
 
 universes u v
 
-namespace fopl
+namespace fol
 
 @[simp] lemma app_concat {α β : Type*} (a : α) (s : ℕ → α) (g : α → β) :
   (λ x, g ((a ⌢ s) x)) = g a ⌢ g ∘ s :=
@@ -450,7 +450,7 @@ private lemma ℌ_models_Tω'_fal
 begin
   simp, split,
     { intros h,  intros c,
-      induction c using fopl.henkin.Henkin.ind_on,
+      induction c using fol.henkin.Henkin.ind_on,
       let s' : ℕ → Consts L := c ⌢ s,
       have : p.rew (λ x, (s' x)) ∈ Tω⁺,
       { simp[(Tω_consistent' T).mem_maximal_iff] at h ⊢,
@@ -663,4 +663,4 @@ end
 end
 
 
-end fopl
+end fol

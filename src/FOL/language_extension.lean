@@ -1,8 +1,8 @@
-import translation
+import FOL.translation
 
 universes u v
 
-namespace fopl
+namespace fol
 open term formula
 
 variables {L L₁ L₂ L₃ : language.{u}}
@@ -562,5 +562,5 @@ end consts_pelimination
 
 end language
 
-end fopl
+end fol
 

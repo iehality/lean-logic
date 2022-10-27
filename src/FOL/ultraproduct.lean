@@ -1,9 +1,9 @@
-import deduction semantics lindenbaum order.filter.ultrafilter
+import FOL.deduction FOL.semantics FOL.lindenbaum order.filter.ultrafilter
 open encodable
 
 universes u v
 
-namespace fopl
+namespace fol
 variables {L : language.{u}} {I : Type u} [inhabited I] (F : ultrafilter I) {𝔄 : I → model L}
 
 def uequiv : (Π i, |𝔄 i|) → (Π i, |𝔄 i|) → Prop :=
@@ -55,7 +55,7 @@ quotient.lift_on' d f h
 
 @[simp]
 protected lemma lift_on_eq {φ} (u₀ : Π i, |𝔄 i|) (f : (Π i, |𝔄 i|) → φ)
-  (h : ∀ v u, v ~[F] u → f v = f u) : fopl.Ult.lift_on F ⟦u₀⟧* f h = f u₀ := rfl
+  (h : ∀ v u, v ~[F] u → f v = f u) : fol.Ult.lift_on F ⟦u₀⟧* f h = f u₀ := rfl
 
 @[elab_as_eliminator, reducible, simp]
 protected def lift_on₂ {φ} (u₁ u₂ : Ult 𝔄 F) (f : (Π i, |𝔄 i|) → (Π i, |𝔄 i|) → φ)
@@ -65,7 +65,7 @@ quotient.lift_on₂' u₁ u₂ f h
 @[simp]
 protected lemma lift_on₂_eq {φ} (u₁ u₂ : Π i, |𝔄 i|) (f : (Π i, |𝔄 i|) → (Π i, |𝔄 i|) → φ)
   (h : ∀ t₁ t₂ u₁ u₂, (t₁ ~[F] u₁) → (t₂ ~[F] u₂) → f t₁ t₂ = f u₁ u₂) :
-  fopl.Ult.lift_on₂ F ⟦u₁⟧* ⟦u₂⟧* f h = f u₁ u₂ := rfl
+  fol.Ult.lift_on₂ F ⟦u₁⟧* ⟦u₂⟧* f h = f u₁ u₂ := rfl
 
 @[elab_as_eliminator, reducible]
 protected def lift_on_finitary {φ} {n : ℕ} (v : finitary (Ult 𝔄 F) n) (f : finitary (Π i, |𝔄 i|) n → φ)
@@ -75,7 +75,7 @@ quotient.lift_on_finitary v f h
 @[simp]
 protected lemma lift_on_finitary_eq {φ} {n} (v : finitary (Π i, |𝔄 i|) n) (f : finitary (Π i, |𝔄 i|) n → φ)
   (h : ∀ v₁ v₂ : finitary (Π i, |𝔄 i|) n, (∀ n, (v₁ n) ~[F] (v₂ n)) → f v₁ = f v₂) :
-  fopl.Ult.lift_on_finitary F (λ x, ⟦v x⟧*) f h = f v :=
+  fol.Ult.lift_on_finitary F (λ x, ⟦v x⟧*) f h = f v :=
 quotient.lift_on_finitary_eq v f h
 
 @[simp] lemma of_eq_of {u₁ u₂ : Π i, |𝔄 i|} : (⟦u₁⟧* : Ult 𝔄 F) = ⟦u₂⟧* ↔ u₁ ~[F] u₂ :=
@@ -119,11 +119,11 @@ begin
 end
 
 def product_fn (n) (f : L.fn n) : finitary (Ult 𝔄 F) n → Ult 𝔄 F :=
-λ v, fopl.Ult.lift_on_finitary F v (λ v, (⟦λ i, (𝔄 i).fn f (λ x, v x i)⟧* : Ult 𝔄 F)) $ λ u₁ u₂ eqn,
+λ v, fol.Ult.lift_on_finitary F v (λ v, (⟦λ i, (𝔄 i).fn f (λ x, v x i)⟧* : Ult 𝔄 F)) $ λ u₁ u₂ eqn,
 by { simp, exact fn_equiv F eqn f }
 
 def product_pr (n) (p : L.pr n) : finitary (Ult 𝔄 F) n → Prop :=
-λ v, fopl.Ult.lift_on_finitary F v (λ v, {i | (𝔄 i).pr p (λ x, v x i)} ∈ F) $ λ u₁ u₂ eqn,
+λ v, fol.Ult.lift_on_finitary F v (λ v, {i | (𝔄 i).pr p (λ x, v x i)} ∈ F) $ λ u₁ u₂ eqn,
 by { simp, exact pr_equiv F eqn p }
 
 def product (𝔄 : I → model L) (F : ultrafilter I) : model L := ⟨Ult 𝔄 F, ⟨default⟩, product_fn F, product_pr F⟩
@@ -190,7 +190,7 @@ theorem fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|),
         by { have eqn: ∀ u, (⟦u⟧* ⌢ λ n, ⟦(λ i, e i n)⟧*) = (λ n, ⟦(λ i, (u i) ⌢ e i $ n)⟧* : ℕ → |ℿ 𝔄 ⫽ F|),
              { intros i, funext x, cases x; simp[concat] }, simp, split,
              { intros h u, have := h ⟦u⟧*, simp[eqn] at this, exact this },
-             { intros h u, induction u using fopl.Ult.ind_on, simp[eqn, h] } }
+             { intros h u, induction u using fol.Ult.ind_on, simp[eqn, h] } }
       ... ↔ (∀ (u : Π i, |𝔄 i|), {i | 𝔄 i ⊧[u i ⌢ e i] p} ∈ F) :
         by { split, { intros h u, simp[←fundamental_param  p _, h] }, { intros h u, simp[fundamental_param  p _, h] } }
       ... ↔ {i | ∀ (u : |𝔄 i|), 𝔄 i ⊧[u ⌢ e i] p} ∈ F : 
@@ -213,9 +213,9 @@ begin
 end
 
 end Ult
-end fopl
+end fol
 
-namespace fopl
+namespace fol
 variables {L : language.{u}} 
 
 def fintheory (T : theory L) := {S : finset (formula L) // ∀ {x}, x ∈ S → x ∈ T}
@@ -297,4 +297,4 @@ theorem compact (T : theory L) :
 
 end compactness
 
-end fopl
+end fol

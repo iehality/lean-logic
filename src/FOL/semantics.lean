@@ -1,8 +1,8 @@
-import deduction
+import FOL.deduction
 
 universes u v
 
-namespace fopl
+namespace fol
 open formula
 open dvector
 
@@ -251,4 +251,4 @@ lemma models_neg_iff_of_is_sentence {p : formula L} (hp : is_sentence p) : M ⊧
 by { have : M ⊧[default] ⁻p ↔ ¬M ⊧[default] p, by simp,
      simp only [hp, show is_sentence (⁻p), by simp[hp], eval_is_sentence_iff] at this, exact this }
 
-end fopl
+end fol

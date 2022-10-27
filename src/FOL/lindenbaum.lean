@@ -1,8 +1,8 @@
-import deduction semantics
+import FOL.deduction FOL.semantics
 
 universes u t
 
-namespace fopl
+namespace fol
 open formula
 variables {L : language.{u}} (T : theory L) (i : ℕ)
 
@@ -43,7 +43,7 @@ quotient.lift_on' d f h
 
 @[simp]
 protected lemma lift_on_eq {φ} (t : term L) (f : term L → φ)
-  (h : ∀ t u, T^i ⊢ t ≃ u → f t = f u) : fopl.Herbrand.lift_on (⟦t⟧ᴴ : Herbrand T i) f h = f t := rfl
+  (h : ∀ t u, T^i ⊢ t ≃ u → f t = f u) : fol.Herbrand.lift_on (⟦t⟧ᴴ : Herbrand T i) f h = f t := rfl
 
 @[elab_as_eliminator, reducible, simp]
 protected def lift_on₂ {φ} (d₁ d₂ : Herbrand T i) (f : term L → term L → φ)
@@ -53,7 +53,7 @@ quotient.lift_on₂' d₁ d₂ f h
 @[simp]
 protected lemma lift_on₂_eq {φ} (t u : term L) (f : term L → term L → φ)
   (h : ∀ t₁ t₂ u₁ u₂, (T^i ⊢ t₁ ≃ u₁) → (T^i ⊢ t₂ ≃ u₂) → f t₁ t₂ = f u₁ u₂) :
-  fopl.Herbrand.lift_on₂ ⟦t⟧ᴴ ⟦u⟧ᴴ f h = f t u := rfl
+  fol.Herbrand.lift_on₂ ⟦t⟧ᴴ ⟦u⟧ᴴ f h = f t u := rfl
 
 protected def lift_on_finitary {φ} {n : ℕ} (v : finitary (Herbrand T i) n) (f : finitary (term L) n → φ)
   (h : ∀ v₁ v₂ : finitary (term L) n, (∀ n, T^i ⊢ (v₁ n) ≃ (v₂ n)) → f v₁ = f v₂) : φ :=
@@ -62,26 +62,26 @@ quotient.lift_on_finitary v f h
 @[simp]
 protected lemma lift_on_finitary_eq {φ} {n} (v : finitary (term L) n) (f : finitary (term L) n → φ)
   (h : ∀ v₁ v₂ : finitary (term L) n, (∀ n, T^i ⊢ (v₁ n) ≃ (v₂ n)) → f v₁ = f v₂) :
-  fopl.Herbrand.lift_on_finitary (λ x, (⟦v x⟧ᴴ : Herbrand T i)) f h = f v :=
+  fol.Herbrand.lift_on_finitary (λ x, (⟦v x⟧ᴴ : Herbrand T i)) f h = f v :=
 quotient.lift_on_finitary_eq v f h
 
 @[simp]
 protected lemma lift_on_finitary_0_eq {φ} (f : finitary (term L) 0 → φ)
   (h : ∀ v₁ v₂ : finitary (term L) 0, (∀ n, T^i ⊢ (v₁ n) ≃ (v₂ n)) → f v₁ = f v₂)
   (n : finitary (Herbrand T i) 0) :
-  fopl.Herbrand.lift_on_finitary n f h = f finitary.nil :=
+  fol.Herbrand.lift_on_finitary n f h = f finitary.nil :=
 quotient.lift_on_finitary_0_eq f h n
 
 @[simp]
 protected lemma lift_on_finitary_1_eq {φ} (t : term L) (f : finitary (term L) 1 → φ)
   (h : ∀ v₁ v₂ : finitary (term L) 1, (∀ n, T^i ⊢ (v₁ n) ≃ (v₂ n)) → f v₁ = f v₂) :
-  fopl.Herbrand.lift_on_finitary ‹⟦t⟧ᴴ› f h = f ‹t› :=
+  fol.Herbrand.lift_on_finitary ‹⟦t⟧ᴴ› f h = f ‹t› :=
 quotient.lift_on_finitary_1_eq t f h
 
 @[simp]
 protected lemma lift_on_finitary_2_eq {φ} (t u : term L) (f : finitary (term L) 2 → φ)
   (h : ∀ v₁ v₂ : finitary (term L) 2, (∀ n, T^i ⊢ (v₁ n) ≃ (v₂ n)) → f v₁ = f v₂) :
-  fopl.Herbrand.lift_on_finitary ‹⟦t⟧ᴴ, ⟦u⟧ᴴ› f h = f ‹t, u› :=
+  fol.Herbrand.lift_on_finitary ‹⟦t⟧ᴴ, ⟦u⟧ᴴ› f h = f ‹t, u› :=
 quotient.lift_on_finitary_2_eq t u f h
 
 @[simp]
@@ -89,7 +89,7 @@ lemma of_eq_of {t u : term L} : (⟦t⟧ᴴ : Herbrand T i) = ⟦u⟧ᴴ ↔ (T^
 by simp[term.quo, term.equiv, quotient.eq']
 
 def function_of {n} (f : L.fn n) : finitary (Herbrand T i) n → Herbrand T i :=
-λ v, fopl.Herbrand.lift_on_finitary v (λ u : finitary (term L) n, ⟦term.app f u⟧ᴴ) 
+λ v, fol.Herbrand.lift_on_finitary v (λ u : finitary (term L) n, ⟦term.app f u⟧ᴴ) 
   $ λ v₁ v₂ eqs, by simp[of_eq_of]; exact provable.equiv_function_of_equiv f eqs
 
 notation `H❨` c `❩` v :84 := function_of c v
@@ -103,7 +103,7 @@ instance [has_add_symbol L] : has_add (Herbrand T i) := ⟨λ h₁ h₂, functio
 instance [has_mul_symbol L] : has_mul (Herbrand T i) := ⟨λ h₁ h₂, function_of has_mul_symbol.mul ‹h₁, h₂›⟩
 
 def predicate_of {n} (p : L.pr n) : finitary (Herbrand T i) n → Prop :=
-λ v, fopl.Herbrand.lift_on_finitary v (λ u : finitary (term L) n, T^i ⊢ formula.app p u) 
+λ v, fol.Herbrand.lift_on_finitary v (λ u : finitary (term L) n, T^i ⊢ formula.app p u) 
   $ λ v₁ v₂ eqs, by simp[of_eq_of]; 
   exact ⟨λ h, provable.predicate_of_equiv p h eqs, λ h, provable.predicate_of_equiv p h (λ i, provable.eq_symm (eqs i))⟩
 
@@ -135,7 +135,7 @@ section
 variables (f : term L → formula L) [formula.abberavation₁ f]
 
 def abberavation₁ (h : Herbrand T i) : Prop :=
-fopl.Herbrand.lift_on h (λ t, T^i ⊢ f t)
+fol.Herbrand.lift_on h (λ t, T^i ⊢ f t)
 (λ t u h, by { simp, suffices : T ^ i ⊢ (f #0).rew (t ⌢ ı) ↔ T ^ i ⊢ (f #0).rew (u ⌢ ı), by simpa using this,
   refine provable.iff_of_eqs (λ n, by rcases n; simp[h]) _ })
 
@@ -157,7 +157,7 @@ section
 variables (f : term L → term L → formula L) [formula.abberavation₂ f]
 
 def abberavation₂ (h₁ h₂ : Herbrand T i) : Prop :=
-fopl.Herbrand.lift_on₂ h₁ h₂ (λ t u, T^i ⊢ f t u)
+fol.Herbrand.lift_on₂ h₁ h₂ (λ t u, T^i ⊢ f t u)
 (λ t₁ t₂ u₁ u₂ h₁ h₂, by { simp,
   suffices : T ^ i ⊢ (f #0 #1).rew (t₁ ⌢ t₂ ⌢ ı) ↔ T ^ i ⊢ (f #0 #1).rew (u₁ ⌢ u₂ ⌢ ı), by simpa using this,
   refine provable.iff_of_eqs (λ n, by {rcases n; simp*; rcases n; simp*}) _ })
@@ -213,7 +213,7 @@ lemma is_sentence_pow {t : term L} (a : t.arity = 0) :
 
 @[simp] theorem succ_pow [has_succ_symbol L] (h : Herbrand T i) :
   (Succ h).pow = Succ h.pow :=
-by { induction h using fopl.Herbrand.ind_on,
+by { induction h using fol.Herbrand.ind_on,
      simp[pow, ←succ_eq_succ _, -succ_eq_succ] }
 
 @[simp] theorem numeral_pow [has_zero_symbol L] [has_succ_symbol L] (n : ℕ) :
@@ -222,14 +222,14 @@ by induction n; simp[*,numeral, succ_pow]
 
 @[simp] theorem add_pow [has_add_symbol L] (h₁ h₂ : Herbrand T i) :
   (h₁ + h₂).pow = h₁.pow + h₂.pow :=
-by { induction h₁ using fopl.Herbrand.ind_on with t,
-     induction h₂ using fopl.Herbrand.ind_on with u,
+by { induction h₁ using fol.Herbrand.ind_on with t,
+     induction h₂ using fol.Herbrand.ind_on with u,
     simp[pow, ←add_eq_add _ _, -add_eq_add] }
 
 @[simp] theorem mul_pow [has_mul_symbol L] (h₁ h₂ : Herbrand T i) :
   (h₁ * h₂).pow = h₁.pow * h₂.pow :=
-by { induction h₁ using fopl.Herbrand.ind_on with t,
-     induction h₂ using fopl.Herbrand.ind_on with u,
+by { induction h₁ using fol.Herbrand.ind_on with t,
+     induction h₂ using fol.Herbrand.ind_on with u,
     simp[pow, ←mul_eq_mul _ _, -mul_eq_mul] }
 
 @[simp] def sf_simp (t : term L) (j : ℕ) : (⟦t⟧ᴴ : Herbrand T i).pow = ⟦t^1⟧ᴴ := rfl
@@ -260,7 +260,7 @@ variables [proper_theory T]
 def subst_sf_H : Herbrand T i → Herbrand T (i+1) → Herbrand T i :=
 λ t h, Herbrand.lift_on t (λ t, subst_sf_H_aux t h : term L → Herbrand T i) $
 λ t₁ t₂ hyp,
-by { induction h using fopl.Herbrand.ind_on,
+by { induction h using fol.Herbrand.ind_on,
      simp[Herbrand.of_eq_of] at*, 
      refine provable.equal_rew_equal (ı[i ⇝ t₁]) (ı[i ⇝ t₂]) (λ m, _) h,
      have C : m < i ∨ m = i ∨ i < m, from trichotomous m i,
@@ -271,19 +271,19 @@ infix ` ⊳ᴴ ` :90  := subst_sf_H
 
 @[simp] lemma subst_sf_H_is_sentence (h : Herbrand T i) {t : term L} (a : t.arity = 0) :
   h ⊳ᴴ (⟦t⟧ᴴ : Herbrand T (i+1)) = ⟦t⟧ᴴ :=
-by { induction h using fopl.Herbrand.ind_on, simp[subst_sf_H, Herbrand.of_eq_of, a] }
+by { induction h using fol.Herbrand.ind_on, simp[subst_sf_H, Herbrand.of_eq_of, a] }
 
 @[simp] lemma subst_sf_H_var_eq (h : Herbrand T i) :
   h ⊳ᴴ ♯i = h :=
-by { induction h using fopl.Herbrand.ind_on, simp[-var_eq, subst_sf_H, Herbrand.of_eq_of, var_def] }
+by { induction h using fol.Herbrand.ind_on, simp[-var_eq, subst_sf_H, Herbrand.of_eq_of, var_def] }
 
 @[simp] lemma subst_sf_H_var_lt (h : Herbrand T i) (j : ℕ) (eqn : j < i) :
   h ⊳ᴴ ♯j = ♯j :=
-by { induction h using fopl.Herbrand.ind_on, simp[-var_eq, subst_sf_H, Herbrand.of_eq_of, var_def, eqn] }
+by { induction h using fol.Herbrand.ind_on, simp[-var_eq, subst_sf_H, Herbrand.of_eq_of, var_def, eqn] }
 
 @[simp] lemma subst_sf_H_var_gt (h : Herbrand T i) (j : ℕ) (eqn : i < j) :
   h ⊳ᴴ ♯j = ♯(j - 1) :=
-by { induction h using fopl.Herbrand.ind_on, simp[-var_eq, subst_sf_H, Herbrand.of_eq_of, var_def, eqn] }
+by { induction h using fol.Herbrand.ind_on, simp[-var_eq, subst_sf_H, Herbrand.of_eq_of, var_def, eqn] }
 
 end proper
 
@@ -336,7 +336,7 @@ protected lemma of_eq_of {p q : formula L} : (⟦p⟧ᴸ : Lindenbaum T i) = ⟦
 by simp[formula.equiv, quotient.eq']
 
 def predicate_of {n} (p : L.pr n) : finitary (Herbrand T i) n → Lindenbaum T i :=
-λ v, fopl.Herbrand.lift_on_finitary v (λ u : finitary (term L) n, ⟦formula.app p u⟧ᴸ) 
+λ v, fol.Herbrand.lift_on_finitary v (λ u : finitary (term L) n, ⟦formula.app p u⟧ᴸ) 
   $ λ v₁ v₂ eqs, by simp; exact equiv_predicate_of_equiv p eqs
 
 notation `L❴` f `❵` := predicate_of f
@@ -358,7 +358,7 @@ instance [has_mem_symbol L] : has_elem (Herbrand T i) (Lindenbaum T i) := ⟨λ 
   (⟦t ∊ u⟧ᴸ : Lindenbaum T i) = ((⟦t⟧ᴴ : Herbrand T i) ∊ ⟦u⟧ᴴ) := by unfold has_elem.elem; simp
 
 def equal : Herbrand T i → Herbrand T i → Lindenbaum T i :=
-λ h₁ h₂, fopl.Herbrand.lift_on₂ h₁ h₂ (λ t₁ t₂, (⟦t₁ ≃ t₂⟧ᴸ : Lindenbaum T i)) $
+λ h₁ h₂, fol.Herbrand.lift_on₂ h₁ h₂ (λ t₁ t₂, (⟦t₁ ≃ t₂⟧ᴸ : Lindenbaum T i)) $
 λ t₁ t₂ u₁ u₂ eqn₁ eqn₂, by simp; exact equiv_eq_of_equiv eqn₁ eqn₂
 
 instance : has_eq (Herbrand T i) (Lindenbaum T i) := ⟨equal⟩
@@ -373,7 +373,7 @@ section
 variables (f : term L → formula L) [formula.abberavation₁ f]
 
 def abberavation₁ (h : Herbrand T i) : Lindenbaum T i :=
-fopl.Herbrand.lift_on h (λ t, (⟦f t⟧ᴸ : Lindenbaum T i))
+fol.Herbrand.lift_on h (λ t, (⟦f t⟧ᴸ : Lindenbaum T i))
 (λ t u h, by { simp, suffices : T^i ⊢ (f #0).rew (t ⌢ ı) ⟷ (f #0).rew (u ⌢ ı), by simpa using this,
   refine provable.equal_rew_iff _ _, intros n, rcases n; simp* })
 
@@ -391,7 +391,7 @@ section
 variables (f : term L → term L → formula L) [formula.abberavation₂ f]
 
 def abberavation₂ (h₁ h₂ : Herbrand T i) : Lindenbaum T i :=
-fopl.Herbrand.lift_on₂ h₁ h₂ (λ t u, (⟦f t u⟧ᴸ : Lindenbaum T i))
+fol.Herbrand.lift_on₂ h₁ h₂ (λ t u, (⟦f t u⟧ᴸ : Lindenbaum T i))
 (λ t₁ t₂ u₁ u₂ h₁ h₂, by { simp, suffices : T^i ⊢ (f #0 #1).rew (t₁ ⌢ t₂ ⌢ ı) ⟷ (f #0 #1).rew (u₁ ⌢ u₂ ⌢ ı), by simpa using this,
   refine provable.equal_rew_iff _ _, intros n, rcases n; simp*, rcases n; simp* })
 
@@ -426,18 +426,18 @@ instance : has_exists_quantifier' (Lindenbaum T (i + 1)) (Lindenbaum T i) := ⟨
 lemma exist_def (p : formula L) : (∐' (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⟦∐ p⟧ᴸ := rfl
 
 @[simp] lemma equal_refl {h : Herbrand T i}  : h ≃ᴸ h = ⊤ :=
-by { induction h using fopl.Herbrand.ind_on;
+by { induction h using fol.Herbrand.ind_on;
      rw [←equal_eq, ←top_eq], simp [-equal_eq, -top_eq, axiomatic_classical_logic'.iff_equiv] }
 
 lemma equal_symm (h₁ h₂ : Herbrand T i) : (h₁ ≃ᴸ h₂) = (h₂ ≃ h₁) :=
-by { induction h₁ using fopl.Herbrand.ind_on,
-     induction h₂ using fopl.Herbrand.ind_on,
+by { induction h₁ using fol.Herbrand.ind_on,
+     induction h₂ using fol.Herbrand.ind_on,
      rw [←equal_eq, ←equal_eq], simp [-equal_eq, axiomatic_classical_logic'.iff_equiv],
      refine ⟨by { have := (@eq_symmetry _ (T^i)) ⊚ h₂ ⊚ h₁, simp at this, exact this },
        by { have := (@eq_symmetry _ (T^i)) ⊚ h₁ ⊚ h₂, simp at this, exact this }⟩ }
 
 lemma equal_iff {h₁ h₂ : Herbrand T i} {p : L.pr 1} : h₁ ≃ᴸ h₂ = ⊤ ↔ h₁ = h₂ :=
-by { induction h₁ using fopl.Herbrand.ind_on, induction h₂ using fopl.Herbrand.ind_on,
+by { induction h₁ using fol.Herbrand.ind_on, induction h₂ using fol.Herbrand.ind_on,
      rw [←equal_eq, ←top_eq], simp [-equal_eq, -top_eq, axiomatic_classical_logic'.iff_equiv] }
 
 def pow : Lindenbaum T i → Lindenbaum T (i+1) :=
@@ -568,7 +568,7 @@ infixr ` ⊳ `:90  := subst_sf_L
 lemma fal_le_subst (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : ∏' (♯0 ⊳ l.pow) ≤ h ⊳ l :=
 begin
   induction l using classical_logic.lindenbaum.ind_on with p, 
-  induction h using fopl.Herbrand.ind_on with t,
+  induction h using fol.Herbrand.ind_on with t,
   have : T^i ⊢ ∏ (p^1).rew ı[(i + 1) ⇝ #0] ⟶ ((p^1).rew ı[(i + 1) ⇝ #0]).rew ı[0 ⇝ t],
     from @specialize _ (T^i) ((p^1).rew ı[(i + 1) ⇝ #0]) t,
   have eqn : (((p^1).rew ı[(i + 1) ⇝ #0]).rew ı[0 ⇝ t]) = p.rew ı[i ⇝ t],
@@ -583,7 +583,7 @@ end
 lemma fal_le_subst0 (l : Lindenbaum T 1) (h) : ∏' l ≤ (h ⊳ l) :=
 begin
   induction l using classical_logic.lindenbaum.ind_on with p, 
-  induction h using fopl.Herbrand.ind_on with t, 
+  induction h using fol.Herbrand.ind_on with t, 
   simp only [←univ_eq],
   simp[-univ_eq, subst_sf_L, classical_logic.lindenbaum.le_def],
 end
@@ -591,7 +591,7 @@ end
 lemma subst_sf_L_le_ex (l : Lindenbaum T 1) (h) : h ⊳ l ≤ ∐' l :=
 begin
   induction l using classical_logic.lindenbaum.ind_on, 
-  induction h using fopl.Herbrand.ind_on,
+  induction h using fol.Herbrand.ind_on,
   simp[exist_def, -exist_eq, subst_sf_L, classical_logic.lindenbaum.le_def],
   refine contrapose.mp _, simp[has_exists_quantifier.ex, formula.ex],
   rw (show ⁻(l.rew ı[0 ⇝ h]) = (⁻l).rew ı[0 ⇝ h], by simp), 
@@ -620,43 +620,43 @@ by { have := @le_fal_le_fal _ _ _ _ l.pow m, simp at this, exact this }
 @[simp] lemma subst_sf_L_compl (h : Herbrand T i) (l : Lindenbaum T (i+1)) :
   h ⊳ (lᶜ)= (h ⊳ l)ᶜ :=
 by { induction l using classical_logic.lindenbaum.ind_on, 
-     induction h using fopl.Herbrand.ind_on,
+     induction h using fol.Herbrand.ind_on,
      simp[neg_def, subst_sf_L, -neg_eq] }
 
 @[simp] lemma subst_sf_L_and (h : Herbrand T i) (l m : Lindenbaum T (i+1)) :
   h ⊳ (l ⊓ m) = h ⊳ l ⊓ h ⊳ m :=
 by { induction l using classical_logic.lindenbaum.ind_on,
      induction m using classical_logic.lindenbaum.ind_on, 
-     induction h using fopl.Herbrand.ind_on,
+     induction h using fol.Herbrand.ind_on,
      simp[inf_def, subst_sf_L, -and_eq] }
 
 @[simp] lemma subst_sf_L_or (h : Herbrand T i) (l m : Lindenbaum T (i+1)) :
   h ⊳ (l ⊔ m) = h ⊳ l ⊔ h ⊳ m :=
 by { induction l using classical_logic.lindenbaum.ind_on, induction m using classical_logic.lindenbaum.ind_on, 
-     induction h using fopl.Herbrand.ind_on,
+     induction h using fol.Herbrand.ind_on,
      simp[-or_eq, subst_sf_L, classical_logic.lindenbaum.sup_def] }
 
 @[simp] lemma subst_sf_L_equal (h₁ : Herbrand T i) (h₂ h₃ : Herbrand T (i+1)) :
   h₁ ⊳ (h₂ ≃ h₃) = ((h₁ ⊳ᴴ h₂) ≃ (h₁ ⊳ᴴ h₃)) :=
-by { induction h₁ using fopl.Herbrand.ind_on, induction h₂ using fopl.Herbrand.ind_on,
-     induction h₃ using fopl.Herbrand.ind_on,
+by { induction h₁ using fol.Herbrand.ind_on, induction h₂ using fol.Herbrand.ind_on,
+     induction h₃ using fol.Herbrand.ind_on,
      simp[-equal_eq, subst_sf_L, Herbrand.proper.subst_sf_H, Herbrand.proper.subst_sf_H_aux, equal_def] }
 
 @[simp] lemma subst_sf_L_fal (h : Herbrand T i) (l : Lindenbaum T (i+2)) :
   h ⊳ ∏' l = ∏' (h.pow ⊳ l) :=
 by { induction l using classical_logic.lindenbaum.ind_on,
-     induction h using fopl.Herbrand.ind_on,
+     induction h using fol.Herbrand.ind_on,
      simp[subst_sf_L, univ_def, Herbrand.pow_def, -univ_eq, -Herbrand.pow_eq, subst_pow] }
 
 @[simp] lemma subst_sf_L_ex (h : Herbrand T i) (l : Lindenbaum T (i+2)) :
   h ⊳ ∐' l = ∐' (h.pow ⊳ l) :=
 by { induction l using classical_logic.lindenbaum.ind_on,
-     induction h using fopl.Herbrand.ind_on,
+     induction h using fol.Herbrand.ind_on,
      simp[subst_sf_L, exist_def, Herbrand.pow_def, -exist_eq, -Herbrand.pow_eq, subst_pow] }
 
 lemma subst_sf_L_is_sentence (h : Herbrand T i) {p : formula L} (a : is_sentence p) :
   h ⊳ (⟦p⟧ᴸ : Lindenbaum T (i+1)) = ⟦p⟧ᴸ :=
-by { induction h using fopl.Herbrand.ind_on, simp[subst_sf_L, Lindenbaum.of_eq_of, a] }
+by { induction h using fol.Herbrand.ind_on, simp[subst_sf_L, Lindenbaum.of_eq_of, a] }
 
 lemma ex_subst_le (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : h ⊳ l ≤ ∐' (♯0 ⊳ l.pow) :=
 begin
@@ -724,7 +724,7 @@ lemma subst_eq [proper_theory T] (p : formula L) (t : term L) :
 by simp[eq_top_of_provable]
 
 lemma to_Herbrand {h₁ h₂ : Herbrand T i} : h₁ ≃ᴸ h₂ = ⊤ ↔ h₁ = h₂ :=
-by { induction h₁ using fopl.Herbrand.ind_on, induction h₂ using fopl.Herbrand.ind_on,
+by { induction h₁ using fol.Herbrand.ind_on, induction h₂ using fol.Herbrand.ind_on,
      simp[equal_def, top_def, -equal_eq, -top_eq, axiomatic_classical_logic'.iff_equiv] }
 
 theorem eq_neg_of_provable_neg {p} : T^i ⊢ ⁻p ↔ (⟦p⟧ᴸ : Lindenbaum T i) = ⊥ :=
@@ -834,14 +834,14 @@ namespace Lindenbaum
 @[simp] lemma and_ext [has_add_symbol L] (t₁ t₂ u₁ u₂ : Herbrand T i) :
   (t₁ ≃ t₂ : Lindenbaum T i) ⊓ (u₁ ≃ u₂) ≤ (t₁ + u₁ ≃ t₂ + u₂) :=
 begin
-  induction t₁ using fopl.Herbrand.ind_on,
-  induction t₂ using fopl.Herbrand.ind_on,
-  induction u₁ using fopl.Herbrand.ind_on,
-  induction u₂ using fopl.Herbrand.ind_on,
+  induction t₁ using fol.Herbrand.ind_on,
+  induction t₂ using fol.Herbrand.ind_on,
+  induction u₁ using fol.Herbrand.ind_on,
+  induction u₂ using fol.Herbrand.ind_on,
   have : T^i ⊢ (t₁ ≃ t₂) ⊓ (u₁ ≃ u₂) ⟶ (t₁ + u₁ ≃ t₂ + u₂), { simp },
   have := le_of_provable_imply.mp this, simp at this, exact this
 end
 
 end Lindenbaum 
 
-end fopl
+end fol

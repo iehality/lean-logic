@@ -1,8 +1,8 @@
-import fopl theory provability
+import FOL.fol FOL.theory provability
 
 universes u v
 
-namespace fopl
+namespace fol
 open formula 
 variables {L : language.{u}}
 
@@ -1106,7 +1106,7 @@ instance extend_sf {T₁ T₂ : theory L} [extend T₁ T₂] : extend (⤊T₁) 
   simpa[formula.nested_rew] using this ⊚ #0 }⟩
 
 instance extend_pow (T₁ T₂ : theory L) [ex : extend T₁ T₂] (k : ℕ) : extend (T₁^k) (T₂^k) :=
-by { induction k with k IH ; simp[theory.sf_itr_succ], { exact ex }, { exactI fopl.theory.extend_sf } }
+by { induction k with k IH ; simp[theory.sf_itr_succ], { exact ex }, { exactI fol.theory.extend_sf } }
 
 instance extend_union_left (T₁ T₂ : theory L) : extend T₁ (T₁ ∪ T₂) := theory.extend_of_inclusion (by simp)
 
@@ -1374,4 +1374,4 @@ lemma le_iff_mem_provable :
 
 end theory
 
-end fopl
+end fol

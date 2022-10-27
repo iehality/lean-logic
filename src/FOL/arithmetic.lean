@@ -1,6 +1,6 @@
-import class_of_formulae extend
+import FOL.class_of_formulae FOL.extend
 
-namespace fopl
+namespace fol
 open formula
 namespace arithmetic
 open axiomatic_classical_logic' axiomatic_classical_logic
@@ -130,8 +130,8 @@ infix ` ≺' `:50 := Herbrand.lt
   Lindenbaum.predicate_of ((coe : LA'.pr 2 → L.pr 2) (sum.inr additional_pr.lt)) v = (v 0 ≺' v 1 : Lindenbaum T i) := rfl
 
 lemma Lindenbaum.lt_eq (h₁ h₂ : Herbrand T i) : (h₁ ≺' h₂) = (h₁ ≼ h₂) ⊓ (h₁ ≃ h₂)ᶜ :=
-by induction h₁ using fopl.Herbrand.ind_on with t;
-   induction h₂ using fopl.Herbrand.ind_on with u;
+by induction h₁ using fol.Herbrand.ind_on with t;
+   induction h₂ using fol.Herbrand.ind_on with u;
    simpa[lt] using Lindenbaum.eq_of_provable_equiv.mp (thy.lt _ t u)
 
 def Herbrand.dvd (h₁ h₂ : Herbrand T i) : Lindenbaum T i :=
@@ -143,8 +143,8 @@ infix ` ⍭' `:50 := Herbrand.dvd
   Lindenbaum.predicate_of ((coe : LA'.pr 2 → L.pr 2) (sum.inr additional_pr.dvd)) v = (v 0 ⍭' v 1 : Lindenbaum T i) := rfl
 
 lemma Lindenbaum.dvd_eq (h₁ h₂ : Herbrand T i) : (h₁ ⍭' h₂) = ∐' (♯0 * h₁.pow ≃ h₂.pow : Lindenbaum T (i + 1)) :=
-by induction h₁ using fopl.Herbrand.ind_on with t;
-   induction h₂ using fopl.Herbrand.ind_on with u;
+by induction h₁ using fol.Herbrand.ind_on with t;
+   induction h₂ using fol.Herbrand.ind_on with u;
    simpa[dvd] using Lindenbaum.eq_of_provable_equiv.mp (thy.dvd _ t u)
 
 end additional
@@ -218,7 +218,7 @@ by { have : Q ⊢ ∀₁ x, 0 ≄ Succ x, by simpa[fal_fn] using provable.lexten
      simpa using this ⊚ t }
 
 @[simp] lemma Lindembaum.zero_ne_succ (h : Herbrand Q i) : 0 ≃ Succ h = (⊥ : Lindenbaum Q i) :=
-by { induction h using fopl.Herbrand.ind_on with t,
+by { induction h using fol.Herbrand.ind_on with t,
      simpa[Lindenbaum.eq_neg_of_provable_neg_0] using zero_ne_succ (Q^i) t }
 
 @[simp] lemma Lindenbaum.succ_ne_zero (h : Herbrand Q i) : Succ h ≃ 0 = (⊥ : Lindenbaum Q i) :=
@@ -230,16 +230,16 @@ by { have : Q ⊢ ∀₁ x y, (Succ x ≃ Succ y) ⟶ (x ≃ y), by simpa[fal_fn
      simpa[fal_fn] using this ⊚ t ⊚ u }
 
 @[simp] lemma Lindenbaum.succ_inj  (h₁ h₂ : Herbrand Q i) : (Succ h₁ ≃ Succ h₂ : Lindenbaum Q i) = (h₁ ≃ h₂) :=
-by { induction h₁ using fopl.Herbrand.ind_on with t,
-     induction h₂ using fopl.Herbrand.ind_on with u,
+by { induction h₁ using fol.Herbrand.ind_on with t,
+     induction h₂ using fol.Herbrand.ind_on with u,
      have : Q^i ⊢ (Succ t ≃ Succ u) ⟷ (t ≃ u), by simp[iff_equiv],
      simpa using Lindenbaum.eq_of_provable_equiv.mp this }
 
 lemma Herbrand.succ_injective : function.injective (has_succ.succ : Herbrand Q i → Herbrand Q i) :=
 λ h₁ h₂,
 begin
-  induction h₁ using fopl.Herbrand.ind_on with t,
-  induction h₂ using fopl.Herbrand.ind_on with u,
+  induction h₁ using fol.Herbrand.ind_on with t,
+  induction h₂ using fol.Herbrand.ind_on with u,
   intros h,
   have lmm₁ : Q^i ⊢ Succ t ≃ Succ u, from Herbrand.eq_of_provable_equiv.mpr (by simp[h]),
   have lmm₂ : Q^i ⊢ (Succ t ≃ Succ u) ⟶ (t ≃ u), by simp, 
@@ -259,7 +259,7 @@ by { have : Q ⊢ ∀₁ x, (x + 0 ≃ x), by simpa[fal_fn, ex_fn] using provabl
      simpa[fal_fn, ex_fn] using this ⊚ t }
 
 @[simp] lemma Herbrand.add_zero (h : Herbrand Q i) : h + 0 = h :=
-by { induction h using fopl.Herbrand.ind_on with t,
+by { induction h using fol.Herbrand.ind_on with t,
      simpa using Herbrand.eq_of_provable_equiv.mp (add_zero (Q^i) t) }
 
 @[simp] lemma add_succ (t u : term L) : Q ⊢ t + Succ u ≃ Succ (t + u) :=
@@ -267,8 +267,8 @@ by { have : Q ⊢ ∀₁ x y, x + Succ y ≃ Succ (x + y), by simpa[fal_fn, ex_f
      simpa[fal_fn, ex_fn] using this ⊚ t ⊚ u }
 
 @[simp] lemma Herbrand.add_succ {i} (h₁ h₂ : Herbrand Q i) : h₁ + Succ h₂ = Succ (h₁ + h₂) :=
-by { induction h₁ using fopl.Herbrand.ind_on with t,
-     induction h₂ using fopl.Herbrand.ind_on with u,
+by { induction h₁ using fol.Herbrand.ind_on with t,
+     induction h₂ using fol.Herbrand.ind_on with u,
      simpa using Herbrand.eq_of_provable_equiv.mp (add_succ (Q^i) t u) }
 
 @[simp] lemma mul_zero (t : term L) : Q ⊢ t * 0 ≃ 0 :=
@@ -276,7 +276,7 @@ by { have : Q ⊢ ∀₁ x, x * 0 ≃ 0, by simpa[fal_fn, ex_fn] using provable.
      simpa[fal_fn, ex_fn] using this ⊚ t }
 
 @[simp] lemma Herbrand.mul_zero  (h : Herbrand Q i) : h * 0 = 0 :=
-by { induction h using fopl.Herbrand.ind_on with t,
+by { induction h using fol.Herbrand.ind_on with t,
      simpa using Herbrand.eq_of_provable_equiv.mp (mul_zero (Q^i) t) }
 
 @[simp] lemma mul_succ (t u : term L) : Q ⊢ t * Succ u ≃ t * u + t :=
@@ -284,8 +284,8 @@ by { have : Q ⊢ ∀₁ x y, x * Succ y ≃ x * y + x, by simpa[fal_fn, ex_fn] 
      simpa[fal_fn, ex_fn] using this ⊚ t ⊚ u }
 
 @[simp] lemma Herbrand.mul_succ {i} (h₁ h₂ : Herbrand Q i) : h₁ * Succ h₂ = h₁ * h₂ + h₁ :=
-by { induction h₁ using fopl.Herbrand.ind_on with t,
-     induction h₂ using fopl.Herbrand.ind_on with u,
+by { induction h₁ using fol.Herbrand.ind_on with t,
+     induction h₂ using fol.Herbrand.ind_on with u,
      simpa using Herbrand.eq_of_provable_equiv.mp (mul_succ (Q^i) t u) }
 
 @[simp] lemma le_iff (t u : term L) : Q ⊢ (t ≼ u) ⟷ ∐ (#0 + t^1 ≃ u^1) :=
@@ -294,17 +294,17 @@ by { have : Q ⊢ ∀₁ x y, (x ≼ y) ⟷ ∃₁ z, (z + x ≃ y), by simpa[fa
 
 lemma Lindenbaum.le_iff {h₁ h₂ : Herbrand Q i} :
   (h₁ ≼ h₂ : Lindenbaum Q i) = ∐' (♯0 + h₁.pow ≃ h₂.pow : Lindenbaum Q (i + 1)) :=
-by { induction h₁ using fopl.Herbrand.ind_on with t,
-     induction h₂ using fopl.Herbrand.ind_on with u,
+by { induction h₁ using fol.Herbrand.ind_on with t,
+     induction h₂ using fol.Herbrand.ind_on with u,
      simpa[ex_fn] using Lindenbaum.eq_of_provable_equiv.mp (le_iff (Q^i) t u) }
 
 namespace Lindenbaum
 
 lemma le_of_eq (e : Herbrand Q i) {h₁ h₂ : Herbrand Q i} (h : e + h₁ = h₂) : h₁ ≤ h₂ :=
 begin
-  induction e using fopl.Herbrand.ind_on with u,
-  induction h₁ using fopl.Herbrand.ind_on with t₁,
-  induction h₂ using fopl.Herbrand.ind_on with t₂,
+  induction e using fol.Herbrand.ind_on with u,
+  induction h₁ using fol.Herbrand.ind_on with t₁,
+  induction h₂ using fol.Herbrand.ind_on with t₂,
   have lmm₁ : Q^i ⊢ ∐ (#0 + t₁^1 ≃ t₂^1),
   { refine use u _, simp, refine Herbrand.eq_of_provable_equiv.mpr (by simp[h]) },
   have lmm₂ : Q^i ⊢ (t₁ ≼ t₂) ⟷ ∐ (#0 + t₁^1 ≃ t₂^1), by simp,
@@ -340,8 +340,8 @@ end
 @[simp] lemma Lindenbaum.add_eq_0_of_eq_0 (x y : Herbrand Q i) :
   (x + y ≃ 0 : Lindenbaum Q i) = (x ≃ 0) ⊓ (y ≃ 0) :=
 begin
-  induction x using fopl.Herbrand.ind_on,
-  induction y using fopl.Herbrand.ind_on,
+  induction x using fol.Herbrand.ind_on,
+  induction y using fol.Herbrand.ind_on,
   have : Q^i ⊢ (x + y ≃ 0) ⟷ (x ≃ 0) ⊓ (y ≃ 0), 
   { simp[iff_equiv],
     refine ⟨by simpa[fal_fn] using add_eq_zero (Q^i) ⊚ x ⊚ y, deduction.mp _⟩, simp,
@@ -369,7 +369,7 @@ begin
 end
 
 @[simp] lemma Lindenbaum.zero_le (h : Herbrand Q i) : 0 ≤ h :=
-by induction h using fopl.Herbrand.ind_on with t;
+by induction h using fol.Herbrand.ind_on with t;
    simpa using Herbrand.le_iff_provable_le.mp (by simpa[fal_fn] using zero_le (Q^i) ⊚ t)
 
 @[simp] lemma le_zero_equiv_eq_zero : Q ⊢ ∀₁ x, (x ≼ 0) ⟷ (x ≃ 0) :=
@@ -384,7 +384,7 @@ begin
 end
 
 @[simp] lemma Lindenbaum.le_zero_eq_eq_zero (h : Herbrand Q i) : (h ≼ 0 : Lindenbaum Q i) = (h ≃ 0) :=
-by induction h using fopl.Herbrand.ind_on with t;
+by induction h using fol.Herbrand.ind_on with t;
    simpa[Lindenbaum.eq_of_provable_equiv_0] using (le_zero_equiv_eq_zero (Q^i) ⊚ t)
 
 @[simp] lemma add_numeral_eq_numeral_add (n m : ℕ) : Q ⊢ (n˙ : term L) + m˙ ≃ (n + m)˙ :=
@@ -517,7 +517,7 @@ begin
 end
 
 @[simp] lemma Lindenbaum.zero_add (h : Herbrand Iₒₚₑₙ i) : 0 + h = h :=
-by induction h using fopl.Herbrand.ind_on with t;
+by induction h using fol.Herbrand.ind_on with t;
    simpa using Herbrand.eq_of_provable_equiv.mp (zero_add (Iₒₚₑₙ^i) ⊚ t)
 
 @[simp] lemma succ_add : Iₒₚₑₙ ⊢ ∀₁ x y, Succ x + y ≃ Succ (x + y) :=
@@ -535,8 +535,8 @@ begin
 end
 
 @[simp] lemma Lindenbaum.succ_add (h₁ h₂ : Herbrand Iₒₚₑₙ i) : Succ h₁ + h₂ = Succ (h₁ + h₂) :=
-by induction h₁ using fopl.Herbrand.ind_on with t;
-   induction h₂ using fopl.Herbrand.ind_on with u;
+by induction h₁ using fol.Herbrand.ind_on with t;
+   induction h₂ using fol.Herbrand.ind_on with u;
    simpa using Herbrand.eq_of_provable_equiv.mp (succ_add (Iₒₚₑₙ^i) ⊚ t ⊚ u)
 
 lemma add_commutative : Iₒₚₑₙ ⊢ ∀₁ x y, x + y ≃ y + x :=
@@ -552,8 +552,8 @@ begin
 end
 
 lemma Lindenbaum.add_commutative (h₁ h₂ : Herbrand Iₒₚₑₙ i) : h₁ + h₂ = h₂ + h₁ :=
-by induction h₁ using fopl.Herbrand.ind_on with t;
-   induction h₂ using fopl.Herbrand.ind_on with u;
+by induction h₁ using fol.Herbrand.ind_on with t;
+   induction h₂ using fol.Herbrand.ind_on with u;
    simpa using Herbrand.eq_of_provable_equiv.mp (add_commutative (Iₒₚₑₙ^i) ⊚ t ⊚ u)
 
 lemma add_associative : Iₒₚₑₙ ⊢ ∀₁ x y z, x + y + z ≃ x + (y + z) :=
@@ -571,9 +571,9 @@ begin
 end
 
 lemma Lindenbaum.add_associative (h₁ h₂ h₃ : Herbrand Iₒₚₑₙ i) : h₁ + h₂ + h₃ = h₁ + (h₂ + h₃) :=
-by induction h₁ using fopl.Herbrand.ind_on with t₁;
-   induction h₂ using fopl.Herbrand.ind_on with t₂;
-   induction h₃ using fopl.Herbrand.ind_on with t₃;
+by induction h₁ using fol.Herbrand.ind_on with t₁;
+   induction h₂ using fol.Herbrand.ind_on with t₂;
+   induction h₃ using fol.Herbrand.ind_on with t₃;
    simpa using Herbrand.eq_of_provable_equiv.mp (add_associative _ ⊚ t₁ ⊚ t₂ ⊚ t₃)
 
 
@@ -595,7 +595,7 @@ begin
 end
 
 @[simp] lemma Lindenbaum.zero_mul (h : Herbrand Iₒₚₑₙ i) : 0 * h = 0 :=
-by induction h using fopl.Herbrand.ind_on with t;
+by induction h using fol.Herbrand.ind_on with t;
    simpa using Herbrand.eq_of_provable_equiv.mp (zero_mul _ ⊚ t)
 
 lemma succ_mul : Iₒₚₑₙ ⊢ ∀₁ x y, Succ x * y ≃ x * y + y :=
@@ -617,8 +617,8 @@ begin
 end
 
 @[simp] lemma Lindenbaum.succ_mul (h₁ h₂ : Herbrand Iₒₚₑₙ i) : Succ h₁ * h₂ = h₁ * h₂ + h₂ :=
-by induction h₁ using fopl.Herbrand.ind_on with t;
-   induction h₂ using fopl.Herbrand.ind_on with u;
+by induction h₁ using fol.Herbrand.ind_on with t;
+   induction h₂ using fol.Herbrand.ind_on with u;
    simpa using Herbrand.eq_of_provable_equiv.mp (succ_mul _ ⊚ t ⊚ u)
 
 lemma mul_commutative : Iₒₚₑₙ ⊢ ∀₁ x y, x * y ≃ y * x :=
@@ -634,8 +634,8 @@ begin
 end
 
 lemma Lindenbaum.mul_commutative (h₁ h₂ : Herbrand Iₒₚₑₙ i) : h₁ * h₂ = h₂ * h₁ :=
-by induction h₁ using fopl.Herbrand.ind_on with t;
-   induction h₂ using fopl.Herbrand.ind_on with u;
+by induction h₁ using fol.Herbrand.ind_on with t;
+   induction h₂ using fol.Herbrand.ind_on with u;
    simpa using Herbrand.eq_of_provable_equiv.mp (mul_commutative _ ⊚ t ⊚ u)
 
 lemma mul_add : Iₒₚₑₙ ⊢ ∀₁ x y z, x * (y + z) ≃ x * y + x * z :=
@@ -654,9 +654,9 @@ begin
 end
 
 lemma Lindenbaum.mul_add (h₁ h₂ h₃ : Herbrand Iₒₚₑₙ i) : h₁ * (h₂ + h₃) = h₁ * h₂ + h₁ * h₃ :=
-by induction h₁ using fopl.Herbrand.ind_on with t₁;
-   induction h₂ using fopl.Herbrand.ind_on with t₂;
-   induction h₃ using fopl.Herbrand.ind_on with t₃;
+by induction h₁ using fol.Herbrand.ind_on with t₁;
+   induction h₂ using fol.Herbrand.ind_on with t₂;
+   induction h₃ using fol.Herbrand.ind_on with t₃;
    simpa using Herbrand.eq_of_provable_equiv.mp (mul_add _ ⊚ t₁ ⊚ t₂ ⊚ t₃)
 
 lemma mul_associative : Iₒₚₑₙ ⊢ ∀₁ x y z, x * y * z ≃ x * (y * z) :=
@@ -674,9 +674,9 @@ begin
 end
 
 lemma Lindenbaum.mul_associative (h₁ h₂ h₃ : Herbrand Iₒₚₑₙ i) : h₁ * h₂ * h₃ = h₁ * (h₂ * h₃) :=
-by induction h₁ using fopl.Herbrand.ind_on with t₁;
-   induction h₂ using fopl.Herbrand.ind_on with t₂;
-   induction h₃ using fopl.Herbrand.ind_on with t₃;
+by induction h₁ using fol.Herbrand.ind_on with t₁;
+   induction h₂ using fol.Herbrand.ind_on with t₂;
+   induction h₃ using fol.Herbrand.ind_on with t₃;
    simpa using Herbrand.eq_of_provable_equiv.mp (mul_associative _ ⊚ t₁ ⊚ t₂ ⊚ t₃)
 
 @[simp] lemma mul_one : Iₒₚₑₙ ⊢ ∀₁ x, x * 1 ≃ x := generalize (Herbrand.eq_of_provable_equiv_0.mpr (by simp[numeral_one_def]))
@@ -710,9 +710,9 @@ end
 
 lemma Herbrand.add_right_cancel (h₁ h₂ h₃ : Herbrand Iₒₚₑₙ i) : h₁ + h₃ = h₂ + h₃ ↔ h₁ = h₂ :=
 ⟨λ h, begin
-  induction h₁ using fopl.Herbrand.ind_on with t₁,
-  induction h₂ using fopl.Herbrand.ind_on with t₂,
-  induction h₃ using fopl.Herbrand.ind_on with t₃,
+  induction h₁ using fol.Herbrand.ind_on with t₁,
+  induction h₂ using fol.Herbrand.ind_on with t₂,
+  induction h₃ using fol.Herbrand.ind_on with t₃,
   have lmm₁ : Iₒₚₑₙ^i ⊢ t₁ + t₃ ≃ t₂ + t₃, from Herbrand.eq_of_provable_equiv.mpr (by simp[h]),
   have lmm₂ : Iₒₚₑₙ^i ⊢ (t₁ + t₃ ≃ t₂ + t₃) ⟶ (t₁ ≃ t₂), by simpa[fal_fn] using add_right_cancel _ ⊚ t₁ ⊚ t₂ ⊚ t₃,
   exact Herbrand.eq_of_provable_equiv.mp (lmm₂ ⨀ lmm₁)
@@ -723,9 +723,9 @@ by simp[add_comm h₃, Herbrand.add_right_cancel]
 
 @[simp] lemma Lindenbaum.add_right_cancel (h₁ h₂ h₃ : Herbrand Iₒₚₑₙ i) : (h₁ + h₃ ≃ h₂ + h₃ : Lindenbaum Iₒₚₑₙ i) = (h₁ ≃ h₂) :=
 begin
-  induction h₁ using fopl.Herbrand.ind_on with t₁,
-  induction h₂ using fopl.Herbrand.ind_on with t₂,
-  induction h₃ using fopl.Herbrand.ind_on with t₃,
+  induction h₁ using fol.Herbrand.ind_on with t₁,
+  induction h₂ using fol.Herbrand.ind_on with t₂,
+  induction h₃ using fol.Herbrand.ind_on with t₃,
   have : Iₒₚₑₙ^i ⊢ (t₁ + t₃ ≃ t₂ + t₃) ⟷ (t₁ ≃ t₂),
   { simp[iff_equiv], refine ⟨by simpa[fal_fn] using add_right_cancel _ ⊚ t₁ ⊚ t₂ ⊚ t₃, deduction.mp _⟩,
   simp[Herbrand.eq_of_provable_equiv_0, Lindenbaum.rew_by_axiom₁] },
@@ -749,9 +749,9 @@ end
 @[simp] lemma Lindenbaum.le_add_right_cancel (h₁ h₂ h₃ : Herbrand Iₒₚₑₙ i) :
   (h₁ + h₃ ≼ h₂ + h₃ : Lindenbaum Iₒₚₑₙ i) = (h₁ ≼ h₂) :=
 begin
-  induction h₁ using fopl.Herbrand.ind_on with t₁,
-  induction h₂ using fopl.Herbrand.ind_on with t₂,
-  induction h₃ using fopl.Herbrand.ind_on with t₃,
+  induction h₁ using fol.Herbrand.ind_on with t₁,
+  induction h₂ using fol.Herbrand.ind_on with t₂,
+  induction h₃ using fol.Herbrand.ind_on with t₃,
   have : Iₒₚₑₙ^i ⊢ (t₁ + t₃ ≼ t₂ + t₃) ⟷ (t₁ ≼ t₂), by simpa[fal_fn] using add_le_add _ ⊚ t₁ ⊚ t₂ ⊚ t₃,
   simpa using Lindenbaum.eq_of_provable_equiv.mp this
 end
@@ -783,8 +783,8 @@ by simpa[lt, fal_fn, ex_fn, ←term.pow_rew_distrib] using (lt_equiv _) ⊚ x �
 
 lemma Lindenbaum.lt_eq (h₁ h₂ : Herbrand Iₒₚₑₙ' i) :
   (h₁ ≺' h₂) = ∐' (Succ ♯0 + h₁.pow ≃ h₂.pow : Lindenbaum Iₒₚₑₙ' (i + 1)) :=
-by induction h₁ using fopl.Herbrand.ind_on with t;
-   induction h₂ using fopl.Herbrand.ind_on with u;
+by induction h₁ using fol.Herbrand.ind_on with t;
+   induction h₂ using fol.Herbrand.ind_on with u;
    simpa[lt, fal_fn, ex_fn] using Lindenbaum.eq_of_provable_equiv.mp ((lt_equiv' (Iₒₚₑₙ'^i) t u))
 
 @[simp, refl] lemma Lindenbaum.le_refl (h : Herbrand Iₒₚₑₙ i) : h ≤ h :=
@@ -808,9 +808,9 @@ end
 
 @[trans] lemma Lindenbaum.le_transitive {h₁ h₂ h₃ : Herbrand Iₒₚₑₙ i} : h₁ ≤ h₂ → h₂ ≤ h₃ → h₁ ≤ h₃ := λ le₁₂ le₂₃,
 begin
-  induction h₁ using fopl.Herbrand.ind_on with t₁,
-  induction h₂ using fopl.Herbrand.ind_on with t₂,
-  induction h₃ using fopl.Herbrand.ind_on with t₃,
+  induction h₁ using fol.Herbrand.ind_on with t₁,
+  induction h₂ using fol.Herbrand.ind_on with t₂,
+  induction h₃ using fol.Herbrand.ind_on with t₃,
   have le₁₂ : Iₒₚₑₙ^i ⊢ t₁ ≼ t₂, from Herbrand.le_iff_provable_le.mpr le₁₂,
   have le₂₃ : Iₒₚₑₙ^i ⊢ t₂ ≼ t₃, from Herbrand.le_iff_provable_le.mpr le₂₃,
   have : Iₒₚₑₙ^i ⊢ (t₁ ≼ t₂) ⟶ (t₂ ≼ t₃) ⟶ (t₁ ≼ t₃), by simpa[fal_fn] using le_transitive _ ⊚ t₁ ⊚ t₂ ⊚ t₃,
@@ -1006,7 +1006,7 @@ lemma Lindenbaum_induction
   (zero : m ≤ 0 ⊳ l)
   (succ : m.pow ≤ (♯0 ⊳ l.pow)ᶜ ⊔ (Succ ♯0) ⊳ l.pow) : m ≤ ∏ l :=
 begin
-  induction l using fopl.Lindenbaum.ind_on with p,
+  induction l using fol.Lindenbaum.ind_on with p,
   have P := (provable_top_iff0.mpr (Ind_mem _ h)),
   have trn : (0 : Herbrand 𝐈C 0) ⊳ ⟦p⟧ᴸ ⊓ ∏ ((♯0 ⊳ pow ⟦p⟧ᴸ)ᶜ ⊔ (Succ ♯0) ⊳ pow ⟦p⟧ᴸ) ≤ ∏ ⟦p⟧ᴸ,
   { simp[succ_induction, Lindenbaum.subst_eq, Lindenbaum.pow_eq, compl_sup_iff_le,
@@ -1023,7 +1023,7 @@ lemma Lindenbaum_induction_top {p : formula LA} (l : Lindenbaum 𝐈C 1)
   (zero : 0 ⊳ l = ⊤)
   (succ : ♯0 ⊳ l.pow ≤ (Succ ♯0) ⊳ l.pow) : (∏ l : Lindenbaum 𝐈C 0) = ⊤ :=
 begin
-  induction l using fopl.Lindenbaum.ind_on with p,
+  induction l using fol.Lindenbaum.ind_on with p,
   have P := (provable_top_iff0.mpr (Ind_mem _ h)),
   have : (0 : Herbrand 𝐈C 0) ⊳ ⟦p⟧ᴸ ⊓ ∏ ((♯0 ⊳ pow ⟦p⟧ᴸ)ᶜ ⊔ (Succ ♯0) ⊳ pow ⟦p⟧ᴸ) ≤ ∏ ⟦p⟧ᴸ,
   { simp[succ_induction, Lindenbaum.subst_eq, Lindenbaum.pow_eq, compl_sup_iff_le,
@@ -1082,4 +1082,4 @@ end
 end bd_peano
 end arithmetic
 
-end fopl
+end fol
