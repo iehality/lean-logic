@@ -594,6 +594,16 @@ prefix `∐' `:64 := has_exists_quantifier'.ex
 @[notation_class] class has_turnstile (α : Sort*) := (turnstile : set α → α → Prop)
 
 infix ` ⊢ `:45 := has_turnstile.turnstile
+notation T ` ⊢{`:45 β `} `:45 p := has_turnstile.turnstile T β p
+
+namespace has_turnstile
+variables {α : Type*} [has_turnstile α]
+
+def turnstile_set (T : set α) (Γ : set α) : Prop := ∀ p ∈ Γ, T ⊢ p
+
+infix ` ⊢* `:45 := turnstile_set
+
+end has_turnstile
 
 @[notation_class] class has_Longarrow (α : Sort*) := (Longarrow : set α → α → Type u)
 
@@ -620,9 +630,18 @@ by simp[set.insert]
 @[simp] lemma set.insert_mem_iff {α : Sort*} {T : set α} {a b : α} :
   b ∈ T +{ a } ↔ b = a ∨ b ∈ T := by simp[set.insert]
 
-@[notation_class] class has_double_turnstile (α : Sort*) (β : Sort*) (γ : Sort*) := (double_turnstile : α → β → γ)
+@[notation_class] class has_double_turnstile (α : Sort*) (β : Sort*) := (double_turnstile : α → β → Prop)
 
 infix ` ⊧ ` :55 := has_double_turnstile.double_turnstile
+
+namespace has_double_turnstile
+variables {α : Type*} {β : Type*} [has_double_turnstile α β]
+
+def double_turnstile_set (T : α) (S : set β) : Prop := ∀ p ∈ S, T ⊧ p
+
+infix ` ⊧* `:45 := double_turnstile_set
+
+end has_double_turnstile
 
 @[simp] def inf_conjunction {α : Type*} [has_top α] [has_inf α] : ∀ n, (fin n → α) → α
 | 0 _        := ⊤
