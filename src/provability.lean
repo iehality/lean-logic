@@ -1,4 +1,4 @@
-import lib order.bounded_order
+import lib.lib order.bounded_order
 
 universe u
 
@@ -33,8 +33,9 @@ attribute [simp] classical_logic.imply₁ classical_logic.imply₂ classical_log
   classical_logic.provable_top
 
 class axiomatic_classical_logic'
-  (F : Sort*) [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F] extends has_turnstile F :=
-(classical {T : set F} : classical_logic ((⊢) T))
+  (F : Sort*) [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F] 
+  extends has_turnstile F :=
+(classical {T : set F} : classical_logic ((⊢) T : F → Prop))
 (by_axiom {T : set F} {p : F} : p ∈ T → T ⊢ p)
 
 class axiomatic_classical_logic
@@ -594,14 +595,14 @@ local infixl ` ⨀ `:90 := axiomatic_classical_logic'.modus_ponens
 
 @[simp] lemma mem_iff_prov (p : F) : (@has_mem.mem F (set F) _) p ((⊢) T : set F) ↔ T ⊢ p := by refl
 
-@[simp] lemma imply₁ (p q) : T ⊢ p ⟶ q ⟶ p := imply₁
+@[simp] lemma imply₁ (p q : F) : T ⊢ p ⟶ q ⟶ p := imply₁
 
-@[simp] lemma imply₂ (p q r) : T ⊢ (p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r := imply₂
+@[simp] lemma imply₂ (p q r : F) : T ⊢ (p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r := imply₂
 
 lemma imply_trans {p q r : F} : (T ⊢ p ⟶ q) → (T ⊢ q ⟶ r) → (T ⊢ p ⟶ r) :=
 impl_trans
 
-@[simp] lemma contraposition (p q) : T ⊢ (⁻p ⟶ ⁻q) ⟶ q ⟶ p := contraposition
+@[simp] lemma contraposition (p q : F) : T ⊢ (⁻p ⟶ ⁻q) ⟶ q ⟶ p := contraposition
 
 @[simp] lemma provable_top : T ⊢ (⊤ : F) := provable_top
 
@@ -609,7 +610,7 @@ impl_trans
 
 @[simp] lemma hyp_right {p : F} (h : T ⊢ p) (q) : T ⊢ q ⟶ p := hyp_right h q
 
-@[simp] lemma T_hyp_eliminate {p} : T ⊢ ⊤ ⟶ p ↔ T ⊢ p := T_hyp_eliminate
+@[simp] lemma T_hyp_eliminate {p : F} : T ⊢ ⊤ ⟶ p ↔ T ⊢ p := T_hyp_eliminate
 
 @[simp] lemma dne (p : F) : T ⊢ ⁻⁻p ⟶ p := dne p
 
@@ -789,12 +790,12 @@ lemma axiom_and {p₁ p₂ q : F} : T +{ p₁ ⊓ p₂ } ⊢ q ↔ T +{ p₁ } +
       have lmm₂ : T +{ p₁ ⊓ p₂ } ⊢ p₁ ⊓ p₂, from insert _, simp only [axiomatic_classical_logic'.iff_and] at lmm₂,
       exact lmm₁ ⨀ lmm₂.1 ⨀ lmm₂.2 } ⟩
 
-lemma raa {p} (q) (h₁ : T+{p} ⊢ q) (h₂ : T+{p} ⊢ ⁻q) : T ⊢ ⁻p :=
+lemma raa {p : F} (q : F) (h₁ : T+{p} ⊢ q) (h₂ : T+{p} ⊢ ⁻q) : T ⊢ ⁻p :=
 neg_hyp (deduction.mp (classical_logic.explosion h₁ h₂))
 
 variables (T)
 
-@[reducible] def lindenbaum := lindenbaum ((⊢) T)
+@[reducible] def lindenbaum := lindenbaum ((⊢) T : F → Prop)
 
 
 
