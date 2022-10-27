@@ -2,8 +2,7 @@ import lib.lib order.bounded_order
 
 universe u
 
-class intuitionistic_logic
-  {F : Sort*} [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F] (P : F → Prop) :=
+class intuitionistic_logic {F : Sort*} [has_logic_symbol F] (P : F → Prop) :=
 (modus_ponens {p q : F} : P (p ⟶ q) → P p → P q)
 (imply₁ {p q : F} : P (p ⟶ q ⟶ p))
 (imply₂ {p q r : F} : P ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r))
@@ -18,8 +17,7 @@ class intuitionistic_logic
 (provable_top : P ⊤)
 (bot_eq : (⊥ : F) = ⁻⊤)
 
-class classical_logic
-  {F : Sort*} [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F] (P : set F) :=
+class classical_logic {F : Sort*} [has_logic_symbol F] (P : set F) :=
 (modus_ponens {p q : F} : p ⟶ q ∈ P → p ∈ P → q ∈ P)
 (imply₁ {p q : F} : p ⟶ q ⟶ p ∈ P)
 (imply₂ {p q r : F} : (p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r ∈ P)
@@ -32,19 +30,18 @@ class classical_logic
 attribute [simp] classical_logic.imply₁ classical_logic.imply₂ classical_logic.contraposition
   classical_logic.provable_top
 
-class axiomatic_classical_logic'
-  (F : Sort*) [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F] 
+class axiomatic_classical_logic' (F : Sort*) [has_logic_symbol F] 
   extends has_turnstile F :=
 (classical {T : set F} : classical_logic ((⊢) T : F → Prop))
 (by_axiom {T : set F} {p : F} : p ∈ T → T ⊢ p)
 
 class axiomatic_classical_logic
-  (F : Sort*) [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F] extends axiomatic_classical_logic' F :=
+  (F : Sort*) [has_logic_symbol F] extends axiomatic_classical_logic' F :=
 (deduction' {T : set F} {p q : F} : T +{ p } ⊢ q → T ⊢ p ⟶ q)
 (weakening {T : set F} {U : set F} {p : F} : T ⊆ U → T ⊢ p → U ⊢ p)
 namespace classical_logic
 
-variables {F : Type*} [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F]
+variables {F : Type*} [has_logic_symbol F]
   (P : set F) (T : set F) [CL : classical_logic P]
 include CL
 
@@ -286,7 +283,7 @@ variables {P}
 variables (P)
 
 theorem equiv_equivalence : equivalence (equiv P) :=
-⟨equiv.refl, @equiv.symm _ _ _ _ _ _ _ _ _, @equiv.trans _ _ _ _ _ _ _ _ _⟩
+⟨equiv.refl, @equiv.symm _ _ _ _, @equiv.trans _ _ _ _⟩
 
 variables {P}
 
@@ -454,8 +451,6 @@ variables {P}
 
 def to_quo (p : F) : lindenbaum P := quotient.mk' p
 
-#check @to_quo _ _ _ _ _ _ _ P _
-
 local notation `⟦` p `⟧ᴾ` := to_quo p
 
 namespace lindenbaum
@@ -557,9 +552,11 @@ lemma le_def (p q : F) : (⟦p⟧ᴾ : lindenbaum P) ≤ ⟦q⟧ᴾ ↔ p ⟶ q 
 
 lemma neg_def (p : F) : (⟦p⟧ᴾ : lindenbaum P)ᶜ = ⟦⁻p⟧ᴾ := rfl
 
-lemma inf_def (p q : F) : ⟦p⟧ᴾ ⊓ ⟦q⟧ᴾ = (⟦p ⊓ q⟧ᴾ : lindenbaum P) := rfl
+lemma inf_def (p q : F) :
+  (⟦p⟧ᴾ : lindenbaum P) ⊓ ⟦q⟧ᴾ = ⟦p ⊓ q⟧ᴾ := rfl
 
-lemma sup_def (p q : F) : ⟦p⟧ᴾ ⊔ ⟦q⟧ᴾ = (⟦p ⊔ q⟧ᴾ : lindenbaum P) := rfl
+lemma sup_def (p q : F) :
+  (⟦p⟧ᴾ : lindenbaum P) ⊔ ⟦q⟧ᴾ = ⟦p ⊔ q⟧ᴾ := rfl
 
 instance : boolean_algebra (lindenbaum P) :=
 boolean_algebra.of_core
@@ -582,7 +579,7 @@ end classical_logic
 
 namespace axiomatic_classical_logic'
 open classical_logic
-variables {F : Type*} [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F]
+variables {F : Type*} [has_logic_symbol F]
   (T : set F) [axiomatic_classical_logic' F]
 
 instance : classical_logic ((⊢) T) := axiomatic_classical_logic'.classical
@@ -766,7 +763,7 @@ end axiomatic_classical_logic'
 namespace axiomatic_classical_logic
 open classical_logic axiomatic_classical_logic'
 
-variables {F : Type*} [has_negation F] [has_arrow F] [has_inf F] [has_sup F] [has_top F] [has_bot F]
+variables {F : Type*} [has_logic_symbol F]
   (T : set F) [axiomatic_classical_logic F]
 
 local infixl ` ⨀ `:90 := axiomatic_classical_logic'.modus_ponens

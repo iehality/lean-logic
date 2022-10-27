@@ -98,17 +98,26 @@ instance [has_mem_symbol L] : has_elem (term L) (formula L) := ⟨λ t u, formul
 
 attribute [pattern]  has_eq.eq has_negation.neg has_arrow.arrow has_univ_quantifier.univ has_exists_quantifier.ex
 
-instance : has_top (formula L) := ⟨formula.verum⟩
+namespace formula
+variables {L}
 
-instance : has_arrow (formula L) := ⟨formula.imply⟩
+def and (p : formula L) (q : formula L) : formula L := (p.imply q.neg).neg
+
+def or (p : formula L) (q : formula L) : formula L := p.neg.imply q
+
+instance : has_logic_symbol (formula L) :=
+{ bot := verum.neg,
+  top := verum,
+  sup := or,
+  inf := and,
+  arrow := imply,
+  neg := neg }
 
 instance : has_eq (term L) (formula L) := ⟨formula.equal⟩
 
-instance : has_negation (formula L) := ⟨formula.neg⟩
-
 instance : has_univ_quantifier (formula L) := ⟨formula.fal⟩
 
-instance : has_bot (formula L) := ⟨⁻⊤⟩
+end formula
 
 def formula_to_string [has_to_string (term L)] [∀ n, has_to_string (L.pr n)] : formula L → string
 | ⊤                      := "⊤"
@@ -136,14 +145,6 @@ instance : inhabited (formula L) := ⟨(#0 : term L) ≃ #0⟩
 
 variables {L}
 
-def formula.and (p : formula L) (q : formula L) : formula L := ⁻(p ⟶ ⁻q)
-
-instance : has_inf (formula L) := ⟨formula.and⟩
-
-def formula.or (p : formula L) (q : formula L) : formula L := ⁻p ⟶ q
-
-instance : has_sup (formula L) := ⟨formula.or⟩
-
 def formula.ex (p : formula L) : formula L := ⁻∏⁻p
 
 instance : has_exists_quantifier (formula L) := ⟨formula.ex⟩
@@ -159,7 +160,7 @@ lemma formula.ex_eq (p : formula L) : (∐ p) = ⁻∏⁻p := rfl
 @[simp] lemma formula.neg.inj' (p q : formula L) : ⁻p = ⁻q ↔ p = q := ⟨formula.neg.inj, congr_arg _⟩
 
 @[simp] lemma formula.and.inj' (p₁ q₁ p₂ q₂ : formula L) : p₁ ⊓ p₂ = q₁ ⊓ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
-by simp[has_inf.inf, formula.and]
+by {simp[has_inf.inf, formula.and],}
 
 @[simp] lemma formula.or.inj' (p₁ q₁ p₂ q₂ : formula L) : p₁ ⊔ p₂ = q₁ ⊔ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
 by simp[has_sup.sup, formula.or]

@@ -4,7 +4,6 @@ universes u v
 
 namespace fol
 open formula
-open dvector
 
 structure model (L : language.{u}) :=
 (dom : Type u)

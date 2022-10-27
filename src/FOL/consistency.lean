@@ -1,4 +1,4 @@
-import FOL.lindenbaum
+import FOL.lindenbaum lib.tukey
 
 universes u
 

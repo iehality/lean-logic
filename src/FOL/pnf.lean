@@ -1,10 +1,10 @@
-import deduction lindenbaum
+import FOL.deduction FOL.lindenbaum
 
 -- Prenex normal form
 
 universes u v
 
-namespace fopl
+namespace fol
 
 variables (L : language.{u})
 
@@ -254,4 +254,4 @@ lemma equiv_normalize : ∀ (p : formula L) {T : theory L},  T ⊢ p ⟷ p.norma
 
 def formula.rank (p : formula L) : ℕ := p.to_pnf.rank
 
-end fopl
+end fol

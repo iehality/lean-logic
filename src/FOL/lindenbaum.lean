@@ -308,7 +308,7 @@ theorem empty_consistent : theory.consistent (∅ : theory L) := @model_consiste
 
 @[reducible] def Lindenbaum : Type u := axiomatic_classical_logic.lindenbaum (T^i)
 
-notation `⟦`p`⟧ᴸ` :max := @classical_logic.to_quo _ _ _ _ _ _ _ ((⊢) _) _ p
+notation `⟦`p`⟧ᴸ` :max := @classical_logic.to_quo _ _ ((⊢) _) _ p
 
 namespace Lindenbaum
 open provable Herbrand axiomatic_classical_logic' axiomatic_classical_logic

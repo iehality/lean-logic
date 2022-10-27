@@ -9,7 +9,8 @@ import
   init.data.list
   init.data.subtype
   data.list.dedup
-  order.zorn
+
+import lib.notation
 
 universes u v
 
@@ -49,65 +50,6 @@ def fun_pow (f : α → α) : ℕ → α → α
 infix ` ^ᶠ `:60 := fun_pow
 
 end function
-
-inductive dvector (α : Type u) : ℕ → Type u
-| nil {} : dvector 0
-| cons   : ∀ {n}, α → dvector n → dvector (n+1)
-
-infixr ` ::ᵈ `:60  := dvector.cons
-
-namespace dvector
-variables {α : Type u} {β : Type v}
-
-@[simp] def unary (a : α) : dvector α 1 := a ::ᵈ nil
-
-@[simp] def head : ∀ {n}, dvector α (n+1) → α
-| _ (a ::ᵈ _) := a
-
-@[simp] def tail : ∀ {n}, dvector α (n+1) → dvector α n
-| _ (_ ::ᵈ as) := as
-
-lemma dvector1_tail : ∀ (a : dvector α 1), a.tail = dvector.nil
-| (a ::ᵈ dvector.nil) := rfl
-
-@[simp] lemma dvector0 : ∀ (a : dvector α 0), a = dvector.nil := λ a,
-by cases a; refl
-
-lemma head_tail : ∀ {n} (v : dvector α (n+1)), v.head ::ᵈ v.tail = v
-| _ (_ ::ᵈ _) := rfl
-
-@[simp] lemma head_inj : ∀ (v₁ v₂ : dvector α 1), v₁.head = v₂.head ↔ v₁ = v₂
-| (_ ::ᵈ nil) (_ ::ᵈ nil) := by simp
-
-@[simp] lemma head_nil : ∀ (v : dvector α 1), v.head ::ᵈ nil = v
-| (_ ::ᵈ nil) := rfl
-
-@[simp] protected def append : ∀ {n}, dvector α n → ∀ {m}, dvector α m → dvector α (m + n)
-| _ nil      _ l := l
-| _ (a ::ᵈ l) _ k := a ::ᵈ (append l k)
-
-@[simp] def filter (f : α → β) : ∀ {n}, dvector α n → dvector β n
-| 0     _         := dvector.nil
-| (n+1) (a ::ᵈ as) := f a ::ᵈ filter as
-
-@[simp] def app {C : Π i : α, Type v} (a) : ∀ {n}, dvector (Π i, C i) n → dvector (C a) n
-| 0     _         := dvector.nil
-| (n+1) (f ::ᵈ fs) := f a ::ᵈ app fs
-
-@[simp] def partition {C : Π i : α, Type*} : ∀ {n}, (Π i, dvector (C i) n) → dvector (Π i, C i) n
-| 0     _ := dvector.nil
-| (n+1) F := (λ i, (F i).head) ::ᵈ (partition $ λ i, (F i).tail)
-
-@[simp] lemma app_partition {C : Π i : α, Type v} (a) : ∀ {n} (F : Π i, dvector (C i) n),
-  (partition F).app a = F a
-| 0     F := by { simp, cases F a, refl }
-| (n+1) F := by { simp, cases C : F a with _ f fs, simp[C, app_partition (λ i, (F i).tail)] }
-
-@[simp] def to_vector : Π {n}, dvector α n → vector α n
-| _ nil := vector.nil
-| _ (a ::ᵈ as) := a ::ᵥ as.to_vector
-
-end dvector
 
 namespace vector
 variables {α : Type*} {n : ℕ}
@@ -379,110 +321,6 @@ by simp[idecode, encodek]
 
 end encodable
 
-namespace setoid
-
-@[simp] def vec_r {α : Type u} [s : setoid α] : ∀ {n}, dvector α n → dvector α n → Prop
-| 0     _         _         := true
-| (n+1) (a ::ᵈ as) (b ::ᵈ bs) := a ≈ b ∧ vec_r as bs
-
-infix ` ≋ `:80 := vec_r
-
-@[simp] lemma vec_r_refl {α : Type u} [s : setoid α] {n} (v : dvector α n) : vec_r v v := by induction v; simp*
-
-lemma vec_r_symm {α : Type u} [s : setoid α] : ∀ {n} {v w : dvector α n}, vec_r v w → vec_r w v
-| 0 _ _ := by simp
-| (n+1) (a ::ᵈ as) (b ::ᵈ bs) := by { simp, refine λ e h, ⟨setoid.symm e, vec_r_symm h⟩ }
-
-lemma vec_r_trans {α : Type u} [s : setoid α] : ∀ {n} {a b c : dvector α n}, vec_r a b → vec_r b c → vec_r a c
-| 0 _ _ _ := by simp
-| (n+1) (a ::ᵈ as) (b ::ᵈ bs) (c ::ᵈ cs) := by { simp, refine λ e₁ h₁ e₂ h₂, ⟨setoid.trans e₁ e₂, vec_r_trans h₁ h₂⟩ }
-
-lemma vec_r_equiv {α : Type u} [s : setoid α] {n} : equivalence (@vec_r α s n) := ⟨vec_r_refl, λ _ _, vec_r_symm, λ _ _ _, vec_r_trans⟩
-
-instance vec {α : Type u} (s : setoid α) (n) : setoid (dvector α n) := ⟨@vec_r α s n, vec_r_equiv⟩
-
-@[simp] lemma vec_r_simp_nil {α : Type*} [s : setoid α] :
-  (dvector.nil : dvector α 0) ≋ dvector.nil := by simp[has_equiv.equiv]
-
-@[simp] lemma vec_r_simp_cons {α : Type*} [s : setoid α] {n} {a b : α} {as bs : dvector α n} :
-  (a ::ᵈ as) ≋ (b ::ᵈ bs) ↔ a ≈ b ∧ as ≋ bs := by { simp, }
-
-@[simp] lemma vec_r_equiv_equiv {α : Type*} [s : setoid α] {n} {a b : dvector α n} :
-  @setoid.r _ (s.vec n) a b ↔ a ≋ b := iff.rfl
-
-end setoid
-
-namespace quotient
-universes u_a u_b u_c
-variables {α : Type u_a} {β : Sort u_b} {φ : Sort u_c}
-
-def cons_aux (s : setoid α) (a : α) {n} : quotient (s.vec n) → quotient (s.vec (n+1)) :=
-λ q, @quotient.lift_on _ _ (s.vec n) q (λ v, @quotient.mk _ (s.vec (n+1)) (a ::ᵈ v)) $
-λ as bs, by { simp, refine λ h, ⟨by refl, h⟩ }
-
-def cons (s : setoid α) {n} : quotient s → quotient (s.vec n) → quotient (s.vec (n+1)) :=
-λ q v, @quotient.lift_on _ _ s q (λ a, cons_aux s a v) $ λ as bs eqn, by { simp[cons_aux],
-  induction v, simp[eqn, has_equiv.equiv], refine eqn, refl }
-
-@[simp] def dvec_to_quo (s : setoid α) : ∀ {n}, dvector (quotient s) n → quotient (s.vec n)
-| 0     _         := @quotient.mk _ (s.vec 0) (dvector.nil : dvector α 0)
-| (n+1) (q ::ᵈ qs) := cons s q (dvec_to_quo qs)
-
-protected def mk_v' (n) {s : setoid α} (a : dvector α n) : quotient (s.vec n) := quot.mk (s.vec n).1 a
-
-private lemma quo_to_vec_eq (s : setoid α) : ∀ {n} (a b : dvector α n), a ≋ b → 
-  dvector.filter quotient.mk a = dvector.filter quotient.mk b
-| 0 dvector.nil dvector.nil _ := rfl
-| (n+1) (a ::ᵈ as) (b ::ᵈ bs) eqn := by { simp at*, refine ⟨eqn.1, quo_to_vec_eq _ _ eqn.2⟩ }
-
-@[simp] def quo_to_dvec (s : setoid α) : ∀ {n}, quotient (s.vec n) → dvector (quotient s) n :=
-λ n q, @quotient.lift_on _ _ (s.vec n) q (λ v, v.filter (λ x, ⟦x⟧)) $
-λ a b eqn, by { simp, refine quo_to_vec_eq s _ _ eqn }
-
-def mk_vec' {n} {s : setoid α} (a : dvector α n) : dvector (quotient s) n := quo_to_dvec s (quot.mk (s.vec n).1 a)
-notation `ᵥ⟦`u`⟧` := mk_vec' u
-
-@[elab_as_eliminator, reducible]
-def lift_on_vec {s : setoid α} {n} (q : dvector (quotient s) n) (f : dvector α n → φ)
-  (c : ∀ a b : dvector α n, a ≋ b → f a = f b) : φ :=
-@quotient.lift_on _ _ (s.vec _) (dvec_to_quo s q) f c
-
-variables {s : setoid α} 
-
-@[simp]
-protected lemma lift_on_vecnil_eq (f : dvector α 0 → φ)
-  (h : ∀ a b : dvector α 0, a ≋ b → f a = f b) :
-  quotient.lift_on_vec (dvector.nil : dvector (quotient s) 0) f h = f dvector.nil := rfl
-
-@[simp]
-protected lemma lift_on_eq {s : setoid α}  {φ} (u₀ : α) (f : α → φ)
-  (h : ∀ v u, v ≈ u → f v = f u) : quotient.lift_on ⟦u₀⟧ f h = f u₀ := rfl
-
-@[simp] lemma cons_eq {s : setoid α} {n} (u : α) (us : dvector α n) :
-  cons s ⟦u⟧ (@quotient.mk _ (s.vec n) us) = @quotient.mk _ (s.vec (n+1)) (u ::ᵈ us) := rfl
-
-@[simp] lemma dvec_to_quo_filter_quotient_mk {s : setoid α} : ∀ {n} (u : dvector α n),
-  dvec_to_quo s (dvector.filter quotient.mk u) = @quotient.mk _ (s.vec n) u
-| 0     dvector.nil := rfl
-| (n+1) (a ::ᵈ as)   := by simp [dvec_to_quo_filter_quotient_mk as]
-
-@[simp]
-protected lemma lift_on_vec_eq {s : setoid α} : ∀ {n} (u : dvector α n) (f : dvector α n → φ)
-  (h : ∀ a b : dvector α n, a ≋ b → f a = f b),
-quotient.lift_on_vec ᵥ⟦u⟧ f h = f u := by simp[mk_vec', lift_on_vec]
-
-@[simp]
-protected lemma lift_on_nil_eq {s : setoid α} : ∀ (f : dvector α 0 → φ)
-  (h : ∀ a b : dvector α 0, a ≋ b → f a = f b),
-quotient.lift_on_vec dvector.nil f h = f dvector.nil := by simp
-
-lemma vquotient_cons {s : setoid α} {n} (a : α) (as : dvector α n) : ᵥ⟦a ::ᵈ as⟧ = ⟦a⟧ ::ᵈ ᵥ⟦as⟧ := rfl
-
-@[simp] lemma quotients_eq_iff (s : setoid α) : ∀ {n} (v₁ v₂ : dvector α n), ᵥ⟦v₁⟧ = @mk_vec' _ _ s v₂  ↔ v₁ ≋ v₂
-| 0 dvector.nil dvector.nil := by simp
-| (n+1) (a ::ᵈ as) (b ::ᵈ bs) := by simp[vquotient_cons, quotients_eq_iff as bs]
-
-end quotient
 
 namespace quotient
 variables {α : Type u}
@@ -537,84 +375,6 @@ end quotient
 @[simp] lemma is_empty_sigma {α} {s : α → Sort*} : is_empty (Σ a, s a) ↔ ∀ a, is_empty (s a) :=
 by simp only [← not_nonempty_iff, nonempty_sigma, not_exists]
 
-@[notation_class] class has_succ (α : Sort*) := (succ : α → α)
-
-prefix `Succ `:85 := has_succ.succ
-
-def numeral {α : Type*} [has_zero α] [has_succ α] : ℕ → α
-| 0       := 0
-| (n + 1) := Succ (numeral n)
-
-instance numeral_has_one {α : Type*} [has_zero α] [has_succ α] : has_one α := ⟨Succ 0⟩
-
-lemma numeral_one_def  {α : Type*} [has_zero α] [has_succ α] : (1 : α) = Succ 0 := rfl 
-
-@[notation_class] class has_eq (α : out_param (Sort*)) (β : Sort*) := (eq : α → α → β)
-
-infix ` ≃ `:50 := has_eq.eq
-
-@[notation_class] class has_preceq (α : out_param (Sort*)) (β : Sort*) := (preceq : α → α → β)
-
-infix ` ≼ `:50 := has_preceq.preceq
-
-@[notation_class] class has_elem (α : out_param (Sort*)) (β : Sort*) := (elem : α → α → β)
-
-infix ` ∊ `:50 := has_elem.elem
-
-@[notation_class] class has_negation (α : Sort*) := (neg : α → α)
-
-prefix `⁻`:75 := has_negation.neg
-
-@[reducible] def has_eq.ineq {α : out_param (Sort*)} {β : Sort*} [has_eq α β] [has_negation β] (a b : α) : β := ⁻(a ≃ b)
-
-infix ` ≄ `:50 := has_eq.ineq
-
-@[notation_class] class has_arrow (α : Sort*) := (arrow : α → α → α)
-
-infixr ` ⟶ `:60 := has_arrow.arrow
-
-@[notation_class] class has_lrarrow (α : Sort*) := (lrarrow : α → α → α)
-
-@[notation_class] class has_univ_quantifier (α : Sort*) := (univ : α → α)
-
-prefix `∏ `:64 := has_univ_quantifier.univ
-
-@[notation_class] class has_exists_quantifier (α : Sort*) := (ex : α → α)
-
-prefix `∐ `:64 := has_exists_quantifier.ex
-
-@[notation_class] class has_univ_quantifier' (α : Sort*) (β : Sort*):= (univ : α → β)
-
-prefix `∏' `:64 := has_univ_quantifier'.univ
-
-@[notation_class] class has_exists_quantifier' (α : Sort*) (β : Sort*) := (ex : α → β)
-
-prefix `∐' `:64 := has_exists_quantifier'.ex
-
-@[notation_class] class has_turnstile (α : Sort*) := (turnstile : set α → α → Prop)
-
-infix ` ⊢ `:45 := has_turnstile.turnstile
-notation T ` ⊢{`:45 β `} `:45 p := has_turnstile.turnstile T β p
-
-namespace has_turnstile
-variables {α : Type*} [has_turnstile α]
-
-def turnstile_set (T : set α) (Γ : set α) : Prop := ∀ p ∈ Γ, T ⊢ p
-
-infix ` ⊢* `:45 := turnstile_set
-
-end has_turnstile
-
-@[notation_class] class has_Longarrow (α : Sort*) := (Longarrow : set α → α → Type u)
-
-infix ` ⟹ `:45 := has_Longarrow.Longarrow
-
-def has_arrow.lrarrow {α : Type*} [has_arrow α] [has_inf α] (a b : α) : α := (a ⟶ b) ⊓ (b ⟶ a)
-
-infix ` ⟷ `:59 := has_arrow.lrarrow
-
-lemma lrarrow_def {α : Type*} [has_arrow α] [has_inf α] (a b : α) : a ⟷ b = (a ⟶ b) ⊓ (b ⟶ a) := rfl
-
 notation T` +{ ` :max p ` }` := set.insert p T
 
 @[reducible] def set.insert' {α} (T : set α) (a : α) := set.insert a T
@@ -630,19 +390,6 @@ by simp[set.insert]
 @[simp] lemma set.insert_mem_iff {α : Sort*} {T : set α} {a b : α} :
   b ∈ T +{ a } ↔ b = a ∨ b ∈ T := by simp[set.insert]
 
-@[notation_class] class has_double_turnstile (α : Sort*) (β : Sort*) := (double_turnstile : α → β → Prop)
-
-infix ` ⊧ ` :55 := has_double_turnstile.double_turnstile
-
-namespace has_double_turnstile
-variables {α : Type*} {β : Type*} [has_double_turnstile α β]
-
-def double_turnstile_set (T : α) (S : set β) : Prop := ∀ p ∈ S, T ⊧ p
-
-infix ` ⊧* `:45 := double_turnstile_set
-
-end has_double_turnstile
-
 @[simp] def inf_conjunction {α : Type*} [has_top α] [has_inf α] : ∀ n, (fin n → α) → α
 | 0 _        := ⊤
 | (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊓ inf_conjunction n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
@@ -654,10 +401,6 @@ notation `⋀` binders `, ` r:(scoped p, inf_conjunction _ p) := r
 | (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊔ sup_disjunction n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
 
 notation `⋁` binders `, ` r:(scoped p, sup_disjunction _ p) := r
-
-instance : has_arrow Prop := ⟨(→)⟩
-
-instance : has_negation Prop := ⟨not⟩
 
 def fintype_sup {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α] [order_bot α] (f : ι → α) : α :=
   (finset.univ : finset ι).sup f
@@ -680,7 +423,7 @@ namespace fintype_sup
 variables {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α] [order_bot α]
 
 @[simp] lemma finsup_eq_0_of_empty [is_empty ι] (f : ι → α) :
-  (⨆ᶠ i, f i) = ⊥ := by simp[fintype_sup]
+  (⨆ᶠ i, f i) = (⊥ : α) := by simp[fintype_sup]
 
 @[simp] lemma finsup_eq_of_subsingleton [subsingleton ι] [inhabited ι] (f : ι → α) :
   (⨆ᶠ i, f i) = f default :=
@@ -801,69 +544,6 @@ by simp[Sup]; refine ⟨f i, _, h⟩; simp[list.mem_of_fn]
  by { rintros ⟨i, h⟩, simp[Sup, list.mem_of_fn], refine ⟨i, h⟩ }⟩
 
 end list
-
-namespace tukey
-variables {α : Type*} {F : set α → Prop}
-
-def finite_charactor (P : set α → Prop) : Prop := ∀ a, P a ↔ (∀ s ⊆ a, s.finite → P s)
-
-lemma of_ss (H : finite_charactor F) {a} (ha : F a) {b} (ss : b ⊆ a) : F b :=
-begin
-  have : ∀ s ⊆ a, s.finite → F s, from (H a).mp ha,
-  have : ∀ s ⊆ b, s.finite → F s,
-  { intros s hs s_fin, exact this s (set.subset.trans hs ss) s_fin },
-  exact (H b).mpr this
-end
-
-lemma empty_of_nonempty (H : finite_charactor F) {a} (ha : F a) : F ∅ :=
-of_ss H ha (by simp)
-
-lemma finite_chain_sup (H : finite_charactor F) {c : set (set α)} (ch : is_chain has_subset.subset c) :
-  ∀ {d : set (set α)} (hs : d.finite) (nemp : d.nonempty) (ss : d ⊆ c), ∃ m ∈ d, ⋃₀d ⊆ m :=
-begin
-  intros d d_fin,
-  refine set.finite.induction_on d_fin (by simp) _,
-  intros a s ha s_fin IH _ ss,
-  by_cases nemp : s.nonempty,
-  { have : ∃ (m ∈ s), ⋃₀ s ⊆ m, from IH nemp (set.subset.trans (by simp) ss),
-    rcases this with ⟨m, mem, hs⟩,
-    have : m ⊆ a ∨ a ⊆ m, from is_chain.total ch (show m ∈ c, from ss (by simp[mem])) (show a ∈ c, from ss (by simp)),
-    rcases this,
-    { refine ⟨a, by simp, _⟩,
-      simp at hs ⊢, refine ⟨by refl, λ t ht, set.subset.trans (hs t ht) this⟩ },
-    { refine ⟨m, by simp[mem], _⟩,
-      simp at hs ⊢, refine ⟨this, hs⟩ } },
-  { have : s = ∅, from set.not_nonempty_iff_eq_empty.mp nemp, rcases this with rfl,
-    refine ⟨a, by simp⟩ }
-end
-
-theorem exists_maximum (H : finite_charactor F) (a : set α) (ha : F a) :
-  ∃ m, F m ∧ a ⊆ m ∧ ∀ s, F s → m ⊆ s → s = m :=
-begin
-  suffices : ∃ (m : set α) (H : m ∈ {x : set α | F x}),
-  a ⊆ m ∧ ∀ (a : set α), a ∈ {x : set α | F x} → m ⊆ a → a = m,
-  { simp at this, exact this },
-  refine zorn_subset_nonempty {x | F x} _ a ha, simp,
-  rintros c hF hc nemp,
-  have : F (⋃₀ c),
-  { have : ∀ s ⊆ ⋃₀ c, s.finite → F s,
-    { rw[set.sUnion_eq_Union], intros s s_ss s_fin,
-      have : ∃ (d : set (set α)), d ⊆ c ∧ d.finite ∧ s ⊆ ⋃₀ d,
-      { rcases set.finite_subset_Union s_fin s_ss with ⟨I, I_fin, s_ss⟩,  simp at s_ss,
-        refine ⟨coe '' I, by simp, set.finite.image coe I_fin, by simpa using s_ss⟩ },
-      rcases this with ⟨d, d_ss, d_fin, hs⟩,
-      by_cases d_nemp : d.nonempty,
-      { have : ∃ m ∈ d, ⋃₀d ⊆ m, from finite_chain_sup H hc d_fin d_nemp d_ss,
-        rcases this with ⟨m, m_mem, ss_m⟩,
-        exact of_ss H (show F m, from hF (d_ss m_mem)) (show s ⊆ m, from set.subset.trans hs ss_m) },
-      { have : d = ∅, from set.not_nonempty_iff_eq_empty.mp d_nemp, rcases this with rfl,
-        simp at hs, have : s = ∅, exact set.subset_eq_empty hs rfl, rcases this with rfl,
-        rcases set.nonempty_def.mp nemp with ⟨x, hx⟩, refine empty_of_nonempty H (hF hx) } },
-    refine (H (⋃₀ c)).mpr this },
-  refine ⟨⋃₀ c, this, λ _, set.subset_sUnion_of_mem⟩
-end 
-
-end tukey
 
 section classical
 attribute [instance, priority 0] classical.prop_decidable
