@@ -5,6 +5,7 @@ import FOL.deduction FOL.lindenbaum
 universes u v
 
 namespace fol
+open_locale logic_symbol
 
 variables (L : language.{u})
 
@@ -149,7 +150,7 @@ namespace formula
 
 end formula
 
-lemma equiv_normalize_imply : ∀ (p q : pnf L) (T : theory L),
+lemma equiv_normalize_imply : ∀ (p q : pnf L) (T : Theory L),
   (p.imply q).to_formula  ≈[T] p.to_formula ⟶ q.to_formula
 | ⟨[], p₁, h₁⟩      ⟨[], p₂, h₂⟩      T := by simp
 | ⟨[], p₁, h₁⟩      ⟨𝚷 :: Q₂, p₂, h₂⟩ T := by { simp, have ih := equiv_normalize_imply ⟨[], p₁^1, by simp[h₁]⟩ ⟨Q₂, p₂, h₂⟩,
@@ -218,7 +219,7 @@ lemma equiv_normalize_imply : ∀ (p q : pnf L) (T : theory L),
     : by { symmetry, simp [classical_logic.equiv] } }
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.1.rank + x.2.1.rank)⟩]}
 
-lemma equiv_normalize_neg : ∀ (p : pnf L) (T : theory L) , T ⊢ p.neg.to_formula ⟷ ⁻p.to_formula
+lemma equiv_normalize_neg : ∀ (p : pnf L) (T : Theory L) , T ⊢ p.neg.to_formula ⟷ ⁻p.to_formula
 | ⟨[], p, h⟩     T := by simp
 | ⟨𝚷 :: Q, p, h⟩ T := by simp;
     calc ∐ (pnf.mk Q p (by simp[h])).neg.to_formula ≈[T] ∐ ⁻(pnf.mk Q p (by simp[h])).to_formula
@@ -239,7 +240,7 @@ lemma equiv_normalize_neg : ∀ (p : pnf L) (T : theory L) , T ⊢ p.neg.to_form
 
 open axiomatic_classical_logic'
 
-lemma equiv_normalize : ∀ (p : formula L) {T : theory L},  T ⊢ p ⟷ p.normalize
+lemma equiv_normalize : ∀ (p : formula L) {T : Theory L},  T ⊢ p ⟷ p.normalize
 | ⊤                 T := by simp[formula.normalize]
 | (formula.app p v) T := by simp[formula.normalize]
 | (t ≃ u)          T := by simp[formula.normalize]

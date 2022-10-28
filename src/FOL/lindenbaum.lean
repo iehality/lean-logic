@@ -3,18 +3,20 @@ import FOL.deduction FOL.semantics
 universes u t
 
 namespace fol
+open_locale logic_symbol
+
 open formula
-variables {L : language.{u}} (T : theory L) (i : ℕ)
+variables {L : language.{u}} (T : Theory L) (i : ℕ)
 
 notation t` ≃[`:50 T :50`] `:0 u:50 := term.equiv T t u
 
-@[symm] lemma term.equiv_refl (T : theory L) (t : term L) : t ≃[T] t := by simp[term.equiv]
+@[symm] lemma term.equiv_refl (T : Theory L) (t : term L) : t ≃[T] t := by simp[term.equiv]
 
-@[symm] lemma term.equiv_symm (T : theory L) (t u : term L) : (t ≃[T] u) → (u ≃[T] t) := provable.eq_symm
+@[symm] lemma term.equiv_symm (T : Theory L) (t u : term L) : (t ≃[T] u) → (u ≃[T] t) := provable.eq_symm
 
-@[trans] lemma term.equiv_trans (T : theory L) (t u s : term L) : (t ≃[T] u) → (u ≃[T] s) → (t ≃[T] s) := provable.eq_trans
+@[trans] lemma term.equiv_trans (T : Theory L) (t u s : term L) : (t ≃[T] u) → (u ≃[T] s) → (t ≃[T] s) := provable.eq_trans
 
-theorem term_equiv_equivalence (T : theory L) : equivalence (term.equiv T) :=
+theorem term_equiv_equivalence (T : Theory L) : equivalence (term.equiv T) :=
 ⟨@term.equiv_refl _ _, @term.equiv_symm _ _, @term.equiv_trans _ _⟩
 
 @[reducible, simp, instance]
@@ -22,11 +24,11 @@ def herbrand (n : ℕ) : setoid (term L) := ⟨λ t₁ t₂, T^n ⊢ t₁ ≃ t�
 
 def Herbrand (n : ℕ) : Type u := quotient (herbrand T n)
 
-def term.quo (T : theory L) (n : ℕ) (t : term L) : Herbrand T n := quotient.mk' t
+def term.quo (T : Theory L) (n : ℕ) (t : term L) : Herbrand T n := quotient.mk' t
 
 notation `⟦`t`⟧ᴴ` :max := term.quo _ _ t
 
-instance (T : theory L) (n) : inhabited (Herbrand T n) := ⟨⟦#0⟧ᴴ⟩
+instance (T : Theory L) (n) : inhabited (Herbrand T n) := ⟨⟦#0⟧ᴴ⟩
 
 namespace Herbrand
 variables {T} {i}
@@ -107,9 +109,9 @@ def predicate_of {n} (p : L.pr n) : finitary (Herbrand T i) n → Prop :=
   $ λ v₁ v₂ eqs, by simp[of_eq_of]; 
   exact ⟨λ h, provable.predicate_of_equiv p h eqs, λ h, provable.predicate_of_equiv p h (λ i, provable.eq_symm (eqs i))⟩
 
-def model (T : theory L) : model L := ⟨Herbrand T 0, ⟨⟦#0⟧ᴴ⟩, @function_of _ T 0, @predicate_of _ T 0⟩
+def Structure (T : Theory L) : Structure L := ⟨Herbrand T 0, ⟨⟦#0⟧ᴴ⟩, @function_of _ T 0, @predicate_of _ T 0⟩
 
-notation `𝔗[`T`]` := model T
+notation `𝔗[`T`]` := Structure T
 
 theorem eq_of_provable_equiv {t₁ t₂} : T^i ⊢ t₁ ≃ t₂ ↔ (⟦t₁⟧ᴴ : Herbrand T i) = ⟦t₂⟧ᴴ := by simp[of_eq_of]
 
@@ -199,7 +201,7 @@ by induction n; simp[*,numeral]
 
 def pow : Herbrand T i → Herbrand T (i+1) :=
 λ h, Herbrand.lift_on h (λ u, ⟦u^1⟧ᴴ : term L → Herbrand T (i+1)) $
-λ t₁ t₂ hyp, by { simp[Herbrand.of_eq_of, ←theory.pow_add] at*,
+λ t₁ t₂ hyp, by { simp[Herbrand.of_eq_of, ←Theory.pow_add] at*,
   rw [show ((t₁^1) ≃ (t₂^1): formula L) = (t₁ ≃ t₂)^1, by simp, provable.sf_itr_sf_itr], exact hyp }
 
 lemma is_sentence_pow {t : term L} (a : t.arity = 0) :
@@ -244,7 +246,7 @@ lemma var_def (n : ℕ) : ♯n = (⟦#n⟧ᴴ : Herbrand T i) := rfl
 
 namespace proper
 
-@[simp] def subst_sf_H_aux [proper : proper_theory T] (t : term L) :
+@[simp] def subst_sf_H_aux [proper : proper_Theory T] (t : term L) :
   Herbrand T (i + 1) → Herbrand T i :=
 λ h, Herbrand.lift_on h (λ u, ⟦u.rew ı[i ⇝ t]⟧ᴴ : term L → Herbrand T i) $
 λ t₁ t₂ hyp, by { simp[Herbrand.of_eq_of] at*, exact provable.pow_subst' i hyp t }
@@ -255,7 +257,7 @@ namespace proper
 λ t₁ t₂ hyp, by { simp[Herbrand.of_eq_of] at*, 
   have := (provable.generalize hyp) ⊚ t, simp at this, exact this }
 
-variables [proper_theory T]
+variables [proper_Theory T]
 
 def subst_sf_H : Herbrand T i → Herbrand T (i+1) → Herbrand T i :=
 λ t h, Herbrand.lift_on t (λ t, subst_sf_H_aux t h : term L → Herbrand T i) $
@@ -289,7 +291,7 @@ end proper
 
 
 
-lemma subst_eq [proper_theory T] (t : term L) :
+lemma subst_eq [proper_Theory T] (t : term L) :
   (⟦t.rew ı[i ⇝ t]⟧ᴴ : Herbrand T i) = ⟦t⟧ᴴ ⊳ᴴ ⟦t⟧ᴴ := rfl
 
 @[simp] lemma pow_eq (t : term L) :
@@ -300,10 +302,10 @@ lemma pow_def (t : term L) :
 
 end Herbrand
 
-lemma empty_has_model : ∃ 𝔄 : model L, 𝔄 ⊧ₜₕ (∅ : theory L) :=
+lemma empty_has_Structure : ∃ 𝔄 : Structure L, 𝔄 ⊧ (∅ : Theory L) :=
 ⟨𝔗[∅], λ p h, by { exfalso, refine set.not_mem_empty p h }⟩
 
-theorem empty_consistent : theory.consistent (∅ : theory L) := @model_consistent L 𝔗[∅] ∅
+theorem empty_consistent : Theory.consistent (∅ : Theory L) := @Structure_consistent L 𝔗[∅] ∅
 (λ p h, by { exfalso, refine set.not_mem_empty p h })
 
 @[reducible] def Lindenbaum : Type u := axiomatic_classical_logic.lindenbaum (T^i)
@@ -442,7 +444,7 @@ by { induction h₁ using fol.Herbrand.ind_on, induction h₂ using fol.Herbrand
 
 def pow : Lindenbaum T i → Lindenbaum T (i+1) :=
 λ p, classical_logic.lindenbaum.lift_on p (λ p, (⟦p^1⟧ᴸ : Lindenbaum T (i+1))) $
-λ p₁ p₂ hyp, by { simp[contrapose, ←theory.pow_add, -axiomatic_classical_logic'.iff_equiv] at*,
+λ p₁ p₂ hyp, by { simp[contrapose, ←Theory.pow_add, -axiomatic_classical_logic'.iff_equiv] at*,
   exact sf_itr_sf_itr.mpr hyp }
 
 @[simp] lemma pow_eq (p : formula L) : (⟦p^1⟧ᴸ : Lindenbaum T (i + 1)) = pow ⟦p⟧ᴸ := rfl
@@ -546,7 +548,7 @@ lemma or_ex_comm (l : Lindenbaum T i) (k : Lindenbaum T (i + 1)) :
 
 namespace proper
 
-variables [proper_theory T]
+variables [proper_Theory T]
 
 @[simp] def subst_sf_L_aux (t : term L) :
   Lindenbaum T (i+1) → Lindenbaum T i :=
@@ -717,7 +719,7 @@ theorem le_of_provable_imply_0 {p q} : T ⊢ p ⟶ q ↔ (⟦p⟧ᴸ : Lindenbau
     refine imply_of_equiv (show (T^i)+{⁻⁻p ⟶ q} ⊢ ⁻⁻p ⟶ q, by simp[-dn1_iff]) _ _; simp },
   exact this }
 
-lemma subst_eq [proper_theory T] (p : formula L) (t : term L) :
+lemma subst_eq [proper_Theory T] (p : formula L) (t : term L) :
   (⟦p.rew ı[i ⇝ t]⟧ᴸ : Lindenbaum T i) = ⟦t⟧ᴴ ⊳ ⟦p⟧ᴸ := rfl
 
 @[simp] lemma equiv_eq_top_iff {p q} : (⟦p ⟷ q⟧ᴸ : Lindenbaum T i) = ⊤ ↔ (⟦p⟧ᴸ : Lindenbaum T i) = ⟦q⟧ᴸ :=
@@ -764,7 +766,7 @@ Herbrand.eq_of_provable_equiv_0.mp h
 
 end Lindenbaum
 
-noncomputable lemma Lindenbaum.theory (C : theory L) (i : ℕ) : set (Lindenbaum T i) := {l | ∃ p, p ∈ C ∧ l = ⟦p⟧ᴸ}
+noncomputable lemma Lindenbaum.Theory (C : Theory L) (i : ℕ) : set (Lindenbaum T i) := {l | ∃ p, p ∈ C ∧ l = ⟦p⟧ᴸ}
 
 namespace provable
 open classical_logic axiomatic_classical_logic axiomatic_classical_logic' Herbrand Lindenbaum

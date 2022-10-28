@@ -2,6 +2,8 @@ import lib.lib order.bounded_order
 
 universe u
 
+open_locale logic_symbol
+
 class intuitionistic_logic {F : Sort*} [has_logic_symbol F] (P : F → Prop) :=
 (modus_ponens {p q : F} : P (p ⟶ q) → P p → P q)
 (imply₁ {p q : F} : P (p ⟶ q ⟶ p))
@@ -35,7 +37,7 @@ class axiomatic_classical_logic' (F : Sort*) [has_logic_symbol F] extends has_tu
 (by_axiom {T : set F} {p : F} : p ∈ T → T ⊢ p)
 
 class axiomatic_classical_logic (F : Sort*) [has_logic_symbol F] extends axiomatic_classical_logic' F :=
-(deduction' {T : set F} {p q : F} : T.insert p ⊢ q → T ⊢ p ⟶ q)
+(deduction' {T : set F} {p q : F} : insert p T ⊢ q → T ⊢ p ⟶ q)
 (weakening {T : set F} {U : set F} {p : F} : T ⊆ U → T ⊢ p → U ⊢ p)
 
 namespace classical_logic
@@ -204,7 +206,7 @@ lemma and_imply_of_imply_right {p₁ p₂ q : F} (h : p₂ ⟶ q ∈ P) : p₁ �
    exact modus_ponens this h₂ }⟩
 
 @[simp] lemma conjunction_iff {n} {p : finitary F n} : (inf_conjunction n p ∈ P) ↔ (∀ i, p i ∈ P) :=
-by { induction n with n IH; simp*, { rintros ⟨i, hi⟩, simp at hi, contradiction },
+by { induction n with n IH; simp*,
      { split,
        { rintros ⟨hn, h⟩ ⟨i, hi⟩,
          have : i = n ∨ i < n, exact eq_or_lt_of_le (nat.lt_succ_iff.mp hi), rcases this with (rfl | lt),
@@ -558,7 +560,6 @@ lemma sup_def (p q : F) :
   (⟦p⟧ᴾ : lindenbaum P) ⊔ ⟦q⟧ᴾ = ⟦p ⊔ q⟧ᴾ := rfl
 
 instance : boolean_algebra (lindenbaum P) :=
-boolean_algebra.of_core
 { top := ⟦⊤⟧ᴾ,
   bot := ⟦⊥⟧ᴾ,
   le_top := λ p, by induction p using classical_logic.lindenbaum.ind_on; simp[le_def],
@@ -588,6 +589,11 @@ variables {T}
 lemma modus_ponens {p q : F} : T ⊢ p ⟶ q → T ⊢ p → T ⊢ q := modus_ponens
 
 local infixl ` ⨀ `:90 := axiomatic_classical_logic'.modus_ponens
+
+lemma modus_ponens_hyp {p q r : F} : T ⊢ p ⟶ q ⟶ r → T ⊢ p ⟶ q → T ⊢ p ⟶ r :=
+modus_ponens_hyp
+
+local infixl ` ⨀₁ `:90 := modus_ponens_hyp
 
 @[simp] lemma mem_iff_prov (p : F) : (@has_mem.mem F (set F) _) p ((⊢) T : set F) ↔ T ⊢ p := by refl
 
@@ -795,7 +801,7 @@ variables (T)
 
 @[reducible] def lindenbaum := lindenbaum ((⊢) T : F → Prop)
 
-notation p ` ≈[`:50 T :50 `] `:0 q:50 := classical_logic.equiv ((⊢) T) p q
+notation (name := classical_logic.equiv) p ` ≈[`:50 T :50 `] `:0 q:50 := classical_logic.equiv ((⊢) T) p q
 
 namespace lindenbaum
 

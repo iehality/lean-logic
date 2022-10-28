@@ -16,45 +16,38 @@ lemma numeral_one_def  {α : Type*} [has_zero α] [has_succ α] : (1 : α) = Suc
 
 @[notation_class] class has_eq (α : out_param (Sort*)) (β : Sort*) := (eq : α → α → β)
 
-infix ` ≃ `:50 := has_eq.eq
-
 @[notation_class] class has_preceq (α : out_param (Sort*)) (β : Sort*) := (preceq : α → α → β)
-
-infix ` ≼ `:50 := has_preceq.preceq
 
 @[notation_class] class has_elem (α : out_param (Sort*)) (β : Sort*) := (elem : α → α → β)
 
-infix ` ∊ `:50 := has_elem.elem
-
 @[notation_class] class has_negation (α : Sort*) := (neg : α → α)
-
-prefix `⁻`:75 := has_negation.neg
-
-@[reducible] def has_eq.ineq {α : out_param (Sort*)} {β : Sort*} [has_eq α β] [has_negation β] (a b : α) : β := ⁻(a ≃ b)
-
-infix ` ≄ `:50 := has_eq.ineq
 
 @[notation_class] class has_arrow (α : Sort*) := (arrow : α → α → α)
 
-infixr ` ⟶ `:60 := has_arrow.arrow
-
-@[notation_class] class has_lrarrow (α : Sort*) := (lrarrow : α → α → α)
-
 @[notation_class] class has_univ_quantifier (α : Sort*) := (univ : α → α)
-
-prefix `∏ `:64 := has_univ_quantifier.univ
 
 @[notation_class] class has_exists_quantifier (α : Sort*) := (ex : α → α)
 
-prefix `∐ `:64 := has_exists_quantifier.ex
-
 @[notation_class] class has_univ_quantifier' (α : Sort*) (β : Sort*):= (univ : α → β)
-
-prefix `∏' `:64 := has_univ_quantifier'.univ
 
 @[notation_class] class has_exists_quantifier' (α : Sort*) (β : Sort*) := (ex : α → β)
 
-prefix `∐' `:64 := has_exists_quantifier'.ex
+localized "infix (name := has_eq.eq) ` ≃ `:50 := has_eq.eq" in logic_symbol
+localized "infix (name := has_preceq.preceq) ` ≼ `:50 := has_preceq.preceq" in logic_symbol
+localized "infix (name := has_elem.elem) ` ∊ `:50 := has_elem.elem" in logic_symbol
+localized "prefix (name := has_negation.neg) `⁻`:75 := has_negation.neg" in logic_symbol
+localized "infixr (name := has_arrow.arrow) ` ⟶ `:60 := has_arrow.arrow" in logic_symbol
+localized "prefix (name := has_univ_quantifier.univ) `∏ `:64 := has_univ_quantifier.univ" in logic_symbol
+localized "prefix (name := has_exists_quantifier.ex) `∐ `:64 := has_exists_quantifier.ex" in logic_symbol
+localized "prefix (name := has_univ_quantifier'.univ) `∏' `:64 := has_univ_quantifier'.univ" in logic_symbol
+localized "prefix (name := has_exists_quantifier'.ex) `∐' `:64 := has_exists_quantifier'.ex" in logic_symbol
+
+open_locale logic_symbol
+
+@[reducible] def has_eq.ineq {α : out_param (Sort*)} {β : Sort*}
+  [has_eq α β] [has_negation β] (a b : α) : β := ⁻(a ≃ b)
+
+localized "infix (name := has_eq.ineq) ` ≄ `:50 := has_eq.ineq" in logic_symbol
 
 @[notation_class] class has_turnstile (α : Sort*) := (turnstile : set α → α → Prop)
 
@@ -76,7 +69,7 @@ infix ` ⟹ `:45 := has_Longarrow.Longarrow
 
 def has_arrow.lrarrow {α : Type*} [has_arrow α] [has_inf α] (a b : α) : α := (a ⟶ b) ⊓ (b ⟶ a)
 
-infix ` ⟷ `:59 := has_arrow.lrarrow
+localized "infix (name := has_arrow.lrarrow) ` ⟷ `:59 := has_arrow.lrarrow" in logic_symbol
 
 lemma lrarrow_def {α : Type*} [has_arrow α] [has_inf α] (a b : α) : a ⟷ b = (a ⟶ b) ⊓ (b ⟶ a) := rfl
 
@@ -95,4 +88,3 @@ end has_double_turnstile
 
 class has_logic_symbol (F : Sort*)
   extends has_negation F, has_arrow F, has_inf F, has_sup F, has_top F, has_bot F
-

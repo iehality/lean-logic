@@ -1,9 +1,9 @@
-import lib.lib tactic data.set_like.basic
+import lib.lib tactic data.set_like.basic logic
 
 universe u
 
 namespace fol
-
+open_locale logic_symbol
 structure language : Type (u+1) :=
 (fn : ℕ → Type u)
 (pr : ℕ → Type u)
@@ -141,7 +141,7 @@ instance [has_to_string (term L)] [∀ n, has_to_string (L.pr n)] : has_to_strin
 
 instance : inhabited (formula L) := ⟨(#0 : term L) ≃ #0⟩
 
-@[reducible] def theory (L : language.{u}) := set (formula L)
+@[reducible] def Theory (L : language.{u}) := logic.Theory (formula L)
 
 variables {L}
 
@@ -171,7 +171,7 @@ by simp[has_sup.sup, formula.or]
 by simp[has_exists_quantifier.ex, formula.ex]
 
 @[simp] lemma formula.verum_ne_predicate {n} (r : L.pr n) (v : finitary (term L) n) :
- ⊤ ≠ formula.app r v.
+  (⊤ : formula L) ≠ formula.app r v.
 
 @[simp] lemma formula.verum_ne_equal (t u : term L) : (⊤ : formula L) ≠ (t ≃ u).
 
@@ -568,13 +568,14 @@ wf_lt.le_finite (show ∀ (a : term L), {b : term L | wf_lt.prelt b a}.finite, f
   (ite p t u)^k = ite p (t^k) (u^k) :=
 by by_cases C : p; simp[C]
 
-lemma rew_inversion_or_le_of_le_rew {t u : term L} {s} (h : t ≤ u.rew s) : (∃ t' ≤ u, t = t'.rew s) ∨ (∃ n, t ≤ s n) :=
+lemma rew_inversion_or_le_of_le_rew {t u : term L} {s} (h : t ≤ u.rew s) :
+  (∃ t' ≤ u, t = t'.rew s) ∨ (∃ n, t ≤ s n) :=
 begin
   induction u,
   case var : n { simp at h, refine or.inr ⟨n, h⟩ },
   case app : n f v IH
   { rcases (eq_or_lt_of_le h) with (rfl | lt),
-    { refine or.inl ⟨app f v, by refl, by refl⟩ },
+    { refine or.inl ⟨app f v, by { refl }, by refl⟩ },
     { simp at lt, rcases lt with ⟨i, le⟩,
       rcases IH i le with (⟨t', le', rfl⟩ | ⟨n, le⟩),
       { refine or.inl ⟨t', (le_trans le' (by simp)), rfl⟩ },
@@ -688,7 +689,7 @@ by simp[has_inf.inf, formula.and]
 by simp[has_sup.sup, formula.or]
 
 @[simp] lemma formula.iff_arity (p q : formula L) : (p ⟷ q).arity = max p.arity q.arity :=
-by {simp[lrarrow_def], exact le_total _ _ }
+by simp[lrarrow_def]; exact max_comm _ _
 
 @[simp] lemma formula.bot_arity : (⊥ : formula L).arity = 0 :=
 by simp[has_bot.bot]
@@ -942,7 +943,7 @@ lemma total_rew_inv :
 @[simp] lemma pow_inj : ∀ {p q : formula L} {i : ℕ}, p^i = q^i ↔ p = q :=
 λ p q i, by { simp[has_pow.pow], refine rew_var_inj_of_inj (λ x y, by simp) }
 
-@[simp] def is_open : theory L
+@[simp] def is_open : Theory L
 | ⊤          := true
 | (❴p❵ v)  := true
 | (t ≃ u)   := true

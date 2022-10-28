@@ -1,21 +1,22 @@
 import FOL.deduction
 
 universes u v
+open_locale logic_symbol
 
 namespace fol
-open formula
+open logic formula
 
-structure model (L : language.{u}) :=
+structure Structure (L : language.{u}) :=
 (dom : Type u)
 (inhabited : inhabited dom)
 (fn : ∀ {n}, L.fn n → (fin n → dom) → dom)
 (pr : ∀ {n}, L.pr n → (fin n → dom) → Prop)
 
-notation `|`M`|` := model.dom M
+local notation (name := dom) `|`M`|` := Structure.dom M
 
-variables {L : language.{u}} {M : model L}
+variables {L : language.{u}} {M : Structure L}
 
-instance (M : model L) : inhabited M.dom := M.inhabited
+instance (M : Structure L) : inhabited M.dom := M.inhabited
 
 variables (M)
 
@@ -33,11 +34,20 @@ variables (M)
 
 notation M` ⊧[`:80 e`] `p :50 := @formula.val _ M e p
 
-def models (M : model L) (p : formula L) : Prop := ∀ (e : ℕ → |M|), M ⊧[e] p
-infix ` ⊧ `:50 := models
+def models (M : Structure L) (p : formula L) : Prop := ∀ (e : ℕ → |M|), M ⊧[e] p
 
-def modelsth (M : model L) (T : theory L) : Prop := ∀ p, p ∈ T → M ⊧ p
-infix ` ⊧ₜₕ `:50 := modelsth
+instance : semantics (formula L) (Structure L) := ⟨models⟩
+
+lemma models_def {M : Structure L} {p : formula L} : M ⊧ p ↔ (∀ (e : ℕ → |M|), M ⊧[e] p) := by refl
+
+abbreviation satisfiable (p : formula L) : Prop := semantics.satisfiable (Structure L) p
+
+abbreviation Satisfiable (T : Theory L) : Prop := semantics.Satisfiable (Structure L) T
+
+instance : has_double_turnstile (Theory L) (formula L) := ⟨semantics.consequence (Structure L)⟩
+
+lemma consequence_def {T : Theory L} {p : formula L} :
+  T ⊧ p ↔ ∀ S : Structure L, S ⊧ T → S ⊧ p := by refl
 
 variables {M}
 
@@ -65,16 +75,16 @@ lemma rew_val_iff : ∀ (s : ℕ → term L) (p : formula L) (e : ℕ → |M|),
 @[simp] lemma pow_val_concat_iff : ∀ (p : formula L) (e : ℕ → |M|) d, (p^1).val M (d ⌢ e) = p.val M e :=
 by simp[formula.pow_eq, rew_val_iff]
 
-@[simp] lemma model_zero_val [has_zero_symbol L] {e : ℕ → |M|} : (0 : term L).val M e = M.fn has_zero_symbol.zero finitary.nil :=
+@[simp] lemma Structure_zero_val [has_zero_symbol L] {e : ℕ → |M|} : (0 : term L).val M e = M.fn has_zero_symbol.zero finitary.nil :=
 by simp[has_zero.zero]; congr
 
-@[simp] lemma model_succ_val [has_succ_symbol L] (t : term L) {e : ℕ → |M|} :
+@[simp] lemma Structure_succ_val [has_succ_symbol L] (t : term L) {e : ℕ → |M|} :
   (Succ t).val M e = M.fn has_succ_symbol.succ ‹t.val M e› :=
 by simp[has_succ.succ]; congr; ext; simp
 
-private lemma modelsth_sf {T} : M ⊧ₜₕ T → M ⊧ₜₕ ⤊T := λ h p hyp_p e,
+private lemma modelsth_sf {T : Theory L} : M ⊧ T → M ⊧ ⤊T := λ h p hyp_p e,
 by { rcases hyp_p with ⟨p, hyp_p', rfl⟩, simp[formula.pow_eq, rew_val_iff],
-     refine h _ hyp_p' _ }
+     refine h hyp_p' _ }
 
 @[simp] lemma models_ex {p : formula L} {e : ℕ → |M|} : (∐ p).val M e ↔ ∃ d, p.val M (d ⌢ e) :=
 by simp[has_exists_quantifier.ex, formula.ex, models, rew_val_iff]
@@ -113,7 +123,6 @@ by simp[lrarrow_def]; exact iff_def.symm
 @[simp] lemma models_conjunction' {n : ℕ} {P : finitary (formula L) n} {e : ℕ → |M|} :
   (inf_conjunction n P).val M e ↔ ∀ i, (P i).val M e :=
 by { induction n with n IH; simp,
-     { intros i, exfalso, exact i.val.not_lt_zero i.property },
      { simp [IH], split,
        { rintros ⟨h0, h1⟩, intros i,
          have : i.val < n ∨ i.val = n := nat.lt_succ_iff_lt_or_eq.mp i.property,
@@ -135,7 +144,7 @@ by { simp[rew_val_iff],
        cases C; simp[C], simp[asymm C] },
      simp[this] }
 
-@[simp] lemma models_subst_0 {p : formula L} {t : term L} {e : ℕ → |M| } :
+@[simp] lemma models_subst_0 {p : formula L} {t : term L} {e : ℕ → |M|} :
   (p.rew ı[0 ⇝ t]).val M e ↔ p.val M (t.val M e ⌢ e) :=
 by { have := @models_subst _ _ p 0 t e, simp at this,
      have eqn : (λ n, ite (0 < n) (e (n - 1)) (t.val M e)) = t.val M e ⌢ e,
@@ -154,8 +163,7 @@ lemma nfal_models_iff : ∀ {n} {p : formula L}, M ⊧ nfal p n ↔ M ⊧ p
   have : ((e 0) ⌢ λ x, e (x + 1) )= e, { ext x, cases x; simp[concat] },
   have := h (λ x, e (x + 1)) (e 0), simp* at* }
 
-
-theorem soundness {T : theory L} : ∀ {p}, T ⊢ p → ∀ {M}, M ⊧ₜₕ T → M ⊧ p := λ p hyp,
+theorem soundness {T : Theory L} : ∀ {p}, T ⊢ p → ∀ {M : Structure L}, M ⊧ T → M ⊧ p := λ p hyp,
 begin
   rcases hyp,
   induction hyp,
@@ -164,7 +172,7 @@ begin
   case mdp : T p q hyp_pq hyp_p IH_pq IH_p
   { intros M hyp_T e, exact IH_pq hyp_T e (IH_p hyp_T e) },
   case by_axiom : T p hyp_p
-  { intros M hyp_T e, exact hyp_T _ hyp_p _ },
+  { intros M hyp_T e, exact hyp_T hyp_p _ },
   case verum : T
   { intros M hyp_T e, simp },
   case imply₁ : T p q
@@ -196,8 +204,8 @@ begin
     simp, intros h, simp[h] },
 end
 
-theorem model_consistent {T : theory L} : M ⊧ₜₕ T → theory.consistent T :=
-by { contrapose, simp[theory.consistent], intros p hp₁ hp₂ hyp,
+theorem Structure_consistent {T : Theory L} : M ⊧ T → Theory.consistent T :=
+by { contrapose, simp[Theory.consistent], intros p hp₁ hp₂ hyp,
      exact soundness hp₂ hyp (λ _, default) (soundness hp₁ hyp (λ _, default)) }
 
 lemma eval_eq : ∀ {t : term L} {e₁ e₂ : ℕ → |M|},
@@ -231,20 +239,6 @@ lemma eval_is_sentence_iff {p : formula L} (e : ℕ → |M|) (a : is_sentence p)
 ⟨λ h e, by { refine (eval_iff $ λ n h, _).1 h, exfalso,
  simp[is_sentence] at*, rw[a] at h, exact nat.not_lt_zero n h},
  λ h, h e⟩
-
-@[simp] lemma modelsth_empty : M ⊧ₜₕ ∅ := λ _, by simp
-
-@[simp] lemma modelsth_insert {T : theory L} {p : formula L} : M ⊧ₜₕ (T+{p}) ↔ M ⊧ p ∧ M ⊧ₜₕ T :=
-by simp[modelsth]
-
-@[simp] lemma modelsth_union {T U : theory L} : M ⊧ₜₕ (T ∪ U) ↔ M ⊧ₜₕ T ∧ M ⊧ₜₕ U :=
-by simp[modelsth]; exact
-⟨λ h, ⟨λ p mem, h p (or.inl mem), λ p mem, h p (or.inr mem)⟩,
- λ ⟨h₁, h₂⟩ p, by { rintros (mem | mem), { exact h₁ p mem }, { exact h₂ p mem } }⟩
-
-@[simp] lemma modelsth_Union {T : ℕ → theory L} : M ⊧ₜₕ (⋃ n, T n) ↔ ∀ n, M ⊧ₜₕ T n :=
-by simp[modelsth]; exact
-⟨λ h n p mem, h p n mem, λ h p n mem, h n p mem⟩
 
 lemma models_neg_iff_of_is_sentence {p : formula L} (hp : is_sentence p) : M ⊧ ⁻p ↔ ¬M ⊧ p :=
 by { have : M ⊧[default] ⁻p ↔ ¬M ⊧[default] p, by simp,

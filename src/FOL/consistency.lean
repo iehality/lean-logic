@@ -3,19 +3,20 @@ import FOL.lindenbaum lib.tukey
 universes u
 
 namespace fol
-variables {L : language.{u}} {T U : theory L}
+open_locale logic_symbol
+variables {L : language.{u}} {T U : Theory L}
 
-namespace theory
+namespace Theory
 open provable axiomatic_classical_logic axiomatic_classical_logic'
 
-lemma consistent_of_consistent_ss {T U : theory L} (h : T.consistent) (ss : U ⊆ T) : U.consistent :=
+lemma consistent_of_consistent_ss {T U : Theory L} (h : T.consistent) (ss : U ⊆ T) : U.consistent :=
 by { simp[consistent_iff_bot] at h ⊢, intros hU, have : T ⊢ ⊥, from weakening hU ss, contradiction }
 
 private lemma list_set_finite {α} (l : list α) : {a : α | a ∈ l}.finite :=
 by { induction l with a l IH, { simp },
   { simp[show {b : α | b = a ∨ b ∈ l} = insert a {b : α | b ∈ l}, by refl], exact set.finite.insert a IH } }
 
-class Consistent (T : theory L) :=
+class Consistent (T : Theory L) :=
 (consis : T.consistent)
 
 namespace consistent
@@ -46,7 +47,7 @@ begin
   contradiction
 end⟩
 
-lemma tukey_finite_charactor : tukey.finite_charactor (theory.consistent : theory L → Prop) :=
+lemma tukey_finite_charactor : tukey.finite_charactor (Theory.consistent : Theory L → Prop) :=
 λ T, finite_character
 
 lemma finite_character_union (consis : consistent T) :
@@ -70,7 +71,7 @@ lemma of_finite_induction
   consistent (T ∪ U) :=
 begin
   refine (finite_character_union consis).mpr _,
-  suffices : ∀ (s : theory L), set.finite s → s ⊆ U → (T ∪ s).consistent,
+  suffices : ∀ (s : Theory L), set.finite s → s ⊆ U → (T ∪ s).consistent,
   { intros s ss fin, exact this s fin ss },
   intros s fin,
   refine set.finite.induction_on fin (λ _, by simp[consis]) _,
@@ -81,8 +82,8 @@ begin
     (consis (set.subset.trans (show s ⊆ insert p s, by simp) ss))
 end
 
-lemma Union_seq (T : ℕ → theory L) (h : ∀ n, T n ⊆ T (n + 1)) :
-  theory.consistent (⋃ n, T n) ↔ ∀ n, theory.consistent (T n) :=
+lemma Union_seq (T : ℕ → Theory L) (h : ∀ n, T n ⊆ T (n + 1)) :
+  Theory.consistent (⋃ n, T n) ↔ ∀ n, Theory.consistent (T n) :=
 ⟨λ H n, consistent_of_consistent_ss H (set.subset_Union T n),
  λ H, by {
   have ss_of_le : ∀ {m n}, m ≤ n → T m ⊆ T n,
@@ -101,19 +102,19 @@ lemma Union_seq (T : ℕ → theory L) (h : ∀ n, T n ⊆ T (n + 1)) :
   exact consistent_of_consistent_ss (H M) this }⟩ 
 
 lemma inconsistent_insert_iff_provable_neg {p : formula L} :
-  ¬theory.consistent (T +{ p }) ↔ T ⊢ ⁻p :=
+  ¬Theory.consistent (T +{ p }) ↔ T ⊢ ⁻p :=
 begin
-  simp [theory.consistent_iff_bot, deduction],
+  simp [Theory.consistent_iff_bot, deduction],
   have : T ⊢ ⁻p ⟷ p ⟶ ⊥, from neg_iff p,
   split; intros h, { exact (iff_equiv.mp this).2 ⨀ h }, { exact (iff_equiv.mp this).1 ⨀ h }
 end
 
 lemma extendable (consis : T.consistent) (p : formula L) : 
-  theory.consistent (T +{ p }) ∨ theory.consistent (T +{ ⁻p }) :=
+  Theory.consistent (T +{ p }) ∨ Theory.consistent (T +{ ⁻p }) :=
 by { by_contradiction A, simp[not_or_distrib, inconsistent_insert_iff_provable_neg] at A, rcases A with ⟨A₁, A₂⟩,
      exact consis ⟨p, A₂, A₁⟩ }
 
-def maximal (T : theory L) : theory L := classical.epsilon (λ M, consistent M ∧ T ⊆ M ∧ ∀ S, consistent S → M ⊆ S → S = M)
+def maximal (T : Theory L) : Theory L := classical.epsilon (λ M, consistent M ∧ T ⊆ M ∧ ∀ S, consistent S → M ⊆ S → S = M)
 
 theorem maximal_consistent (consis : consistent T) :  consistent (maximal T) := (classical.epsilon_spec (tukey.exists_maximum tukey_finite_charactor T consis)).1
 
@@ -166,6 +167,6 @@ lemma provable_iff_inconsistent {p : formula L} : T ⊢ p ↔ ¬consistent (T +{
           have : T ⊢ ⁻⁻p, from (iff_of_equiv (neg_iff _)).mpr (deduction.mp this),
           exact dn_iff.mp this }⟩
 
-end theory
+end Theory
 
 end fol

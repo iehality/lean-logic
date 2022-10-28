@@ -9,6 +9,7 @@ import
   init.data.list
   init.data.subtype
   data.list.dedup
+  data.W.basic
 
 import lib.notation
 
@@ -17,11 +18,6 @@ universes u v
 attribute [instance, priority 0] classical.prop_decidable
 
 namespace nat
-
-@[simp] lemma max_zero_left {n m} : max n m = 0 ↔ n = 0 ∧ m = 0 :=
-⟨λ h, ⟨nat.le_zero_iff.mp (le_of_max_le_left (eq.symm h).ge),
-       nat.le_zero_iff.mp (le_of_max_le_right (eq.symm h).ge)⟩,
- λ ⟨e₁, e₂⟩, by simp[e₁, e₂]⟩
 
 lemma mkpair_eq_iff {n m l : ℕ} : n.mkpair m = l ↔ n = l.unpair.1 ∧ m = l.unpair.2 :=
 by { split,
@@ -282,8 +278,7 @@ instance [has_to_string α] (n) : has_to_string (finitary α n) :=
 
 lemma of_option_eq_some_iff : ∀ {n} {v : finitary (option α) n} {v'},
   of_option v = some v' ↔ ∀ i, v i = some (v' i)
-| 0       v v' := by { simp[show v' = nil, by ext],
-    intros i, have := i.property, exfalso, exact i.val.not_lt_zero this }
+| 0       v v' := by simp[show v' = nil, by ext]
 | (n + 1) v v' := by { simp[@of_option_eq_some_iff _ v.tail], split,
     { rintros ⟨a, v0_eq, v', h, rfl⟩ ⟨i, i_lt⟩, rw ←app_0_cons_tail_refl v, 
       cases i; simp* },
@@ -291,7 +286,7 @@ lemma of_option_eq_some_iff : ∀ {n} {v : finitary (option α) n} {v'},
 
 lemma of_option_eq_none_iff : ∀ {n} (v : finitary (option α) n),
   of_option v = none ↔ ∃ i, v i = none
-| 0       v := by { simp, intros x, have := x.property, exfalso, exact x.val.not_lt_zero this }
+| 0       v := by simp
 | (n + 1) v := by { 
     have IH := of_option_eq_none_iff v.tail,
     simp, intros,
@@ -372,23 +367,20 @@ by { rw[show ‹⟦a⟧, ⟦b⟧› = (λ x : fin 2, ⟦‹a, b› x⟧), by { r
 
 end quotient
 
-@[simp] lemma is_empty_sigma {α} {s : α → Sort*} : is_empty (Σ a, s a) ↔ ∀ a, is_empty (s a) :=
-by simp only [← not_nonempty_iff, nonempty_sigma, not_exists]
+#check is_empty_sigma
+-- @[simp] lemma is_empty_sigma {α} {s : α → Sort*} : is_empty (Σ a, s a) ↔ ∀ a, is_empty (s a) :=
+-- by simp only [← not_nonempty_iff, nonempty_sigma, not_exists]
 
-notation T` +{ ` :max p ` }` := set.insert p T
-
-@[reducible] def set.insert' {α} (T : set α) (a : α) := set.insert a T
-
-infixl `❟ ` :46 := set.insert'
+notation T` +{ ` :max p ` }` := insert p T
 
 @[simp] lemma set.insert_mem {α : Sort*} (T : set α) (a : α) : a ∈ T +{ a } :=
-by simp[set.insert]
+by simp[insert]
 
 @[simp] lemma set.insert_mem_of_mem {α : Sort*} {T : set α} {b : α} (h : b ∈ T) (a : α) :
-  b ∈ T +{ a } := by simp[set.insert, h]
+  b ∈ T +{ a } := by simp[insert, h]
 
 @[simp] lemma set.insert_mem_iff {α : Sort*} {T : set α} {a b : α} :
-  b ∈ T +{ a } ↔ b = a ∨ b ∈ T := by simp[set.insert]
+  b ∈ T +{ a } ↔ b = a ∨ b ∈ T := by simp[insert]
 
 @[simp] def inf_conjunction {α : Type*} [has_top α] [has_inf α] : ∀ n, (fin n → α) → α
 | 0 _        := ⊤

@@ -4,6 +4,7 @@ open encodable
 universes u v
 
 namespace fol
+open_locale logic_symbol
 
 @[simp] lemma app_concat {α β : Type*} (a : α) (s : ℕ → α) (g : α → β) :
   (λ x, g ((a ⌢ s) x)) = g a ⌢ g ∘ s :=
@@ -14,10 +15,10 @@ by { funext x, cases x; simp  }
 by { funext x, cases x; simp  }
 
 open term formula
-variables (L : language.{u}) (T : theory L)
+variables (L : language.{u}) (T : Theory L)
 
 namespace henkin
-open language language.extension language.consts_pelimination theory language.language_translation
+open language language.extension language.consts_pelimination Theory language.language_translation
 
 @[reducible] def extend : language.{u} := L + consts (formula L)
 
@@ -25,19 +26,19 @@ variables {L}
 
 def henkin_axiom (p : formula L) : formula (extend L) := (∐ ↑p) ⟶ rew ı[0 ⇝ p] ↑p
 
-@[reducible] def theory_extend : theory (extend L) := ↑T ∪ set.range henkin_axiom
+@[reducible] def Theory_extend : Theory (extend L) := ↑T ∪ set.range henkin_axiom
 
 variables {T}
 
 section
 open axiomatic_classical_logic axiomatic_classical_logic' provable
 
-variables {S : theory (extend L)} (Γ : list (formula L))
+variables {S : Theory (extend L)} (Γ : list (formula L))
 
 lemma consistent_of_disjoint (S_consis : S.consistent) (disj : ∀ p ∈ S, disjoint Γ p) (p : formula (extend L)) :
-  ¬S ⊢ (∏[Γ.length] ⁻((pelimination' Γ).p 0 p)) → theory.consistent (S +{ p }) := λ not_b,
+  ¬S ⊢ (∏[Γ.length] ⁻((pelimination' Γ).p 0 p)) → Theory.consistent (S +{ p }) := λ not_b,
 begin
-  simp [theory.consistent_iff_bot],
+  simp [Theory.consistent_iff_bot],
   intros b,
   have : S ⊢ ⁻p, from of_equiv_p (deduction.mp b) (equiv_symm $ neg_iff _),
   have : S ⊢ ∏[Γ.length] ⁻(pelimination' Γ).p 0 p,
@@ -81,7 +82,7 @@ begin
     { simp[subst_pow] at le, have : n < k ∨ n = k ∨ k < n , exact trichotomous n k, rcases this with (lt | rfl | lt),
       { simp[lt] at le, simp[le] at c_mem, contradiction },
       { simp[consts.coe_def, show (↑(consts.c p) : (extend L).fn 0) = sum.inr (consts.c p), from rfl, le_iff_lt_or_eq] at le,
-        rcases le with (⟨⟨_, A⟩, _⟩ | rfl), { simp at A, contradiction }, { simp at c_mem, exact c_mem } },
+        rcases le with (⟨⟨_, A⟩, _⟩ | rfl), { simp at c_mem, exact c_mem } },
       { simp[lt] at le, simp[le] at c_mem, contradiction } } }
 end
 
@@ -90,14 +91,14 @@ by { simp at mem, rcases mem with rfl, intros mem, have : p = q, from consts_of_
 
 end
 
-theorem theory_extend_consistent (consis : T.consistent) : (theory_extend T).consistent :=
+theorem Theory_extend_consistent (consis : T.consistent) : (Theory_extend T).consistent :=
 begin
-  have : (↑T : theory (extend L)).consistent, from language.add_consts.consistent_iff.mpr consis,
+  have : (↑T : Theory (extend L)).consistent, from language.add_consts.consistent_iff.mpr consis,
   refine consistent.of_finite_induction this _,
   intros s s_ss φ φ_mem p_nmem s_fin consis',
   let U := ↑T ∪ s,
   rcases φ_mem with ⟨φ, rfl⟩,
-  show theory.consistent (U +{ henkin_axiom φ }),
+  show Theory.consistent (U +{ henkin_axiom φ }),
   have disj : ∀ p ∈ U, disjoint ([φ]) p,
   { intros p mem, simp[U] at mem, rcases mem,
     { rcases mem with ⟨p, mem, rfl⟩, show disjoint ([φ]) (↑p), intros h, simp },
@@ -108,7 +109,7 @@ begin
   have : ¬U ⊢ ∏ ⁻((∐ ↑φ)^1 ⟶ ↑φ),
   { intros b,
     have : U ⊢ ⁻∏ ⁻((∐ ↑φ)^1 ⟶ ↑φ), from tauto φ,
-    have : ¬U.consistent, { simp[theory.consistent], refine ⟨_, b, this⟩ },
+    have : ¬U.consistent, { simp[Theory.consistent], refine ⟨_, b, this⟩ },
     contradiction },
   exact consistent_of_disjoint ([φ]) consis' disj (henkin_axiom φ) (by simp; exact this)
 end
@@ -231,49 +232,49 @@ end
 
 variables (T) {L}
 
-@[reducible] def Thy : Π n : ℕ, theory (Lang L n)
+@[reducible] def Thy : Π n : ℕ, Theory (Lang L n)
 | 0       := T
-| (n + 1) := theory_extend (Thy n)
+| (n + 1) := Theory_extend (Thy n)
 
-def Thy' (n : ℕ) := (Ln_to_Lω L n).fun_theory (Thy T n)
+def Thy' (n : ℕ) := (Ln_to_Lω L n).fun_Theory (Thy T n)
 
 local notation `T[` n `]` := Thy' T n
 
-def theory_limit : theory Lω := ⋃ n, T[n]
+def Theory_limit : Theory Lω := ⋃ n, T[n]
 
-local notation `Tω` := theory_limit L T
+local notation `Tω` := Theory_limit L T
 
 lemma Thy'_ss (n : ℕ) : T[n] ⊆ T[n + 1] :=
 begin
-  simp[fun_theory, Thy', Thy],
+  simp[fun_Theory, Thy', Thy],
   intros p mem, simp[Lang], refine ⟨by simp[Lang]; refine p, _⟩,
   simpa[mem] using Ln_to_Lω_fun_p_coe _ n p,
 end
 
-lemma Tn_consistent (consis : T.consistent) (n : ℕ) : theory.consistent T[n] :=
+lemma Tn_consistent (consis : T.consistent) (n : ℕ) : Theory.consistent T[n] :=
 begin
-  have : theory.consistent (Thy T n),
-  { induction n with n IH, { exact consis }, { exact theory_extend_consistent IH } },
-  have consis' : theory.consistent (add_left.fun_theory (Thy T n) : theory (L[n] + consts (pConsts L n))), from add_consts.consistent_iff.mpr this,
-  have : (add_left.fun_theory (Thy T n) : theory (L[n] + consts (pConsts L n))) = (Lω_to_Ln_add_pConsts L n).fun_theory T[n],
-  { rw[fun_theory, ←commutative, comp_fun_p, set.image_comp], simp[fun_theory, Thy'] },
+  have : Theory.consistent (Thy T n),
+  { induction n with n IH, { exact consis }, { exact Theory_extend_consistent IH } },
+  have consis' : Theory.consistent (add_left.fun_Theory (Thy T n) : Theory (L[n] + consts (pConsts L n))), from add_consts.consistent_iff.mpr this,
+  have : (add_left.fun_Theory (Thy T n) : Theory (L[n] + consts (pConsts L n))) = (Lω_to_Ln_add_pConsts L n).fun_Theory T[n],
+  { rw[fun_Theory, ←commutative, comp_fun_p, set.image_comp], simp[fun_Theory, Thy'] },
   rw this at consis',
   exact language.language_translation.consistency _ _ consis'
 end
 
-theorem Tω_consistent (consis : T.consistent) : theory.consistent Tω :=
-(theory.consistent.Union_seq (Thy' T) (Thy'_ss T)).mpr (Tn_consistent T consis)
+theorem Tω_consistent (consis : T.consistent) : Theory.consistent Tω :=
+(Theory.consistent.Union_seq (Thy' T) (Thy'_ss T)).mpr (Tn_consistent T consis)
 
 
 lemma T_ss_Tω : ↑T ⊆ Tω :=
-by simpa [show ↑T = T[0], by refl, theory_limit] using set.subset_Union (Thy' T) 0
+by simpa [show ↑T = T[0], by refl, Theory_limit] using set.subset_Union (Thy' T) 0
 
 lemma henkin_mem_Tω (p : formula Lω) : (∐ p) ⟶ rew ı[0 ⇝ henkin_constant p] p ∈ Tω :=
 begin
   simp[henkin_constant],
   let r := Lω_seq_limit.rank_p p,
   suffices : (∐ p) ⟶ rew ı[0 ⇝ henkin_constant p] p ∈ T[r + 1],
-  { simp[theory_limit], refine ⟨_, this⟩ },
+  { simp[Theory_limit], refine ⟨_, this⟩ },
   have lmm₁ : (∐ p) ⟶ rew ı[0 ⇝ henkin_constant p] p = (Ln_to_Lω L (r + 1)).fun_p (henkin_axiom (retruct L p)),
   { have := Ln_to_Lω_fun_p_coe L r (retruct L p), simp at this, simp[this, henkin_axiom, henkin_constant] },
   have lmm₂ : (Ln_to_Lω L (r + 1)).fun_p (henkin_axiom (retruct L p)) ∈ T[r + 1],
@@ -283,7 +284,7 @@ end
 
 local notation `Tω⁺` := consistent.maximal Tω
 
-local notation `Lω` := limit _
+local notation (name := limit) `Lω` := limit _
 
 open axiomatic_classical_logic axiomatic_classical_logic' provable
 
@@ -301,7 +302,7 @@ local notation p ` ~[`:50 T :50 `] `:0 q:50 := Consts.equal T p q
 variables [cT : Consistent T] {L}
 include cT
 
-lemma Tω_consistent' : consistent (theory_limit L T) := Tω_consistent T cT.consis
+lemma Tω_consistent' : consistent (Theory_limit L T) := Tω_consistent T cT.consis
 
 lemma mem_Tω'_of_Tω_provable {p : formula Lω} (b : Tω ⊢ p): p ∈ Tω⁺ :=
 begin
@@ -407,10 +408,9 @@ by { have : pr r (λ i, ⟦v i⟧) = Consts.pr T r v, from lift_on_finitary_eq _
 
 variables (T)
 
-def henkin_model : model Lω := ⟨Henkin T, ⟨⟦henkin_constant ⊤⟧⟩, λ n f, fn f, λ n r, pr r⟩
+def henkin_model : Structure Lω := ⟨Henkin T, ⟨⟦henkin_constant ⊤⟧⟩, λ n f, fn f, λ n r, pr r⟩
 
 local notation `ℌ` := henkin_model T
-
 
 @[simp] lemma henkin_model_fn {n} (f : (Lω).fn n) (v) : (ℌ).fn f v = fn f v := rfl
 @[simp] lemma henkin_model_pr {n} (r : (Lω).pr n) (v) : (ℌ).pr r v = pr r v := rfl
@@ -424,7 +424,7 @@ begin
 end
 
 lemma term_val_eq_quotient (t : term Lω) (e : ℕ → Consts L) :
-  @term.val _ ℌ (λ n, ⟦e n⟧ : ℕ → |ℌ|) t = ⟦Consts.of (t.rew (λ x, ↑(e x)))⟧ :=
+  @term.val _ ℌ (λ n, ⟦e n⟧ : ℕ → (ℌ).dom) t = ⟦Consts.of (t.rew (λ x, ↑(e x)))⟧ :=
 begin
   induction t,
   case var : x { simp[Consts.equal], exact Consts.of_eq T _ },
@@ -493,57 +493,58 @@ theorem ℌ_models_Tω'_of_sentence {p : formula Lω} (hp : is_sentence p) :
   p ∈ Tω⁺ ↔ ℌ ⊧ p :=
 by simpa[hp, eval_is_sentence_iff] using ℌ_models_Tω' T p default
 
-variables [closed_theory T]
+variables [closed_Theory T]
 
-theorem ℌ_models_T : add_left.of_ltr ℌ ⊧ₜₕ T :=
+theorem ℌ_models_T : add_left.of_ltr ℌ ⊧ T :=
 begin
-  simp[theory_models_iff], intros p mem,
+  simp[Theory_models_iff], intros p mem,
   have : p ∈ Tω⁺, from (Tω_consistent' T).ss_maximal (T_ss_Tω T mem),  
-  exact (ℌ_models_Tω'_of_sentence T (show is_sentence p, from closed_theory.cl mem)).mp this
+  exact (ℌ_models_Tω'_of_sentence T (show is_sentence p, from closed_Theory.cl mem)).mp this
 end 
 
 end Henkin
 
 end henkin
 
-variables [closed_theory T] {L} {T}
+variables [closed_Theory T] {L} {T}
 
-theorem consistent_iff_satisfiable : T.consistent ↔ ∃ M, M ⊧ₜₕ T :=
-⟨λ consis,  ⟨_, @henkin.Henkin.ℌ_models_T _ T ⟨consis⟩ _⟩, by { rintros ⟨M, hM⟩, exact model_consistent hM}⟩
+theorem consistent_iff_satisfiable : Theory.consistent T ↔ Satisfiable T :=
+⟨λ consis,  ⟨_, @henkin.Henkin.ℌ_models_T _ T ⟨consis⟩ _⟩, by { rintros ⟨M, hM⟩, exact Structure_consistent hM}⟩
 
 theorem completeness {p : formula L} (hp : is_sentence p) : 
-  T ⊢ p ↔ (∀ M, M ⊧ₜₕ T → M ⊧ p) :=
+  T ⊢ p ↔ T ⊧ p :=
 ⟨λ b M, soundness b,
- λ h, by { simp[theory.provable_iff_inconsistent], intros consis,
-  have : closed_theory (T +{⁻p}), from ⟨by { simp[hp], exact λ _, closed_theory.cl }⟩,
-  have : ∃ M, M ⊧ₜₕ (T +{⁻p}), exactI consistent_iff_satisfiable.mp consis,
+ λ h, by { simp[Theory.provable_iff_inconsistent], intros consis,
+  have : closed_Theory (T +{⁻p}), from ⟨by { simp[hp], exact λ _, closed_Theory.cl }⟩,
+  have : Satisfiable (T +{⁻p}), exactI consistent_iff_satisfiable.mp consis,
   rcases this with ⟨M, hM⟩,
-  have : M ⊧ p, from h M (λ p mem, hM p (by simp[mem])),
-  have : ¬M ⊧ p, by simpa[models_neg_iff_of_is_sentence hp] using hM (⁻p) (by simp),
+  have : M ⊧ p, from consequence_def.mp h M (λ p mem, hM (by simp[mem])),
+  have : ¬M ⊧ p, by simpa[models_neg_iff_of_is_sentence hp] using @hM (⁻p) (by simp),
   contradiction }⟩
 
 theorem completeness' {p : formula L} : 
-  T ⊢ p ↔ (∀ M, M ⊧ₜₕ T → M ⊧ p) :=
+  T ⊢ p ↔ T ⊧ p :=
 ⟨λ b M, soundness b,
- λ h, by { have : ∀ M, M ⊧ₜₕ T → M ⊧ ∏* p, { intros M hM, simp[fal_complete, nfal_models_iff, h M hM] },
+ λ h, by {
+  have : T ⊧ ∏* p, { intros M hM, simpa using nfal_models_iff.mpr (consequence_def.mp h M hM) },
   have : T ⊢ ∏* p, from (completeness (show is_sentence (∏* p), by simp)).mpr this,
   have lmm : T ⊢ p.rew (λ x, ite (x < p.arity) #x #(x - p.arity)), from provable.nfal_subst _ _ ı ⨀ this,
   have := @formula.rew_rew _ p (λ x, ite (x < p.arity) #x #(x - p.arity)) ı (λ m lt, by simp[lt]),
   simpa[this] using lmm }⟩
 
 section
-variables {L₁ L₂ : language.{u}} {T₁ : theory L₁} [closed_theory T₁]
+variables {L₁ L₂ : language.{u}} {T₁ : Theory L₁} [closed_Theory T₁]
 open language language.language_translation language.language_translation_coe
 
 @[simp] theorem add_coe_consistent_iff :
-  (↑T₁ : theory (L₁ + L₂)).consistent ↔ T₁.consistent :=
+  (↑T₁ : Theory (L₁ + L₂)).consistent ↔ T₁.consistent :=
 ⟨language.language_translation.consistency _ T₁,
  λ h,
 begin
-  have : ∃ M₁, M₁ ⊧ₜₕ T₁, from consistent_iff_satisfiable.mp h,
+  have : ∃ M₁, M₁ ⊧ T₁, from consistent_iff_satisfiable.mp h,
   rcases this with ⟨M₁, hM₁⟩,
-  let M₂ : model (L₁ + L₂) := M₁.extend default default,
-  have : M₂ ⊧ₜₕ (↑T₁ : theory (L₁ + L₂)), from (M₁.extend_modelsth_coe_iff default default).mpr hM₁,
+  let M₂ : Structure (L₁ + L₂) := M₁.extend default default,
+  have : M₂ ⊧ (↑T₁ : Theory (L₁ + L₂)), from (M₁.extend_modelsth_coe_iff default default).mpr hM₁,
   exact consistent_iff_satisfiable.mpr ⟨_, this⟩
 end⟩
 
@@ -551,37 +552,37 @@ section
 variables (L₁ L₂) [language.language_translation_coe L₁ L₂]
 
 @[simp] theorem coe_consistent_iff  :
-  (↑T₁ : theory L₂).consistent ↔ T₁.consistent :=
+  (↑T₁ : Theory L₂).consistent ↔ T₁.consistent :=
 ⟨language.language_translation.consistency _ T₁,
 λ h, begin
-  have : ∃ M₁, M₁ ⊧ₜₕ T₁, from consistent_iff_satisfiable.mp h,
+  have : ∃ M₁, M₁ ⊧ T₁, from consistent_iff_satisfiable.mp h,
   rcases this with ⟨M₁, hM₁⟩,
-  let M₂ : model (L₁ + sub L₂ L₁) := M₁.extend default default,
-  have : M₂ ⊧ₜₕ (↑T₁ : theory (L₁ + sub L₂ L₁)), from (M₁.extend_modelsth_coe_iff default default).mpr hM₁,
-  have e : (language_equiv.add_sub' L₁ L₂).ltr.fun_theory ↑T₁ = ↑T₁,
-  { have : ((language_equiv.add_sub' L₁ L₂).ltr.comp extension.add_left).fun_theory T₁ = ltr.fun_theory T₁,
+  let M₂ : Structure (L₁ + sub L₂ L₁) := M₁.extend default default,
+  have : M₂ ⊧ (↑T₁ : Theory (L₁ + sub L₂ L₁)), from (M₁.extend_modelsth_coe_iff default default).mpr hM₁,
+  have e : (language_equiv.add_sub' L₁ L₂).ltr.fun_Theory ↑T₁ = ↑T₁,
+  { have : ((language_equiv.add_sub' L₁ L₂).ltr.comp extension.add_left).fun_Theory T₁ = ltr.fun_Theory T₁,
       by simp[language_equiv.add_sub'_add_left_commute L₁ L₂],
-    simpa[comp_fun_theory] using this },
-  have : M₂.of_equiv (language_equiv.add_sub' L₁ L₂) ⊧ₜₕ ↑T₁,
-    by simpa[e] using (model.equiv_modelsth_iff (language.language_equiv.add_sub' L₁ L₂)).mpr this,
-  exact model_consistent this
+    simpa[comp_fun_Theory] using this },
+  have : M₂.of_equiv (language_equiv.add_sub' L₁ L₂) ⊧ ↑T₁,
+    by simpa[e] using (Structure.equiv_modelsth_iff (language.language_equiv.add_sub' L₁ L₂)).mpr this,
+  exact Structure_consistent this
 end⟩
 
 theorem coe_provable_iff (p : formula L₁) (hp : is_sentence p) :
-  (↑T₁ : theory L₂) ⊢ ↑p ↔ T₁ ⊢ p :=
+  (↑T₁ : Theory L₂) ⊢ ↑p ↔ T₁ ⊢ p :=
 begin
-  simp[theory.provable_iff_inconsistent],
-  suffices : ¬theory.consistent (↑(T₁ +{ ⁻p } : theory L₁) : theory L₂) ↔ ¬theory.consistent (T₁ +{ ⁻p }),
-    by simpa[language.language_translation_coe.fun_theory_insert] using this, 
-  have : closed_theory (T₁ +{ ⁻p }) := ⟨by { simp[hp], exact λ _, closed_theory.cl }⟩,
-  have : theory.consistent (↑(T₁ +{ ⁻p } : theory L₁) : theory L₂) ↔ theory.consistent (T₁ +{ ⁻p }),
+  simp[Theory.provable_iff_inconsistent],
+  suffices : ¬Theory.consistent (↑(T₁ +{ ⁻p } : Theory L₁) : Theory L₂) ↔ ¬Theory.consistent (T₁ +{ ⁻p }),
+    by simpa[language.language_translation_coe.fun_Theory_insert] using this, 
+  have : closed_Theory (T₁ +{ ⁻p }) := ⟨by { simp[hp], exact λ _, closed_Theory.cl }⟩,
+  have : Theory.consistent (↑(T₁ +{ ⁻p } : Theory L₁) : Theory L₂) ↔ Theory.consistent (T₁ +{ ⁻p }),
     by exactI coe_consistent_iff L₁ L₂,
   simp[this]
 end
 
 @[simp] theorem coe_provable_iff' {p : formula L₁} :
-  (↑T₁ : theory L₂) ⊢ ↑p ↔ T₁ ⊢ p :=
-by { have : (↑T₁ : theory L₂) ⊢ ↑∏* p ↔ T₁ ⊢ ∏* p, from coe_provable_iff L₁ L₂ (∏* p) (by simp),
+  (↑T₁ : Theory L₂) ⊢ ↑p ↔ T₁ ⊢ p :=
+by { have : (↑T₁ : Theory L₂) ⊢ ↑∏* p ↔ T₁ ⊢ ∏* p, from coe_provable_iff L₁ L₂ (∏* p) (by simp),
       simpa[←provable.iff_fal_complete] using this }
 
 end
@@ -592,44 +593,44 @@ variables {L₁ L₂} (D : L₁.definitions L₂)
 
 theorem extensions_by_definitions_consistent (consis : T₁.consistent)
   (b : ∀ {n} (f : L₂.fn n), T₁ ⊢ ∏[n] ∐ (D.df_fn f)) :
-  theory.consistent (↑T₁ ∪ D.thy) :=
+  Theory.consistent (↑T₁ ∪ D.thy) :=
 begin
-  suffices : ∃ M, M ⊧ₜₕ (↑T₁ ∪ D.thy),
+  suffices : ∃ M, M ⊧ (↑T₁ ∪ D.thy),
   { exactI consistent_iff_satisfiable.mpr this },  
-  have : ∃ M, M ⊧ₜₕ T₁, from consistent_iff_satisfiable.mp consis,
+  have : ∃ M, M ⊧ T₁, from consistent_iff_satisfiable.mp consis,
   rcases this with ⟨M, hM⟩,
-  have : ∀ (n) (f : L₂.fn n) (v : finitary (|M|) n), ∃ (d : (|M|)),
+  have : ∀ (n) (f : L₂.fn n) (v : finitary M.dom n), ∃ (d : M.dom),
     (D.df_fn f).val M (d ⌢ (λ i, if h : i < n then v ⟨i, h⟩ else default)),
   { intros n f,
     have : M ⊧[default] ∏[n] ∐ (D.df_fn f), from (soundness (b f) hM) default,
     simpa[models_univs] using this },
-  have : ∀ n : ℕ, ∃ F' : L₂.fn n → finitary (|M|) n → |M|,
-    ∀ (f : L₂.fn n) (v : finitary (|M|) n), (D.df_fn f).val M (F' f v ⌢ (λ i, if h : i < n then v ⟨i, h⟩ else default)),
+  have : ∀ n : ℕ, ∃ F' : L₂.fn n → finitary M.dom n → M.dom,
+    ∀ (f : L₂.fn n) (v : finitary M.dom n), (D.df_fn f).val M (F' f v ⌢ (λ i, if h : i < n then v ⟨i, h⟩ else default)),
   { intros n, choose F' hF' using this n, exact ⟨F', hF'⟩ },
   choose F hF using this,
-  let R : Π n, L₂.pr n → finitary (|M|) n → Prop := λ n r v, M ⊧[λ i, if h : i < n then v ⟨i, h⟩ else default] (D.df_pr r),
-  let M₂ : model (L₁ + L₂) := M.extend F R,
+  let R : Π n, L₂.pr n → finitary M.dom n → Prop := λ n r v, M ⊧[λ i, if h : i < n then v ⟨i, h⟩ else default] (D.df_pr r),
+  let M₂ : Structure (L₁ + L₂) := M.extend F R,
   have lmm₁ : ∀ {n} (f : L₂.fn n), M₂ ⊧ def_fn f (D.df_fn f),
   { intros n f,
     rw [←eval_is_sentence_iff default (show is_sentence (def_fn f (D.df_fn f)), by simp[D.hdf_fn])],
     simp[def_fn, models_univs], intros v,
-    exact (model.extend_val_coe_iff M _ _).mpr (hF n f v) },
+    exact (Structure.extend_val_coe_iff M _ _).mpr (hF n f v) },
   have lmm₂ : ∀ {n} (r : L₂.pr n), M₂ ⊧ def_pr r (D.df_pr r),
   { intros n r,
     rw [←eval_is_sentence_iff default (show is_sentence (def_pr r (D.df_pr r)), by simp[D.hdf_pr])],
     simp[def_pr, models_univs, R], intros v,
-    exact iff.symm (model.extend_val_coe_iff M F R), exact ⟨λ _, default⟩ },
-  have lmm₃ : M₂ ⊧ₜₕ ↑T₁, from (model.extend_modelsth_coe_iff M _ _).mpr hM, 
-  refine ⟨M₂, by { simp[lmm₃, definitions_def], split; intros n; simp[modelsth, lmm₁, lmm₂] }⟩
+    exact iff.symm (Structure.extend_val_coe_iff M F R), exact ⟨λ _, default⟩ },
+  have lmm₃ : M₂ ⊧ ↑T₁, from (Structure.extend_modelsth_coe_iff M _ _).mpr hM, 
+  refine ⟨M₂, by { simp[lmm₃, definitions_def], split; intros n; simp[logic.semantics.Models_def, lmm₁, lmm₂] }⟩
 end
 
 variables (T₁)
 
 theorem extensions_by_definitions_consistent_iff
   (b : ∀ {n} (f : L₂.fn n), T₁ ⊢ ∏[n] ∐ (D.df_fn f)) :
-  theory.consistent (↑T₁ ∪ D.thy) ↔ T₁.consistent :=
+  Theory.consistent (↑T₁ ∪ D.thy) ↔ T₁.consistent :=
 ⟨λ h, begin
-  have : (↑T₁ : theory (L₁ + L₂)).consistent, from theory.consistent_of_consistent_ss h (by simp),
+  have : (↑T₁ : Theory (L₁ + L₂)).consistent, from Theory.consistent_of_consistent_ss h (by simp),
   exact add_coe_consistent_iff.mp this
 end, λ h,  extensions_by_definitions_consistent D h @b⟩
 
@@ -638,12 +639,12 @@ theorem extensions_by_definitions_conservative
   (p : formula L₁) (hp : p.is_sentence) :
   ↑T₁ ∪ D.thy ⊢ p ↔ T₁ ⊢ p :=
 begin
-  simp[theory.provable_iff_inconsistent],
-  suffices : ¬theory.consistent (↑(T₁+{ ⁻p }) ∪ D.thy) ↔ ¬theory.consistent (T₁+{ ⁻p }),
+  simp[Theory.provable_iff_inconsistent],
+  suffices : ¬Theory.consistent (↑(T₁+{ ⁻p }) ∪ D.thy) ↔ ¬Theory.consistent (T₁+{ ⁻p }),
   { have eq : ((↑T₁ ∪ D.thy) +{ ⁻↑p }) = (↑(T₁+{ ⁻p }) ∪ D.thy),
-    { ext q, simp[language.language_translation_coe.fun_theory_insert, or_assoc] },
+    { ext q, simp[language.language_translation_coe.fun_Theory_insert, or_assoc] },
     simpa[eq] using this },
-  have : closed_theory (T₁ +{ ⁻p }) := ⟨by { simp[hp], exact λ _, closed_theory.cl }⟩,
+  have : closed_Theory (T₁ +{ ⁻p }) := ⟨by { simp[hp], exact λ _, closed_Theory.cl }⟩,
   exact iff.not (by exactI extensions_by_definitions_consistent_iff (T₁+{ ⁻p }) D (λ n f, by simp[b f]))
 end
 
@@ -655,7 +656,7 @@ by { have := extensions_by_definitions_conservative T₁ D @b (∏* p) (by simp)
      simpa[←provable.iff_fal_complete] using this }
 
 theorem extensions_by_definitions_consistent_iff_of_predicate [language.predicate L₂] :
-  theory.consistent (↑T₁ ∪ D.thy) ↔ T₁.consistent :=
+  Theory.consistent (↑T₁ ∪ D.thy) ↔ T₁.consistent :=
 extensions_by_definitions_consistent_iff T₁ D (λ n f, by { exfalso, exact is_empty.false f })
 
 end

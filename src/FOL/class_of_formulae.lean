@@ -3,6 +3,7 @@ import FOL.completeness
 universes u v
 
 namespace fol
+open_locale logic_symbol
 
 variables {L : language}
 

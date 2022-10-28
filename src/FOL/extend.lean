@@ -1,20 +1,21 @@
-import completeness
+import FOL.completeness
 
 universes u v
 
-namespace fopl
-variables {L L₁ L₂ L₃ : language.{u}} {T₁ U₁ : theory L₁} {T₂ U₂ : theory L₂} {T₃ U₃ : theory L₃} 
+namespace fol
+open_locale logic_symbol
+variables {L L₁ L₂ L₃ : language.{u}} {T₁ U₁ : Theory L₁} {T₂ U₂ : Theory L₂} {T₃ U₃ : Theory L₃} 
 open formula language language.language_translation language.language_translation_coe
 
-namespace theory
+namespace Theory
 
 section
-variables [closed_theory T₁] [closed_theory U₁] [language_translation_coe L₁ L₂]
+variables [closed_Theory T₁] [closed_Theory U₁] [language_translation_coe L₁ L₂]
 open axiomatic_classical_logic' axiomatic_classical_logic
 
-@[simp] lemma le_coe_iff : (↑T₁ : theory L₂) ≤ ↑U₁ ↔ T₁ ≤ U₁ :=
+@[simp] lemma le_coe_iff : (↑T₁ : Theory L₂) ≤ ↑U₁ ↔ T₁ ≤ U₁ :=
 ⟨λ h p b,
-  by { have : (↑T₁ : theory L₂) ⊢ ↑p, by simp[b],
+  by { have : (↑T₁ : Theory L₂) ⊢ ↑p, by simp[b],
        have : ↑U₁ ⊢ ↑p, from h this,
        simpa using this },
  λ h p b,
@@ -33,18 +34,18 @@ begin
   exact b.extend ⨀ this
 end⟩
 
-instance extend_coe [extend T₁ U₁] : extend (↑T₁ : theory L₂) ↑U₁ := ⟨le_coe_iff.mpr extend.le⟩
+instance extend_coe [extend T₁ U₁] : extend (↑T₁ : Theory L₂) ↑U₁ := ⟨le_coe_iff.mpr extend.le⟩
 
 end
 
 variables [language_translation_coe L₁ L₂] {T₁ U₁} {T₂ U₂}
 
-def lle (T₁ : theory L₁) (T₂ : theory L₂) : Prop := ∀ ⦃p : formula L₁⦄, T₁ ⊢ p → T₂ ⊢ p
+def lle (T₁ : Theory L₁) (T₂ : Theory L₂) : Prop := ∀ ⦃p : formula L₁⦄, T₁ ⊢ p → T₂ ⊢ p
 
-@[simp] lemma lle_refl (T : theory L) : lle T T := λ p h, by simp[coe_def_p, ltr]; exact h
+@[simp] lemma lle_refl (T : Theory L) : lle T T := λ p h, by simp[coe_def_p, ltr]; exact h
 
 @[trans] lemma lle_trans [language_translation_coe L₁ L₂] [language_translation_coe L₂ L₃] [language_translation_coe L₁ L₃]
-  {T₁ : theory L₁} {T₂ : theory L₂} {T₃ : theory L₃} [commutes L₁ L₂ L₃] :
+  {T₁ : Theory L₁} {T₂ : Theory L₂} {T₃ : Theory L₃} [commutes L₁ L₂ L₃] :
   lle T₁ T₂ → lle T₂ T₃ → lle T₁ T₃ :=
 λ le₁₂ le₂₃ p₁ b₁, by simpa[commutes.coe_coe_p_of_commute p₁] using le₂₃ (le₁₂ b₁)
 
@@ -60,17 +61,17 @@ lemma lle_of_le_of_lle (le : T₁ ≤ U₁) (h : lle U₁ T₂) : lle T₁ T₂ 
 
 variables (T₁)
 
-lemma lle_coe [closed_theory T₁] : lle T₁ (↑T₁ : theory L₂) := λ p, by simp
+lemma lle_coe [closed_Theory T₁] : lle T₁ (↑T₁ : Theory L₂) := λ p, by simp
 
-end theory
+end Theory
 
-class lextend {L₁ : language.{u}} {L₂ : language.{u}} [language_translation_coe L₁ L₂] (T₁ : theory L₁) (T₂ : theory L₂) :=
-(le : theory.lle T₁ T₂)
+class lextend {L₁ : language.{u}} {L₂ : language.{u}} [language_translation_coe L₁ L₂] (T₁ : Theory L₁) (T₂ : Theory L₂) :=
+(le : Theory.lle T₁ T₂)
 
-lemma provable.lextend [language_translation_coe L₁ L₂] {T₁ : theory L₁} {p} (b : T₁ ⊢ p) (T₂ : theory L₂)
+lemma provable.lextend [language_translation_coe L₁ L₂] {T₁ : Theory L₁} {p} (b : T₁ ⊢ p) (T₂ : Theory L₂)
   [lextend T₁ T₂] : T₂ ⊢ p := lextend.le b
 
-namespace theory
+namespace Theory
 variables  [language_translation_coe L₁ L₂] (T₁ U₁) (T₂ U₂)
 
 instance lextend_refl : lextend T₁ T₁ := ⟨by simp⟩
@@ -85,15 +86,15 @@ instance lextend_sf [lextend T₁ T₂] : lextend (⤊T₁) (⤊T₂) :=
   simpa[formula.nested_rew] using this ⊚ #0 }⟩
 
 instance lextend_pow [ex : lextend T₁ T₂] (k : ℕ) : lextend (T₁^k) (T₂^k) :=
-by { induction k with k IH ; simp[theory.sf_itr_succ], { exact ex }, { exactI fopl.theory.lextend_sf _ _ } }
+by { induction k with k IH ; simp[Theory.sf_itr_succ], { exact ex }, { exactI fol.Theory.lextend_sf _ _ } }
 
-instance lextend_sf_closed [closed_theory T₁] [lextend T₁ T₂] : lextend T₁ (⤊T₂) :=
-by simpa using theory.lextend_sf T₁ T₂
+instance lextend_sf_closed [closed_Theory T₁] [lextend T₁ T₂] : lextend T₁ (⤊T₂) :=
+by simpa using Theory.lextend_sf T₁ T₂
 
-instance lextend_pow_closed [closed_theory T₁] [lextend T₁ T₂] (k : ℕ) : lextend T₁ (T₂^k) :=
-by simpa using theory.lextend_pow T₁ T₂ k
+instance lextend_pow_closed [closed_Theory T₁] [lextend T₁ T₂] (k : ℕ) : lextend T₁ (T₂^k) :=
+by simpa using Theory.lextend_pow T₁ T₂ k
 
-instance lextend_coe [closed_theory T₁] : lextend T₁ (↑T₁ : theory L₂) := ⟨lle_coe T₁⟩
+instance lextend_coe [closed_Theory T₁] : lextend T₁ (↑T₁ : Theory L₂) := ⟨lle_coe T₁⟩
 
 variables (T₁ U₂ T₂)
 
@@ -124,10 +125,10 @@ def lextend_trans [lextend T₁ T₂] [lextend T₂ T₃] : lextend T₁ T₃ :=
 
 end
 
-end theory
+end Theory
 
 variables {L₁ L₂} (D : L₁.definitions L₂) [language_translation_coe (L₁ + L₂) L₃] 
-  [language_translation_coe L₁ L₃] [commutes L₁ (L₁ + L₂) L₃] (T : theory L₃) [lextend D.thy T]
+  [language_translation_coe L₁ L₃] [commutes L₁ (L₁ + L₂) L₃] (T : Theory L₃) [lextend D.thy T]
 
 @[simp] lemma language.definitions.fn' {n} (f : L₂.fn n) (v : finitary (term L₃) n) :
   T ⊢ (D.df_fn f : formula L₃).rew (term.app ((coe : (L₁ + L₂).fn n → L₃.fn n) (sum.inr f)) v ⌢ of_fin v) :=
@@ -147,4 +148,4 @@ lemma coe_inv_equiv' [language.predicate L₂] (p : formula (L₁ + L₂)) :
   T ⊢ p ⟷ ↑(formula.coe_inv D p : formula L₁) :=
 by simpa using provable.lextend (coe_inv_equiv D p) T
 
-end fopl
+end fol

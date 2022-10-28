@@ -3,6 +3,7 @@ import FOL.translation
 universes u v
 
 namespace fol
+open_locale logic_symbol
 open term formula
 
 variables {L L₁ L₂ L₃ : language.{u}}
@@ -181,7 +182,7 @@ end
 lemma formula_elim_equiv_self (T) (p : formula L) : T ⊢ formula_elim Γ ↑p ⟷ p :=
 by simp[formula_elim]
 
-def prf' (L : language) := Σ (T : theory L) (k : ℕ) (p : formula L), T^k ⟹ p
+def prf' (L : language) := Σ (T : Theory L) (k : ℕ) (p : formula L), T^k ⟹ p
 
 variables (Γ)
 
@@ -282,11 +283,11 @@ by simp[eq_axiom4]
 private lemma  eq_axiom5_coe {n} (r : L.pr n) : eq_axiom5 (↑r : (L + consts C).pr n) = ↑(eq_axiom5 r) :=
 by simp[eq_axiom5]
 
-lemma provable_formula_elim_of_proof_aux : ∀ {T : theory L} {p : formula (L + consts C)} (B : ↑T ⟹ p)
+lemma provable_formula_elim_of_proof_aux : ∀ {T : Theory L} {p : formula (L + consts C)} (B : ↑T ⟹ p)
   (hΓ : ∀ (t : term (L + consts C)) (h : t ∈ᵗ B), consts_of_t t ⊆ Γ), T ⊢ formula_elim Γ p :=
 begin
-  suffices : ∀ (T : theory (L + consts C)) (p : formula (L + consts C)) (k : ℕ) (B : T^k ⟹ p)
-    (hΓ : ∀ (t : term (L + consts C)) (h : t ∈ᵗ B), consts_of_t t ⊆ Γ) (T₀ : theory L) (eqn : ↑T₀ = T),
+  suffices : ∀ (T : Theory (L + consts C)) (p : formula (L + consts C)) (k : ℕ) (B : T^k ⟹ p)
+    (hΓ : ∀ (t : term (L + consts C)) (h : t ∈ᵗ B), consts_of_t t ⊆ Γ) (T₀ : Theory L) (eqn : ↑T₀ = T),
     T₀^k ⊢ formula_elim Γ p,
   { intros T p B hΓ, exact this ↑T p 0 B hΓ T rfl },
   intros T' p' k' B',
@@ -310,7 +311,7 @@ begin
     exact (provable.nfal_K _ _ _ ⨀ IH₁ ⨀ IH₂) },
   { rintros k p mem hΓ T rfl, simp[formula_elim] at mem ⊢, 
     have : T^k ⊢ ∏[Γ.length] elim_aux_f Γ 0 p,
-    { have : ∃ (p' ∈ T), p = ↑p' ^ k, from theory_mem_coe_pow_iff.mp mem, rcases this with ⟨p, p_mem, rfl⟩,
+    { have : ∃ (p' ∈ T), p = ↑p' ^ k, from Theory_mem_coe_pow_iff.mp mem, rcases this with ⟨p, p_mem, rfl⟩,
       rw ← coe_pow_formula, simp[-coe_pow_formula],
       show T^k ⊢ ∏[Γ.length] (p ^ k) ^ Γ.length,
       have lmm₁ : T^k ⊢ p^k ⟶ (∏[Γ.length] (p^k)^Γ.length), from (axiomatic_classical_logic'.iff_equiv.mp nfal_pow_equiv_self).2, 
@@ -337,18 +338,18 @@ begin
     { rcases r } }
 end
 
-noncomputable def consts_of {T : theory (L + consts C)} {p : formula (L + consts C)} (b : T ⟹ p) : list C :=
+noncomputable def consts_of {T : Theory (L + consts C)} {p : formula (L + consts C)} (b : T ⟹ p) : list C :=
 (list.map consts_of_t ((proof.term_mem_finite b).to_finset.to_list)).join.dedup
 
-lemma consts_list_spec {T : theory (L + consts C)} {p : formula (L + consts C)}
+lemma consts_list_spec {T : Theory (L + consts C)} {p : formula (L + consts C)}
   (b : T ⟹ p) (t : term (L + consts C)) (h : t ∈ᵗ b) : consts_of_t t ⊆ consts_of b := λ c mem,
 by simp[consts_of]; refine ⟨t, h, mem⟩
 
-theorem provable_formula_elim_of_proof {T : theory L} {p : formula (L + consts C)} (b : ↑T ⟹ p) :
+theorem provable_formula_elim_of_proof {T : Theory L} {p : formula (L + consts C)} (b : ↑T ⟹ p) :
   T ⊢ formula_elim (consts_of b) p :=
 provable_formula_elim_of_proof_aux b (consts_list_spec b)
 
-theorem provable_iff {T : theory L} {p : formula L} :
+theorem provable_iff {T : Theory L} {p : formula L} :
   ↑T ⊢ (↑p : formula (L + consts C)) ↔ T ⊢ p:=
 ⟨begin
   rintros ⟨b⟩,
@@ -359,13 +360,13 @@ theorem provable_iff {T : theory L} {p : formula L} :
   exact lmm₂ ⨀ lmm₁
 end, provability⟩
 
-theorem consistent_iff {T : theory L} :
-  (↑T : theory (L + consts C)).consistent ↔ T.consistent :=
+theorem consistent_iff {T : Theory L} :
+  (↑T : Theory (L + consts C)).consistent ↔ T.consistent :=
 begin
-  have : (↑T : theory (L + consts C)) ⊢ ⊥ ↔ T ⊢ ⊥,
-  { have : (↑T : theory (L + consts C)) ⊢ ↑(⊥ : formula L) ↔ T ⊢ ⊥, from provable_iff,
+  have : (↑T : Theory (L + consts C)) ⊢ ⊥ ↔ T ⊢ ⊥,
+  { have : (↑T : Theory (L + consts C)) ⊢ ↑(⊥ : formula L) ↔ T ⊢ ⊥, from provable_iff,
     simp at this, exact this },
-  simp[theory.consistent_iff_bot, this],  
+  simp[Theory.consistent_iff_bot, this],  
 end
 
 end add_consts
@@ -535,12 +536,12 @@ lemma pelimination_eq_pow_of_disjoint (p : formula (L + consts C)) (h : disjoint
 by { have := pelimination_eq_pow_aux_of_disjoint Γ p h 0, simp at this,
      simp[formula.pow_eq, show ∀ x, x + Γ.length = Γ.length + x, from λ x, add_comm _ _], exact this }
 
-theorem provable_pelimination_of_disjoint (T : theory (L + consts C)) (p : formula (L + consts C))
+theorem provable_pelimination_of_disjoint (T : Theory (L + consts C)) (p : formula (L + consts C))
   (disj : ∀ p ∈ T, disjoint Γ p) : T ⊢ p → T ⊢ ∏[Γ.length] (pelimination' Γ).p 0 p := λ b,
 begin
-  have lmm₁ : tr_theory (pelimination Γ) 0 T ⊢ (pelimination Γ) 0 p, from translation.provability (pelimination Γ) T p 0 b,
-  have : tr_theory (pelimination Γ) 0 T = T^Γ.length,
-  { ext q, simp[tr_theory, theory_sf_itr_eq], split,
+  have lmm₁ : tr_Theory (pelimination Γ) 0 T ⊢ (pelimination Γ) 0 p, from translation.provability (pelimination Γ) T p 0 b,
+  have : tr_Theory (pelimination Γ) 0 T = T^Γ.length,
+  { ext q, simp[tr_Theory, Theory_sf_itr_eq], split,
     { rintros ⟨q, q_mem, rfl⟩, refine ⟨q, q_mem, pelimination_eq_pow_of_disjoint Γ q (disj q q_mem)⟩ },
     { rintros ⟨q, q_mem, rfl⟩, refine ⟨q, q_mem, pelimination_eq_pow_of_disjoint Γ q (disj q q_mem)⟩ } },
   rw this at lmm₁,
