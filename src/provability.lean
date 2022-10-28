@@ -30,15 +30,14 @@ class classical_logic {F : Sort*} [has_logic_symbol F] (P : set F) :=
 attribute [simp] classical_logic.imply₁ classical_logic.imply₂ classical_logic.contraposition
   classical_logic.provable_top
 
-class axiomatic_classical_logic' (F : Sort*) [has_logic_symbol F] 
-  extends has_turnstile F :=
+class axiomatic_classical_logic' (F : Sort*) [has_logic_symbol F] extends has_turnstile F :=
 (classical {T : set F} : classical_logic ((⊢) T : F → Prop))
 (by_axiom {T : set F} {p : F} : p ∈ T → T ⊢ p)
 
-class axiomatic_classical_logic
-  (F : Sort*) [has_logic_symbol F] extends axiomatic_classical_logic' F :=
-(deduction' {T : set F} {p q : F} : T +{ p } ⊢ q → T ⊢ p ⟶ q)
+class axiomatic_classical_logic (F : Sort*) [has_logic_symbol F] extends axiomatic_classical_logic' F :=
+(deduction' {T : set F} {p q : F} : T.insert p ⊢ q → T ⊢ p ⟶ q)
 (weakening {T : set F} {U : set F} {p : F} : T ⊆ U → T ⊢ p → U ⊢ p)
+
 namespace classical_logic
 
 variables {F : Type*} [has_logic_symbol F]
@@ -754,6 +753,8 @@ case_of_p hpq hpr hqr
 
 lemma by_axiom' {T : set F} {p : F} : T p → T ⊢ p := by_axiom
 
+@[simp] lemma provable_not_bot_iff : T ⊢ ⊥ ⟷ ⁻(⊤ : F) := by simp[@not_top_eq_bot F _ ((⊢) T) _]
+
 variables (T)
 
 @[reducible] def equiv : F → F → Prop := equiv ((⊢) T)
@@ -794,11 +795,7 @@ variables (T)
 
 @[reducible] def lindenbaum := lindenbaum ((⊢) T : F → Prop)
 
-
-
 notation p ` ≈[`:50 T :50 `] `:0 q:50 := classical_logic.equiv ((⊢) T) p q
-
-#check ⊤ ≈[T] ⊥
 
 namespace lindenbaum
 
@@ -807,4 +804,3 @@ instance : boolean_algebra (lindenbaum T) := lindenbaum.boolean_algebra
 end lindenbaum
 
 end axiomatic_classical_logic
-
