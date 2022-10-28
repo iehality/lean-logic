@@ -1,8 +1,8 @@
 [package]
 name = "formallang"
 version = "0.1"
-lean_version = "leanprover-community/lean:3.42.0"
+lean_version = "leanprover-community/lean:3.48.0"
 path = "src"
 
 [dependencies]
-mathlib = {git = "https://github.com/leanprover-community/mathlib", rev = "81c5d17e986c31f3ae16ebfe7516f68c000ca950"}
+mathlib = {git = "https://github.com/leanprover-community/mathlib", rev = "282ca10674c77459e32146fca40393e54a636a8a"}
