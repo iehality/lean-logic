@@ -2,11 +2,17 @@
 Lean3で一階述語論理を形式化する
 
 ## 構造
+  - `provability.lean`
+  - `logic.lean`
+  - `consistency.lean`
 ### lib
-
+  - `notation.lean`：ノーテーション
+  - `tukey.lean`：テューキーの補題
+  - `lib.lean`
 ### PL：命題論理
   - `pl.lean`：命題論理の言語, 項, 論理式
   - `deduction.lean`：演繹体系
+  - `semantics.lean`：モデルと意味論
 ### FOL：1階論理
   - `fol.lean`：一階論理の言語, 項, 論理式
   - `theory.lean`：理論に関する証明
@@ -25,11 +31,16 @@ Lean3で一階述語論理を形式化する
 
 ## 定義
 ### 命題論理
+- ヒルベルト流演繹体系
+  - `(⊢)`
+- 構造, モデル
+  - `pl.Structure`
+  - `(⊧)`
 ### 1階論理
 - ヒルベルト流演繹体系
   - `(⊢)`
 - 構造, モデル
-  - `fopl.model`
+  - `fol.Structure`
   - `(⊧)`
 - 理論
   - `𝐐`
@@ -38,16 +49,20 @@ Lean3で一階述語論理を形式化する
   - `𝐏𝐀`, ...
 
 ## 証明
+- 命題論理の健全性定理
+  - `pl.soundness : T ⊢ p → T ⊧ p`
+- 命題論理の完全性定理
+  - `pl.completeness : T ⊢ p ↔ T ⊧ p`
 - 1階論理の健全性定理
-  - `fopl.soundness : T ⊢ p → ∀ {M}, M ⊧ₜₕ T → M ⊧ p`
+  - `fol.soundness : T ⊢ p → T ⊧ p`
 - Łośの定理
-  - `fopl.Ult.fundamental : ℿ 𝔄 ⫽ F ⊧ p ↔ {i | 𝔄 i ⊧ p} ∈ F`
-  - `fopl.Ult.fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|), ℿ 𝔄 ⫽ F ⊧[λ n, ⟦λ i, e i n⟧*] p ↔ {i | 𝔄 i ⊧[e i] p} ∈ F`
+  - `fol.Ult.fundamental : ℿ 𝔄 ⫽ F ⊧ p ↔ {i | 𝔄 i ⊧ p} ∈ F`
+  - `fol.Ult.fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|), ℿ 𝔄 ⫽ F ⊧[λ n, ⟦λ i, e i n⟧*] p ↔ {i | 𝔄 i ⊧[e i] p} ∈ F`
 - 1階論理のコンパクト性定理
-  - `fopl.compactness.compact (T : theory L) : (∃ 𝔄, 𝔄 ⊧ₜₕ T) ↔ (∀ S : finset (formula L), (∀ {p}, p ∈ S → p ∈ T) → ∃ 𝔄, 𝔄 ⊧ₜₕ {p | p ∈ S})`
+  - `fol.compactness.compact (T : theory L) : (∃ 𝔄, 𝔄 ⊧ₜₕ T) ↔ (∀ S : finset (formula L), (∀ {p}, p ∈ S → p ∈ T) → ∃ 𝔄, 𝔄 ⊧ₜₕ {p | p ∈ S})`
 - 1階論理の完全性定理
-  - `fopl.completeness {p : formula L} (hp : is_sentence p) : T ⊢ p ↔ (∀ M, M ⊧ₜₕ T → M ⊧ p)`  
-  - `fopl.completeness' {p : formula L} : T ⊢ p ↔ (∀ M, M ⊧ₜₕ T → M ⊧ p) :=`
+  - `fol.completeness {p : formula L} (hp : is_sentence p) : T ⊢ p ↔ T ⊧ p`  
+  - `fol.completeness' {p : formula L} : T ⊢ p ↔ T ⊧ p :=`
 
 ## TODO
   - 算術の$\Sigma_1$完全性
