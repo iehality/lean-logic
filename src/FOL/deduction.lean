@@ -1,10 +1,10 @@
-import FOL.fol FOL.theory provability
+import FOL.fol FOL.theory provability consistency
 
 universes u v
 
 namespace fol
 open_locale logic_symbol
-open formula 
+open formula logic Theory
 variables {L : language.{u}}
 
 def eq_axiom4 {n} (f : L.fn n) : formula L :=
@@ -91,6 +91,7 @@ infixl ` ⨀ `:90 := axiomatic_classical_logic'.modus_ponens
 @[simp] lemma mem_iff_prov (p : formula L) (T : set (formula L)) :
   (@has_mem.mem (formula L) (set (formula L)) _) p (provable T) ↔ T ⊢ p := by refl
 
+/-
 def Theory.consistent (T : Theory L) : Prop := ¬∃p : formula L, (T ⊢ p) ∧ (T ⊢ ⁻p) 
 
 lemma Theory.consistent_def (T : Theory L) : T.consistent ↔ ¬∃p : formula L, (T ⊢ p) ∧ (T ⊢ ⁻p) := by refl
@@ -123,6 +124,8 @@ instance extend_refl (T : Theory L) : extend T T := ⟨λ p h, h⟩
 
 def Theory.th (T : Theory L) : Theory L := {p | T ⊢ p}
 
+
+-/
 lemma ss_le {U : ℕ → Theory L} (hyp : ∀ s, U s ⊆ U (s+1)) : ∀ {s₁ s₂}, s₁ ≤ s₂ → U s₁ ⊆ U s₂ :=
 by { intros s₁, suffices : ∀ t, U s₁ ⊆ U (s₁ + t),
       { intros s₂ eqn, have := this (s₂ - s₁),
@@ -478,62 +481,39 @@ begin
   exact and_imply_of_imply_right (IH mem)
 end
 
-lemma conjunction_mem {P : list (formula L)} : ∀ {p}, p ∈ P → T ⊢ conjunction P ⟶ p :=
-begin 
-  induction P with p P IH; simp[conjunction],
-  have : ∀ q, q ∈ P → T ⊢ p ⊓ conjunction P ⟶ q, from λ q hq, and_imply_of_imply_right (IH hq),
-  refine this,
-end
-
-lemma conjunction_weakening {P Q : list (formula L)} : 
-  Q ⊆ P → T ⊢ conjunction P ⟶ conjunction Q :=
+private lemma list_conjunction_sf (P₀ : list (formula L)) : (∀ p, p ∈ P₀ → ⤊T p) →
+  ∃ P : list (formula L), (P.conjunction)^1 = P₀.conjunction ∧ (∀ p, p ∈ P → T p) :=
 begin
-  induction Q with q Q IH; simp[conjunction],
-  intros hyp_q hyp_Q,
-  have lmm₁ : T+{conjunction P} ⊢ q, from deduction.mpr (conjunction_mem hyp_q),  
-  have lmm₂ : T+{conjunction P} ⊢ conjunction Q, from deduction.mpr (IH hyp_Q),
-  refine deduction.mp _, simp[axiomatic_classical_logic'.iff_and, *]
-end
-
-private lemma conjunction_sf (P₀ : list (formula L)) : (∀ p, p ∈ P₀ → ⤊T p) →
-  ∃ P, (conjunction P)^1 = conjunction P₀ ∧ (∀ p, p ∈ P → T p) :=
-begin
-  induction P₀ with p₀ P₀ IHl, { refine λ _, ⟨[], _⟩, simp[conjunction] },
+  induction P₀ with p₀ P₀ IHl, { refine λ _, ⟨[], _⟩, simp },
   { intros hyp,
     have : ∀ p, p ∈ P₀ → ⤊T p,
     { intros p hyp_p, refine hyp _ _, simp[hyp_p] },
     rcases IHl this with ⟨P, hyp_P⟩,
     have := hyp p₀ (by simp),
     rcases this with ⟨p, hyp_p, rfl⟩,
-    have lmm₁ : (conjunction (p :: P))^1= conjunction (p^1 :: P₀),
-    { simp[conjunction, hyp_P] },
+    have lmm₁ : ((p :: P).conjunction)^1= (p^1 :: P₀).conjunction,
+    { simp[hyp_P] },
     have lmm₂ : ∀ (q : formula L), q ∈ (p :: P) → T q,
     { simp, refine ⟨hyp_p, hyp_P.2⟩ },
     refine ⟨p :: P, lmm₁, lmm₂⟩ }
 end
 
-private lemma conjunction_rew_eq : ∀ (P : list (formula L)) (s),
-  (conjunction P).rew s = conjunction (P.map (λ p, p.rew s))
-| []       _ := by simp[conjunction, formula.rew]
-| (p :: P) s := by simp[conjunction, formula.rew, conjunction_rew_eq P]
-
-lemma conjunction_provable : ∀ {P : list (formula L)} (h : ∀ p, p ∈ P → T ⊢ p), T ⊢ conjunction P
-| []       h := by simp[conjunction]
-| (p :: P) h := by { simp[conjunction],
-    have lmm₁ : T ⊢ p, { refine h _ _, simp },
-    have lmm₂ : T ⊢ conjunction P, { refine conjunction_provable (λ p hyp, h _ _), simp, right, exact hyp },
-    refine ⟨lmm₁, lmm₂⟩ }
+private lemma list_conjunction_rew_eq : ∀ (P : list (formula L)) (s),
+  P.conjunction.rew s = list.conjunction (P.map (λ p, p.rew s))
+| []       _ := by simp[formula.rew]
+| (p :: P) s := by simp[formula.rew, list_conjunction_rew_eq P]
 
 theorem proof_conjunction {T : Theory L} {p} :
-  T ⊢ p → ∃ P : list (formula L), (∀ p, p ∈ P → T p) ∧ ∅ ⊢ conjunction P ⟶ p := λ h,
+  T ⊢ p → ∃ P : list (formula L), (∀ p, p ∈ P → T p) ∧ ∅ ⊢ P.conjunction ⟶ p := λ h,
 begin
   rcases h,
   induction h,
   case generalize : T p hyp IH
   { rcases IH with ⟨P₀, hyp_P₀, prov⟩,
-    have : ∃ P, (conjunction P)^1 = conjunction P₀ ∧ ∀ p, p ∈ P → T p, from conjunction_sf _ hyp_P₀,
+    have : ∃ P : list (formula L), (P.conjunction)^1 = P₀.conjunction ∧ ∀ p, p ∈ P → T p,
+    from list_conjunction_sf _ hyp_P₀,
     rcases this with ⟨P, eqn, hyp_P⟩,
-    have : ∅ ⊢ conjunction P ⟶ ∏ p,
+    have : ∅ ⊢ P.conjunction ⟶ ∏ p,
     { refine deduction.mp (generalize _),
       rw [←sf_dsb, eqn], refine deduction.mpr (weakening prov (λ x hx, _)), cases hx },
     refine ⟨P, hyp_P, this⟩ },
@@ -541,15 +521,15 @@ begin
   { rcases IH₁ with ⟨P₁, IH₁, prov₁⟩, rcases IH₂ with ⟨P₂, IH₂, prov₂⟩,
     refine ⟨P₁ ++ P₂, _, _⟩,
     { simp, intros p h, cases h, refine IH₁ _ h, refine IH₂ _ h },
-    { have : ∅+{conjunction (P₁ ++ P₂)} ⊢ conjunction P₂, from deduction.mpr (conjunction_weakening (by simp)),
-      have lmm₁ : ∅+{conjunction (P₁ ++ P₂)} ⊢ p,
-        from (show _ ⊢ conjunction P₂ ⟶ p, from weakening_insert prov₂ _) ⨀ this,
-      have : ∅+{conjunction (P₁ ++ P₂)} ⊢ conjunction P₁, from deduction.mpr (conjunction_weakening (by simp)),
-      have lmm₂ : ∅+{conjunction (P₁ ++ P₂)} ⊢ p ⟶ q,
-      from (show _ ⊢ conjunction P₁ ⟶ p ⟶ q, from weakening_insert prov₁ _) ⨀ this,
+    { have : ∅+{(P₁ ++ P₂).conjunction} ⊢ P₂.conjunction, from deduction.mpr (list_conjunction_weakening (by simp)),
+      have lmm₁ : ∅+{(P₁ ++ P₂).conjunction} ⊢ p,
+        from (show _ ⊢ P₂.conjunction ⟶ p, from weakening_insert prov₂ _) ⨀ this,
+      have : ∅+{(P₁ ++ P₂).conjunction} ⊢ P₁.conjunction, from deduction.mpr (list_conjunction_weakening (by simp)),
+      have lmm₂ : ∅+{(P₁ ++ P₂).conjunction} ⊢ p ⟶ q,
+      from (show _ ⊢ P₁.conjunction ⟶ p ⟶ q, from weakening_insert prov₁ _) ⨀ this,
       refine deduction.mp (lmm₂ ⨀ lmm₁) } },
   case by_axiom : T p hyp_p
-  { refine ⟨[p], _⟩, simp[conjunction],
+  { refine ⟨[p], _⟩, simp,
     have : ∅ ⊢ p ⊓ ⊤ ⟶ p,
     { apply deduction.mp,
       have : ∅+{p ⊓ ⊤} ⊢ p ⊓ ⊤, from insert (p ⊓ ⊤),
@@ -569,20 +549,23 @@ begin
   { refine ⟨[], _⟩, simp }
 end
 
+instance : Theory.has_finite_character (formula L) :=
+Theory.finite_character_of_finite_probable (formula L) (λ T p, proof_conjunction)
+
 theorem proof_conjunction_union {T U : Theory L} {p} :
   T ∪ U ⊢ p → ∃ P Q : list (formula L), (∀ p, p ∈ P → T p) ∧ (∀ p, p ∈ Q → U p) ∧
-  ∅ ⊢ conjunction P ⟶ conjunction Q ⟶ p := λ h,
+  ∅ ⊢ P.conjunction ⟶ Q.conjunction ⟶ p := λ h,
 begin
   rcases proof_conjunction h with ⟨R, hR, b⟩,
   let P := R.filter (λ p, p ∈ T),
   let Q := R.filter (λ p, p ∈ U),
   refine ⟨P, Q, by { simp, intros p _ h, exact h }, by { simp, intros p _ h, exact h }, _⟩,
   refine (deduction.mp $ deduction.mp _),
-  have : ∅ +{ conjunction P } +{ conjunction Q } ⊢ conjunction R,
-  refine conjunction_provable _,
+  have : ∅ +{ P.conjunction } +{ Q.conjunction } ⊢ R.conjunction,
+  refine list_conjunction_provable _,
   { intros p memR, rcases hR p memR with (memT | memU),
-    { have : p ∈ P, by simp[memR, memT], refine conjunction_mem this ⨀ (by simp[-insert_emptyc_eq]) },
-    { have : p ∈ Q, by simp[memR, memU], refine conjunction_mem this ⨀ (by simp[-insert_emptyc_eq]) } },
+    { have : p ∈ P, by simp[memR, memT], refine list_conjunction_mem this ⨀ (by simp[-insert_emptyc_eq]) },
+    { have : p ∈ Q, by simp[memR, memU], refine list_conjunction_mem this ⨀ (by simp[-insert_emptyc_eq]) } },
   exact (weakening b (by simp)) ⨀ this
 end
 
@@ -678,14 +661,14 @@ by { induction n with n IH; simp, { exfalso, exact i.val.not_lt_zero i.property 
 
 lemma sf_sf {p : formula L} : ⤊T ⊢ p^1 ↔ T ⊢ p :=
 ⟨λ h, by { have := fal_subst (generalize h) #0, simp* at* },
- λ h, by { have : ∃ P, (∀ p, p ∈ P → p ∈ T) ∧ ∅ ⊢ conjunction P ⟶ p,
+ λ h, by { have : ∃ P : list (formula L), (∀ p, p ∈ P → p ∈ T) ∧ ∅ ⊢ P.conjunction ⟶ p,
   from proof_conjunction h, rcases this with ⟨P, hyp_P, prov⟩,
-  have lmm₁ : ⤊T ⊢ conjunction (P.map (λ p, p^1)),
-  { refine conjunction_provable (λ p hyp, by_axiom _), simp at hyp, rcases hyp with ⟨p', p'_mem, rfl⟩,
+  have lmm₁ : ⤊T ⊢ list.conjunction (P.map (λ p, p^1)),
+  { refine list_conjunction_provable (λ p hyp, by_axiom _), simp at hyp, rcases hyp with ⟨p', p'_mem, rfl⟩,
     refine ⟨p', hyp_P p' p'_mem, rfl⟩ },
-  have lmm₂ : ⤊T ⊢ conjunction (P.map (λ p, p^1)) ⟶ p^1,
-  { have : ∅ ⊢ (conjunction P)^1 ⟶ p^1, by exactI cl_prove_rew prov _,
-    simp[formula.pow_eq, conjunction_rew_eq] at this,
+  have lmm₂ : ⤊T ⊢ list.conjunction (P.map (λ p, p^1)) ⟶ p^1,
+  { have : ∅ ⊢ (P.conjunction)^1 ⟶ p^1, by exactI cl_prove_rew prov _,
+    simp[formula.pow_eq, list_conjunction_rew_eq] at this,
     refine weakening this (λ p h, _), exfalso, exact h },
   refine lmm₂ ⨀ lmm₁ }⟩
 
@@ -983,8 +966,8 @@ equiv_neg_of_equiv (equiv_univ_of_equiv (equiv_neg_of_equiv h))
 lemma ex_of_equiv {p₁ p₂} (h : T ⊢ ∐ p₁) (hp : ⤊T ⊢ p₁ ⟷ p₂) : T ⊢ ∐ p₂ :=
 (iff_equiv.mp (equiv_ex_of_equiv hp)).1 ⨀ h
 
-@[simp] protected lemma extend {T₀ T : Theory L} [extend T₀ T] {p : formula L} (h : T₀ ⊢ p) : T ⊢ p :=
-extend.le h
+@[simp] protected lemma extend {T₀ T : Theory L} [T₀.extend T] {p : formula L} (h : T₀ ⊢ p) : T ⊢ p :=
+Theory.extend.le h
 
 lemma nfal_K (p q : formula L) (n) : T ⊢ (∏[n] (p ⟶ q)) ⟶ (∏[n] p) ⟶ ∏[n] q :=
 begin
@@ -1085,11 +1068,13 @@ lemma le_of_ss : T₀ ⊆ T₁ → T₀ ≤ T₁ := λ hyp p h, weakening hyp h
 λ p b,
 begin
   rcases provable.proof_conjunction_union b with ⟨P, Q, hP, hQ, b⟩,
-  have bP : U₀ ∪ U₁ ⊢ conjunction P, from provable.conjunction_provable (λ p hp, weakening (by simp[hp]) (h₀ (by_axiom (hP p hp)))),
-  have bQ : U₀ ∪ U₁ ⊢ conjunction Q, from provable.conjunction_provable (λ p hp, weakening (by simp[hp]) (h₁ (by_axiom (hQ p hp)))),
+  have bP : U₀ ∪ U₁ ⊢ P.conjunction, from list_conjunction_provable (λ p hp, weakening (by simp[hp]) (h₀ (by_axiom (hP p hp)))),
+  have bQ : U₀ ∪ U₁ ⊢ Q.conjunction, from list_conjunction_provable (λ p hp, weakening (by simp[hp]) (h₁ (by_axiom (hQ p hp)))),
   exact (weakening (by simp) b) ⨀ bP ⨀ bQ
 end
 
+section extend
+open logic.Theory
 
 def extend_of_inclusion {T₁ T₂ : Theory L} (ss : T₁ ⊆ T₂) : extend T₁ T₂ := ⟨le_of_ss ss⟩
 
@@ -1123,9 +1108,11 @@ by simpa using Theory.extend_pow T₁ T₂ k
 instance union_extend_union [extend T₀ U₀] [extend T₁ U₁] : extend (T₀ ∪ T₁) (U₀ ∪ U₁) :=
 ⟨union_le_union extend.le extend.le⟩
 
+end extend
+
 end Theory
 
-lemma provable.extend_pow {T₀ T : Theory L} [extend T₀ T] [closed_Theory T₀] {p : formula L} (h : T₀ ⊢ p) (k : ℕ) :
+lemma provable.extend_pow {T₀ T : Theory L} [T₀.extend  T] [closed_Theory T₀] {p : formula L} (h : T₀ ⊢ p) (k : ℕ) :
   T^k ⊢ p := by { have : T₀^k ⊢ p, by simp[h], exact this.extend }
 
 lemma proper_Theory_union (T₁ T₂ : Theory L) (h₁ : proper_Theory T₁) (h₂ : proper_Theory T₂) :

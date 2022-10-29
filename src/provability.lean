@@ -269,6 +269,10 @@ by { have : (p₁ ⟷ q₁) ⟶ (p₂ ⟷ q₂) ∈ P, from (iff_equiv_p.mp (equ
 @[trans] lemma equiv_trans {p q r : F} : p ⟷ q ∈ P → q ⟷ r ∈ P → p ⟷ r ∈ P :=
 by { simp[iff_equiv_p], intros hpq hqp hqr hrq, exact ⟨impl_trans hpq hqr, impl_trans hrq hqp⟩ }
 
+@[simp] lemma bot_of_neg_top : (⁻⊤ : F) ⟶ ⊥ ∈ P := by simp[@not_top_eq_bot F _ P _]
+
+@[simp] lemma neg_top : (⁻⊥ : F) ∈ P := @neg_of_equiv _ _ P _ (⁻⊤) _ (by simp) (by simp)
+
 variables (P)
 
 @[reducible] def equiv (p q : F) : Prop := p ⟷ q ∈ P
@@ -380,7 +384,7 @@ end
 @[simp] lemma neg_conj_equiv_disj_neg {n} (p : finitary F n) : ⁻(inf_conjunction n p) ⟷ (⋁ i, ⁻p i) ∈ P :=
 begin
   induction n with n IH; simp[-iff_equiv_p],
-  { simp, exact of_equiv_p (show ⁻⁻⊤ ∈ P, from dni ⊤ ⨀ by simp) (neg_iff _) },
+  { simp },
   { have : (⁻(p ⟨n, _⟩ ⊓ ⋀ (i : fin n), p ⟨↑i, _⟩) ⟷ ⁻p ⟨n, _⟩ ⊔ ⁻⋀ (i : fin n), p ⟨↑i, _⟩) ∈ P,
       from neg_and_equiv_or_neg (p ⟨n, lt_add_one n⟩) ⋀ (i : fin n), p ⟨↑i, by simp⟩,
     refine equiv_of_equiv this (by simp) (equiv_or_of_equiv (by simp) (by simpa using (IH (λ i, p i)))) }
@@ -395,7 +399,7 @@ end
 @[simp] lemma neg_disj_equiv_conj_neg {n} (p : finitary F n) : ⁻(sup_disjunction n p) ⟷ (⋀ i, ⁻p i) ∈ P :=
 begin
   induction n with n IH; simp[-iff_equiv_p],
-  { simp, exact of_equiv_p (show ⊥ ⟶ ⊥ ∈ P, by simp) (equiv_symm (neg_iff _)) },
+  { simp },
   { have : (⁻(p ⟨n, _⟩ ⊔ ⋁ (i : fin n), p ⟨↑i, _⟩) ⟷ ⁻p ⟨n, _⟩ ⊓ ⁻⋁ (i : fin n), p ⟨↑i, _⟩) ∈ P,
       from neg_or_equiv_and_neg (p ⟨n, lt_add_one n⟩) ⋁ (i : fin n), p ⟨↑i, by simp⟩,
     refine equiv_of_equiv this (by simp) (equiv_and_of_equiv (by simp) (by simpa using (IH (λ i, p i)))) }
@@ -588,12 +592,22 @@ variables {T}
 
 lemma modus_ponens {p q : F} : T ⊢ p ⟶ q → T ⊢ p → T ⊢ q := modus_ponens
 
-local infixl ` ⨀ `:90 := axiomatic_classical_logic'.modus_ponens
-
 lemma modus_ponens_hyp {p q r : F} : T ⊢ p ⟶ q ⟶ r → T ⊢ p ⟶ q → T ⊢ p ⟶ r :=
 modus_ponens_hyp
 
-local infixl ` ⨀₁ `:90 := modus_ponens_hyp
+lemma modus_ponens_hyp₂ {p q r s : F} : T ⊢ p ⟶ q ⟶ r ⟶ s → T ⊢ p ⟶ q ⟶ r → T ⊢ p ⟶ q ⟶ s :=
+modus_ponens_hyp₂
+
+lemma modus_ponens_hyp₃ {p q r s t : F} :
+  T ⊢ p ⟶ q ⟶ r ⟶ s ⟶ t → T ⊢ p ⟶ q ⟶ r ⟶ s → T ⊢ p ⟶ q ⟶ r ⟶ t :=
+modus_ponens_hyp₃
+
+localized "infixl ` ⨀ `:90 := axiomatic_classical_logic'.modus_ponens" in aclogic
+localized "infixl ` ⨀₁ `:90 := axiomatic_classical_logic'.modus_ponens_hyp" in aclogic
+localized "infixl ` ⨀₂ `:90 := axiomatic_classical_logic'.modus_ponens_hyp₂" in aclogic
+localized "infixl ` ⨀₃ `:90 := axiomatic_classical_logic'.modus_ponens_hyp₃" in aclogic
+
+open_locale aclogic
 
 @[simp] lemma mem_iff_prov (p : F) : (@has_mem.mem F (set F) _) p ((⊢) T : set F) ↔ T ⊢ p := by refl
 
@@ -768,12 +782,11 @@ variables (T)
 end axiomatic_classical_logic'
 
 namespace axiomatic_classical_logic
-open classical_logic axiomatic_classical_logic'
+open axiomatic_classical_logic'
+open_locale aclogic
 
 variables {F : Type*} [has_logic_symbol F]
   (T : set F) [axiomatic_classical_logic F]
-
-local infixl ` ⨀ `:90 := axiomatic_classical_logic'.modus_ponens
 
 variables {T}
 
@@ -795,17 +808,51 @@ lemma axiom_and {p₁ p₂ q : F} : T +{ p₁ ⊓ p₂ } ⊢ q ↔ T +{ p₁ } +
       exact lmm₁ ⨀ lmm₂.1 ⨀ lmm₂.2 } ⟩
 
 lemma raa {p : F} (q : F) (h₁ : T+{p} ⊢ q) (h₂ : T+{p} ⊢ ⁻q) : T ⊢ ⁻p :=
-neg_hyp (deduction.mp (classical_logic.explosion h₁ h₂))
+classical_logic.neg_hyp (deduction.mp (classical_logic.explosion h₁ h₂))
+
+lemma list_conjunction_mem {P : list F} : ∀ {p}, p ∈ P → T ⊢ P.conjunction ⟶ p :=
+begin 
+  induction P with p P IH; simp,
+  have : ∀ q, q ∈ P → T ⊢ p ⊓ P.conjunction ⟶ q, from λ q hq, and_imply_of_imply_right (IH hq),
+  refine this
+end
+
+lemma list_conjunction_weakening {P Q : list F} : 
+  Q ⊆ P → T ⊢ P.conjunction ⟶ Q.conjunction :=
+begin
+  induction Q with q Q IH; simp,
+  intros hyp_q hyp_Q,
+  have lmm₁ : T+{P.conjunction} ⊢ q, from deduction.mpr (list_conjunction_mem hyp_q),  
+  have lmm₂ : T+{P.conjunction} ⊢ Q.conjunction, from deduction.mpr (IH hyp_Q),
+  refine deduction.mp _, simp[axiomatic_classical_logic'.iff_and, *]
+end
+
+lemma list_conjunction_provable : ∀ {P : list F} (h : ∀ p, p ∈ P → T ⊢ p), T ⊢ P.conjunction
+| []       h := by simp
+| (p :: P) h := by {
+    have lmm₁ : T ⊢ p, { refine h _ _, simp },
+    have lmm₂ : T ⊢ P.conjunction,
+    { refine list_conjunction_provable (λ p hyp, h _ _), simp, right, exact hyp },
+    simp, refine ⟨lmm₁, lmm₂⟩ }
+
+lemma inf_conjunction_mem {n : ℕ} {P : finitary F n} :
+  ∀ {p}, p ∈ P → T ⊢ inf_conjunction n P ⟶ p :=
+begin
+  induction n with n IH; simp[inf_conjunction];
+  simp[has_mem.mem, finitary.mem],
+  intros p mem,
+  exact and_imply_of_imply_right (IH mem)
+end
 
 variables (T)
 
-@[reducible] def lindenbaum := lindenbaum ((⊢) T : F → Prop)
+@[reducible] def lindenbaum := classical_logic.lindenbaum ((⊢) T : F → Prop)
 
 notation (name := classical_logic.equiv) p ` ≈[`:50 T :50 `] `:0 q:50 := classical_logic.equiv ((⊢) T) p q
 
 namespace lindenbaum
 
-instance : boolean_algebra (lindenbaum T) := lindenbaum.boolean_algebra
+instance : boolean_algebra (lindenbaum T) := classical_logic.lindenbaum.boolean_algebra
 
 end lindenbaum
 

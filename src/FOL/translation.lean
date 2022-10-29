@@ -434,8 +434,8 @@ eq.symm (τ.fun_p_rew_var p (λ x, x + i))
   τ.fun_p (⊥ : formula L₁) = ⊥ := rfl
 
 @[simp] lemma fun_p_conjunction (P : list (formula L₁)) :
-  τ.fun_p (conjunction P) = conjunction (P.map τ.fun_p) :=
-by induction P with p P IH; simp[conjunction, *]
+  τ.fun_p P.conjunction = list.conjunction (P.map τ.fun_p) :=
+by induction P with p P IH; simp[*]
 
 @[simp] lemma fun_p_nfal (p : formula L₁) (k : ℕ) :
   τ.fun_p (∏[k] p) = ∏[k] τ.fun_p p :=
@@ -762,7 +762,7 @@ by simp [tr_app_eq, ←app_formula_extension_eq_coe 0]
   (↑(⊥ : formula L₁) : formula L₂) = ⊥ := rfl
 
 @[simp] lemma coe_conjunction (P : list (formula L₁)) :
-  (↑(conjunction P) : formula L₂) = conjunction (P.map coe) :=
+  (↑P.conjunction : formula L₂) = list.conjunction (P.map coe) :=
 fun_p_conjunction _ P
 
 @[simp] lemma coe_nfal (p : formula L₁) (k : ℕ) :
@@ -1072,7 +1072,7 @@ provability τ T p k (h T)
 
 lemma consistency (T : Theory L₁) (k : ℕ) : 
   (ax τ k T).consistent → T.consistent :=
-by { simp[Theory.consistent_iff_bot], contrapose, simp,
+by { simp[logic.Theory.consistent_iff_bot], contrapose, simp,
      have := provability τ T ⊥ k, simp at this,
      exact this }
 
@@ -1104,7 +1104,7 @@ instance shift_conservative (k : ℕ) : conservative (shift L₁ k) :=
 end translation
 
 namespace language_translation
-open language_translation
+open language_translation logic
 variables (τ : L₁ ↝ᴸ L₂)
 
 lemma provability_pow {T : Theory L₁} {p : formula L₁} {i : ℕ} :
@@ -1122,7 +1122,7 @@ translation.consistency τ.tr T 0
 end language_translation
 
 namespace language_translation_coe
-open language_translation
+open language_translation logic
 variables [σ : language_translation_coe L₁ L₂]
 include σ
 

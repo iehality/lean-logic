@@ -5,7 +5,7 @@ universes u t
 namespace fol
 open_locale logic_symbol
 
-open formula
+open formula logic
 variables {L : language.{u}} (T : Theory L) (i : ℕ)
 
 notation t` ≃[`:50 T :50`] `:0 u:50 := term.equiv T t u

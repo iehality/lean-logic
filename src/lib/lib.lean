@@ -382,6 +382,14 @@ by simp[insert]
 @[simp] lemma set.insert_mem_iff {α : Sort*} {T : set α} {a b : α} :
   b ∈ T +{ a } ↔ b = a ∨ b ∈ T := by simp[insert]
 
+@[simp] def list.conjunction {α : Type*} [has_top α] [has_inf α] : list α → α
+| []        := ⊤
+| (a :: as) := a ⊓ as.conjunction
+
+@[simp] def list.disjunction {α : Type*} [has_bot α] [has_sup α] : list α → α
+| []        := ⊥
+| (a :: as) := a ⊔ as.disjunction
+
 @[simp] def inf_conjunction {α : Type*} [has_top α] [has_inf α] : ∀ n, (fin n → α) → α
 | 0 _        := ⊤
 | (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊓ inf_conjunction n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
@@ -534,6 +542,16 @@ by simp[Sup]; refine ⟨f i, _, h⟩; simp[list.mem_of_fn]
   a ∈ Sup f ↔ ∃ i, a ∈ f i :=
 ⟨by { simp[Sup], intros i h, refine ⟨i, h⟩ },
  by { rintros ⟨i, h⟩, simp[Sup, list.mem_of_fn], refine ⟨i, h⟩ }⟩
+
+section inf
+variables [has_inf α] [has_top α]
+
+@[simp] def inf : list α → α
+| []        := ⊤
+| (a :: as) := a ⊓ as.inf
+
+end inf
+
 
 end list
 

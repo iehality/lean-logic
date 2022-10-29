@@ -270,11 +270,6 @@ by { induction i with i IH; simp, exact IH }
 @[simp] lemma nex_ex (p : formula L) (i : ℕ) : (∐[i] (∐ p)) = ∐ (∐[i] p) :=
 by { induction i with i IH; simp, exact IH }
 
-
-def conjunction : list (formula L) → formula L
-| []        := ⊤
-| (p :: ps) := p ⊓ conjunction ps
-
 notation `ı` := term.var
 
 def slide {α : Type*} (s : ℕ → α) (a : α) (n : ℕ) : ℕ → α :=
@@ -1023,6 +1018,7 @@ prefix `∏* `:64 := fal_complete
 by simp[is_sentence, fal_complete]
 
 @[simp] lemma is_sentence_verum_iff : is_sentence (⊤ : formula L) := by simp[is_sentence]
+
 @[simp] lemma is_sentence_app_iff {n} (r : L.pr n) (v) : is_sentence (app r v) ↔ ∀ i, (v i).arity = 0 :=
 by {simp[is_sentence], sorry }
 

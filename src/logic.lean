@@ -15,7 +15,10 @@ variables (T : Theory F)
 
 def mk (S : set F) : Theory F := S
 
-def consistent : Prop := ¬∃p : F, (T ⊢ p) ∧ (T ⊢ ⁻p) 
+def consistent : Prop := ¬∃p : F, (T ⊢ p) ∧ (T ⊢ ⁻p)
+
+class Consistent (T : Theory F) :=
+(consis : consistent T)
 
 lemma consistent_def : consistent T ↔ ¬∃p : F, (T ⊢ p) ∧ (T ⊢ ⁻p) := by refl
 

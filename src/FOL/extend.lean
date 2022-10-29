@@ -11,7 +11,7 @@ namespace Theory
 
 section
 variables [closed_Theory T₁] [closed_Theory U₁] [language_translation_coe L₁ L₂]
-open axiomatic_classical_logic' axiomatic_classical_logic
+open logic logic.Theory axiomatic_classical_logic' axiomatic_classical_logic
 
 @[simp] lemma le_coe_iff : (↑T₁ : Theory L₂) ≤ ↑U₁ ↔ T₁ ≤ U₁ :=
 ⟨λ h p b,
@@ -27,14 +27,14 @@ begin
       refine ⟨p₁, by simp[hp₁]⟩ },
     { simp[hp] } },
   choose coe_inv hcoe_inv using this,
-  have : ↑U₁ ⊢ conjunction P,
-    from provable.conjunction_provable
+  have : ↑U₁ ⊢ P.conjunction,
+    from list_conjunction_provable
       (λ p hp, by { rcases language.language_translation_coe.mem_coe_iff.mp (hP p hp) with ⟨p₁, hp₁, rfl⟩,
         simpa using h (by_axiom hp₁) }),
   exact b.extend ⨀ this
 end⟩
 
-instance extend_coe [extend T₁ U₁] : extend (↑T₁ : Theory L₂) ↑U₁ := ⟨le_coe_iff.mpr extend.le⟩
+instance extend_coe [T₁.extend U₁] : (↑T₁ : Theory L₂).extend ↑U₁ := ⟨le_coe_iff.mpr extend.le⟩
 
 end
 
@@ -72,6 +72,7 @@ lemma provable.lextend [language_translation_coe L₁ L₂] {T₁ : Theory L₁}
   [lextend T₁ T₂] : T₂ ⊢ p := lextend.le b
 
 namespace Theory
+open logic logic.Theory
 variables  [language_translation_coe L₁ L₂] (T₁ U₁) (T₂ U₂)
 
 instance lextend_refl : lextend T₁ T₁ := ⟨by simp⟩

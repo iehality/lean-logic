@@ -366,7 +366,7 @@ begin
   have : (↑T : Theory (L + consts C)) ⊢ ⊥ ↔ T ⊢ ⊥,
   { have : (↑T : Theory (L + consts C)) ⊢ ↑(⊥ : formula L) ↔ T ⊢ ⊥, from provable_iff,
     simp at this, exact this },
-  simp[Theory.consistent_iff_bot, this],  
+  simp[logic.Theory.consistent_iff_bot, this],  
 end
 
 end add_consts
