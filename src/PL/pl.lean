@@ -33,9 +33,11 @@ end formula
 
 instance : inhabited (formula A) := ⟨⊤⟩
 
-abbreviation theory (A : Type u) := logic.theory (formula A)
+abbreviation Theory (A : Type u) := logic.Theory (formula A)
 
 namespace formula
+
+lemma bot_def : (⊥ : formula A) = ⁻⊤ := rfl
 
 @[simp] lemma top_eq : @formula.verum A = (⊤) := rfl
 

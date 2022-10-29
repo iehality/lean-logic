@@ -163,7 +163,7 @@ lemma nfal_models_iff : ∀ {n} {p : formula L}, M ⊧ nfal p n ↔ M ⊧ p
   have : ((e 0) ⌢ λ x, e (x + 1) )= e, { ext x, cases x; simp[concat] },
   have := h (λ x, e (x + 1)) (e 0), simp* at* }
 
-theorem soundness {T : Theory L} : ∀ {p}, T ⊢ p → ∀ {M : Structure L}, M ⊧ T → M ⊧ p := λ p hyp,
+theorem soundness {T : Theory L} : ∀ {p}, T ⊢ p → T ⊧ p := λ p hyp,
 begin
   rcases hyp,
   induction hyp,
@@ -197,11 +197,11 @@ begin
   case eq_transitivity : T
   { intros M hyp_T e t₁ t₂ t₃, simp[formula.val], refine eq.trans },
   case function_ext : T n f
-  { simp[eq_axiom4, nfal_models_iff], intros M hyp_T e,
-    simp, intros h, simp[h] },
+  { intros M hyp_T, simp[eq_axiom4, nfal_models_iff], intros e, simp,
+    intros h, simp[h] },
   case predicate_ext : T n f
-  { simp[eq_axiom5, nfal_models_iff], intros M hyp_T e,
-    simp, intros h, simp[h] },
+  { intros M hyp_T, simp[eq_axiom5, nfal_models_iff], intros e, simp,
+    intros h, simp[h] },
 end
 
 theorem Structure_consistent {T : Theory L} : M ⊧ T → Theory.consistent T :=
