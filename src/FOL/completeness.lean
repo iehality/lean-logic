@@ -1,9 +1,10 @@
-import FOL.language_extension FOL.consistency FOL.lindenbaum
+import FOL.language_extension consistency FOL.lindenbaum
 open encodable
 
 universes u v
 
 namespace fol
+open logic logic.Theory
 open_locale logic_symbol
 
 @[simp] lemma app_concat {α β : Type*} (a : α) (s : ℕ → α) (g : α → β) :
@@ -299,10 +300,10 @@ def Consts.equal (p q : Consts L) : Prop := (p ≃∘ q) ∈ Tω⁺
 
 local notation p ` ~[`:50 T :50 `] `:0 q:50 := Consts.equal T p q
 
-variables [cT : Consistent T] {L}
+variables [cT : Theory.Consistent T] {L}
 include cT
 
-lemma Tω_consistent' : consistent (Theory_limit L T) := Tω_consistent T cT.consis
+lemma Tω_consistent' : Theory.consistent (Theory_limit L T) := Tω_consistent T cT.consis
 
 lemma mem_Tω'_of_Tω_provable {p : formula Lω} (b : Tω ⊢ p): p ∈ Tω⁺ :=
 begin
@@ -513,7 +514,7 @@ theorem consistent_iff_satisfiable : Theory.consistent T ↔ Satisfiable T :=
 
 theorem completeness {p : formula L} (hp : is_sentence p) : 
   T ⊢ p ↔ T ⊧ p :=
-⟨λ b M, soundness b,
+⟨soundness,
  λ h, by { simp[Theory.provable_iff_inconsistent], intros consis,
   have : closed_Theory (T +{⁻p}), from ⟨by { simp[hp], exact λ _, closed_Theory.cl }⟩,
   have : Satisfiable (T +{⁻p}), exactI consistent_iff_satisfiable.mp consis,
@@ -524,7 +525,7 @@ theorem completeness {p : formula L} (hp : is_sentence p) :
 
 theorem completeness' {p : formula L} : 
   T ⊢ p ↔ T ⊧ p :=
-⟨λ b M, soundness b,
+⟨soundness,
  λ h, by {
   have : T ⊧ ∏* p, { intros M hM, simpa using nfal_models_iff.mpr (consequence_def.mp h M hM) },
   have : T ⊢ ∏* p, from (completeness (show is_sentence (∏* p), by simp)).mpr this,
