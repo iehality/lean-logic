@@ -102,6 +102,22 @@ by simp[Models_def]; refine ⟨λ h i p, h p i, λ h p i, h i p⟩
 
 end semantics
 
+variables (F)
+
+class sound (𝓢 : Type*) [semantics F 𝓢] :=
+(soundness : ∀ {T : Theory F} {p}, T ⊢ p → semantics.consequence 𝓢 T p)
+
+section sound
+open sound
+variables {F} {𝓢 : Type*} [semantics F 𝓢] [sound F 𝓢] {S : 𝓢}
+
+theorem Structure_consistent (h : ¬S ⊧ (⊥ : F)) {T : Theory F} : S ⊧ T → Theory.consistent T :=
+by { contrapose, simp[Theory.consistent], intros p hp₁ hp₂ hyp,
+     have : T ⊢ (⊥ : F), from axiomatic_classical_logic'.explosion hp₁ hp₂,
+     exact h (soundness this hyp) }
+
+end sound
+
 def soundness (𝓢 : Type*) [semantics F 𝓢] : Prop :=
   ∀ {T : Theory F} {p}, T ⊢ p → semantics.consequence 𝓢 T p
 

@@ -1,13 +1,13 @@
-import PL.pl provability
+import PL.pl provability consistency
 
 universe u
 
 namespace pl
-open_locale logic_symbol
-open formula
+open_locale logic_symbol aclogic
+open logic formula
 variables {A : Type u}
 
-inductive proof : theory A → formula A → Type u
+inductive proof : Theory A → formula A → Type u
 | mdp : ∀ {T p q}, proof T (p ⟶ q) → proof T p → proof T q
 | by_axiom : ∀ {T p}, p ∈ T → proof T p
 | verum : ∀ {T}, proof T ⊤
@@ -15,7 +15,7 @@ inductive proof : theory A → formula A → Type u
 | imply₂ : ∀ {T p q r}, proof T ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r)
 | contraposition : ∀ {T p q}, proof T ((⁻p ⟶ ⁻q) ⟶ q ⟶ p)
 
-def provable (T : theory A) (p : formula A) : Prop := nonempty (proof T p)
+def provable (T : Theory A) (p : formula A) : Prop := nonempty (proof T p)
 
 instance : axiomatic_classical_logic' (formula A) :=
 { turnstile := provable,
@@ -33,7 +33,7 @@ instance : axiomatic_classical_logic' (formula A) :=
 open axiomatic_classical_logic' axiomatic_classical_logic
 
 @[elab_as_eliminator]
-theorem rec'_on {T : theory A} {C : formula A → Prop} {p : formula A} (b : T ⊢ p)
+theorem rec'_on {T : Theory A} {C : formula A → Prop} {p : formula A} (b : T ⊢ p)
   (mdp : ∀ {p q : formula A} (b₁ : T ⊢ p ⟶ q) (b₂ : T ⊢ p), C (p ⟶ q) → C p → C q)
   (by_axiom : ∀ {p : formula A} (mem : p ∈ T), C p)
   (p0 : C ⊤)
@@ -53,7 +53,7 @@ begin
 end
 
 namespace proof
-variables {T : theory A}
+variables {T : Theory A}
 
 def weakening {p} (h : proof T p) {U} (ss : T ⊆ U) : proof U p :=
 begin
@@ -69,12 +69,12 @@ end
 end proof
 
 namespace provable
-variables {T : theory A}
+variables {T : Theory A}
 
 lemma weakening {U} {p} (ss : T ⊆ U) (h : T ⊢ p): U ⊢ p :=
 by rcases h; exact ⟨h.weakening ss⟩
 
-def deduction {p q} (h : insert q T ⊢ p) : T ⊢ q ⟶ p :=
+def deduction' {p q} (h : insert q T ⊢ p) : T ⊢ q ⟶ p :=
 begin
   apply rec'_on h,
   { intros p r _ _ h₁ h₂, exact modus_ponens_hyp h₁ h₂ },
@@ -86,8 +86,31 @@ begin
 end
 
 instance : axiomatic_classical_logic (formula A) :=
-{ deduction' := λ T p q, deduction,
+{ deduction' := λ T p q, deduction',
   weakening := λ T U p, weakening }
+
+theorem proof_conjunction {T : Theory A} {p} :
+  T ⊢ p → ∃ P : list (formula A), (∀ p, p ∈ P → T p) ∧ ∅ ⊢ P.conjunction ⟶ p := λ h,
+begin
+  apply rec'_on h,
+  { rintros p q b₁ b₂ ⟨P₁, IH₁, b0₁⟩ ⟨P₂, IH₂, b0₂⟩, refine ⟨P₁ ++ P₂, _, _⟩,
+    { simp, rintros r (hr | hr), exact IH₁ r hr, exact IH₂ r hr },
+    { have : ∅+{(P₁ ++ P₂).conjunction} ⊢ P₂.conjunction, from deduction.mpr (list_conjunction_weakening (by simp)),
+      have lmm₁ : ∅+{(P₁ ++ P₂).conjunction} ⊢ p,
+        from (show _ ⊢ P₂.conjunction ⟶ p, from weakening_insert b0₂ _) ⨀ this,
+      have : ∅+{(P₁ ++ P₂).conjunction} ⊢ P₁.conjunction, from deduction.mpr (list_conjunction_weakening (by simp)),
+      have lmm₂ : ∅+{(P₁ ++ P₂).conjunction} ⊢ p ⟶ q,
+      from (show _ ⊢ P₁.conjunction ⟶ p ⟶ q, from weakening_insert b0₁ _) ⨀ this,
+      refine deduction.mp (lmm₂ ⨀ lmm₁) } },
+  { rintros p hp, refine ⟨[p], by simpa using hp, by simp⟩ },
+  { refine ⟨[], by simp, by simp⟩ },
+  { intros, refine ⟨[], by simp, by simp⟩ },
+  { intros, refine ⟨[], by simp, by simp⟩ },
+  { intros, refine ⟨[], by simp, by simp⟩ }
+end
+
+instance : Theory.has_finite_character (formula A) :=
+Theory.finite_character_of_finite_probable (formula A) (λ T p, proof_conjunction)
 
 end provable
 
