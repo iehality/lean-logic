@@ -1,5 +1,5 @@
 # lean-logic
-Lean3で一階述語論理を形式化する
+Lean3で論理学を形式化する
 
 ## 構造
   - `provability.lean`
@@ -27,7 +27,7 @@ Lean3で一階述語論理を形式化する
   - `pnf.lean`：冠頭標準形に関する証明
   - `class_of_formulae.lean`：論理式のクラス
   - `arithmetic.lean`：算術に関する証明
-  - `model.lean`：超準モデルの構成など
+  - ~~`model.lean`：超準モデルの構成など~~
 
 ## 定義
 ### 命題論理
@@ -59,7 +59,7 @@ Lean3で一階述語論理を形式化する
   - `fol.Ult.fundamental : ℿ 𝔄 ⫽ F ⊧ p ↔ {i | 𝔄 i ⊧ p} ∈ F`
   - `fol.Ult.fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|), ℿ 𝔄 ⫽ F ⊧[λ n, ⟦λ i, e i n⟧*] p ↔ {i | 𝔄 i ⊧[e i] p} ∈ F`
 - 1階論理のコンパクト性定理
-  - `fol.compactness.compact (T : theory L) : (∃ 𝔄, 𝔄 ⊧ₜₕ T) ↔ (∀ S : finset (formula L), (∀ {p}, p ∈ S → p ∈ T) → ∃ 𝔄, 𝔄 ⊧ₜₕ {p | p ∈ S})`
+  - `fol.compactness.compact (T : theory L) : Satisfiable T ↔ ∀ S : finset (formula L), ↑S ⊆ T → Satisfiable S`
 - 1階論理の完全性定理
   - `fol.completeness {p : formula L} (hp : is_sentence p) : T ⊢ p ↔ T ⊧ p`  
   - `fol.completeness' {p : formula L} : T ⊢ p ↔ T ⊧ p :=`
