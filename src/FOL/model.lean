@@ -1,14 +1,16 @@
-import arithmetic
+import FOL.arithmetic
 
-namespace fopl
-
+namespace fol
+open logic logic.Theory axiomatic_classical_logic' axiomatic_classical_logic
+open_locale logic_symbol
 namespace arithmetic
+
 
 local infix ` ≃₁ `:80 := ((≃) : term LA → term LA → formula LA)
 local prefix `∏₁ `:64 := (has_univ_quantifier.univ : formula LA → formula LA)
 local prefix `∐₁ `:64 := (has_exists_quantifier.ex : formula LA → formula LA)
 
-def standard : model LA := {
+def standard : Structure LA := {
   dom := ℕ,
   inhabited := nat.inhabited,
   fn := λ n l v, 
@@ -25,60 +27,60 @@ def standard : model LA := {
 
 notation `ℕ*` := standard
 
-@[reducible, simp] lemma nat_dom_eq : |ℕ*| = ℕ := rfl
+@[reducible, simp] lemma nat_dom_eq : (ℕ*).dom = ℕ := rfl
 
-@[simp] lemma standard_zero_eq (v : fin 0 → ℕ) : standard.fn *Z v = (0 : ℕ) := rfl
+@[simp] lemma standard_zero_eq (v : fin 0 → ℕ) : standard.fn has_zero_symbol.zero v = (0 : ℕ) := rfl
 
-@[simp] lemma standard_succ_eq (v : fin 1 → ℕ) : standard.fn *S v = (v 0 + 1 : ℕ) := rfl
+@[simp] lemma standard_succ_eq (v : fin 1 → ℕ) : standard.fn has_succ_symbol.succ v = (v 0 + 1 : ℕ) := rfl
 
-@[simp] lemma standard_add_eq (v : fin 2 → ℕ) : standard.fn *+ v = (v 0 + v 1 : ℕ) := rfl
+@[simp] lemma standard_add_eq (v : fin 2 → ℕ) : standard.fn has_add_symbol.add v = (v 0 + v 1 : ℕ) := rfl
 
-@[simp] lemma standard_mul_eq (v : fin 2 → ℕ) : standard.fn *× v = (v 0 * v 1 : ℕ) := rfl
+@[simp] lemma standard_mul_eq (v : fin 2 → ℕ) : standard.fn has_mul_symbol.mul v = (v 0 * v 1 : ℕ) := rfl
 
-@[simp] lemma standard_le_eq (v : fin 2 → ℕ) : standard.pr *≤ v ↔ (v 0 : ℕ) ≤ v 1 := by refl
+@[simp] lemma standard_le_eq (v : fin 2 → ℕ) : standard.pr has_le_symbol.le v ↔ (v 0 : ℕ) ≤ v 1 := by refl
 
-lemma N_models_Q : ℕ* ⊧ₜₕ 𝐐 := λ p hyp_p e,
+lemma N_Structures_Q : ℕ* ⊧ 𝐐 := λ p hyp_p e,
 begin
-  cases hyp_p; simp[symbol.zero, symbol.succ, symbol.add, symbol.mul, finitary.cons],
+  cases hyp_p; simp[finitary.cons],
   { exact λ _, of_to_bool_ff rfl},
   { exact λ _ _, nat.succ.inj },
   { intros n, cases n,
-    { left, refl }, { right, refine ⟨n, rfl⟩ } },
-  { intros n, simp[add_assoc] },
-  { intros n m, exact nat.mul_succ m n },
+    { left, refl }, { right, simp[ex_fn] } },
+  { intros n, unfold has_add.add, simp },
+  { intros n m, unfold has_add.add, simp, exact nat.mul_succ m n },
   { intros n m, split; intros h,
     refine ⟨(n - m : ℕ), nat.add_sub_of_le h⟩,
     rcases h with ⟨_, h⟩, exact nat.le.intro h }
 end
 
-theorem Q_consistent : theory.consistent 𝐐 := model_consistent N_models_Q
+theorem Q_consistent : Theory.consistent 𝐐 := Structure_consistent N_Structures_Q
 
 lemma mjbjhv (p : formula LA) : ℕ* ⊧ 𝐈p := λ e,
 by { simp[peano_induction], intros h0 ih n,
      induction n with n IH, exact h0, exact ih n IH
       }
 
-lemma N_models_bd_PA (C : formula LA → Prop) : ℕ* ⊧ₜₕ 𝐐+𝐈C := λ p hyp_p e,
+lemma N_Structures_bd_PA (C : formula LA → Prop) : ℕ* ⊧ₜₕ 𝐐+𝐈C := λ p hyp_p e,
 by { cases hyp_p with _ hyp_p p,
-     exact N_models_Q p hyp_p e,
+     exact N_Structures_Q p hyp_p e,
      simp,
      intros h0 ih n,
      induction n with n IH, exact h0, exact ih n IH }
 
-theorem bd_PA_consistent (C) : theory.consistent 𝐐+𝐈C := model_consistent (N_models_bd_PA C)
+theorem bd_PA_consistent (C) : Theory.consistent 𝐐+𝐈C := Structure_consistent (N_Structures_bd_PA C)
 
-lemma N_models_PA : ℕ* ⊧ₜₕ 𝐏𝐀 := N_models_bd_PA _
+lemma N_Structures_PA : ℕ* ⊧ₜₕ 𝐏𝐀 := N_Structures_bd_PA _
 
-theorem PA_consistent : theory.consistent 𝐏𝐀 := model_consistent N_models_PA
+theorem PA_consistent : Theory.consistent 𝐏𝐀 := Structure_consistent N_Structures_PA
 
-def true_arithmetic : theory LA := {p | ℕ* ⊧ p}
+def true_arithmetic : Theory LA := {p | ℕ* ⊧ p}
 notation `𝐓𝐀` := true_arithmetic
 
-lemma N_models_TA : ℕ* ⊧ₜₕ 𝐓𝐀 := λ p hyp_p e, hyp_p e
+lemma N_Structures_TA : ℕ* ⊧ₜₕ 𝐓𝐀 := λ p hyp_p e, hyp_p e
 
-theorem TA_consistent : theory.consistent 𝐓𝐀 := model_consistent N_models_TA
+theorem TA_consistent : Theory.consistent 𝐓𝐀 := Structure_consistent N_Structures_TA
 
-namespace nonstandard_model
+namespace nonstandard_Structure
 
 inductive noncomm : Type
 | nat₀ (n : ℕ) : noncomm
@@ -139,7 +141,7 @@ namespace noncomm
 @[simp] def Noncomm_pr : ∀ n, LA.pr n → finitary noncomm n → Prop
 | 2 langp.le  v := ∃ d, (v 0).add d = v 1
 
-def Noncomm : model LA := ⟨noncomm, ⟨nat₀ 0⟩, Noncomm_fn, Noncomm_pr⟩
+def Noncomm : Structure LA := ⟨noncomm, ⟨nat₀ 0⟩, Noncomm_fn, Noncomm_pr⟩
 
 @[reducible, simp] lemma Noncomm_dom_eq : |Noncomm| = noncomm := rfl
 
@@ -147,7 +149,7 @@ def Noncomm : model LA := ⟨noncomm, ⟨nat₀ 0⟩, Noncomm_fn, Noncomm_pr⟩
 
 @[simp] lemma Noncomm_pr_eq : Noncomm.pr = Noncomm_pr := rfl
 
-theorem Noncomm_models_Q : Noncomm ⊧ₜₕ 𝐐 := λ p hyp_p e,
+theorem Noncomm_Structures_Q : Noncomm ⊧ₜₕ 𝐐 := λ p hyp_p e,
 begin
   cases hyp_p; simp[Noncomm_fn ,symbol.zero, symbol.succ, symbol.add, symbol.mul, finitary.cons],
   { intros d, cases d; simp, exact of_to_bool_ff rfl },
@@ -164,21 +166,21 @@ begin
 end
 
 theorem refutable_comm_add : ¬𝐐 ⊢ ∏₁ ∏₁ (#0 +̇ #1 ≃₁ #1 +̇ #0) := λ h,
-by { have : Noncomm ⊧ ∏ ∏ (#0 +̇ #1 ≃ #1 +̇ #0), from soundness h Noncomm_models_Q,
+by { have : Noncomm ⊧ ∏ ∏ (#0 +̇ #1 ≃ #1 +̇ #0), from soundness h Noncomm_Structures_Q,
      have : ∀ n m, add m n = add n m,
      { have := this (λ x, default _), simp[symbol.add] at this, exact this },
      have := this (int₁ 0) (int₂ 0),
      simp at this, exact this }
 
 theorem refutable_comm_mul : ¬𝐐 ⊢ ∏₁ ∏₁ (#0 ×̇ #1 ≃₁ #1 ×̇ #0) := λ h,
-by { have : Noncomm ⊧ ∏ ∏ (#0 ×̇ #1 ≃ #1 ×̇ #0), from soundness h Noncomm_models_Q,
+by { have : Noncomm ⊧ ∏ ∏ (#0 ×̇ #1 ≃ #1 ×̇ #0), from soundness h Noncomm_Structures_Q,
      have : ∀ n m, mul m n = mul n m,
      { have := this (λ x, default _), simp at this, exact this },
      have := this (int₁ 0) (int₂ 0),
      simp at this, exact this }
 
 theorem refutable_zero_mul : ¬𝐐 ⊢ ∏₁ (Ż ×̇ #0 ≃₁ Ż) := λ h,
-by { have : Noncomm ⊧ ∏ (Ż ×̇ #0 ≃ Ż), from soundness h Noncomm_models_Q,
+by { have : Noncomm ⊧ ∏ (Ż ×̇ #0 ≃ Ż), from soundness h Noncomm_Structures_Q,
      have : ∀ n, mul (nat₀ 0) n = nat₀ 0,
      { have := this (λ x, default _), simp at this, exact this },
      have := this (int₁ 0),
@@ -186,8 +188,8 @@ by { have : Noncomm ⊧ ∏ (Ż ×̇ #0 ≃ Ż), from soundness h Noncomm_mode
 
 end noncomm
 
-end nonstandard_model
+end nonstandard_Structure
 
 end arithmetic
 
-end fopl
+end fol

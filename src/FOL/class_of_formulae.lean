@@ -175,7 +175,7 @@ variables {L₁ L₂ : language.{u}} [L₁.language_translation_coe L₂]
 
 end
 
-inductive bounded : theory L
+inductive bounded : Theory L
 | verum : bounded ⊤
 | predicate {n} {p : L.pr n} {v} : bounded (❴p❵ v)
 | equal {t u : term L} : bounded (t ≃ u)
@@ -228,7 +228,7 @@ by simp[bex_le]
 lemma bounded_rew (s : ℕ → term L) (p : formula L) (h : bounded p) : bounded (rew s p) :=
 by induction h generalizing s; simp*
 
-instance bounded_proper : proper_theory (bounded : theory L) :=
+instance bounded_proper : proper_Theory (bounded : Theory L) :=
 ⟨λ p s mem, by { simp[set.mem_def] at mem ⊢, induction mem generalizing s; try {simp*} }⟩
 
 mutual inductive is_sigma, is_pi
@@ -247,16 +247,16 @@ notation `𝛱₀` := is_pi 0
 
 notation `𝛱₁` := is_pi 1
 
-@[simp] lemma sigma_0_iff_bounded : (𝛴₀ : theory L) = bounded :=
+@[simp] lemma sigma_0_iff_bounded : (𝛴₀ : Theory L) = bounded :=
 by funext p; simp; exact ⟨λ h, by { cases h, simp* }, is_sigma.zero⟩
 
-@[simp] lemma pi_0_iff_bounded : (𝛱₀ : theory L) = bounded :=
+@[simp] lemma pi_0_iff_bounded : (𝛱₀ : Theory L) = bounded :=
 by funext p; simp; exact ⟨λ h, by { cases h, simp* }, is_pi.zero⟩
 
-private lemma sigma_pi_proper (n : ℕ) : proper_at 0 (is_sigma n : theory L) ∧ proper_at 0 (is_pi n : theory L) :=
+private lemma sigma_pi_proper (n : ℕ) : proper_at 0 (is_sigma n : Theory L) ∧ proper_at 0 (is_pi n : Theory L) :=
 begin
   induction n with n IH,
-  { simp, refine proper_theory.proper },
+  { simp, refine proper_Theory.proper },
   { refine ⟨λ p s hs, _, λ p s hp, _⟩,
     { cases hs with _ _ p _ hp, simp,
       have : is_pi n (p.rew (s^1)),
@@ -268,23 +268,23 @@ begin
       refine is_pi.succ this } }
 end
 
-instance is_sigma_proper (n) : proper_theory (is_sigma n : theory L) := ⟨(sigma_pi_proper n).1⟩
+instance is_sigma_proper (n) : proper_Theory (is_sigma n : Theory L) := ⟨(sigma_pi_proper n).1⟩
 
-instance is_pi_proper (n) : proper_theory (is_pi n : theory L) := ⟨(sigma_pi_proper n).2⟩
+instance is_pi_proper (n) : proper_Theory (is_pi n : Theory L) := ⟨(sigma_pi_proper n).2⟩
 
 end formula
 
-def arithmetical_sigma (T : theory L) (n : ℕ) : theory L :=
+def arithmetical_sigma (T : Theory L) (n : ℕ) : Theory L :=
 λ p, ∃ q, T ⊢ p ⟷ q ∧ q.is_sigma n
 
 notation `𝜮`:60 n ` in ` T :60 := arithmetical_sigma T n
 
-def arithmetical_pi (T : theory L) (n : ℕ) : theory L :=
+def arithmetical_pi (T : Theory L) (n : ℕ) : Theory L :=
 λ p, ∃ q, T ⊢ p ⟷ q ∧ q.is_pi n
 
 notation `𝜫`:60 n ` in ` T :60 := arithmetical_pi T n
 
-def arithmetical_delta (T : theory L) (n : ℕ) : theory L :=
+def arithmetical_delta (T : Theory L) (n : ℕ) : Theory L :=
 λ p, p ∈ 𝜮n in T ∧ p ∈ 𝜫n in T
 
 notation `𝜟`:60 n ` in ` T :60 := arithmetical_delta T n

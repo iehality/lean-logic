@@ -3,7 +3,8 @@ import FOL.class_of_formulae FOL.extend
 namespace fol
 open formula
 namespace arithmetic
-open axiomatic_classical_logic' axiomatic_classical_logic
+open logic logic.Theory axiomatic_classical_logic' axiomatic_classical_logic
+open_locale logic_symbol
 
 variables {L L' : language.{0}}
 
@@ -82,7 +83,7 @@ local infix ` ≺ `:50 := additional.lt
 
 local infix ` ⍭ `:50 := additional.dvd
 
-inductive robinson : theory LA
+inductive robinson : Theory LA
 | q1 : robinson ∀₁ x, 0 ≄ Succ x
 | q2 : robinson ∀₁ x, ∀₁ y, ((Succ x ≃ Succ y) ⟶ (x ≃ y))
 | q3 : robinson ∀₁ x, ((x ≃ 0) ⊔ ∃₁ y, x ≃ Succ y)
@@ -94,7 +95,7 @@ inductive robinson : theory LA
 
 notation `𝐐` := robinson
 
-instance : closed_theory 𝐐 := ⟨λ p h, by cases h; simp[is_sentence, lrarrow_def, formula.ex, formula.and, fal_fn, ex_fn]⟩
+instance : closed_Theory 𝐐 := ⟨λ p h, by cases h; simp[is_sentence, lrarrow_def, formula.ex, formula.and, fal_fn, ex_fn]⟩
 
 namespace additional
 
@@ -111,7 +112,7 @@ instance addditional_predicate : additional.predicate := ⟨λ n, pempty.is_empt
   df_pr := @df_pr,
   hdf_pr := λ n r, by rcases r; simp[df_pr, numeral_one_def] }
 
-variables [LA'.language_translation_coe L] (T : theory L) [lextend defs.thy T] {i : ℕ}
+variables [LA'.language_translation_coe L] (T : Theory L) [lextend defs.thy T] {i : ℕ}
 
 @[simp] lemma thy.lt (x y) : T ⊢ (x ≺ y) ⟷ (x ≼ y) ⊓ (x ≄ y) :=
 by simpa[fal_fn] using defs.pr' T additional_pr.lt ‹x, y›
@@ -160,21 +161,21 @@ def test (p : formula L) : formula L := p.rew (0 ⌢ ı)
 
 @[simp] lemma succ_induction_sentence (p : formula L) : is_sentence (succ_induction p) := by simp[succ_induction]
 
-def succ_induction_axiom (C : theory LA) : theory LA := 𝐐 ∪ (succ_induction '' C)
+def succ_induction_axiom (C : Theory LA) : Theory LA := 𝐐 ∪ (succ_induction '' C)
 
 prefix `𝐈`:max := succ_induction_axiom
 
-@[reducible] def peano : theory LA := 𝐈set.univ
+@[reducible] def peano : Theory LA := 𝐈set.univ
 
 notation `𝐏𝐀` := peano
 
-instance {C : theory LA} : closed_theory 𝐈C := 
-⟨λ p h, by { rcases h with (h | ⟨p, hp, rfl⟩), { refine closed_theory.cl h }, { simp[succ_induction] } }⟩
+instance {C : Theory LA} : closed_Theory 𝐈C := 
+⟨λ p h, by { rcases h with (h | ⟨p, hp, rfl⟩), { refine closed_Theory.cl h }, { simp[succ_induction] } }⟩
 
 def collection (p : formula L) : formula L :=
   ∀₁ u, (∀₁ x ≼ᵇ u, ∃₁ y, p.rew ı-{2}) ⟶ (∃₁ v, ∀₁ x ≼ᵇ u, ∃₁ y ≼ᵇ v, p.rew ı-{2}-{2})
 
-def collection_axiom (C : theory LA) : theory LA := 𝐐 ∪ (collection '' C)
+def collection_axiom (C : Theory LA) : Theory LA := 𝐐 ∪ (collection '' C)
 
 prefix `𝐁`:max := collection_axiom
 
@@ -185,7 +186,7 @@ variables [LA'.language_translation_coe L]
 
 def order_induction (p : formula L) : formula L := (∀₁ x, ((∀₁ y ≺ᵇ x, p.rew ı-{1}) ⟶ p)) ⟶ ∀₁ x, p
 
-def order_induction_axiom (C : theory LA') : theory LA' := ↑𝐐 ∪ (order_induction '' C)
+def order_induction_axiom (C : Theory LA') : Theory LA' := ↑𝐐 ∪ (order_induction '' C)
 
 prefix `𝐈′`:max := order_induction_axiom
 
@@ -193,25 +194,25 @@ end
 
 @[simp] lemma Q_ss_I {C} : 𝐐 ⊆ 𝐈C := by simp[succ_induction_axiom]
 
-instance extend_Q_I (C : theory LA) : extend 𝐐 𝐈C := ⟨λ p h, weakening Q_ss_I h⟩
+instance extend_Q_I (C : Theory LA) : extend 𝐐 𝐈C := ⟨λ p h, weakening Q_ss_I h⟩
 
-instance extend_ax₁ (C : theory LA) (p : formula LA) : extend 𝐐 (𝐈C +{ p }) :=
-theory.extend_of_inclusion (λ p mem, by simp[Q_ss_I mem])
+instance extend_ax₁ (C : Theory LA) (p : formula LA) : extend 𝐐 (𝐈C +{ p }) :=
+Theory.extend_of_inclusion (λ p mem, by simp[Q_ss_I mem])
 
-instance extend_ax₂ (C : theory LA) (p q : formula LA) : extend 𝐐 (𝐈C +{ p }+{ q }) :=
-theory.extend_of_inclusion (λ p mem, by simp[Q_ss_I mem])
+instance extend_ax₂ (C : Theory LA) (p q : formula LA) : extend 𝐐 (𝐈C +{ p }+{ q }) :=
+Theory.extend_of_inclusion (λ p mem, by simp[Q_ss_I mem])
 
-instance extend_ax₃ (C : theory LA) (p q r : formula LA) : extend 𝐐 (𝐈C +{ p }+{ q }+{ r }) :=
-theory.extend_of_inclusion (λ p mem, by simp[Q_ss_I mem])
+instance extend_ax₃ (C : Theory LA) (p q r : formula LA) : extend 𝐐 (𝐈C +{ p }+{ q }+{ r }) :=
+Theory.extend_of_inclusion (λ p mem, by simp[Q_ss_I mem])
 
-instance extend_ax₄ (C : theory LA) (p q r s : formula LA) : extend 𝐐 (𝐈C +{ p }+{ q }+{ r }+{ s }) :=
-theory.extend_of_inclusion (λ p mem, by simp[Q_ss_I mem])
+instance extend_ax₄ (C : Theory LA) (p q r s : formula LA) : extend 𝐐 (𝐈C +{ p }+{ q }+{ r }+{ s }) :=
+Theory.extend_of_inclusion (λ p mem, by simp[Q_ss_I mem])
 
 end Ind
 
 namespace robinson
 open Herbrand Lindenbaum provable
-variables {L} [LA.language_translation_coe L] (Q : theory L) [lextend 𝐐 Q] (i : ℕ)
+variables {L} [LA.language_translation_coe L] (Q : Theory L) [lextend 𝐐 Q] (i : ℕ)
 
 @[simp] lemma zero_ne_succ (t : term L) : Q ⊢ 0 ≄ Succ t :=
 by { have : Q ⊢ ∀₁ x, 0 ≄ Succ x, by simpa[fal_fn] using provable.lextend (by_axiom robinson.q1) Q,
@@ -408,13 +409,13 @@ begin
   induction n with n IH,
   { intros k, refine generalize _, simp[Lindenbaum.eq_of_provable_equiv_0], exact Lindenbaum.le_zero_eq_eq_zero _ _ _ },
   { intros k, refine generalize _,
-    simp[←theory.sf_itr_succ, iff_equiv, -sup_disjunction], split,
+    simp[←Theory.sf_itr_succ, iff_equiv, -sup_disjunction], split,
     { have zero : Q^(k + 1) ⊢ (#0 ≃ 0) ⟶ (#0 ≼ (n + 1)˙) ⟶ ⋁ (i : fin (n.succ + 1)), #0 ≃ ↑i˙,
       { refine (deduction.mp $ deduction.mp $ imply_or_right _ _ ⨀ (rew_of_eq 0 0 (by simp) _)), 
         simp, refine disjunction_of ⟨0, by simp⟩ (by simp[numeral]) },
       have succ : Q^(k + 1) ⊢ (∃₁ y, #1 ≃ Succ y) ⟶ (#0 ≼ (n + 1)˙) ⟶ ⋁ (i : fin (n.succ + 1)), #0 ≃ ↑i˙,
       { refine (imply_ex_of_fal_imply $ generalize $ deduction.mp $ rew_of_eq (Succ #0) 1 (by simp) (deduction.mp _)),
-        simp[ -sup_disjunction, ←theory.sf_itr_succ], 
+        simp[ -sup_disjunction, ←Theory.sf_itr_succ], 
         have : (Q^(k + 2)) +{ #1 ≃ Succ #0 } +{ Succ #0 ≼ (n + 1)˙ } ⊢ #0 ≼ n˙,
           from of_equiv_p (show _ ⊢ Succ #0 ≼ (n + 1)˙, by simp) (by simp[numeral, Lindenbaum.eq_of_provable_equiv_0]), 
         have lmm₁ : (Q^(k + 2)) +{ #1 ≃ Succ #0 } +{ Succ #0 ≼ (n + 1)˙ } ⊢ ⋁ (i : fin (n + 1)), #0 ≃ ↑i˙,
@@ -438,9 +439,9 @@ end robinson
 
 namespace Ind
 open Herbrand Lindenbaum robinson.Lindenbaum provable
-variables (C : theory LA)
-          {L} [LA.language_translation_coe L] (T : theory L) [lextend 𝐈C T]
-          {L'} [LA'.language_translation_coe L'] (T' : theory L') [lextend 𝐈C T']
+variables (C : Theory LA)
+          {L} [LA.language_translation_coe L] (T : Theory L) [lextend 𝐈C T]
+          {L'} [LA'.language_translation_coe L'] (T' : Theory L') [lextend 𝐈C T']
 
 lemma I_succ_induction_aux (p : formula LA) (h : p ∈ C) :
   T ⊢ succ_induction p :=
@@ -451,7 +452,7 @@ lemma I_succ_induction (p : formula LA) (h : p ∈ C) :
   T ⊢ p.rew (0 ⌢ ı) ⟶ ∏ (p ⟶ p.rew ((Succ #0) ⌢ (λ x, #(x+1)))) ⟶ ∏ p :=
 by simpa using provable.fal_complete_rew _ ı ⨀ (I_succ_induction_aux C T p h)
 
-lemma equiv_succ_induction_of_equiv {T₀ : theory L} [closed_theory T₀] {p q : formula L} (h : T₀ ⊢ p ⟷ q) :
+lemma equiv_succ_induction_of_equiv {T₀ : Theory L} [closed_Theory T₀] {p q : formula L} (h : T₀ ⊢ p ⟷ q) :
   T₀ ⊢ succ_induction p ⟷ succ_induction q :=
 begin
   refine (equiv_fal_complete_of_equiv _), simp,
@@ -489,11 +490,11 @@ end Ind
 
 namespace Iopen
 open Lindenbaum Herbrand additional robinson Ind robinson.Lindenbaum provable
-variables {L} [LA.language_translation_coe L] (Iₒₚₑₙ : theory L) [lextend 𝐈is_open Iₒₚₑₙ] (i : ℕ)
-          {L'} [LA'.language_translation_coe L'] (Iₒₚₑₙ' : theory L') [lextend 𝐈is_open Iₒₚₑₙ']
+variables {L} [LA.language_translation_coe L] (Iₒₚₑₙ : Theory L) [lextend 𝐈is_open Iₒₚₑₙ] (i : ℕ)
+          {L'} [LA'.language_translation_coe L'] (Iₒₚₑₙ' : Theory L') [lextend 𝐈is_open Iₒₚₑₙ']
           [lextend additional.defs.thy Iₒₚₑₙ']
 
-instance lextend_Q : lextend 𝐐 Iₒₚₑₙ := theory.lextend_trans 𝐐 𝐈is_open Iₒₚₑₙ
+instance lextend_Q : lextend 𝐐 Iₒₚₑₙ := Theory.lextend_trans 𝐐 𝐈is_open Iₒₚₑₙ
 
 lemma I_succ_induction_LA (p : formula LA') (h : formula.coe_inv_is_open defs p):
   Iₒₚₑₙ' ⊢ p.rew (0 ⌢ ı) ⟶ ∏ (p ⟶ p.rew ((Succ #0) ⌢ (λ x, #(x+1)))) ⟶ ∏ p :=
@@ -911,6 +912,7 @@ begin
   refine (generalize $ generalize _), simp[fal_fn], exact ind ⨀ zero ⨀ succ
 end
 
+#check 0  /-
 lemma mul_right_cancel_of_nonzero_aux : Iₒₚₑₙ' ⊢ ∀₁ x y z, (z ≄ 0) ⟶ (x * z ≃ y * z) ⟶ (x ≃ y) :=
 begin
   refine (generalize $ generalize $ generalize _), simp[fal_fn],
@@ -920,9 +922,9 @@ begin
   have := (lt_mul_of_nonzero_of_lt (Iₒₚₑₙ'^3)),
 
   simp[fal_fn] at this,
-  have orl : Iₒₚₑₙ ⊢ (#1 ≼ #2) ⟶ ⁻(#0 ≃ 0) ⟶ ⁻(#2 ≃ #1) ⟶ ⁻(#2 * #0 ≃ #1 * #0),
+  have orl : Iₒₚₑₙ' ⊢ (#1 ≼ #2) ⟶ ⁻(#0 ≃ 0) ⟶ ⁻(#2 ≃ #1) ⟶ ⁻(#2 * #0 ≃ #1 * #0),
   { refine (deduction.mp $ deduction.mp $ deduction.mp $ ne_symm _),
-    have : Iₒₚₑₙ +{ #1 ≼ #2 } +{ #0 ≄ 0 } +{ #2 ≄ #1 } ⊢ _, from provable.extend (this ⊚ #1 ⊚ #2 ⊚ #0), 
+    have : Iₒₚₑₙ' +{ #1 ≼ #2 } +{ #0 ≄ 0 } +{ #2 ≄ #1 } ⊢ _, { have h := (this ⊚ #1 ⊚ #2 ⊚ #0),  }, 
     have := this ⨀ (by {simp[lessthan_def, fal_fn], refine ne_symm (by simp) }) ⨀ (by simp[fal_fn]),
     simp[lessthan_def, fal_fn] at this, exact this.2 },
   have orr : Iₒₚₑₙ ⊢ (#2 ≼ #1) ⟶ ⁻(#0 ≃ 0) ⟶ ⁻(#2 ≃ #1) ⟶ ⁻(#2 * #0 ≃ #1 * #0),
@@ -953,7 +955,7 @@ begin
   refine (generalize $ use 0 _), 
   simp[Herbrand.eq_of_provable_equiv_0]
 end
-#check 0  /--//--//--//--/
+
 lemma divides_trans : Iₒₚₑₙ ⊢ ∀₁ x y z, (x ⍭ y) ⟶ (y ⍭ z) ⟶ (x ⍭ z) :=
 begin
   simp[divides_def, fal_fn],
@@ -964,9 +966,9 @@ begin
   show Iₒₚₑₙ +{ #1 * #5 ≃ #4 } +{ #0 * #4 ≃ #3 } ⊢ #0 * #1 * #5 ≃ #3,
   simp[Herbrand.eq_of_provable_equiv_0, rew_by_axiom₁_inv, rew_by_axiom₂_inv, mul_assoc]
 end
-
+-/
 end Iopen
-/--/ₒ
+/-ₒ
 def 
 
 
@@ -985,7 +987,7 @@ end
 
 
 
-def Ind {C : theory LA} : Lindenbaum 𝐈C 1 → Prop := λ l, ∃ p, p ∈ C ∧ l = ⟦p⟧ᴸ
+def Ind {C : Theory LA} : Lindenbaum 𝐈C 1 → Prop := λ l, ∃ p, p ∈ C ∧ l = ⟦p⟧ᴸ
 
 lemma Ind_mem (p : formula LA) : Ind (⟦p⟧ᴸ : Lindenbaum 𝐈C 1) → (⟦peano_induction p⟧ᴸ : Lindenbaum 𝐈C 0) = ⊤ :=
 begin
@@ -1034,8 +1036,8 @@ begin
   simp[eqn] at this, exact this
 end
 
-def Lindenbaum.bd_fal {T : theory LA} (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : Lindenbaum T i := ∏ ((♯0 ≼ h.pow)ᶜ ⊔ l)
-def Lindenbaum.bd_ex {T : theory LA} (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : Lindenbaum T i := ∐ ((♯0 ≼ h.pow) ⊓ l)
+def Lindenbaum.bd_fal {T : Theory LA} (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : Lindenbaum T i := ∏ ((♯0 ≼ h.pow)ᶜ ⊔ l)
+def Lindenbaum.bd_ex {T : Theory LA} (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : Lindenbaum T i := ∐ ((♯0 ≼ h.pow) ⊓ l)
 
 notation `∏_{≼ `:95 h `} ` l :90 := Lindenbaum.bd_fal l h 
 notation `∐_{≼ `:95 h `} ` l :90 := Lindenbaum.bd_ex l h 
@@ -1080,6 +1082,7 @@ begin
 end
 
 end bd_peano
+-/
 end arithmetic
 
 end fol
