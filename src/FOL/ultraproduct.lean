@@ -186,8 +186,8 @@ theorem fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|),
       have : {i | 𝔄 i ⊧[e i] p} ∩ {i | 𝔄 i ⊧[e i] p → 𝔄 i ⊧[e i] q} ⊆ {i | 𝔄 i ⊧[e i] q},
       { intros i hi, simp at*, refine hi.2 hi.1 },
       exact filter.mp_mem h₂ h₁ } }
-| (⁻p)          e := by { simp[fundamental_param p], exact ultrafilter.eventually_not.symm }
-| (∏ p)          e := by { simp, 
+| (∼p)          e := by { simp[fundamental_param p], exact ultrafilter.eventually_not.symm }
+| (∀.p)          e := by { simp, 
     calc
       (∀ u, ℿ 𝔄 ⫽ F ⊧[u ⌢ λ n, ⟦λ i, e i n⟧*] p)
           ↔ (∀ (u : Π i, |𝔄 i|), ℿ 𝔄 ⫽ F ⊧[λ n, ⟦λ i, (λ i, (u i) ⌢ (e i)) i n⟧*] p) :
@@ -201,7 +201,7 @@ theorem fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|),
         by { split,
              { contrapose,
                simp[←ultrafilter.compl_mem_iff_not_mem, set.compl_def], intros h,
-               show ∃ (u : Π i, |𝔄 i|), {i | ¬𝔄 i ⊧[u i ⌢ e i] p} ∈ F, from Structure_exists (⁻p) h },
+               show ∃ (u : Π i, |𝔄 i|), {i | ¬𝔄 i ⊧[u i ⌢ e i] p} ∈ F, from Structure_exists (∼p) h },
              { refine λ h u, F.sets_of_superset h (λ _ _ , by simp* at*) } } }
 
 theorem fundamental {p : formula L} :

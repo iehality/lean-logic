@@ -15,19 +15,19 @@ variables (T : Theory F)
 
 def mk (S : set F) : Theory F := S
 
-def consistent : Prop := ¬∃p : F, (T ⊢ p) ∧ (T ⊢ ⁻p)
+def consistent : Prop := ¬∃p : F, (T ⊢ p) ∧ (T ⊢ ∼p)
 
 class Consistent (T : Theory F) :=
 (consis : consistent T)
 
-lemma consistent_def : consistent T ↔ ¬∃p : F, (T ⊢ p) ∧ (T ⊢ ⁻p) := by refl
+lemma consistent_def : consistent T ↔ ¬∃p : F, (T ⊢ p) ∧ (T ⊢ ∼p) := by refl
 
 open axiomatic_classical_logic axiomatic_classical_logic'
 variables {T}
 
 lemma consistent_iff_bot : consistent T ↔ ¬T ⊢ ⊥ :=
-⟨by { simp[consistent_def], intros h A, have : ¬T ⊢ ⁻⊤, from h ⊤ (by simp), 
-      have : T ⊢ ⁻⊤, from of_equiv A (by simp), contradiction },
+⟨by { simp[consistent_def], intros h A, have : ¬T ⊢ ∼⊤, from h ⊤ (by simp), 
+      have : T ⊢ ∼⊤, from of_equiv A (by simp), contradiction },
  by { intros h, simp[consistent_def], intros p hp hnp,
       have : T ⊢ ⊥, from explosion hp hnp,
       exact h this }⟩
@@ -35,7 +35,7 @@ lemma consistent_iff_bot : consistent T ↔ ¬T ⊢ ⊥ :=
 lemma not_consistent_iff_bot : ¬consistent T ↔ T ⊢ ⊥ :=
 by simp[consistent_iff_bot]
 
-lemma not_consistent_iff : ¬consistent T ↔ ∃p : F, (T ⊢ p) ∧ (T ⊢ ⁻p) :=
+lemma not_consistent_iff : ¬consistent T ↔ ∃p : F, (T ⊢ p) ∧ (T ⊢ ∼p) :=
 by simp[consistent_def]
 
 instance : has_le (Theory F) := ⟨λ T U, ∀ ⦃p : F⦄, T ⊢ p → U ⊢ p⟩

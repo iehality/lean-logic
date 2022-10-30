@@ -81,9 +81,9 @@ instance lextend_of_extend [extend T₁ U₁] : lextend T₁ U₁ := ⟨lle_of_l
 
 instance lextend_sf [lextend T₁ T₂] : lextend (⤊T₁) (⤊T₂) :=
 ⟨λ p h, by {
-  have : T₁ ⊢ ∏ p, from h.generalize,
-  have : T₂ ⊢ ∏ p, from provable.lextend this T₂,
-  have : ⤊T₂ ⊢ (∏ p)^1, from provable.sf_sf.mpr this,
+  have : T₁ ⊢ ∀.p, from h.generalize,
+  have : T₂ ⊢ ∀.p, from provable.lextend this T₂,
+  have : ⤊T₂ ⊢ (∀.p)^1, from provable.sf_sf.mpr this,
   simpa[formula.nested_rew] using this ⊚ #0 }⟩
 
 instance lextend_pow [ex : lextend T₁ T₂] (k : ℕ) : lextend (T₁^k) (T₂^k) :=
@@ -133,7 +133,7 @@ variables {L₁ L₂} (D : L₁.definitions L₂) [language_translation_coe (L�
 
 @[simp] lemma language.definitions.fn' {n} (f : L₂.fn n) (v : finitary (term L₃) n) :
   T ⊢ (D.df_fn f : formula L₃).rew (term.app ((coe : (L₁ + L₂).fn n → L₃.fn n) (sum.inr f)) v ⌢ of_fin v) :=
-by { have : T ⊢ ∏[n] (D.df_fn f : formula L₃).rew ı[0 ⇝ term.app ↑(sum.inr f)  (λ i, #i)],
+by { have : T ⊢ ∀.[n] (D.df_fn f : formula L₃).rew ı[0 ⇝ term.app ↑(sum.inr f)  (λ i, #i)],
        by simpa using provable.lextend (axiomatic_classical_logic'.by_axiom (language.definitions.mem_fn D f)) T,
      have := provable.nfal_subst'_finitary this v,
      simp[formula.nested_rew] at this,
@@ -141,7 +141,7 @@ by { have : T ⊢ ∏[n] (D.df_fn f : formula L₃).rew ı[0 ⇝ term.app ↑(su
 
 @[simp] lemma language.definitions.pr' {n} (r : L₂.pr n) (v : finitary (term L₃) n) :
   T ⊢ app ((coe : (L₁ + L₂).pr n → L₃.pr n) (sum.inr r)) v ⟷ (D.df_pr r : formula L₃).rew (of_fin v) :=
-by { have : T ⊢ ∏[n] ❴↑(sum.inr r)❵ (λ i, #i) ⟷ ↑(D.df_pr r),
+by { have : T ⊢ ∀.[n] ❴↑(sum.inr r)❵ (λ i, #i) ⟷ ↑(D.df_pr r),
        by simpa using provable.lextend (axiomatic_classical_logic'.by_axiom (language.definitions.mem_pr D r)) T,
      simpa using provable.nfal_subst'_finitary this v }
 

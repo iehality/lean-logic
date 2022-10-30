@@ -110,12 +110,12 @@ by { simp[consts_to_var], exact list.index_of_lt_length.mpr mem }
 | b ((t₁ : term (L + consts C)) ≃ t₂)  := elim_aux_t Γ b t₁ ≃ elim_aux_t Γ b t₂
 | b ⊤                                  := ⊤
 | b (p ⟶ q)                            := elim_aux_f b p ⟶ elim_aux_f b q
-| b (⁻p)                               := ⁻elim_aux_f b p
-| b (∏ p)                              := ∏ elim_aux_f (b + 1) p
+| b (∼p)                               := ∼elim_aux_f b p
+| b (∀.p)                              := ∀.elim_aux_f (b + 1) p
 
 def var_to_consts : ℕ → term (consts C) := λ n, if h : n < Γ.length then Γ.nth_le n h else #(n - Γ.length)
 
-def formula_elim : formula (L + consts C) → formula L := λ p, ∏[Γ.length] elim_aux_f Γ 0 p
+def formula_elim : formula (L + consts C) → formula L := λ p, ∀.[Γ.length] elim_aux_f Γ 0 p
 
 @[simp] lemma term_elim_coe : ∀ (t : term L),
   elim_aux_t Γ b (t : term (L + consts C)) = t.rew (λ x, if x < b then #x else #(Γ.length + x))
@@ -128,8 +128,8 @@ lemma formula_elim_coe : ∀ (b : ℕ) (p : formula L),
 | b (equal t u) := by simp
 | b ⊤ := by simp
 | b (p ⟶ q) := by simp[formula_elim_coe b p, formula_elim_coe b q]
-| b (⁻p) := by simp[formula_elim_coe b p]
-| b (∏ p) := by { simp[formula_elim_coe (b + 1) p], 
+| b (∼p) := by simp[formula_elim_coe b p]
+| b (∀.p) := by { simp[formula_elim_coe (b + 1) p], 
     have : (λ x, ite (x < b) #x #(Γ.length + x) : ℕ → term L)^1 = (λ x, ite (x < b + 1) #x #(Γ.length + x)),
     { funext x, simp[rewriting_sf_itr.pow_eq'],
       rcases x; simp[←nat.add_one], by_cases C : x < b; simp[C, nat.add_assoc] },
@@ -297,9 +297,9 @@ begin
   refine proof.rec''_on C k' p' B' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _,
   { rintros k p B IH hΓ T rfl,
     simp[formula_elim] at IH ⊢,
-    have : T^k ⊢ ∏ formula_elim Γ p, from (generalize (IH (λ t h, hΓ t (by simp[h])) T rfl)),
-    have : T^k ⊢ ∏[Γ.length + 1] elim_aux_f Γ 0 p, from this,
-    have : T^k ⊢ ∏[Γ.length + 1] (elim_aux_f Γ 0 p).rew (shifting Γ 0),
+    have : T^k ⊢ ∀.formula_elim Γ p, from (generalize (IH (λ t h, hΓ t (by simp[h])) T rfl)),
+    have : T^k ⊢ ∀.[Γ.length + 1] elim_aux_f Γ 0 p, from this,
+    have : T^k ⊢ ∀.[Γ.length + 1] (elim_aux_f Γ 0 p).rew (shifting Γ 0),
     { have := provable.nfal_rew (λ x, if x = Γ.length + 0 then #0 else if 0 ≤ x then #(x + 1) else #x) ⨀ this,
       simp only [nat.lt_succ_iff] at this, exact this },
     simp[elim_aux_f_rew 0 p (λ t h, hΓ t (by { simp, exact proof.mem_trans h (by simp) }))] at this,
@@ -310,11 +310,11 @@ begin
     simp[formula_elim] at IH₁ IH₂ ⊢,
     exact (provable.nfal_K _ _ _ ⨀ IH₁ ⨀ IH₂) },
   { rintros k p mem hΓ T rfl, simp[formula_elim] at mem ⊢, 
-    have : T^k ⊢ ∏[Γ.length] elim_aux_f Γ 0 p,
+    have : T^k ⊢ ∀.[Γ.length] elim_aux_f Γ 0 p,
     { have : ∃ (p' ∈ T), p = ↑p' ^ k, from Theory_mem_coe_pow_iff.mp mem, rcases this with ⟨p, p_mem, rfl⟩,
       rw ← coe_pow_formula, simp[-coe_pow_formula],
-      show T^k ⊢ ∏[Γ.length] (p ^ k) ^ Γ.length,
-      have lmm₁ : T^k ⊢ p^k ⟶ (∏[Γ.length] (p^k)^Γ.length), from (axiomatic_classical_logic'.iff_equiv.mp nfal_pow_equiv_self).2, 
+      show T^k ⊢ ∀.[Γ.length] (p ^ k) ^ Γ.length,
+      have lmm₁ : T^k ⊢ p^k ⟶ (∀.[Γ.length] (p^k)^Γ.length), from (axiomatic_classical_logic'.iff_equiv.mp nfal_pow_equiv_self).2, 
       have lmm₂ : T^k ⊢ p^k, exact sf_itr_sf_itr.mpr (by_axiom' p_mem),
       exact lmm₁ ⨀ lmm₂ },
     exact this },
@@ -353,10 +353,10 @@ theorem provable_iff {T : Theory L} {p : formula L} :
   ↑T ⊢ (↑p : formula (L + consts C)) ↔ T ⊢ p:=
 ⟨begin
   rintros ⟨b⟩,
-  have lmm₁ : T ⊢ ∏[(consts_of b).length] p^(consts_of b).length,
+  have lmm₁ : T ⊢ ∀.[(consts_of b).length] p^(consts_of b).length,
   { have := provable_formula_elim_of_proof b, 
     simp[formula_elim] at this, exact this },
-  have lmm₂ : T ⊢ (∏[(consts_of b).length] p^(consts_of b).length) ⟶ p, from (axiomatic_classical_logic'.iff_equiv.mp nfal_pow_equiv_self).1,
+  have lmm₂ : T ⊢ (∀.[(consts_of b).length] p^(consts_of b).length) ⟶ p, from (axiomatic_classical_logic'.iff_equiv.mp nfal_pow_equiv_self).1,
   exact lmm₂ ⨀ lmm₁
 end, provability⟩
 
@@ -394,10 +394,10 @@ by { simp[consts_to_var], exact list.index_of_lt_length.mpr mem }
 | b ((t₁ : term (L + consts C)) ≃ t₂)  := pelim_aux_t Γ b t₁ ≃ pelim_aux_t Γ b t₂
 | b ⊤                                  := ⊤
 | b (p ⟶ q)                            := pelim_aux_f b p ⟶ pelim_aux_f b q
-| b (⁻p)                               := ⁻pelim_aux_f b p
-| b (∏ p)                              := ∏ pelim_aux_f (b + 1) p
+| b (∼p)                               := ∼pelim_aux_f b p
+| b (∀.p)                              := ∀.pelim_aux_f (b + 1) p
 
-def formula_elim : formula (L + consts C) → formula (L + consts C) := λ p, ∏[Γ.length] pelim_aux_f Γ 0 p
+def formula_elim : formula (L + consts C) → formula (L + consts C) := λ p, ∀.[Γ.length] pelim_aux_f Γ 0 p
 
 private lemma pelim_aux_t_pow_aux (t : term (L + consts C)) (i s k : ℕ) (le : s ≤ i) :
   pelim_aux_t Γ (i + k) (t.rew ((λ x, #(x + k))^s)) = (pelim_aux_t Γ i t).rew ((λ x, #(x + k)) ^ s) :=
@@ -537,7 +537,7 @@ by { have := pelimination_eq_pow_aux_of_disjoint Γ p h 0, simp at this,
      simp[formula.pow_eq, show ∀ x, x + Γ.length = Γ.length + x, from λ x, add_comm _ _], exact this }
 
 theorem provable_pelimination_of_disjoint (T : Theory (L + consts C)) (p : formula (L + consts C))
-  (disj : ∀ p ∈ T, disjoint Γ p) : T ⊢ p → T ⊢ ∏[Γ.length] (pelimination' Γ).p 0 p := λ b,
+  (disj : ∀ p ∈ T, disjoint Γ p) : T ⊢ p → T ⊢ ∀.[Γ.length] (pelimination' Γ).p 0 p := λ b,
 begin
   have lmm₁ : tr_Theory (pelimination Γ) 0 T ⊢ (pelimination Γ) 0 p, from translation.provability (pelimination Γ) T p 0 b,
   have : tr_Theory (pelimination Γ) 0 T = T^Γ.length,

@@ -15,7 +15,7 @@ variables {A} (S : Structure A)
 | (atom a) := S.val a
 | ⊤        := true
 | (p ⟶ q) := p.val → q.val
-| (⁻p)     := ¬p.val
+| (∼p)     := ¬p.val
 
 instance : semantics (formula A) (Structure A) := ⟨λ S p, p.val S⟩
 
@@ -52,7 +52,7 @@ variables {S}
 @[simp] lemma models_imply {p q : formula A} : S ⊧ p ⟶ q ↔ (S ⊧ p → S ⊧ q) :=
 by refl
 
-@[simp] lemma models_not {p : formula A} : S ⊧ ⁻p ↔ ¬S ⊧ p :=
+@[simp] lemma models_not {p : formula A} : S ⊧ ∼p ↔ ¬S ⊧ p :=
 by refl
 
 end Structure

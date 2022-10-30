@@ -13,7 +13,7 @@ inductive proof : Theory A → formula A → Type u
 | verum : ∀ {T}, proof T ⊤
 | imply₁ : ∀ {T p q}, proof T (p ⟶ q ⟶ p)
 | imply₂ : ∀ {T p q r}, proof T ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r)
-| contraposition : ∀ {T p q}, proof T ((⁻p ⟶ ⁻q) ⟶ q ⟶ p)
+| contraposition : ∀ {T p q}, proof T ((∼p ⟶ ∼q) ⟶ q ⟶ p)
 
 def provable (T : Theory A) (p : formula A) : Prop := nonempty (proof T p)
 
@@ -39,7 +39,7 @@ theorem rec'_on {T : Theory A} {C : formula A → Prop} {p : formula A} (b : T �
   (p0 : C ⊤)
   (p1 : ∀ {p q : formula A}, C (p ⟶ q ⟶ p))
   (p2 : ∀ {p q r : formula A}, C ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r))
-  (p3 : ∀ {p q : formula A}, C ((⁻p ⟶ ⁻q) ⟶ q ⟶ p)) :
+  (p3 : ∀ {p q : formula A}, C ((∼p ⟶ ∼q) ⟶ q ⟶ p)) :
   C p :=
 begin
   rcases b with ⟨b⟩,

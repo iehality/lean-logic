@@ -318,8 +318,8 @@ variables {T} {i}
 
 instance : boolean_algebra (Lindenbaum T i) := axiomatic_classical_logic.lindenbaum.boolean_algebra _
 
-@[simp] lemma neg_eq (p : formula L) : (⟦⁻p⟧ᴸ : Lindenbaum T i) = ⟦p⟧ᴸᶜ := rfl
-lemma neg_def (p : formula L) : (⟦p⟧ᴸᶜ : Lindenbaum T i) = ⟦⁻p⟧ᴸ := rfl
+@[simp] lemma neg_eq (p : formula L) : (⟦∼p⟧ᴸ : Lindenbaum T i) = ⟦p⟧ᴸᶜ := rfl
+lemma neg_def (p : formula L) : (⟦p⟧ᴸᶜ : Lindenbaum T i) = ⟦∼p⟧ᴸ := rfl
 
 @[simp] lemma and_eq (p q : formula L) : (⟦p ⊓ q⟧ᴸ : Lindenbaum T i) = ⟦p⟧ᴸ ⊓ ⟦q⟧ᴸ := rfl
 lemma inf_def (p q : formula L) : (⟦p⟧ᴸ ⊓ ⟦q⟧ᴸ : Lindenbaum T i) = ⟦p ⊓ q⟧ᴸ := rfl
@@ -408,24 +408,24 @@ eq.symm (abberavation₂_def T i f t u)
 end
 
 def univ : Lindenbaum T (i+1) → Lindenbaum T i :=
-λ p, classical_logic.lindenbaum.lift_on p (λ p, (⟦∏ p⟧ᴸ : Lindenbaum T i)) $
+λ p, classical_logic.lindenbaum.lift_on p (λ p, (⟦∀.p⟧ᴸ : Lindenbaum T i)) $
 λ p₁ p₂ hyp, by simp at hyp ⊢; exact equiv_univ_of_equiv hyp
 
 instance : has_univ_quantifier' (Lindenbaum T (i + 1)) (Lindenbaum T i) := ⟨univ⟩
 
-@[simp] lemma univ_eq (p : formula L) : ⟦∏ p⟧ᴸ = (∏' (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) := rfl
+@[simp] lemma univ_eq (p : formula L) : ⟦∀.p⟧ᴸ = (∀' (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) := rfl
 
-lemma univ_def (p : formula L) : (∏' (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⟦∏ p⟧ᴸ := rfl
+lemma univ_def (p : formula L) : (∀' (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⟦∀.p⟧ᴸ := rfl
 
 def exist : Lindenbaum T (i+1) → Lindenbaum T i :=
-λ p, classical_logic.lindenbaum.lift_on p (λ p, (⟦∐ p⟧ᴸ : Lindenbaum T i)) $
+λ p, classical_logic.lindenbaum.lift_on p (λ p, (⟦∃.p⟧ᴸ : Lindenbaum T i)) $
 λ p₁ p₂ hyp, by simp at hyp ⊢; exact equiv_ex_of_equiv hyp
 
 instance : has_exists_quantifier' (Lindenbaum T (i + 1)) (Lindenbaum T i) := ⟨exist⟩
 
-@[simp] lemma exist_eq (p : formula L) : ⟦∐ p⟧ᴸ = (∐' (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) := rfl
+@[simp] lemma exist_eq (p : formula L) : ⟦∃.p⟧ᴸ = (∃' (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) := rfl
 
-lemma exist_def (p : formula L) : (∐' (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⟦∐ p⟧ᴸ := rfl
+lemma exist_def (p : formula L) : (∃' (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⟦∃.p⟧ᴸ := rfl
 
 @[simp] lemma equal_refl {h : Herbrand T i}  : h ≃ᴸ h = ⊤ :=
 by { induction h using fol.Herbrand.ind_on;
@@ -468,38 +468,38 @@ by { induction l using classical_logic.lindenbaum.ind_on,
      induction m using classical_logic.lindenbaum.ind_on,
      simp[inf_def, pow_def, -pow_eq, -and_eq] }
 
-@[simp] lemma prod_top : (∏' (⊤ : Lindenbaum T (i+1)) : Lindenbaum T i) = ⊤ :=
+@[simp] lemma prod_top : (∀' (⊤ : Lindenbaum T (i+1)) : Lindenbaum T i) = ⊤ :=
 by { simp only [←top_eq, ←univ_eq],
      simp[-top_eq, -univ_eq, axiomatic_classical_logic'.iff_equiv],
      apply provable.generalize, simp }
 
-lemma prenex_ex_neg (l : Lindenbaum T (i+1)) : (∐' l : Lindenbaum T i)ᶜ = ∏' lᶜ :=
+lemma prenex_ex_neg (l : Lindenbaum T (i+1)) : (∃' l : Lindenbaum T i)ᶜ = ∀' lᶜ :=
 by { induction l using classical_logic.lindenbaum.ind_on,
      simp only [neg_def, exist_def, univ_def],
      simp[-neg_eq, -exist_eq, -univ_eq, -axiomatic_classical_logic'.iff_equiv,
           has_exists_quantifier.ex, formula.ex] }
 
-lemma prenex_fal_neg (l : Lindenbaum T (i+1)) : (∏' l : Lindenbaum T i)ᶜ = ∐' lᶜ :=
+lemma prenex_fal_neg (l : Lindenbaum T (i+1)) : (∀' l : Lindenbaum T i)ᶜ = ∃' lᶜ :=
 by { have := prenex_ex_neg lᶜ, simp[-prenex_ex_neg] at this, simp[←this] }
 
 lemma prenex_fal_or_left {l : Lindenbaum T (i+1)} {k : Lindenbaum T i} :
-  (∏' l) ⊔ k = ∏' l ⊔ k.pow :=
+  (∀' l) ⊔ k = ∀' l ⊔ k.pow :=
 begin
   induction l using classical_logic.lindenbaum.ind_on with p,
   induction k using classical_logic.lindenbaum.ind_on with q,
   simp[sup_def, pow_def, univ_def, -or_eq, -pow_eq, -univ_eq, axiomatic_classical_logic'.iff_equiv], split,
   { refine (deduction.mp $ generalize $ contrapose.mp _), simp [←sf_dsb],
-    have lmm₁ : ⤊(T^i) +{ ⁻(∏ p)^1 ⟶ q^1 } ⊢ ⁻q^1 ⟶ (∏ p)^1, { refine contrapose.mp _, simp },
-    have lmm₂ : ⤊(T^i) +{ ⁻(∏ p)^1 ⟶ q^1 } ⊢ (∏ p)^1 ⟶ p,
-    { suffices : ⤊(T^i) +{ ⁻(∏ p)^1 ⟶ q^1 } ⊢ (∏ p)^1 ⟶ (p.rew $ (λ x, #(x + 1))^1).rew ı[0 ⇝ #0],
+    have lmm₁ : ⤊(T^i) +{ ∼(∀.p)^1 ⟶ q^1 } ⊢ ∼q^1 ⟶ (∀.p)^1, { refine contrapose.mp _, simp },
+    have lmm₂ : ⤊(T^i) +{ ∼(∀.p)^1 ⟶ q^1 } ⊢ (∀.p)^1 ⟶ p,
+    { suffices : ⤊(T^i) +{ ∼(∀.p)^1 ⟶ q^1 } ⊢ (∀.p)^1 ⟶ (p.rew $ (λ x, #(x + 1))^1).rew ı[0 ⇝ #0],
       { simp[formula.nested_rew] at this, exact this },
       exact specialize _ }, 
     exact imply_trans lmm₁ lmm₂ },
   { refine (deduction.mp $ contrapose.mp _), simp[←sf_dsb],
     refine deduction.mp (generalize _), simp[←sf_dsb],
-    suffices : ⤊(T^i)+{(∏ (⁻p ⟶ q^1))^1} ⊢ ⁻q^1 ⟶ p, { from deduction.mpr this },
-    have :     ⤊(T^i)+{(∏ (⁻p ⟶ q^1))^1} ⊢ ⁻p ⟶ q^1,
-    { have : ⤊(T^i)+{(∏  (⁻p ⟶ q^1))^1} ⊢ (∏  (⁻p ⟶ q^1))^1, { simp },
+    suffices : ⤊(T^i)+{(∀.(∼p ⟶ q^1))^1} ⊢ ∼q^1 ⟶ p, { from deduction.mpr this },
+    have :     ⤊(T^i)+{(∀.(∼p ⟶ q^1))^1} ⊢ ∼p ⟶ q^1,
+    { have : ⤊(T^i)+{(∀. (∼p ⟶ q^1))^1} ⊢ (∀. (∼p ⟶ q^1))^1, { simp },
       have lmm₁ := fal_subst this #0, simp at lmm₁,
       simp[formula.nested_rew] at lmm₁,
       exact lmm₁ },
@@ -507,44 +507,44 @@ begin
 end
 
 lemma prenex_fal_or_right {l : Lindenbaum T i} {k : Lindenbaum T (i+1)} :
-  l ⊔ ∏' k = ∏' (l.pow ⊔ k) :=
-by simp[show l ⊔ (∏' k) = (∏' k) ⊔ l, from sup_comm, prenex_fal_or_left,
+  l ⊔ ∀' k = ∀' (l.pow ⊔ k) :=
+by simp[show l ⊔ (∀' k) = (∀' k) ⊔ l, from sup_comm, prenex_fal_or_left,
         show k ⊔ l.pow = l.pow ⊔ k, from sup_comm]
 
 lemma prenex_fal_and_left {l : Lindenbaum T (i+1)} {k : Lindenbaum T i} :
-  (∏' l) ⊓ k = ∏' l ⊓ k.pow :=
+  (∀' l) ⊓ k = ∀' l ⊓ k.pow :=
 begin
   induction l using classical_logic.lindenbaum.ind_on,
   induction k using classical_logic.lindenbaum.ind_on,
   simp[inf_def, pow_def, univ_def, -and_eq, -pow_eq, -univ_eq, axiomatic_classical_logic'.iff_equiv], split,
   { refine (deduction.mp $ generalize _), rw [←sf_dsb], simp[axiom_and],
-    have : ⤊(T^i) +{ (∏  l)^1 } +{ k^1 } ⊢ (∏ l)^1, simp,
+    have : ⤊(T^i) +{ (∀. l)^1 } +{ k^1 } ⊢ (∀.l)^1, simp,
     have := fal_subst this #0, simp[formula.nested_rew] at this,
     exact this },
   { refine deduction.mp _, simp, split,
     { refine generalize _, simp[←sf_dsb],
-      have : ⤊(T^i) +{ (∏ l ⊓ (k^1))^1 } ⊢ (∏ l ⊓ (k^1))^1, simp,
+      have : ⤊(T^i) +{ (∀.l ⊓ (k^1))^1 } ⊢ (∀.l ⊓ (k^1))^1, simp,
       have := fal_subst this #0, simp[formula.nested_rew] at this, simp* at* },
-    { have : (T^i) +{ ∏ l ⊓ (k^1) } ⊢ ∏ l ⊓ (k^1), simp,
+    { have : (T^i) +{ ∀.l ⊓ (k^1) } ⊢ ∀.l ⊓ (k^1), simp,
       have := fal_subst this #0, simp* at * } }
 end
 
 lemma prenex_ex_or_left {l : Lindenbaum T (i+1)} {k : Lindenbaum T i} :
-  (∐' l) ⊔ k = ∐' (l ⊔ k.pow) :=
+  (∃' l) ⊔ k = ∃' (l ⊔ k.pow) :=
 by rw ← compl_inj_iff; simp[-compl_inj_iff, prenex_ex_neg, prenex_fal_and_left]
 
 lemma prenex_ex_and_left {l : Lindenbaum T (i+1)} {k : Lindenbaum T i} :
-  (∐' l) ⊓ k = ∐' (l ⊓ k.pow) :=
+  (∃' l) ⊓ k = ∃' (l ⊓ k.pow) :=
 by rw ← compl_inj_iff; simp[-compl_inj_iff, prenex_ex_neg, prenex_fal_or_left]
 
 lemma or_neg_comm (l : Lindenbaum T i) (k : Lindenbaum T i) :
   l ⊔ kᶜ = kᶜ ⊔ l := sup_comm
 
 lemma or_fal_comm (l : Lindenbaum T i) (k : Lindenbaum T (i + 1)) :
-  l ⊔ (∏' k) = (∏' k) ⊔ l := sup_comm
+  l ⊔ (∀' k) = (∀' k) ⊔ l := sup_comm
 
 lemma or_ex_comm (l : Lindenbaum T i) (k : Lindenbaum T (i + 1)) :
-  l ⊔ (∐' k) = (∐' k) ⊔ l := sup_comm
+  l ⊔ (∃' k) = (∃' k) ⊔ l := sup_comm
 
 namespace proper
 
@@ -567,11 +567,11 @@ def subst_sf_L : Herbrand T i → Lindenbaum T (i+1) → Lindenbaum T i :=
   { refine hyp } }
 infixr ` ⊳ `:90  := subst_sf_L
 
-lemma fal_le_subst (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : ∏' (♯0 ⊳ l.pow) ≤ h ⊳ l :=
+lemma fal_le_subst (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : ∀' (♯0 ⊳ l.pow) ≤ h ⊳ l :=
 begin
   induction l using classical_logic.lindenbaum.ind_on with p, 
   induction h using fol.Herbrand.ind_on with t,
-  have : T^i ⊢ ∏ (p^1).rew ı[(i + 1) ⇝ #0] ⟶ ((p^1).rew ı[(i + 1) ⇝ #0]).rew ı[0 ⇝ t],
+  have : T^i ⊢ ∀.(p^1).rew ı[(i + 1) ⇝ #0] ⟶ ((p^1).rew ı[(i + 1) ⇝ #0]).rew ı[0 ⇝ t],
     from @specialize _ (T^i) ((p^1).rew ı[(i + 1) ⇝ #0]) t,
   have eqn : (((p^1).rew ı[(i + 1) ⇝ #0]).rew ı[0 ⇝ t]) = p.rew ı[i ⇝ t],
   { simp[formula.nested_rew, formula.pow_eq], congr,
@@ -582,7 +582,7 @@ begin
   exact this,
 end
 
-lemma fal_le_subst0 (l : Lindenbaum T 1) (h) : ∏' l ≤ (h ⊳ l) :=
+lemma fal_le_subst0 (l : Lindenbaum T 1) (h) : ∀' l ≤ (h ⊳ l) :=
 begin
   induction l using classical_logic.lindenbaum.ind_on with p, 
   induction h using fol.Herbrand.ind_on with t, 
@@ -590,18 +590,18 @@ begin
   simp[-univ_eq, subst_sf_L, classical_logic.lindenbaum.le_def],
 end
 
-lemma subst_sf_L_le_ex (l : Lindenbaum T 1) (h) : h ⊳ l ≤ ∐' l :=
+lemma subst_sf_L_le_ex (l : Lindenbaum T 1) (h) : h ⊳ l ≤ ∃' l :=
 begin
   induction l using classical_logic.lindenbaum.ind_on, 
   induction h using fol.Herbrand.ind_on,
   simp[exist_def, -exist_eq, subst_sf_L, classical_logic.lindenbaum.le_def],
   refine contrapose.mp _, simp[has_exists_quantifier.ex, formula.ex],
-  rw (show ⁻(l.rew ı[0 ⇝ h]) = (⁻l).rew ı[0 ⇝ h], by simp), 
+  rw (show ∼(l.rew ı[0 ⇝ h]) = (∼l).rew ı[0 ⇝ h], by simp), 
   exact specialize _
 end
 
 lemma le_fal_le_fal {l m : Lindenbaum T (i + 1)} :
-  l ≤ m → (∏' l : Lindenbaum T i) ≤ ∏' m :=
+  l ≤ m → (∀' l : Lindenbaum T i) ≤ ∀' m :=
 begin
   induction l using classical_logic.lindenbaum.ind_on, 
   induction m using classical_logic.lindenbaum.ind_on, 
@@ -609,14 +609,14 @@ begin
   { intros h, refine univ_K _ _ ⨀ (generalize h) },
 end
 
-@[simp] lemma dummy_fal (l : Lindenbaum T i) : ∏' pow l = l :=
+@[simp] lemma dummy_fal (l : Lindenbaum T i) : ∀' pow l = l :=
 by { symmetry,
      induction l using classical_logic.lindenbaum.ind_on,
      simp only [←univ_eq, ←pow_eq], simp[-univ_eq, -pow_eq],
      exact @provable.dummy_fal_quantifir _ (T^i) l }
 
 lemma pow_le_le_fal {l : Lindenbaum T i} {m : Lindenbaum T (i + 1)} :
-  l.pow ≤ m → l ≤ ∏' m :=
+  l.pow ≤ m → l ≤ ∀' m :=
 by { have := @le_fal_le_fal _ _ _ _ l.pow m, simp at this, exact this }
 
 @[simp] lemma subst_sf_L_compl (h : Herbrand T i) (l : Lindenbaum T (i+1)) :
@@ -645,13 +645,13 @@ by { induction h₁ using fol.Herbrand.ind_on, induction h₂ using fol.Herbrand
      simp[-equal_eq, subst_sf_L, Herbrand.proper.subst_sf_H, Herbrand.proper.subst_sf_H_aux, equal_def] }
 
 @[simp] lemma subst_sf_L_fal (h : Herbrand T i) (l : Lindenbaum T (i+2)) :
-  h ⊳ ∏' l = ∏' (h.pow ⊳ l) :=
+  h ⊳ ∀' l = ∀' (h.pow ⊳ l) :=
 by { induction l using classical_logic.lindenbaum.ind_on,
      induction h using fol.Herbrand.ind_on,
      simp[subst_sf_L, univ_def, Herbrand.pow_def, -univ_eq, -Herbrand.pow_eq, subst_pow] }
 
 @[simp] lemma subst_sf_L_ex (h : Herbrand T i) (l : Lindenbaum T (i+2)) :
-  h ⊳ ∐' l = ∐' (h.pow ⊳ l) :=
+  h ⊳ ∃' l = ∃' (h.pow ⊳ l) :=
 by { induction l using classical_logic.lindenbaum.ind_on,
      induction h using fol.Herbrand.ind_on,
      simp[subst_sf_L, exist_def, Herbrand.pow_def, -exist_eq, -Herbrand.pow_eq, subst_pow] }
@@ -660,15 +660,15 @@ lemma subst_sf_L_is_sentence (h : Herbrand T i) {p : formula L} (a : is_sentence
   h ⊳ (⟦p⟧ᴸ : Lindenbaum T (i+1)) = ⟦p⟧ᴸ :=
 by { induction h using fol.Herbrand.ind_on, simp[subst_sf_L, Lindenbaum.of_eq_of, a] }
 
-lemma ex_subst_le (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : h ⊳ l ≤ ∐' (♯0 ⊳ l.pow) :=
+lemma ex_subst_le (l : Lindenbaum T (i + 1)) (h : Herbrand T i) : h ⊳ l ≤ ∃' (♯0 ⊳ l.pow) :=
 begin
-  suffices : (∐' (♯0 ⊳ pow l))ᶜ ≤ (h ⊳ l)ᶜ,
+  suffices : (∃' (♯0 ⊳ pow l))ᶜ ≤ (h ⊳ l)ᶜ,
   { exact compl_le_compl_iff_le.mp this },
   simp[prenex_ex_neg, -compl_le_compl_iff_le], 
   have := fal_le_subst lᶜ h, simp at this, exact this
 end
 
-@[simp] lemma pow_fal1 (l : Lindenbaum T 1) : pow (∏' l : Lindenbaum T 0) = ∏' (♯0 ⊳ pow (pow l)) :=
+@[simp] lemma pow_fal1 (l : Lindenbaum T 1) : pow (∀' l : Lindenbaum T 0) = ∀' (♯0 ⊳ pow (pow l)) :=
 by { induction l using classical_logic.lindenbaum.ind_on, 
      simp[univ_def, pow_def, var_def, -univ_eq, -pow_eq, -var_eq, subst_sf_L,
           formula.pow_eq, formula.nested_rew, rewriting_sf_itr.pow_eq'],
@@ -686,14 +686,14 @@ quotient.induction_on' d h
 @[simp] lemma compl_sup_iff_le (l m : Lindenbaum T i) : lᶜ ⊔ m = ⊤ ↔ l ≤ m :=
 by { induction l using classical_logic.lindenbaum.ind_on,
      induction m using classical_logic.lindenbaum.ind_on,
-     simp[top_def, -top_eq, show ⁻l ⊔ m = ⁻⁻l ⟶ m, by refl, axiomatic_classical_logic'.iff_equiv,
+     simp[top_def, -top_eq, show ∼l ⊔ m = ∼∼l ⟶ m, by refl, axiomatic_classical_logic'.iff_equiv,
           neg_def, -neg_eq, sup_def, -or_eq, classical_logic.lindenbaum.le_def], }
 
-@[simp] lemma fal_top_top : (∏' (⊤ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⊤ :=
+@[simp] lemma fal_top_top : (∀' (⊤ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⊤ :=
 by { simp[top_def, -top_eq, axiomatic_classical_logic'.iff_equiv, univ_def, -univ_eq],
      refine generalize (by simp) }
 
-@[simp] lemma ex_top_top : (∐' (⊤ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⊤ :=
+@[simp] lemma ex_top_top : (∃' (⊤ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⊤ :=
 by { simp[top_def, -top_eq, axiomatic_classical_logic'.iff_equiv, exist_def, -exist_eq],
      refine provable.use #0 (by simp) }
 
@@ -712,11 +712,11 @@ theorem le_of_provable_imply {p q} : T^i ⊢ p ⟶ q ↔ (⟦p⟧ᴸ : Lindenbau
 theorem le_of_provable_imply_0 {p q} : T ⊢ p ⟶ q ↔ (⟦p⟧ᴸ : Lindenbaum T 0) ≤ ⟦q⟧ᴸ := by refl
 
 @[simp] theorem provable_imp_eq {p q} : (⟦p ⟶ q⟧ᴸ : Lindenbaum T i) = ⟦p⟧ᴸᶜ ⊔ ⟦q⟧ᴸ := by {
-  have : (⟦p ⟶ q⟧ᴸ : Lindenbaum T i) = ⟦⁻p ⊔ q⟧ᴸ, 
+  have : (⟦p ⟶ q⟧ᴸ : Lindenbaum T i) = ⟦∼p ⊔ q⟧ᴸ, 
   { simp[neg_def, -neg_eq, sup_def, -or_eq, axiomatic_classical_logic'.iff_equiv],
     simp only [has_sup.sup, formula.or],
     refine ⟨deduction.mp (by { simp }), deduction.mp _⟩,
-    refine imply_of_equiv (show (T^i)+{⁻⁻p ⟶ q} ⊢ ⁻⁻p ⟶ q, by simp[-dn1_iff]) _ _; simp },
+    refine imply_of_equiv (show (T^i)+{∼∼p ⟶ q} ⊢ ∼∼p ⟶ q, by simp[-dn1_iff]) _ _; simp },
   exact this }
 
 lemma subst_eq [proper_Theory T] (p : formula L) (t : term L) :
@@ -729,10 +729,10 @@ lemma to_Herbrand {h₁ h₂ : Herbrand T i} : h₁ ≃ᴸ h₂ = ⊤ ↔ h₁ =
 by { induction h₁ using fol.Herbrand.ind_on, induction h₂ using fol.Herbrand.ind_on,
      simp[equal_def, top_def, -equal_eq, -top_eq, axiomatic_classical_logic'.iff_equiv] }
 
-theorem eq_neg_of_provable_neg {p} : T^i ⊢ ⁻p ↔ (⟦p⟧ᴸ : Lindenbaum T i) = ⊥ :=
+theorem eq_neg_of_provable_neg {p} : T^i ⊢ ∼p ↔ (⟦p⟧ᴸ : Lindenbaum T i) = ⊥ :=
 by simp [eq_top_of_provable]
 
-theorem eq_neg_of_provable_neg_0 {p} : T ⊢ ⁻p ↔ (⟦p⟧ᴸ : Lindenbaum T 0) = ⊥ :=
+theorem eq_neg_of_provable_neg_0 {p} : T ⊢ ∼p ↔ (⟦p⟧ᴸ : Lindenbaum T 0) = ⊥ :=
 @eq_neg_of_provable_neg _ T 0 p
 
 variables (T)
@@ -773,42 +773,42 @@ open classical_logic axiomatic_classical_logic axiomatic_classical_logic' Herbra
 
 variables {T}
 
-@[simp] lemma neg_fal_equiv_ex_neg (p : formula L) : T ⊢ ⁻(∏ p) ⟷ ∐⁻p :=
+@[simp] lemma neg_fal_equiv_ex_neg (p : formula L) : T ⊢ ∼(∀.p) ⟷ ∃.∼p :=
 Lindenbaum.eq_of_provable_equiv_0.mpr (by simp[prenex_fal_neg])
 
-@[simp] lemma neg_ex_equiv_fal_neg (p : formula L) : T ⊢ ⁻(∐ p) ⟷ ∏⁻p :=
+@[simp] lemma neg_ex_equiv_fal_neg (p : formula L) : T ⊢ ∼(∃.p) ⟷ ∀.∼p :=
 Lindenbaum.eq_of_provable_equiv_0.mpr (by simp[prenex_ex_neg])
 
-@[simp] lemma ex_imply_equiv_fal_imply (p q : formula L) : T ⊢ ((∐ p) ⟶ q) ⟷ ∏ (p ⟶ q^1) :=
+@[simp] lemma ex_imply_equiv_fal_imply (p q : formula L) : T ⊢ ((∃.p) ⟶ q) ⟷ ∀.(p ⟶ q^1) :=
 Lindenbaum.eq_of_provable_equiv_0.mpr
   (by simp[prenex_fal_or_left, prenex_fal_neg, prenex_ex_neg])
 
-@[simp] lemma fal_imply_equiv_ex_imply (p q : formula L) : T ⊢ ((∏ p) ⟶ q) ⟷ ∐ (p ⟶ q^1) :=
+@[simp] lemma fal_imply_equiv_ex_imply (p q : formula L) : T ⊢ ((∀.p) ⟶ q) ⟷ ∃.(p ⟶ q^1) :=
 Lindenbaum.eq_of_provable_equiv_0.mpr
   (by simp[prenex_ex_or_left, prenex_fal_neg, prenex_ex_neg])
 
-@[simp] lemma imply_ex_equiv_ex_imply (p q : formula L) : T ⊢ (p ⟶ ∐ q) ⟷ ∐ (p^1 ⟶ q) :=
+@[simp] lemma imply_ex_equiv_ex_imply (p q : formula L) : T ⊢ (p ⟶ ∃.q) ⟷ ∃.(p^1 ⟶ q) :=
 Lindenbaum.eq_of_provable_equiv_0.mpr
   (by { simp[prenex_ex_or_left, prenex_fal_neg, prenex_ex_neg, or_ex_comm], 
     rw [show to_quo q ⊔ (pow (to_quo p))ᶜ = (pow (to_quo p))ᶜ ⊔ to_quo q, from sup_comm] })
 
-@[simp] lemma imply_fal_equiv_fal_imply (p q : formula L) : T ⊢ (p ⟶ ∏ q) ⟷ ∏ (p^1 ⟶ q) :=
+@[simp] lemma imply_fal_equiv_fal_imply (p q : formula L) : T ⊢ (p ⟶ ∀.q) ⟷ ∀.(p^1 ⟶ q) :=
 Lindenbaum.eq_of_provable_equiv_0.mpr
   (by { simp[prenex_fal_or_left, prenex_fal_neg, prenex_ex_neg, or_fal_comm], 
     rw [show to_quo q ⊔ (pow (to_quo p))ᶜ = (pow (to_quo p))ᶜ ⊔ to_quo q, from sup_comm] })
 
-lemma pnf_imply_ex_iff_fal_imply₁ (p q : formula L) : T ⊢ ((∐ p) ⟶ q) ↔ T ⊢ ∏ (p ⟶ q^1) :=
-by { have : T ⊢ ∐ p ⟶ q ⟷ ∏ (p ⟶ q ^ 1), { simp },
+lemma pnf_imply_ex_iff_fal_imply₁ (p q : formula L) : T ⊢ ((∃.p) ⟶ q) ↔ T ⊢ ∀.(p ⟶ q^1) :=
+by { have : T ⊢ ∃.p ⟶ q ⟷ ∀.(p ⟶ q ^ 1), { simp },
      simp[iff_equiv] at this,
      refine ⟨λ h, this.1 ⨀ h, λ h, this.2 ⨀ h⟩ }
 
-lemma pnf_imply_fal_iff_ex_imply₁ (p q : formula L) : T ⊢ ((∏ p) ⟶ q) ↔ T ⊢ ∐ (p ⟶ q^1) :=
-by { have : T ⊢ ∏ p ⟶ q ⟷ ∐ (p ⟶ q ^ 1), { simp },
+lemma pnf_imply_fal_iff_ex_imply₁ (p q : formula L) : T ⊢ ((∀.p) ⟶ q) ↔ T ⊢ ∃.(p ⟶ q^1) :=
+by { have : T ⊢ ∀.p ⟶ q ⟷ ∃.(p ⟶ q ^ 1), { simp },
      simp[iff_equiv] at this,
      refine ⟨λ h, this.1 ⨀ h, λ h, this.2 ⨀ h⟩ }
 
-lemma imply_ex_of_fal_imply {p q : formula L} (h : T ⊢ ∏ (p ⟶ q^1)) : T ⊢ (∐ p) ⟶ q :=
-by { have : T ⊢ ((∐ p) ⟶ q) ⟷ ∏ (p ⟶ q^1), { simp },
+lemma imply_ex_of_fal_imply {p q : formula L} (h : T ⊢ ∀.(p ⟶ q^1)) : T ⊢ (∃.p) ⟶ q :=
+by { have : T ⊢ ((∃.p) ⟶ q) ⟷ ∀.(p ⟶ q^1), { simp },
      simp[iff_equiv] at this,
      exact this.2 ⨀ h }
 

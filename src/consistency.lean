@@ -117,15 +117,15 @@ lemma Union_seq (T : ℕ → Theory F) (h : ∀ n, T n ⊆ T (n + 1)) :
   exact consistent_of_consistent_ss (H M) this }⟩ 
 
 lemma inconsistent_insert_iff_provable_neg {p : F} :
-  ¬Theory.consistent (T +{ p }) ↔ T ⊢ ⁻p :=
+  ¬Theory.consistent (T +{ p }) ↔ T ⊢ ∼p :=
 begin
   simp [Theory.consistent_iff_bot, deduction],
-  have : T ⊢ ⁻p ⟷ p ⟶ ⊥, from neg_iff p,
+  have : T ⊢ ∼p ⟷ p ⟶ ⊥, from neg_iff p,
   split; intros h, { exact (iff_equiv.mp this).2 ⨀ h }, { exact (iff_equiv.mp this).1 ⨀ h }
 end
 
 lemma extendable (consis : T.consistent) (p : F) : 
-  Theory.consistent (T +{ p }) ∨ Theory.consistent (T +{ ⁻p }) :=
+  Theory.consistent (T +{ p }) ∨ Theory.consistent (T +{ ∼p }) :=
 by { by_contradiction A, simp[not_or_distrib, inconsistent_insert_iff_provable_neg] at A, rcases A with ⟨A₁, A₂⟩,
      exact consis ⟨p, A₂, A₁⟩ }
 
@@ -137,25 +137,25 @@ theorem ss_maximal (consis : consistent T) :  T ⊆ maximal T := (classical.epsi
 
 theorem maximal_maximal (consis : consistent T) : ∀ S, consistent S → maximal T ⊆ S → S = maximal T := (classical.epsilon_spec (tukey.exists_maximum tukey_finite_charactor T consis)).2.2
 
-lemma mem_maximal (consis : consistent T) (p : F) : p ∈ maximal T ∨ ⁻p ∈ maximal T :=
+lemma mem_maximal (consis : consistent T) (p : F) : p ∈ maximal T ∨ ∼p ∈ maximal T :=
 begin
   rcases extendable (maximal_consistent consis) p,
   { have : insert p (maximal T) = maximal T, from maximal_maximal consis _ h (set.subset_insert _ _),
     refine or.inl _, rw[←this], exact set.mem_insert p (maximal T) },
-  { have : insert (⁻p) (maximal T) = maximal T, from maximal_maximal consis _ h (set.subset_insert _ _),
-    refine or.inr _, rw[←this], exact set.mem_insert (⁻p) (maximal T) }
+  { have : insert (∼p) (maximal T) = maximal T, from maximal_maximal consis _ h (set.subset_insert _ _),
+    refine or.inr _, rw[←this], exact set.mem_insert (∼p) (maximal T) }
 end
 
 lemma mem_maximal_iff (consis : consistent T) {p : F} : p ∈ maximal T ↔ maximal T ⊢ p :=
 ⟨by_axiom,
   λ b, by { rcases mem_maximal consis p with (h | h),
-    { exact h }, { have : maximal T ⊢ ⁻p, from by_axiom h,
+    { exact h }, { have : maximal T ⊢ ∼p, from by_axiom h,
       have : ¬(consistent (maximal T)), { simp[consistent_def], refine ⟨_, b, this⟩ },
       have : consistent (maximal T), from maximal_consistent consis, 
       contradiction } }⟩
 
 lemma neg_mem_maximal_iff (consis : consistent T) {p : F} :
-  ⁻p ∈ maximal T ↔ p ∉ maximal T :=
+  ∼p ∈ maximal T ↔ p ∉ maximal T :=
 ⟨λ b A, by { simp[mem_maximal_iff consis] at*,
   have : ¬consistent (maximal T), { simp[consistent_def], refine ⟨p, A, b⟩ },
   have : consistent (maximal T), from maximal_consistent consis,
@@ -168,18 +168,18 @@ lemma imply_mem_maximal_iff (consis : consistent T) {p q : F} :
 λ h, begin
   by_cases C : p ∈ maximal T,
   { simp[mem_maximal_iff consis] at*, exact hyp_right (h C) p },
-  { have : ⁻p ∈ maximal T, from (neg_mem_maximal_iff consis).mpr C,
+  { have : ∼p ∈ maximal T, from (neg_mem_maximal_iff consis).mpr C,
     simp[mem_maximal_iff consis] at*,
     refine deduction.mp _,
-    exact explosion (show (maximal T) +{ p } ⊢ p, by simp) (show (maximal T) +{ p } ⊢ ⁻p, by simp[this]) }
+    exact explosion (show (maximal T) +{ p } ⊢ p, by simp) (show (maximal T) +{ p } ⊢ ∼p, by simp[this]) }
 end⟩
 
 end consistent
 
-lemma provable_iff_inconsistent {p : F} : T ⊢ p ↔ ¬consistent (T +{⁻p}) :=
+lemma provable_iff_inconsistent {p : F} : T ⊢ p ↔ ¬consistent (T +{∼p}) :=
 ⟨λ h, by { simp[consistent_def], refine ⟨p, by simp[h], by simp⟩ },
-λ h, by { have : T +{ ⁻p } ⊢ ⊥, from not_consistent_iff_bot.mp h,
-          have : T ⊢ ⁻⁻p, from (iff_of_equiv (neg_iff _)).mpr (deduction.mp this),
+λ h, by { have : T +{ ∼p } ⊢ ⊥, from not_consistent_iff_bot.mp h,
+          have : T ⊢ ∼∼p, from (iff_of_equiv (neg_iff _)).mpr (deduction.mp this),
           exact dn_iff.mp this }⟩
 
 end Theory

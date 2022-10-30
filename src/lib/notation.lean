@@ -16,6 +16,8 @@ lemma numeral_one_def  {α : Type*} [has_zero α] [has_succ α] : (1 : α) = Suc
 
 @[notation_class] class has_eq (α : out_param (Sort*)) (β : Sort*) := (eq : α → α → β)
 
+@[notation_class] class has_prec (α : out_param (Sort*)) (β : Sort*) := (prec : α → α → β)
+
 @[notation_class] class has_preceq (α : out_param (Sort*)) (β : Sort*) := (preceq : α → α → β)
 
 @[notation_class] class has_elem (α : out_param (Sort*)) (β : Sort*) := (elem : α → α → β)
@@ -33,19 +35,20 @@ lemma numeral_one_def  {α : Type*} [has_zero α] [has_succ α] : (1 : α) = Suc
 @[notation_class] class has_exists_quantifier' (α : Sort*) (β : Sort*) := (ex : α → β)
 
 localized "infix (name := has_eq.eq) ` ≃ `:50 := has_eq.eq" in logic_symbol
+localized "infix (name := has_prec.prec) ` ≺ `:50 := has_prec.prec" in logic_symbol
 localized "infix (name := has_preceq.preceq) ` ≼ `:50 := has_preceq.preceq" in logic_symbol
 localized "infix (name := has_elem.elem) ` ∊ `:50 := has_elem.elem" in logic_symbol
-localized "prefix (name := has_negation.neg) `⁻`:75 := has_negation.neg" in logic_symbol
+localized "prefix (name := has_negation.neg) `∼`:75 := has_negation.neg" in logic_symbol
 localized "infixr (name := has_arrow.arrow) ` ⟶ `:60 := has_arrow.arrow" in logic_symbol
-localized "prefix (name := has_univ_quantifier.univ) `∏ `:64 := has_univ_quantifier.univ" in logic_symbol
-localized "prefix (name := has_exists_quantifier.ex) `∐ `:64 := has_exists_quantifier.ex" in logic_symbol
-localized "prefix (name := has_univ_quantifier'.univ) `∏' `:64 := has_univ_quantifier'.univ" in logic_symbol
-localized "prefix (name := has_exists_quantifier'.ex) `∐' `:64 := has_exists_quantifier'.ex" in logic_symbol
+localized "prefix (name := has_univ_quantifier.univ) `∀. `:64 := has_univ_quantifier.univ" in logic_symbol
+localized "prefix (name := has_exists_quantifier.ex) `∃. `:64 := has_exists_quantifier.ex" in logic_symbol
+localized "prefix (name := has_univ_quantifier'.univ) `∀' `:64 := has_univ_quantifier'.univ" in logic_symbol
+localized "prefix (name := has_exists_quantifier'.ex) `∃' `:64 := has_exists_quantifier'.ex" in logic_symbol
 
 open_locale logic_symbol
 
 @[reducible] def has_eq.ineq {α : out_param (Sort*)} {β : Sort*}
-  [has_eq α β] [has_negation β] (a b : α) : β := ⁻(a ≃ b)
+  [has_eq α β] [has_negation β] (a b : α) : β := ∼(a ≃ b)
 
 localized "infix (name := has_eq.ineq) ` ≄ `:50 := has_eq.ineq" in logic_symbol
 

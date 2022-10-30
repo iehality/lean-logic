@@ -37,7 +37,7 @@ abbreviation Theory (A : Type u) := logic.Theory (formula A)
 
 namespace formula
 
-lemma bot_def : (⊥ : formula A) = ⁻⊤ := rfl
+lemma bot_def : (⊥ : formula A) = ∼⊤ := rfl
 
 @[simp] lemma top_eq : @formula.verum A = (⊤) := rfl
 
@@ -48,7 +48,7 @@ lemma bot_def : (⊥ : formula A) = ⁻⊤ := rfl
 @[simp] lemma imply.inj' (p₁ q₁ p₂ q₂ : formula A) : p₁ ⟶ p₂ = q₁ ⟶ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
 ⟨formula.imply.inj, by simp; exact congr_arg2 (⟶)⟩
 
-@[simp] lemma neg.inj' (p q : formula A) : ⁻p = ⁻q ↔ p = q := ⟨formula.neg.inj, congr_arg _⟩
+@[simp] lemma neg.inj' (p q : formula A) : ∼p = ∼q ↔ p = q := ⟨formula.neg.inj, congr_arg _⟩
 
 @[simp] lemma and.inj' (p₁ q₁ p₂ q₂ : formula A) : p₁ ⊓ p₂ = q₁ ⊓ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
 by simp[has_inf.inf, formula.and]
@@ -78,7 +78,7 @@ def W.to_formula : W A → formula A
 | ⟨sum.inl a, f⟩                      := atom a
 | ⟨sum.inr $ sum.inl (), f⟩           := ⊤
 | ⟨sum.inr $ sum.inr $ sum.inl (), f⟩ := W.to_formula (f ff) ⟶ W.to_formula (f tt)
-| ⟨sum.inr $ sum.inr $ sum.inr (), f⟩ := ⁻W.to_formula (f ())
+| ⟨sum.inr $ sum.inr $ sum.inr (), f⟩ := ∼W.to_formula (f ())
 
 def frfrf (α : Type*) : empty → α := by refine empty.rec (λ (n : empty), α)
 
@@ -86,7 +86,7 @@ def formula.to_W : formula A → W A
 | (atom a) := ⟨sum.inl a, by rintros ⟨⟩⟩
 | ⊤        := ⟨sum.inr $ sum.inl (), by rintros ⟨⟩⟩
 | (p ⟶ q) := ⟨sum.inr $ sum.inr $ sum.inl (), by { rintros (_ | _), { exact p.to_W }, { exact q.to_W } }⟩
-| (⁻p) := ⟨sum.inr $ sum.inr $ sum.inr (), λ _, p.to_W⟩
+| (∼p) := ⟨sum.inr $ sum.inr $ sum.inr (), λ _, p.to_W⟩
 
 def formula_equiv_W : equiv (formula A) (W A) :=
 { to_fun := formula.to_W,
