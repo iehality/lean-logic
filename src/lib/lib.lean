@@ -35,6 +35,11 @@ lemma pos_succ {n : ℕ} (h : 0 < n) : n = (n - 1) + 1 :=
 lemma pos_pred_add {n m : ℕ} (h : m ≤ n) (l) : n - m + l = n + l - m :=
 by { omega }
 
+@[simp] lemma lt_max_add_one_left (m n : ℕ) : m < max m n + 1 := lt_succ_iff.mpr (le_max_left m n)
+
+@[simp] lemma lt_max_add_one_right (m n : ℕ) : n < max m n + 1 := lt_succ_iff.mpr (le_max_right m n)
+
+
 end nat
 
 namespace function
@@ -81,6 +86,20 @@ by { have : ↑i < n ∨ ↑i = n, exact nat.lt_succ_iff_lt_or_eq.mp i.property,
 
 @[simp] lemma fin_le_succ {n} (i : fin n) : ↑i < n + 1 := nat.lt.step i.property
 
+def psucc {n} (m : ℕ) : fin n → fin (n + 1) :=
+λ i, if ↑i < m then i.cast_succ else i.succ
+
+section psucc
+variables {n : ℕ}
+
+@[simp] lemma psucc_zero : (psucc 0 : fin n → fin (n + 1)) = fin.succ :=
+funext (λ j, by simp[psucc])
+
+lemma succ_fix_zero_of_lt {i : fin n} {m : ℕ} (h : ↑i < m) : psucc m i = i.cast_succ := by simp[psucc, h]
+
+lemma succ_fix_zero_of_ge {i : fin n} {m : ℕ} (h : ↑i ≥ m) : psucc m i = i.succ := by simp[psucc, not_lt.mpr h]
+
+end psucc
 end fin
 
 namespace finitary
@@ -390,17 +409,17 @@ by simp[insert]
 | []        := ⊥
 | (a :: as) := a ⊔ as.disjunction
 
-@[simp] def inf_conjunction {α : Type*} [has_top α] [has_inf α] : ∀ n, (fin n → α) → α
+@[simp] def finitary.conjunction {α : Type*} [has_top α] [has_inf α] : ∀ n, (fin n → α) → α
 | 0 _        := ⊤
-| (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊓ inf_conjunction n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
+| (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊓ finitary.conjunction n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
 
-notation `⋀` binders `, ` r:(scoped p, inf_conjunction _ p) := r
+notation `⋀` binders `, ` r:(scoped p, finitary.conjunction _ p) := r
 
-@[simp] def sup_disjunction {α : Type*} [has_bot α] [has_sup α] : ∀ n, (fin n → α) → α
+@[simp] def finitary.disjunction {α : Type*} [has_bot α] [has_sup α] : ∀ n, (fin n → α) → α
 | 0 _        := ⊥
-| (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊔ sup_disjunction n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
+| (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊔ finitary.disjunction n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
 
-notation `⋁` binders `, ` r:(scoped p, sup_disjunction _ p) := r
+notation `⋁` binders `, ` r:(scoped p, finitary.disjunction _ p) := r
 
 def fintype_sup {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α] [order_bot α] (f : ι → α) : α :=
   (finset.univ : finset ι).sup f
