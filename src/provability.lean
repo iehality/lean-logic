@@ -771,6 +771,8 @@ case_of_p hpq hpr hqr
 
 @[simp] lemma insert (p) : T +{ p } ⊢ p := by_axiom (by simp)
 
+@[simp] lemma singleton (p) : (singleton p : set F) ⊢ p := by_axiom (by simp)
+
 lemma by_axiom' {T : set F} {p : F} : T p → T ⊢ p := by_axiom
 
 @[simp] lemma provable_not_bot_iff : T ⊢ ⊥ ⟷ ∼(⊤ : F) := by simp[@not_top_eq_bot F _ ((⊢) T) _]
@@ -806,6 +808,9 @@ lemma axiom_and {p₁ p₂ q : F} : T +{ p₁ ⊓ p₂ } ⊢ q ↔ T +{ p₁ } +
  by { have lmm₁ : T +{ p₁ ⊓ p₂ } ⊢ p₁ ⟶ p₂ ⟶ q, simp[deduction.mp (deduction.mp h)],
       have lmm₂ : T +{ p₁ ⊓ p₂ } ⊢ p₁ ⊓ p₂, from insert _, simp only [axiomatic_classical_logic'.iff_and] at lmm₂,
       exact lmm₁ ⨀ lmm₂.1 ⨀ lmm₂.2 } ⟩
+
+@[simp] lemma axiom_and' {p₁ p₂ q : F} : singleton (p₁ ⊓ p₂) ⊢ q ↔ singleton p₁ +{ p₂ } ⊢ q :=
+by simpa using @axiom_and _ _ ∅ _ p₁ p₂ q
 
 lemma raa {p : F} (q : F) (h₁ : T+{p} ⊢ q) (h₂ : T+{p} ⊢ ∼q) : T ⊢ ∼p :=
 classical_logic.neg_hyp (deduction.mp (classical_logic.explosion h₁ h₂))
@@ -843,6 +848,17 @@ begin
   intros p mem,
   exact and_imply_of_imply_right (IH mem)
 end
+
+@[reducible] def empty_axiom (p : F) : Prop := ∅ ⊢ p
+
+prefix `⬝⊢ `:45 := empty_axiom
+
+section empty_axiom
+variables (T)
+
+lemma of_empty_axiom {p : F} (hp : ⬝⊢ p) : T ⊢ p := weakening (by simp) hp
+
+end empty_axiom
 
 variables (T)
 

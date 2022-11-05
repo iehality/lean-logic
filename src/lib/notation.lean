@@ -54,7 +54,7 @@ def nforall {n} : Π (k), α (n + k) → α n
 | 0     a := a
 | (k+1) a := nforall _ ∀'a
 
-def universal_closure : Π {n}, α n → α 0
+@[simp] def universal_closure : Π {n}, α n → α 0
 | 0     a := a
 | (k+1) a := universal_closure ∀'a
 
@@ -69,7 +69,7 @@ def nexists {n} : Π (k), α (n + k) → α n
 | 0     a := a
 | (k+1) a := nexists _ ∃'a
 
-def exists_close : Π {n}, α n → α 0
+@[simp] def exists_close : Π {n}, α n → α 0
 | 0     a := a
 | (k+1) a := exists_close ∃'a
 
