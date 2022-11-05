@@ -100,6 +100,86 @@ lemma succ_fix_zero_of_lt {i : fin n} {m : ℕ} (h : ↑i < m) : psucc m i = i.c
 lemma succ_fix_zero_of_ge {i : fin n} {m : ℕ} (h : ↑i ≥ m) : psucc m i = i.succ := by simp[psucc, not_lt.mpr h]
 
 end psucc
+
+lemma eq_last_or_eq_cast_succ {n : ℕ} : ∀ (i : fin (n + 1)),
+i = last n ∨ ∃ (j : fin n), i = j.cast_succ :=
+@last_cases n (λ i, i = last n ∨ ∃ (j : fin n), i = j.cast_succ) (by simp) (by simp)
+
+lemma eq_zero_or_eq_last_or_interval {n : ℕ} (i : fin (n + 1 + 1)) :
+i = 0 ∨ i = last (n + 1) ∨ ∃ (j: fin n), i = j.cast_succ.succ :=
+begin
+  rcases fin.eq_zero_or_eq_succ i with (eqn | ⟨j₁, h₁⟩),
+  { exact or.inl eqn },
+  { rcases eq_last_or_eq_cast_succ i with (eqn | ⟨j₂, h₂⟩),
+    { refine (or.inr $ or.inl eqn) },
+    { refine (or.inr $ or.inr _),
+      rcases eq_last_or_eq_cast_succ j₁ with (rfl | ⟨j, rfl⟩),
+      { exfalso,
+        have : j₂.cast_succ = last n.succ, by simpa[←h₂] using h₁,
+        have e : j₂.val = n.succ, simpa using congr_arg fin.val this,
+        have : j₂.val < n + 1, from j₂.property,
+        simp[e] at this, contradiction },
+      { exact ⟨j, h₁⟩ } } }
+end
+
+section cases
+variables {n : ℕ} {C : Sort*} {a b : C} {s : fin n → C}
+
+-- finitary.cons の書き換え
+@[elab_as_eliminator] def left_concat {C : Sort*} (hzero : C) (hsucc : fin n → C) : fin (n + 1) → C := @cases n (λ _, C) hzero hsucc
+
+infix (name:= left_concat) ` *> `:70 := left_concat
+
+@[simp] lemma left_concat_zero : (a *> s) 0 = a := by simp[left_concat]
+
+@[simp] lemma left_concat_succ (i : fin n) : (a *> s) i.succ = s i := by simp[left_concat]
+
+@[elab_as_eliminator, elab_strategy]
+def right_concat (hcast : fin n → C) (hlast : C) : fin (n + 1) → C := @last_cases n (λ _, C) hlast hcast
+
+infix (name:= right_concat) ` <* `:70 := right_concat
+
+@[simp] lemma right_concat_last : (s <* a) (last n) = a := by simp[right_concat]
+
+@[simp] lemma right_concat_cast_succ (i : fin n) : (s <* a) i.cast_succ = s i := by simp[right_concat]
+
+@[simp] lemma cases_one
+  {a : C} {s : fin 0 → C} (x : fin 1) : (a *> s) x = a :=
+by rw [show x = 0, by simp]; simp
+
+@[simp] lemma last_cases_one
+  {a : C} {s : fin 0 → C} (x : fin 1) : (s <* a) x = a :=
+by rw [show x = last 0, by simp]; simp
+
+lemma left_right_concat_assoc :
+  a *> (s <* b) = (a *> s) <* b :=
+funext (by { intros x, rcases eq_zero_or_eq_last_or_interval x with (rfl | h | ⟨x', rfl⟩),
+  { show (a *> (s <* b)) 0 = ((a *> s) <* b) (cast_succ 0),
+    simp only [left_concat_zero, right_concat_cast_succ] },
+  { suffices : (a *> (s <* b)) (last n).succ = ((a *> s) <* b) (last $ n + 1),
+    by simpa only [←h, succ_last] using this,
+    simp only [left_concat_succ, right_concat_last] },
+  { suffices : (a *> (s <* b)) x'.cast_succ.succ = ((a *> s) <* b) x'.succ.cast_succ,
+    by simpa only [succ_cast_succ] using this,
+    simp } })
+
+lemma comp_left_concat {α : Sort*} (f : C → α) (a : C) (s : fin n → C) : f ∘ (a *> s) = f a *> f ∘ s :=
+funext (λ i, cases (by simp) (by simp) i)
+
+lemma comp_right_concat {α : Sort*} (f : C → α) (a : C) (s : fin n → C) : f ∘ (s <* a) = f ∘ s <* f a :=
+funext (λ i, by refine last_cases _ _ i; simp)
+
+lemma left_concat_eq {α} {n} (f : fin (n + 1) → α) : f 0 *> f ∘ fin.succ = f :=
+funext (λ i, by refine cases _ _ i; simp)
+
+lemma right_concat_eq {α} {n} (f : fin (n + 1) → α) : f ∘ fin.cast_succ <* f (last n) = f :=
+funext (λ i, by refine last_cases _ _ i; simp)
+
+lemma concat_zero {α} {x : α} : x *> fin_zero_elim = (fin_zero_elim : fin 0 → α) <* x :=
+by funext; simp
+
+end cases
+
 end fin
 
 namespace finitary

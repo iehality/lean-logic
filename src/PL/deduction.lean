@@ -110,7 +110,7 @@ begin
 end
 
 instance : Theory.has_finite_character (formula A) :=
-Theory.finite_character_of_finite_probable (formula A) (λ T p, proof_conjunction)
+Theory.finite_character_of_finite_provable(formula A) (λ T p, proof_conjunction)
 
 end provable
 
