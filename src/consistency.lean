@@ -26,7 +26,7 @@ variables (F)
 class has_finite_character :=
 (finite_character' : ∀ {T : Theory F}, (∀ (s ⊆ T) (f : s.finite), consistent s) → consistent T)
 
-def finite_character_of_finite_probable 
+def finite_character_of_finite_provable
   (H : ∀ T p, T ⊢ p → ∃ P : list F, (∀ p, p ∈ P → T p) ∧ ∅ ⊢ P.conjunction ⟶ p) :
   has_finite_character F :=
 ⟨λ T h, 

@@ -12,236 +12,235 @@ structure Structure (L : language.{u}) :=
 (fn : ∀ {n}, L.fn n → (fin n → dom) → dom)
 (pr : ∀ {n}, L.pr n → (fin n → dom) → Prop)
 
-local notation (name := dom) `|`M`|` := Structure.dom M
+local notation (name := dom) `|`S`|` := Structure.dom S
 
-variables {L : language.{u}} {M : Structure L}
+variables {L : language.{u}} {S : Structure L}
 
-instance (M : Structure L) : inhabited M.dom := M.inhabited
+instance (S : Structure L) : inhabited S.dom := S.inhabited
 
-variables (M)
+variables (S) {m n : ℕ}
 
-@[simp] def term.val (e : ℕ → |M|) : term L → |M|
+open subterm subformula
+
+namespace  subterm
+variables {m} {m₁ m₂ : ℕ} {n} (me : fin m → |S|) (e : fin n → |S|)
+
+@[simp] def val (me : fin m → |S|) (e : fin n → |S|) : subterm L m n → |S|
+| (&x)           := me x
 | (#x)           := e x
-| (term.app f v) := M.fn f (λ i, (v i).val)
+| (function f v) := S.fn f (λ i, (v i).val)
 
-@[simp] def formula.val : ∀ (e : ℕ → |M|), formula L → Prop
-| _ ⊤                 := true
-| e (formula.app p v) := M.pr p (λ i, (v i).val M e)
-| e (t ≃ u)          := t.val M e = u.val M e
-| e (p ⟶ q)          := p.val e → q.val e
-| e (∼p)              := ¬(p.val e)
-| e (∀.p)            := ∀ d : M.dom, (p.val (d ⌢ e))
+lemma val_rew (s : finitary (subterm L m₂ n) m₁) (me : fin m₂ → |S|) (e : fin n → |S|) : ∀ (t : subterm L m₁ n),
+  (rew s t).val S me e = t.val S (val S me e ∘ s) e
+| (&x)           := by simp
+| (#x)           := by simp
+| (function f v) := by simp; refine congr_arg _ (by ext i; exact val_rew (v i))
 
-notation M` ⊧[`:80 e`] `p :50 := @formula.val _ M e p
+@[simp] lemma val_mlift (x : |S|) (t : subterm L m n) :
+  t.mlift.val S (x *> me) e = t.val S me e :=
+by simp[mlift_eq_rew, val_rew]; congr; ext x; simp
 
-def models (M : Structure L) (p : formula L) : Prop := ∀ (e : ℕ → |M|), M ⊧[e] p
+@[simp] lemma val_lift (x : |S|) (t : subterm L m n) :
+  t.lift.val S me (x *> e) = t.val S me e :=
+by induction t; simp*
 
-instance : semantics (formula L) (Structure L) := ⟨models⟩
+@[simp] lemma val_push (me : fin m → |S|) (x : |S|) (e : fin n → |S|) (t : subterm L m (n + 1)) :
+  val S (x *> me) e t.push = val S me (e <* x) t :=
+by { induction t; simp*, case var : u { refine fin.last_cases _ _ u; simp } }
 
-lemma models_def {M : Structure L} {p : formula L} : M ⊧ p ↔ (∀ (e : ℕ → |M|), M ⊧[e] p) := by refl
+@[simp] lemma val_pull (me : fin m → |S|) (x : |S|) (e : fin n → |S|) (t : subterm L (m + 1) n) :
+  val S me (e <* x) t.pull = val S (x *> me) e t :=
+by { induction t; simp*, case metavar : u { refine fin.cases _ _ u; simp } }
 
-abbreviation satisfiable (p : formula L) : Prop := semantics.satisfiable (Structure L) p
+end  subterm
 
-abbreviation Satisfiable (T : Theory L) : Prop := semantics.Satisfiable (Structure L) T
+namespace subformula
+variables {m₁ m₂ : ℕ} {n} (me : fin m → |S|) (e : fin n → |S|)
 
-instance : has_double_turnstile (Theory L) (formula L) := ⟨semantics.consequence (Structure L)⟩
+@[simp] def val' (me : fin m → |S|) : ∀ {n} (e : fin n → |S|), subformula L m n → Prop
+| n _ verum          := true
+| n e (relation p v) := S.pr p (subterm.val S me e ∘ v)
+| n e (equal t u)    := t.val S me e = u.val S me e
+| n e (imply p q)    := p.val' e → q.val' e
+| n e (neg p)        := ¬(p.val' e)
+| n e (fal p)        := ∀ x : S.dom, (p.val' (x *> e))
 
-lemma consequence_def {T : Theory L} {p : formula L} :
-  T ⊧ p ↔ ∀ S : Structure L, S ⊧ T → S ⊧ p := by refl
+@[irreducible] def val (me : fin m → |S|) (e : fin n → |S|) : subformula L m n →ₗ Prop :=
+{ to_fun := val' S me e,
+  map_neg' := λ _, by refl,
+  map_imply' := λ _ _, by refl,
+  map_and' := λ p q, by unfold has_inf.inf; simp[and]; refl,
+  map_or' := λ p q, by unfold has_sup.sup; simp[or, ←or_iff_not_imp_left]; refl,
+  map_top' := by refl,
+  map_bot' := by simp[bot_def]; unfold has_top.top has_negation.neg; simp }
 
-variables {M}
+@[simp] lemma val_relation {p} (r : L.pr p) (v) :
+  val S me e (relation r v) ↔ S.pr r (subterm.val S me e ∘ v) :=  by simp[val]; refl
 
-lemma rew_val_eq (s : ℕ → term L) (e : ℕ → |M|) : ∀ (t : term L),
-  (t.rew s).val M e = t.val M (λ n, (s n).val M e)
-| (#x)                := by simp
-| (@term.app _ n f v) := by simp[λ i : fin n, rew_val_eq (v i)]
+@[simp] lemma val_equal (t u : subterm L m n) :
+  val S me e (t =' u) ↔ (t.val S me e = u.val S me e) := by simp[val]; refl
 
-@[simp] lemma pow_val_concat (e : ℕ → |M|) (d : |M|) (t : term L) : (t^1).val M (d ⌢ e) = t.val M e :=
-by simp[term.pow_eq, rew_val_eq]
+@[simp] lemma val_fal (p : subformula L m (n + 1)) :
+  val S me e (∀'p) ↔ ∀ x : |S|, val S me (x *> e) p := by simp[val]; refl
 
-lemma rew_val_iff : ∀ (s : ℕ → term L) (p : formula L) (e : ℕ → |M|),
-  (p.rew s).val M e ↔ p.val M (λ n, (s n).val M e)
-| _ ⊤                 _ := by simp
-| _ (formula.app p v) _ := by simp[formula.rew, rew_val_eq]
-| _ (t ≃ u)          _ := by simp[formula.rew, term.val, rew_val_eq]
-| _ (p ⟶ q)           _ := by simp[formula.rew, rew_val_iff _ p, rew_val_iff _ q]
-| _ (∼p)              _ := by simp[formula.rew, rew_val_iff _ p]
-| s (∀.p)            e :=
-  by { simp[formula.rew, rew_val_iff _ p], refine forall_congr (λ d, _),
-       have : (λ n, ((s ^ 1) n).val M (d ⌢ e) ) = (d ⌢ λ n, ((s n).val M e)),
-       { funext n, cases n; simp[concat, term.val, term.val], exact pow_val_concat _ _ _ },
-       simp[this] }
+lemma val_rew (me : fin m₂ → |S|) : ∀ {n} (e : fin n → |S|) (s : finitary (subterm L m₂ n) m₁) (p : subformula L m₁ n),
+  val S me e (rew s p) ↔ val S (subterm.val S me e ∘ s) e p
+| n e s (relation r v) := by simp[subterm.val_rew]; refine iff_of_eq (congr_arg _ (by ext x; simp[subterm.val_rew]))
+| n e s (equal t u)    := by simp[equal_eq, subterm.val_rew]  
+| n e s verum          := by simp[top_eq]
+| n e s (imply p q)    := by simp[imply_eq, val_rew _ _ p, val_rew _ _ q]
+| n e s (neg p)        := by simp[neg_eq, val_rew _ _ p]
+| n e s (fal p)        :=
+    by{ simp[fal_eq, val_rew _ _ p], refine forall_congr (λ x, _),
+        have : (subterm.val S me (x *> e) ∘ subterm.lift ∘ s) = subterm.val S me e ∘ s, by funext x; simp,
+        rw this }
+ 
+@[simp] lemma val_mlift (e : fin n → |S|) (x : |S|) (p : subformula L m n) :
+  val S (x *> me) e p.mlift = val S me e p :=
+by { simp[mlift_eq_rew, val_rew],
+     have : subterm.val S (x *> me) e ∘ metavar ∘ fin.succ = me, by funext x; simp,
+     rw this }
 
-@[simp] lemma pow_val_concat_iff : ∀ (p : formula L) (e : ℕ → |M|) d, (p^1).val M (d ⌢ e) = p.val M e :=
-by simp[formula.pow_eq, rew_val_iff]
+@[simp] lemma val_push (x : |S|) : ∀ {n} (e : fin n → |S|) (p : subformula L m (n + 1)),
+  val S (x *> me) e p.push ↔ val S me (e <* x) p
+| n e (relation r v) := by simp; refine iff_of_eq (congr_arg _ $ funext $ by simp)
+| n e (equal t u)    := by simp[equal_eq]
+| n e verum          := by simp[top_eq]
+| n e (imply p q)    := by simp[imply_eq, val_push _ p, val_push _ q]
+| n e (neg p)        := by simp[neg_eq, val_push _ p]
+| n e (fal p)        := by { simp[fal_eq], refine forall_congr _,
+  { intros y, simp[fin.left_right_concat_assoc], exact val_push (y *> e) p} }
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.complexity)⟩]}
 
-@[simp] lemma Structure_zero_val [has_zero_symbol L] {e : ℕ → |M|} : (0 : term L).val M e = M.fn has_zero_symbol.zero finitary.nil :=
-by simp[has_zero.zero]; congr
+@[simp] lemma val_pull (x : |S|) : ∀ {n} (e : fin n → |S|) (p : subformula L (m + 1) n),
+  val S me (e <* x) p.pull ↔ val S (x *> me) e p
+| n e (relation r v) := by simp; refine iff_of_eq (congr_arg _ $ funext $ by simp)
+| n e (equal t u)    := by simp[equal_eq]
+| n e verum          := by simp[top_eq]
+| n e (imply p q)    := by simp[imply_eq, val_pull _ p, val_pull _ q]
+| n e (neg p)        := by simp[neg_eq, val_pull _ p]
+| n e (fal p)        := by { simp[fal_eq], refine forall_congr _,
+  { intros y, simp[fin.left_right_concat_assoc], exact val_pull (y *> e) p} }
 
-@[simp] lemma Structure_succ_val [has_succ_symbol L] (t : term L) {e : ℕ → |M|} :
-  (Succ t).val M e = M.fn has_succ_symbol.succ ‹t.val M e› :=
-by simp[has_succ.succ]; congr; ext; simp
+@[simp] lemma val_dummy (x : |S|) : ∀ {n} (e : fin n → |S|) (p : subformula L m n),
+  val S me (e <* x) p.dummy ↔ val S me e p :=
+by simp[dummy]
 
-private lemma modelsth_sf {T : Theory L} : M ⊧ T → M ⊧ ⤊T := λ h p hyp_p e,
-by { rcases hyp_p with ⟨p, hyp_p', rfl⟩, simp[formula.pow_eq, rew_val_iff],
-     refine h hyp_p' _ }
+lemma val_msubst (p : subformula L (m + 1) n) (t : subterm L m n) :
+  val S me e (msubst t p) ↔ val S (subterm.val S me e t *> me) e p :=
+by simp[msubst, val_rew, fin.comp_left_concat, show subterm.val S me e ∘ metavar = me, from funext (by simp)]
 
-@[simp] lemma models_ex {p : formula L} {e : ℕ → |M|} : (∃.p).val M e ↔ ∃ d, p.val M (d ⌢ e) :=
-by simp[has_exists_quantifier.ex, formula.ex, models, rew_val_iff]
+lemma val_subst (p : subformula L m (n + 1)) (t : subterm L m n) :
+  val S me e (subst t p) ↔ val S me (e <* subterm.val S me e t) p :=
+by simp[subst, val_msubst]
 
-lemma models_univs {p : formula L} {e : ℕ → |M|} {n} :
-  (∀.[n] p).val M e ↔ ∀ d : finitary (|M|) n, p.val M (λ i, if h : i < n then d ⟨i, h⟩ else e (i - n)) :=
+@[simp] lemma val_universal_closure (p : subformula L m n) :
+  val S me fin_zero_elim (∀'* p) ↔ ∀ v, val S me v p :=
 begin
-  induction n with n IH generalizing e; simp,
-  { refine ⟨λ h _, h, λ h, h ∅⟩ },
-  { simp[IH], split,
-    { intros h D, refine cast _ (h D.head_inv D.tail_inv), congr, funext i, simp[concat, slide],
-      have C : i < n ∨ i = n ∨ n < i, exact trichotomous i n,
-      cases C,
-      { simp[C, nat.lt.step C, finitary.tail_inv] }, rcases C with (rfl | C),
-      { simp[←nat.add_one], refl },
-      { simp[show ¬i < n, from asymm C, show ¬i < n.succ, by omega, C, ←nat.add_one,
-             show i - n - 1 = i - (n + 1), from tsub_tsub i n 1] } },
-    { intros h d D, refine cast _ (h (D ᶠ:: d)), congr, funext i, simp[concat, slide],
-      have C : i < n ∨ i = n ∨ n < i, exact trichotomous i n,
-      cases C,
-      { simp[C, nat.lt.step C, finitary.cons_inv] }, rcases C with (rfl | C), 
-      { simp[←nat.add_one] },
-      { simp[show ¬i < n, from asymm C, show ¬i < n.succ, by omega, C, ←nat.add_one,
-             show i - n - 1 = i - (n + 1), from tsub_tsub i n 1] } } }
+  induction n with n IH,
+  { simp },
+  { simp[IH (∀'p)], split,
+    { intros h v, simpa[fin.left_concat_eq] using h (v ∘ fin.succ) (v 0) },
+    { intros h v x, exact h (x *> v) } }
 end
 
-@[simp] lemma models_and {p q : formula L} {e : ℕ → |M|} : (p ⊓ q).val M e ↔ (p.val M e ∧ q.val M e) :=
-by simp[has_inf.inf, formula.and]
+end subformula
 
-@[simp] lemma models_or {p q : formula L} {e : ℕ → |M|} : (p ⊔ q).val M e ↔ (p.val M e ∨ q.val M e) :=
-by {simp[has_sup.sup, formula.or], exact or_iff_not_imp_left.symm }
+namespace formula
+variables (S) {me : fin m → |S|}
 
-@[simp] lemma models_iff {p q : formula L} {e : ℕ → |M|} : (p ⟷ q).val M e ↔ (p.val M e ↔ q.val M e) :=
-by simp[lrarrow_def]; exact iff_def.symm
+@[reducible] def val (me : fin m → |S|) : formula L m →ₗ Prop := subformula.val S me fin_zero_elim
 
-@[simp] lemma models_conjunction' {n : ℕ} {P : finitary (formula L) n} {e : ℕ → |M|} :
-  (inf_conjunction n P).val M e ↔ ∀ i, (P i).val M e :=
-by { induction n with n IH; simp,
-     { simp [IH], split,
-       { rintros ⟨h0, h1⟩, intros i,
-         have : i.val < n ∨ i.val = n := nat.lt_succ_iff_lt_or_eq.mp i.property,
-         cases this,
-         { have := h1 ⟨↑i, this⟩, simp at this, refine this },
-         { simp[←this] at*, refine h0 } },
-       { intros h, refine ⟨h _, λ _, h _⟩ } } }
+notation S` ⊧[`:80 e`] `p :50 := val S e p
 
-@[simp] lemma models_pow {p : formula L} {i : ℕ} {e : ℕ → |M| } : (p^i).val M e ↔ p.val M (λ n, e (n + i)) :=
-by simp[formula.pow_eq, rew_val_iff]
+variables {S} {p q : formula L m}
 
-lemma models_subst {p : formula L} {i : ℕ} {t : term L} {e : ℕ → |M| } :
-  (p.rew ı[i ⇝ t]).val M e ↔ p.val M (λ n, if n < i then e n else if i < n then e (n - 1) else t.val M e) :=
-by { simp[rew_val_iff],
-     have : (λ (n : ℕ), term.val M e (ı[i ⇝ t] n)) = (λ n, if n < i then e n else if i < n then e (n - 1) else t.val M e),
-     { funext n,
-       have C : n < i ∨ n = i ∨ i < n, exact trichotomous n i,
-       cases C, simp[C],
-       cases C; simp[C], simp[asymm C] },
-     simp[this] }
+@[simp] lemma models_relation {k} {r : L.pr k} {v} :
+  S ⊧[me] relation r v ↔ S.pr r (subterm.val S me fin_zero_elim ∘ v) := by simp[val]
 
-@[simp] lemma models_subst_0 {p : formula L} {t : term L} {e : ℕ → |M|} :
-  (p.rew ı[0 ⇝ t]).val M e ↔ p.val M (t.val M e ⌢ e) :=
-by { have := @models_subst _ _ p 0 t e, simp at this,
-     have eqn : (λ n, ite (0 < n) (e (n - 1)) (t.val M e)) = t.val M e ⌢ e,
-     { funext n, cases n; simp }, rw[←eqn], exact this }
+@[simp] lemma models_equal {t u : term L m} :
+  S ⊧[me] (t =' u) ↔ t.val S me fin_zero_elim = u.val S me fin_zero_elim := by simp[val]
 
-@[simp] lemma models_subst_1 {p : formula L} {t : term L} {e : ℕ → |M| } :
-  (p.rew ı[1 ⇝ t]).val M e ↔ p.val M (e 0 ⌢ t.val M e ⌢ (λ x, e (x + 1))) :=
-by { have := @models_subst _ _ p 1 t e,
-     have eqn : (λ n, ite (n < 1) (e n) (ite (1 < n) (e (n - 1)) (t.val M e))) =
-       e 0 ⌢ t.val M e ⌢ (λ x, e (x + 1)),
-     { funext n, cases n; simp[←nat.add_one], cases n; simp }, rw[←eqn], exact this }
+@[simp] lemma models_fal {p : subformula L m 1} :
+  S ⊧[me] (∀'p : subformula _ _ _) ↔ ∀ x, S ⊧[x *> me] p.push :=
+by simp[val, fin.concat_zero]
 
-lemma nfal_models_iff : ∀ {n} {p : formula L}, M ⊧ nfal p n ↔ M ⊧ p
-| 0     _ := iff.rfl
-| (n+1) p := by { simp[←@nfal_models_iff n p], refine ⟨λ h e, _, λ h e d, h _⟩,
-  have : ((e 0) ⌢ λ x, e (x + 1) )= e, { ext x, cases x; simp[concat] },
-  have := h (λ x, e (x + 1)) (e 0), simp* at* }
+@[simp] lemma models_subst {p : subformula L m 1} (t : subterm L m 0) :
+  S ⊧[me] (subst t p : subformula _ _ _) ↔ S ⊧[subterm.val S me fin_zero_elim t *> me] p.push :=
+by simp[val, subformula.val_subst]
 
-theorem soundness {T : Theory L} : ∀ {p}, T ⊢ p → T ⊧ p := λ p hyp,
+@[simp] lemma models_rew {x : |S|} : S ⊧[x *> me] p.mlift ↔ S ⊧[me] p :=
+by simp[val]
+
+end formula
+
+def sentence.val : sentence L → Prop := formula.val S fin_zero_elim
+
+def models (S : Structure L) (p : formula L m) : Prop := ∀ e, S ⊧[e] p
+
+instance : semantics (formula L m) (Structure L) := ⟨models⟩
+
+lemma models_def {S : Structure L} {p : formula L m} : S ⊧ p ↔ (∀ e, S ⊧[e] p) := by refl
+
+abbreviation satisfiable (p : formula L m) : Prop := semantics.satisfiable (Structure L) p
+
+abbreviation Satisfiable (T : preTheory L m) : Prop := semantics.Satisfiable (Structure L) T
+
+namespace formula
+variables {S} {m}
+
+@[simp] lemma models_mlift {p : formula L m} : S ⊧ p.mlift ↔ S ⊧ p :=
+by{ simp[models_def], split,
+    { intros h e,
+      have : S ⊧[default *> e] p.mlift, from h _,
+      exact models_rew.mp this },
+    { intros h e, rw ←fin.left_concat_eq e, simpa using h (e ∘ fin.succ)} }
+
+end formula
+
+namespace preTheory
+variables {S} {m} {T : preTheory L m}
+
+@[simp] lemma models_mlift : S ⊧ T.mlift ↔ S ⊧ T :=
+⟨by { intros h p hp,
+      have : S ⊧ p.mlift, from @h p.mlift (by simpa using hp),
+      exact formula.models_mlift.mp this },
+ by { intros h p hp,
+      rcases preTheory.mem_mlift_iff.mp hp with ⟨q, hq, rfl⟩,
+      exact formula.models_mlift.mpr (h hq) }⟩
+
+end preTheory
+
+instance : has_double_turnstile (preTheory L m) (formula L m) := ⟨semantics.consequence (Structure L)⟩
+
+lemma consequence_def {T : preTheory L m} {p : formula L m} :
+  T ⊧ p ↔ (∀ S : Structure L, S ⊧ T → S ⊧ p) := by refl
+
+variables {S}
+
+theorem soundness {T : preTheory L m} : ∀ {p}, T ⊢ p → T ⊧ p := λ p h,
 begin
-  rcases hyp,
-  induction hyp,
-  case generalize : T p hyp_p IH
-  { intros M hyp_T e d, exact IH (modelsth_sf hyp_T) _ },
-  case mdp : T p q hyp_pq hyp_p IH_pq IH_p
-  { intros M hyp_T e, exact IH_pq hyp_T e (IH_p hyp_T e) },
-  case by_axiom : T p hyp_p
-  { intros M hyp_T e, exact hyp_T hyp_p _ },
-  case verum : T
-  { intros M hyp_T e, simp },
-  case imply₁ : T p q
-  { intros M hyp_T e h₁ h₂, exact h₁ },
-  case imply₂ : T p q r
-  { intros M hyp_T e h₁ h₂ h₃, exact (h₁ h₃) (h₂ h₃) },
-  case contraposition : T p q
-  { intros M hyp_T e h₁, simp[formula.val], contrapose, exact h₁ },
-  case specialize : T p t
-  { intros M hyp_T e h, simp[rew_val_iff] at h ⊢,
-    have : (λ n, (ı[0 ⇝ t] n).val M e) = (t.val M e) ⌢ e,
-    { funext n, cases n; simp[term.val, term.val, concat] },
-    rw this, exact h _ },
-  case univ_K : T p q
-  { intros M hyp_T e h₁ h₂ d, exact (h₁ d) (h₂ d) },
-  case dummy_univ : T p
-  { intros M hyp_T e h d, simp, exact h },
-  case eq_reflexivity : T
-  { intros M hyp_T e t, simp[formula.val] },
-  case eq_symmetry : T
-  { intros M hyp_T e t₁ t₂, simp[formula.val], refine eq.symm },
-  case eq_transitivity : T
-  { intros M hyp_T e t₁ t₂ t₃, simp[formula.val], refine eq.trans },
-  case function_ext : T n f
-  { intros M hyp_T, simp[eq_axiom4, nfal_models_iff], intros e, simp,
-    intros h, simp[h] },
-  case predicate_ext : T n f
-  { intros M hyp_T, simp[eq_axiom5, nfal_models_iff], intros e, simp,
-    intros h, simp[h] },
+  apply provable.rec_on h,
+  { intros m T p b IH S hT me,
+    simp[formula.val], intros x,
+    have : S ⊧ p, from @IH S (by simpa using hT),
+    exact this (x *> me) },
+  { intros m T p q b₁ b₂ m₁ m₂ S hT me,
+    have h₁ : S ⊧[me] p → S ⊧[me] q, by simpa using m₁ hT me,
+    have h₂ : S ⊧[me] p, from m₂ hT me,
+    exact h₁ h₂ },
+  { intros m T p hp S hS, exact hS hp },
+  { intros m T S h me, simp },
+  { intros m T p q S hS me, simp, intros h _, exact h },
+  { intros m T p q r S hS me, simp,  intros h₁ h₂ h₃, exact h₁ h₃ (h₂ h₃) },
+  { intros m T p q S hS me, simp, intros h₁, contrapose, exact h₁ },
+  { intros m T p t S hS me, simp, intros h, exact h _ },
+  { intros m T p q S hS me, simp, intros h₁ h₂ x, exact h₁ x h₂ },
+  { intros T S hS me, simp },
+  { intros T S hS me, simp, intros x₁ x₂, exact eq.symm },
+  { intros T S hS me, simp, intros x₁ x₂ x₃, exact eq.trans },
+  { intros T k f S hS me, simp[eq_axiom4], intros v h, exact congr_arg _ (funext h) },
+  { intros T k r S hS me, simp[eq_axiom5], intros v h, exact cast (congr_arg _ (funext h)) }
 end
-
-theorem Structure_consistent {T : Theory L} : M ⊧ T → Theory.consistent T :=
-by { contrapose, simp[Theory.consistent], intros p hp₁ hp₂ hyp,
-     exact soundness hp₂ hyp (λ _, default) (soundness hp₁ hyp (λ _, default)) }
-
-lemma eval_eq : ∀ {t : term L} {e₁ e₂ : ℕ → |M|},
-  (∀ n, n < t.arity → e₁ n = e₂ n) → t.val M e₁ = t.val M e₂
-| (#n)               _  _  eqs := by simp at *; refine eqs _ _; simp
-| (@term.app _ n f v)  e₁ e₂ eqs := by { simp at *, congr, funext i, refine @eval_eq (v i) _ _ (λ n eqn, _),
-  have : (v i).arity ≤ ⨆ᶠ i, (v i).arity, from le_fintype_sup (λ i, (v i).arity) i,
-  refine eqs n (lt_of_lt_of_le eqn this) }
-  
-lemma eval_iff : ∀ {p : formula L} {e₁ e₂ : ℕ → |M|},
-  (∀ n, n < p.arity → e₁ n = e₂ n) → (M ⊧[e₁] p ↔ M ⊧[e₂] p)
-| ⊤                      _  _  _   := by simp
-| (@formula.app _ n p v) e₁ e₂ eqs := by { simp at*,
-    suffices : (λ i, term.val M e₁ (v i)) = (λ i, term.val M e₂ (v i)), { simp[this] },
-    funext i, refine @eval_eq _ M (v i) _ _ (λ n eqn, eqs n _),
-    have : (v i).arity ≤ ⨆ᶠ i, (v i).arity, from le_fintype_sup (λ i, (v i).arity) i,
-    refine (lt_of_lt_of_le eqn this) }
-| (t ≃ u)               e₁ e₂ eqs := by { simp[formula.arity] at*,
-    simp[eval_eq (λ n h, eqs _ (or.inl h)), eval_eq (λ n h, eqs _ (or.inr h))] }
-| (p ⟶ q)                e₁ e₂ eqs := by { simp[formula.arity] at*,
-    simp[eval_iff (λ n h, eqs _ (or.inl h)), eval_iff (λ n h, eqs _ (or.inr h))] }
-| (∼p)                   e₁ e₂ eqs := by { simp[formula.arity] at*,
-    simp[eval_iff eqs] }
-| (∀.p)                 e₁ e₂ eqs := by { simp[formula.arity] at*,
-    have : ∀ (d : |M|), p.val M (d ⌢ e₁) ↔ p.val M (d ⌢ e₂),
-    { intros d, refine eval_iff (λ n eqn, _),
-      cases n; simp[concat], refine eqs _ (by omega) },
-    exact forall_congr this }
-
-lemma eval_is_sentence_iff {p : formula L} (e : ℕ → |M|) (a : is_sentence p) : M ⊧[e] p ↔ M ⊧ p :=
-⟨λ h e, by { refine (eval_iff $ λ n h, _).1 h, exfalso,
- simp[is_sentence] at*, rw[a] at h, exact nat.not_lt_zero n h},
- λ h, h e⟩
-
-lemma models_neg_iff_of_is_sentence {p : formula L} (hp : is_sentence p) : M ⊧ ∼p ↔ ¬M ⊧ p :=
-by { have : M ⊧[default] ∼p ↔ ¬M ⊧[default] p, by simp,
-     simp only [hp, show is_sentence (∼p), by simp[hp], eval_is_sentence_iff] at this, exact this }
 
 end fol
