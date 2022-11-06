@@ -201,7 +201,7 @@ begin
     intros h, simp[h] },
   case predicate_ext : T n f
   { intros M hyp_T, simp[eq_axiom5, nfal_models_iff], intros e, simp,
-    intros h, simp[h] },
+    intros h, simp[h] }
 end
 
 theorem Structure_consistent {T : Theory L} : M ⊧ T → Theory.consistent T :=
