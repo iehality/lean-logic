@@ -1,6 +1,6 @@
 import lib.lib provability
 
-universes u
+universes u v
 
 open_locale logic_symbol
 
@@ -147,9 +147,9 @@ by { contrapose, simp[Theory.consistent], intros p hp₁ hp₂ hyp,
      have : T ⊢ (⊥ : F), from axiomatic_classical_logic'.explosion hp₁ hp₂,
      exact h (soundness this hyp) }
 
-
-
 end sound
+
+
 
 def soundness (𝓢 : Type*) [semantics F 𝓢] : Prop :=
   ∀ {T : Theory F} {p}, T ⊢ p → semantics.consequence 𝓢 T p
