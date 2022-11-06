@@ -171,7 +171,7 @@ theorem fundamental_param : ∀ (p : formula L) (e : ∀ i, ℕ → |𝔄 i|),
   ℿ 𝔄 ⫽ F ⊧[λ n, ⟦λ i, e i n⟧*] p ↔ {i | 𝔄 i ⊧[e i] p} ∈ F
 | ⊤                 _ := by { simp, exact F.univ_sets }
 | (formula.app p v) e := models_pr_iff p _ _
-| (t₁ ≃ t₂)      e := by simp[models_pr_iff_lmm]; refl
+| (t₁ =' t₂)      e := by simp[models_pr_iff_lmm]; refl
 | (p ⟶ q)       e := by { simp[fundamental_param p, fundamental_param q],
     show {i | 𝔄 i ⊧[e i] p} ∈ F → {i | 𝔄 i ⊧[e i] q} ∈ F ↔ {i | 𝔄 i ⊧[e i] p → 𝔄 i ⊧[e i] q} ∈ F,
     split,

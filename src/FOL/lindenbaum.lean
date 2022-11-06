@@ -8,19 +8,19 @@ open_locale logic_symbol
 open formula logic
 variables {L : language.{u}} (T : Theory L) (i : ℕ)
 
-notation t` ≃[`:50 T :50`] `:0 u:50 := term.equiv T t u
+notation t` ='[`:50 T :50`] `:0 u:50 := term.equiv T t u
 
-@[symm] lemma term.equiv_refl (T : Theory L) (t : term L) : t ≃[T] t := by simp[term.equiv]
+@[symm] lemma term.equiv_refl (T : Theory L) (t : term L) : t ='[T] t := by simp[term.equiv]
 
-@[symm] lemma term.equiv_symm (T : Theory L) (t u : term L) : (t ≃[T] u) → (u ≃[T] t) := provable.eq_symm
+@[symm] lemma term.equiv_symm (T : Theory L) (t u : term L) : (t ='[T] u) → (u ='[T] t) := provable.eq_symm
 
-@[trans] lemma term.equiv_trans (T : Theory L) (t u s : term L) : (t ≃[T] u) → (u ≃[T] s) → (t ≃[T] s) := provable.eq_trans
+@[trans] lemma term.equiv_trans (T : Theory L) (t u s : term L) : (t ='[T] u) → (u ='[T] s) → (t ='[T] s) := provable.eq_trans
 
 theorem term_equiv_equivalence (T : Theory L) : equivalence (term.equiv T) :=
 ⟨@term.equiv_refl _ _, @term.equiv_symm _ _, @term.equiv_trans _ _⟩
 
 @[reducible, simp, instance]
-def herbrand (n : ℕ) : setoid (term L) := ⟨λ t₁ t₂, T^n ⊢ t₁ ≃ t₂, term_equiv_equivalence (T^n)⟩
+def herbrand (n : ℕ) : setoid (term L) := ⟨λ t₁ t₂, T^n ⊢ t₁ =' t₂, term_equiv_equivalence (T^n)⟩
 
 def Herbrand (n : ℕ) : Type u := quotient (herbrand T n)
 
@@ -40,54 +40,54 @@ quotient.induction_on' d h
 
 @[elab_as_eliminator, reducible]
 protected def lift_on {φ} (d : Herbrand T i) (f : term L → φ)
-  (h : ∀ t u : term L, T^i ⊢ t ≃ u → f t = f u) : φ :=
+  (h : ∀ t u : term L, T^i ⊢ t =' u → f t = f u) : φ :=
 quotient.lift_on' d f h
 
 @[simp]
 protected lemma lift_on_eq {φ} (t : term L) (f : term L → φ)
-  (h : ∀ t u, T^i ⊢ t ≃ u → f t = f u) : fol.Herbrand.lift_on (⟦t⟧ᴴ : Herbrand T i) f h = f t := rfl
+  (h : ∀ t u, T^i ⊢ t =' u → f t = f u) : fol.Herbrand.lift_on (⟦t⟧ᴴ : Herbrand T i) f h = f t := rfl
 
 @[elab_as_eliminator, reducible, simp]
 protected def lift_on₂ {φ} (d₁ d₂ : Herbrand T i) (f : term L → term L → φ)
-  (h : ∀ t₁ t₂ u₁ u₂, (T^i ⊢ t₁ ≃ u₁) → (T^i ⊢ t₂ ≃ u₂) → f t₁ t₂ = f u₁ u₂) : φ :=
+  (h : ∀ t₁ t₂ u₁ u₂, (T^i ⊢ t₁ =' u₁) → (T^i ⊢ t₂ =' u₂) → f t₁ t₂ = f u₁ u₂) : φ :=
 quotient.lift_on₂' d₁ d₂ f h
 
 @[simp]
 protected lemma lift_on₂_eq {φ} (t u : term L) (f : term L → term L → φ)
-  (h : ∀ t₁ t₂ u₁ u₂, (T^i ⊢ t₁ ≃ u₁) → (T^i ⊢ t₂ ≃ u₂) → f t₁ t₂ = f u₁ u₂) :
+  (h : ∀ t₁ t₂ u₁ u₂, (T^i ⊢ t₁ =' u₁) → (T^i ⊢ t₂ =' u₂) → f t₁ t₂ = f u₁ u₂) :
   fol.Herbrand.lift_on₂ ⟦t⟧ᴴ ⟦u⟧ᴴ f h = f t u := rfl
 
 protected def lift_on_finitary {φ} {n : ℕ} (v : finitary (Herbrand T i) n) (f : finitary (term L) n → φ)
-  (h : ∀ v₁ v₂ : finitary (term L) n, (∀ n, T^i ⊢ (v₁ n) ≃ (v₂ n)) → f v₁ = f v₂) : φ :=
+  (h : ∀ v₁ v₂ : finitary (term L) n, (∀ n, T^i ⊢ (v₁ n) =' (v₂ n)) → f v₁ = f v₂) : φ :=
 quotient.lift_on_finitary v f h 
 
 @[simp]
 protected lemma lift_on_finitary_eq {φ} {n} (v : finitary (term L) n) (f : finitary (term L) n → φ)
-  (h : ∀ v₁ v₂ : finitary (term L) n, (∀ n, T^i ⊢ (v₁ n) ≃ (v₂ n)) → f v₁ = f v₂) :
+  (h : ∀ v₁ v₂ : finitary (term L) n, (∀ n, T^i ⊢ (v₁ n) =' (v₂ n)) → f v₁ = f v₂) :
   fol.Herbrand.lift_on_finitary (λ x, (⟦v x⟧ᴴ : Herbrand T i)) f h = f v :=
 quotient.lift_on_finitary_eq v f h
 
 @[simp]
 protected lemma lift_on_finitary_0_eq {φ} (f : finitary (term L) 0 → φ)
-  (h : ∀ v₁ v₂ : finitary (term L) 0, (∀ n, T^i ⊢ (v₁ n) ≃ (v₂ n)) → f v₁ = f v₂)
+  (h : ∀ v₁ v₂ : finitary (term L) 0, (∀ n, T^i ⊢ (v₁ n) =' (v₂ n)) → f v₁ = f v₂)
   (n : finitary (Herbrand T i) 0) :
   fol.Herbrand.lift_on_finitary n f h = f finitary.nil :=
 quotient.lift_on_finitary_0_eq f h n
 
 @[simp]
 protected lemma lift_on_finitary_1_eq {φ} (t : term L) (f : finitary (term L) 1 → φ)
-  (h : ∀ v₁ v₂ : finitary (term L) 1, (∀ n, T^i ⊢ (v₁ n) ≃ (v₂ n)) → f v₁ = f v₂) :
+  (h : ∀ v₁ v₂ : finitary (term L) 1, (∀ n, T^i ⊢ (v₁ n) =' (v₂ n)) → f v₁ = f v₂) :
   fol.Herbrand.lift_on_finitary ‹⟦t⟧ᴴ› f h = f ‹t› :=
 quotient.lift_on_finitary_1_eq t f h
 
 @[simp]
 protected lemma lift_on_finitary_2_eq {φ} (t u : term L) (f : finitary (term L) 2 → φ)
-  (h : ∀ v₁ v₂ : finitary (term L) 2, (∀ n, T^i ⊢ (v₁ n) ≃ (v₂ n)) → f v₁ = f v₂) :
+  (h : ∀ v₁ v₂ : finitary (term L) 2, (∀ n, T^i ⊢ (v₁ n) =' (v₂ n)) → f v₁ = f v₂) :
   fol.Herbrand.lift_on_finitary ‹⟦t⟧ᴴ, ⟦u⟧ᴴ› f h = f ‹t, u› :=
 quotient.lift_on_finitary_2_eq t u f h
 
 @[simp]
-lemma of_eq_of {t u : term L} : (⟦t⟧ᴴ : Herbrand T i) = ⟦u⟧ᴴ ↔ (T^i ⊢ t ≃ u) :=
+lemma of_eq_of {t u : term L} : (⟦t⟧ᴴ : Herbrand T i) = ⟦u⟧ᴴ ↔ (T^i ⊢ t =' u) :=
 by simp[term.quo, term.equiv, quotient.eq']
 
 def function_of {n} (f : L.fn n) : finitary (Herbrand T i) n → Herbrand T i :=
@@ -113,9 +113,9 @@ def Structure (T : Theory L) : Structure L := ⟨Herbrand T 0, ⟨⟦#0⟧ᴴ⟩
 
 notation `𝔗[`T`]` := Structure T
 
-theorem eq_of_provable_equiv {t₁ t₂} : T^i ⊢ t₁ ≃ t₂ ↔ (⟦t₁⟧ᴴ : Herbrand T i) = ⟦t₂⟧ᴴ := by simp[of_eq_of]
+theorem eq_of_provable_equiv {t₁ t₂} : T^i ⊢ t₁ =' t₂ ↔ (⟦t₁⟧ᴴ : Herbrand T i) = ⟦t₂⟧ᴴ := by simp[of_eq_of]
 
-theorem eq_of_provable_equiv_0 {t₁ t₂} : T ⊢ t₁ ≃ t₂ ↔ (⟦t₁⟧ᴴ : Herbrand T 0) = ⟦t₂⟧ᴴ := by simp[of_eq_of]
+theorem eq_of_provable_equiv_0 {t₁ t₂} : T ⊢ t₁ =' t₂ ↔ (⟦t₁⟧ᴴ : Herbrand T 0) = ⟦t₂⟧ᴴ := by simp[of_eq_of]
 
 variables (T) (i)
 
@@ -202,7 +202,7 @@ by induction n; simp[*,numeral]
 def pow : Herbrand T i → Herbrand T (i+1) :=
 λ h, Herbrand.lift_on h (λ u, ⟦u^1⟧ᴴ : term L → Herbrand T (i+1)) $
 λ t₁ t₂ hyp, by { simp[Herbrand.of_eq_of, ←Theory.pow_add] at*,
-  rw [show ((t₁^1) ≃ (t₂^1): formula L) = (t₁ ≃ t₂)^1, by simp, provable.sf_itr_sf_itr], exact hyp }
+  rw [show ((t₁^1) =' (t₂^1): formula L) = (t₁ =' t₂)^1, by simp, provable.sf_itr_sf_itr], exact hyp }
 
 lemma is_sentence_pow {t : term L} (a : t.arity = 0) :
   (⟦t⟧ᴴ : Herbrand T i).pow = ⟦t⟧ᴴ := by simp[pow, Herbrand.of_eq_of, a]
@@ -360,16 +360,16 @@ instance [has_mem_symbol L] : has_elem (Herbrand T i) (Lindenbaum T i) := ⟨λ 
   (⟦t ∊ u⟧ᴸ : Lindenbaum T i) = ((⟦t⟧ᴴ : Herbrand T i) ∊ ⟦u⟧ᴴ) := by unfold has_elem.elem; simp
 
 def equal : Herbrand T i → Herbrand T i → Lindenbaum T i :=
-λ h₁ h₂, fol.Herbrand.lift_on₂ h₁ h₂ (λ t₁ t₂, (⟦t₁ ≃ t₂⟧ᴸ : Lindenbaum T i)) $
+λ h₁ h₂, fol.Herbrand.lift_on₂ h₁ h₂ (λ t₁ t₂, (⟦t₁ =' t₂⟧ᴸ : Lindenbaum T i)) $
 λ t₁ t₂ u₁ u₂ eqn₁ eqn₂, by simp; exact equiv_eq_of_equiv eqn₁ eqn₂
 
 instance : has_eq (Herbrand T i) (Lindenbaum T i) := ⟨equal⟩
 
-local infix ` ≃ᴸ `:80 := ((≃) : Herbrand T i → Herbrand T i → Lindenbaum T i)
+local infix ` ='ᴸ `:80 := ((=') : Herbrand T i → Herbrand T i → Lindenbaum T i)
 
-@[simp] lemma equal_eq (t u : term L) : ⟦t ≃ u⟧ᴸ = (⟦t⟧ᴴ ≃ᴸ ⟦u⟧ᴴ) := rfl
+@[simp] lemma equal_eq (t u : term L) : ⟦t =' u⟧ᴸ = (⟦t⟧ᴴ ='ᴸ ⟦u⟧ᴴ) := rfl
 
-lemma equal_def (t u : term L) : (⟦t⟧ᴴ ≃ᴸ ⟦u⟧ᴴ) = ⟦t ≃ u⟧ᴸ := rfl
+lemma equal_def (t u : term L) : (⟦t⟧ᴴ ='ᴸ ⟦u⟧ᴴ) = ⟦t =' u⟧ᴸ := rfl
 
 section
 variables (f : term L → formula L) [formula.abberavation₁ f]
@@ -411,7 +411,7 @@ def univ : Lindenbaum T (i+1) → Lindenbaum T i :=
 λ p, classical_logic.lindenbaum.lift_on p (λ p, (⟦∀.p⟧ᴸ : Lindenbaum T i)) $
 λ p₁ p₂ hyp, by simp at hyp ⊢; exact equiv_univ_of_equiv hyp
 
-instance : has_univ_quantifier' (Lindenbaum T (i + 1)) (Lindenbaum T i) := ⟨univ⟩
+instance : has_univ_quantifier' (Lindenbaum T) := ⟨@univ L T⟩
 
 @[simp] lemma univ_eq (p : formula L) : ⟦∀.p⟧ᴸ = (∀' (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) := rfl
 
@@ -421,24 +421,24 @@ def exist : Lindenbaum T (i+1) → Lindenbaum T i :=
 λ p, classical_logic.lindenbaum.lift_on p (λ p, (⟦∃.p⟧ᴸ : Lindenbaum T i)) $
 λ p₁ p₂ hyp, by simp at hyp ⊢; exact equiv_ex_of_equiv hyp
 
-instance : has_exists_quantifier' (Lindenbaum T (i + 1)) (Lindenbaum T i) := ⟨exist⟩
+instance : has_exists_quantifier' (Lindenbaum T) := ⟨@exist L T⟩
 
 @[simp] lemma exist_eq (p : formula L) : ⟦∃.p⟧ᴸ = (∃' (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) := rfl
 
 lemma exist_def (p : formula L) : (∃' (⟦p⟧ᴸ : Lindenbaum T (i + 1)) : Lindenbaum T i) = ⟦∃.p⟧ᴸ := rfl
 
-@[simp] lemma equal_refl {h : Herbrand T i}  : h ≃ᴸ h = ⊤ :=
+@[simp] lemma equal_refl {h : Herbrand T i}  : h ='ᴸ h = ⊤ :=
 by { induction h using fol.Herbrand.ind_on;
      rw [←equal_eq, ←top_eq], simp [-equal_eq, -top_eq, axiomatic_classical_logic'.iff_equiv] }
 
-lemma equal_symm (h₁ h₂ : Herbrand T i) : (h₁ ≃ᴸ h₂) = (h₂ ≃ h₁) :=
+lemma equal_symm (h₁ h₂ : Herbrand T i) : (h₁ ='ᴸ h₂) = (h₂ =' h₁) :=
 by { induction h₁ using fol.Herbrand.ind_on,
      induction h₂ using fol.Herbrand.ind_on,
      rw [←equal_eq, ←equal_eq], simp [-equal_eq, axiomatic_classical_logic'.iff_equiv],
      refine ⟨by { have := (@eq_symmetry _ (T^i)) ⊚ h₂ ⊚ h₁, simp at this, exact this },
        by { have := (@eq_symmetry _ (T^i)) ⊚ h₁ ⊚ h₂, simp at this, exact this }⟩ }
 
-lemma equal_iff {h₁ h₂ : Herbrand T i} {p : L.pr 1} : h₁ ≃ᴸ h₂ = ⊤ ↔ h₁ = h₂ :=
+lemma equal_iff {h₁ h₂ : Herbrand T i} {p : L.pr 1} : h₁ ='ᴸ h₂ = ⊤ ↔ h₁ = h₂ :=
 by { induction h₁ using fol.Herbrand.ind_on, induction h₂ using fol.Herbrand.ind_on,
      rw [←equal_eq, ←top_eq], simp [-equal_eq, -top_eq, axiomatic_classical_logic'.iff_equiv] }
 
@@ -639,7 +639,7 @@ by { induction l using classical_logic.lindenbaum.ind_on, induction m using clas
      simp[-or_eq, subst_sf_L, classical_logic.lindenbaum.sup_def] }
 
 @[simp] lemma subst_sf_L_equal (h₁ : Herbrand T i) (h₂ h₃ : Herbrand T (i+1)) :
-  h₁ ⊳ (h₂ ≃ h₃) = ((h₁ ⊳ᴴ h₂) ≃ (h₁ ⊳ᴴ h₃)) :=
+  h₁ ⊳ (h₂ =' h₃) = ((h₁ ⊳ᴴ h₂) =' (h₁ ⊳ᴴ h₃)) :=
 by { induction h₁ using fol.Herbrand.ind_on, induction h₂ using fol.Herbrand.ind_on,
      induction h₃ using fol.Herbrand.ind_on,
      simp[-equal_eq, subst_sf_L, Herbrand.proper.subst_sf_H, Herbrand.proper.subst_sf_H_aux, equal_def] }
@@ -725,7 +725,7 @@ lemma subst_eq [proper_Theory T] (p : formula L) (t : term L) :
 @[simp] lemma equiv_eq_top_iff {p q} : (⟦p ⟷ q⟧ᴸ : Lindenbaum T i) = ⊤ ↔ (⟦p⟧ᴸ : Lindenbaum T i) = ⟦q⟧ᴸ :=
 by simp[eq_top_of_provable]
 
-lemma to_Herbrand {h₁ h₂ : Herbrand T i} : h₁ ≃ᴸ h₂ = ⊤ ↔ h₁ = h₂ :=
+lemma to_Herbrand {h₁ h₂ : Herbrand T i} : h₁ ='ᴸ h₂ = ⊤ ↔ h₁ = h₂ :=
 by { induction h₁ using fol.Herbrand.ind_on, induction h₂ using fol.Herbrand.ind_on,
      simp[equal_def, top_def, -equal_eq, -top_eq, axiomatic_classical_logic'.iff_equiv] }
 
@@ -737,31 +737,31 @@ theorem eq_neg_of_provable_neg_0 {p} : T ⊢ ∼p ↔ (⟦p⟧ᴸ : Lindenbaum T
 
 variables (T)
 
-lemma rew_by_axiom₁ (t u : term L) : (⟦t⟧ᴴ : Herbrand (T +{t ≃ u}) 0) = ⟦u⟧ᴴ :=
-Herbrand.eq_of_provable_equiv_0.mp (show T +{t ≃ u} ⊢ t ≃ u, by simp)
+lemma rew_by_axiom₁ (t u : term L) : (⟦t⟧ᴴ : Herbrand (T +{t =' u}) 0) = ⟦u⟧ᴴ :=
+Herbrand.eq_of_provable_equiv_0.mp (show T +{t =' u} ⊢ t =' u, by simp)
 
-lemma rew_by_axiom₁_inv (t u : term L) : (⟦u⟧ᴴ : Herbrand (T +{t ≃ u}) 0) = ⟦t⟧ᴴ :=
+lemma rew_by_axiom₁_inv (t u : term L) : (⟦u⟧ᴴ : Herbrand (T +{t =' u}) 0) = ⟦t⟧ᴴ :=
 (rew_by_axiom₁ _ t u).symm
 
-lemma rew_by_axiom₂ (t u : term L) {p} : (⟦t⟧ᴴ : Herbrand (T +{t ≃ u} +{ p }) 0) = ⟦u⟧ᴴ :=
-Herbrand.eq_of_provable_equiv_0.mp (show T +{t ≃ u} +{ p } ⊢ t ≃ u, by simp)
+lemma rew_by_axiom₂ (t u : term L) {p} : (⟦t⟧ᴴ : Herbrand (T +{t =' u} +{ p }) 0) = ⟦u⟧ᴴ :=
+Herbrand.eq_of_provable_equiv_0.mp (show T +{t =' u} +{ p } ⊢ t =' u, by simp)
 
-lemma rew_by_axiom₂_inv (t u : term L) {p} : (⟦u⟧ᴴ : Herbrand (T +{t ≃ u} +{ p }) 0) = ⟦t⟧ᴴ :=
+lemma rew_by_axiom₂_inv (t u : term L) {p} : (⟦u⟧ᴴ : Herbrand (T +{t =' u} +{ p }) 0) = ⟦t⟧ᴴ :=
 (rew_by_axiom₂ _ t u).symm
 
-lemma rew_by_axiom₁_var (x : ℕ) (t : term L) : (♯x : Herbrand (T +{#x ≃ t}) 0) = ⟦t⟧ᴴ :=
-Herbrand.eq_of_provable_equiv_0.mp (show T +{#x ≃ t} ⊢ #x ≃ t, by simp)
+lemma rew_by_axiom₁_var (x : ℕ) (t : term L) : (♯x : Herbrand (T +{#x =' t}) 0) = ⟦t⟧ᴴ :=
+Herbrand.eq_of_provable_equiv_0.mp (show T +{#x =' t} ⊢ #x =' t, by simp)
 
-lemma rew_by_axiom₁_inv_var (x : ℕ) (t : term L) : (♯x : Herbrand (T +{t ≃ #x}) 0) = ⟦t⟧ᴴ :=
-(Herbrand.eq_of_provable_equiv_0.mp (show T +{t ≃ #x} ⊢ t ≃ #x, by simp)).symm
+lemma rew_by_axiom₁_inv_var (x : ℕ) (t : term L) : (♯x : Herbrand (T +{t =' #x}) 0) = ⟦t⟧ᴴ :=
+(Herbrand.eq_of_provable_equiv_0.mp (show T +{t =' #x} ⊢ t =' #x, by simp)).symm
 
-lemma rew_by_axiom₂_var (x : ℕ) (t : term L) {p} : (♯x : Herbrand (T +{#x ≃ t}+{p}) 0) = ⟦t⟧ᴴ :=
-Herbrand.eq_of_provable_equiv_0.mp (show T +{#x ≃ t}+{p} ⊢ #x ≃ t, by simp)
+lemma rew_by_axiom₂_var (x : ℕ) (t : term L) {p} : (♯x : Herbrand (T +{#x =' t}+{p}) 0) = ⟦t⟧ᴴ :=
+Herbrand.eq_of_provable_equiv_0.mp (show T +{#x =' t}+{p} ⊢ #x =' t, by simp)
 
-lemma rew_by_axiom₂_inv_var (x : ℕ) (t : term L) {p} : (♯x : Herbrand (T +{t ≃ #x}+{p}) 0) = ⟦t⟧ᴴ :=
-(Herbrand.eq_of_provable_equiv_0.mp (show T +{t ≃ #x}+{p} ⊢ t ≃ #x, by simp)).symm
+lemma rew_by_axiom₂_inv_var (x : ℕ) (t : term L) {p} : (♯x : Herbrand (T +{t =' #x}+{p}) 0) = ⟦t⟧ᴴ :=
+(Herbrand.eq_of_provable_equiv_0.mp (show T +{t =' #x}+{p} ⊢ t =' #x, by simp)).symm
 
-@[simp] lemma eq_by_axiom (t u : term L) (h : T ⊢ t ≃ u) : (⟦t⟧ᴴ : Herbrand T 0) = ⟦u⟧ᴴ :=
+@[simp] lemma eq_by_axiom (t u : term L) (h : T ⊢ t =' u) : (⟦t⟧ᴴ : Herbrand T 0) = ⟦u⟧ᴴ :=
 Herbrand.eq_of_provable_equiv_0.mp h
 
 end Lindenbaum
@@ -813,18 +813,18 @@ by { have : T ⊢ ((∃.p) ⟶ q) ⟷ ∀.(p ⟶ q^1), { simp },
      exact this.2 ⨀ h }
 
 @[simp] lemma succ_ext [has_succ_symbol L] (t₁ t₂ : term L) :
-  T ⊢ (t₁ ≃ t₂) ⟶ (Succ t₁ ≃ Succ t₂) :=
+  T ⊢ (t₁ =' t₂) ⟶ (Succ t₁ =' Succ t₂) :=
 begin
   refine deduction.mp _,
   simp[eq_of_provable_equiv_0, rew_by_axiom₁]
 end
 
 @[simp] lemma add_ext [has_add_symbol L] (t₁ t₂ u₁ u₂ : term L) :
-  T ⊢ (t₁ ≃ t₂) ⊓ (u₁ ≃ u₂) ⟶ (t₁ + u₁ ≃ t₂ + u₂) :=
+  T ⊢ (t₁ =' t₂) ⊓ (u₁ =' u₂) ⟶ (t₁ + u₁ =' t₂ + u₂) :=
 begin
   refine deduction.mp _,
   simp[eq_of_provable_equiv_0, axiom_and],
-  have : (⟦t₁⟧ᴴ : Herbrand (T +{ (t₁ ≃ t₂) }+{ (u₁ ≃ u₂) }) 0) = ⟦t₂⟧ᴴ,
+  have : (⟦t₁⟧ᴴ : Herbrand (T +{ (t₁ =' t₂) }+{ (u₁ =' u₂) }) 0) = ⟦t₂⟧ᴴ,
   from eq_of_provable_equiv_0.mp (by simp),
   simp[*, rew_by_axiom₁]
 end
@@ -834,13 +834,13 @@ end provable
 namespace Lindenbaum
 
 @[simp] lemma and_ext [has_add_symbol L] (t₁ t₂ u₁ u₂ : Herbrand T i) :
-  (t₁ ≃ t₂ : Lindenbaum T i) ⊓ (u₁ ≃ u₂) ≤ (t₁ + u₁ ≃ t₂ + u₂) :=
+  (t₁ =' t₂ : Lindenbaum T i) ⊓ (u₁ =' u₂) ≤ (t₁ + u₁ =' t₂ + u₂) :=
 begin
   induction t₁ using fol.Herbrand.ind_on,
   induction t₂ using fol.Herbrand.ind_on,
   induction u₁ using fol.Herbrand.ind_on,
   induction u₂ using fol.Herbrand.ind_on,
-  have : T^i ⊢ (t₁ ≃ t₂) ⊓ (u₁ ≃ u₂) ⟶ (t₁ + u₁ ≃ t₂ + u₂), { simp },
+  have : T^i ⊢ (t₁ =' t₂) ⊓ (u₁ =' u₂) ⟶ (t₁ + u₁ =' t₂ + u₂), { simp },
   have := le_of_provable_imply.mp this, simp at this, exact this
 end
 

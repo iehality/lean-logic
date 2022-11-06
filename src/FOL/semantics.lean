@@ -27,7 +27,7 @@ variables (M)
 @[simp] def formula.val : ∀ (e : ℕ → |M|), formula L → Prop
 | _ ⊤                 := true
 | e (formula.app p v) := M.pr p (λ i, (v i).val M e)
-| e (t ≃ u)          := t.val M e = u.val M e
+| e (t =' u)          := t.val M e = u.val M e
 | e (p ⟶ q)          := p.val e → q.val e
 | e (∼p)              := ¬(p.val e)
 | e (∀.p)            := ∀ d : M.dom, (p.val (d ⌢ e))
@@ -63,7 +63,7 @@ lemma rew_val_iff : ∀ (s : ℕ → term L) (p : formula L) (e : ℕ → |M|),
   (p.rew s).val M e ↔ p.val M (λ n, (s n).val M e)
 | _ ⊤                 _ := by simp
 | _ (formula.app p v) _ := by simp[formula.rew, rew_val_eq]
-| _ (t ≃ u)          _ := by simp[formula.rew, term.val, rew_val_eq]
+| _ (t =' u)          _ := by simp[formula.rew, term.val, rew_val_eq]
 | _ (p ⟶ q)           _ := by simp[formula.rew, rew_val_iff _ p, rew_val_iff _ q]
 | _ (∼p)              _ := by simp[formula.rew, rew_val_iff _ p]
 | s (∀.p)            e :=
@@ -121,7 +121,7 @@ by {simp[has_sup.sup, formula.or], exact or_iff_not_imp_left.symm }
 by simp[lrarrow_def]; exact iff_def.symm
 
 @[simp] lemma models_conjunction' {n : ℕ} {P : finitary (formula L) n} {e : ℕ → |M|} :
-  (inf_conjunction n P).val M e ↔ ∀ i, (P i).val M e :=
+  (finitary.conjunction n P).val M e ↔ ∀ i, (P i).val M e :=
 by { induction n with n IH; simp,
      { simp [IH], split,
        { rintros ⟨h0, h1⟩, intros i,
@@ -223,7 +223,7 @@ lemma eval_iff : ∀ {p : formula L} {e₁ e₂ : ℕ → |M|},
     funext i, refine @eval_eq _ M (v i) _ _ (λ n eqn, eqs n _),
     have : (v i).arity ≤ ⨆ᶠ i, (v i).arity, from le_fintype_sup (λ i, (v i).arity) i,
     refine (lt_of_lt_of_le eqn this) }
-| (t ≃ u)               e₁ e₂ eqs := by { simp[formula.arity] at*,
+| (t =' u)               e₁ e₂ eqs := by { simp[formula.arity] at*,
     simp[eval_eq (λ n h, eqs _ (or.inl h)), eval_eq (λ n h, eqs _ (or.inr h))] }
 | (p ⟶ q)                e₁ e₂ eqs := by { simp[formula.arity] at*,
     simp[eval_iff (λ n h, eqs _ (or.inl h)), eval_iff (λ n h, eqs _ (or.inr h))] }

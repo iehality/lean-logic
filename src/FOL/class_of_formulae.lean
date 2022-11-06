@@ -63,7 +63,7 @@ by simp[bex_le, term.pow_rew_distrib]
   fal_rank (∃.p) = fal_rank p + 1 := rfl
 
 @[simp] lemma fal_rank_eq (t u : term L) :
-  fal_rank (t ≃ u : formula L) = 0 := rfl
+  fal_rank (t =' u : formula L) = 0 := rfl
 
 @[simp] lemma fal_rank_le [has_le_symbol L] (t u : term L) :
   fal_rank (t ≼ u : formula L) = 0 := rfl
@@ -110,7 +110,7 @@ by simp[lrarrow_def]
   quantifier_fn_aux s (λ x, ∃.(f x)) (∃.p) = ∃.quantifier_fn_aux (s + 1) f p := rfl
 
 @[simp] lemma quantifier_fn_aux_eq (s) (f g : term L → term L) (t u : term L) :
-  quantifier_fn_aux s (λ x, f x ≃ g x) (t ≃ u) = (f #s ≃ g #s) := rfl
+  quantifier_fn_aux s (λ x, f x =' g x) (t =' u) = (f #s =' g #s) := rfl
 
 @[simp] lemma quantifier_fn_aux_le [has_le_symbol L] (s) (f g : term L → term L) (t u : term L) :
   quantifier_fn_aux s (λ x, f x ≼ g x) (t ≼ u) = (f #s ≼ g #s) := rfl
@@ -162,9 +162,9 @@ def bex_mem_fn [has_elem (term L) (formula L)] (t : term L) (p : term L → form
 
 notation `∃₁` binders ` ∊ᵇ ` t `, ` r:(scoped p, bex_mem_fn t p) := r
 
-#check ∀₁ x ≺ᵇ #4, x ≃ x
+#check ∀₁ x ≺ᵇ #4, x =' x
 
-#check ∃.{≼ #3} #4 ≃ #9
+#check ∃.{≼ #3} #4 =' #9
 
 variables [has_le_symbol L]
 
@@ -178,7 +178,7 @@ end
 inductive bounded : Theory L
 | verum : bounded ⊤
 | predicate {n} {p : L.pr n} {v} : bounded (❴p❵ v)
-| equal {t u : term L} : bounded (t ≃ u)
+| equal {t u : term L} : bounded (t =' u)
 | imply {p q} : bounded p → bounded q → bounded (p ⟶ q)
 | neg {p} : bounded p → bounded (∼p)
 | bfal {t} {p} : bounded p → bounded ∀.{≼ t} p

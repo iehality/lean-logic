@@ -143,7 +143,7 @@ namespace formula
 @[simp] def to_pnf : formula L → pnf L
 | ⊤         := ⟨[], ⊤, by simp⟩
 | (app p v) := ⟨[], app p v, by simp⟩
-| ((t : term L) ≃ u) := ⟨[], (t : term L) ≃ u, by simp⟩
+| ((t : term L) =' u) := ⟨[], (t : term L) =' u, by simp⟩
 | (p ⟶ q) := (to_pnf p).imply (to_pnf q)
 | (∼p) := (to_pnf p).neg
 | (∀.(p : formula L)) := ∀.(to_pnf p)
@@ -243,7 +243,7 @@ open axiomatic_classical_logic'
 lemma equiv_normalize : ∀ (p : formula L) {T : Theory L},  T ⊢ p ⟷ p.normalize
 | ⊤                 T := by simp[formula.normalize]
 | (formula.app p v) T := by simp[formula.normalize]
-| (t ≃ u)          T := by simp[formula.normalize]
+| (t =' u)          T := by simp[formula.normalize]
 | (p ⟶ q)          T :=
     by { simp[formula.normalize], 
          have : T ⊢ p ⟶ q ⟷ (p.to_pnf.to_formula ⟶ q.to_pnf.to_formula) :=  (equiv_imply_of_equiv (equiv_normalize p) (equiv_normalize q)),

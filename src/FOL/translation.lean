@@ -79,7 +79,7 @@ structure term_formula_translation (L₁ : language) (L₂ : language) :=
 (p : translation L₁ L₂)
 (t : ℕ → term L₁ → term L₂)
 (chr : Π {n} (r : L₁.pr n), L₂.pr n)
-(equal : ∀ (t₁ t₂ : term L₁) (k), p k (t₁ ≃ t₂ : formula L₁) = (t k t₁ ≃ t k t₂))
+(equal : ∀ (t₁ t₂ : term L₁) (k), p k (t₁ =' t₂ : formula L₁) = (t k t₁ =' t k t₂))
 (app : ∀ (k) {n} (r : L₁.pr n) (v), p k (app r v) = app (chr r) (λ i, t k (v i)))
 (map_pow : ∀ u s, t (s + 1) (u^1) = (t s u)^1)
 
@@ -95,11 +95,11 @@ class translation.conservative (τ : translation L₁ L₂) :=
 (specialize : ∀ (k) (p : formula L₁) (t : term L₁) (T : Theory L₁) (i : ℕ), 
   (ax k T)^i ⊢ τ (k + i) (∀.p ⟶ p.rew ı[0 ⇝ t]))
 (eq_reflexivity : ∀ (k) (T : Theory L₁) (i : ℕ),
-  (ax k T)^i ⊢ τ (k + i) (∀.(#0 ≃ #0)))
+  (ax k T)^i ⊢ τ (k + i) (∀.(#0 =' #0)))
 (eq_symmetry : ∀ (k) (T : Theory L₁) (i : ℕ),
-  (ax k T)^i ⊢ τ (k + i) (∀.∀.((#0 ≃ #1) ⟶ (#1 ≃ #0))))
+  (ax k T)^i ⊢ τ (k + i) (∀.∀.((#0 =' #1) ⟶ (#1 =' #0))))
 (eq_transitive : ∀ (k) (T : Theory L₁) (i : ℕ),
-  (ax k T)^i ⊢ τ (k + i) (∀.∀.∀.((#0 ≃ #1) ⟶ (#1 ≃ #2) ⟶ (#0 ≃ #2))))
+  (ax k T)^i ⊢ τ (k + i) (∀.∀.∀.((#0 =' #1) ⟶ (#1 =' #2) ⟶ (#0 =' #2))))
 (function_ext : ∀ (k) {n} (f : L₁.fn n) (T : Theory L₁) (i : ℕ),
   (ax k T)^i ⊢ τ (k + i) (eq_axiom4 f))
 (predicate_ext : ∀ (k) {n} (r : L₁.pr n) (T : Theory L₁) (i : ℕ),
@@ -124,7 +124,7 @@ lemma map_pow'_aux
   (H_pr : ∀ {n} (r : L₁.pr n) (v) (i s k : ℕ) (le : s ≤ i),
     τ (i + k) ((app r v).rew ((λ x, #(x + k))^s)) = (τ i (app r v)).rew ((λ x, #(x + k))^s))
   (H_eq : ∀ (t u : term L₁) (i s k : ℕ) (le : s ≤ i),
-    τ (i + k) ((t ≃ u : formula L₁).rew ((λ x, #(x + k))^s)) = (τ i (t ≃ u)).rew ((λ x, #(x + k))^s))
+    τ (i + k) ((t =' u : formula L₁).rew ((λ x, #(x + k))^s)) = (τ i (t =' u)).rew ((λ x, #(x + k))^s))
   (p : formula L₁) (i s k : ℕ) (hs : s ≤ i) :
   τ (i + k) (p.rew ((λ x, #(x + k))^s)) = (τ i p).rew ((λ x, #(x + k))^s) :=
 begin
@@ -142,7 +142,7 @@ def mk_translation
   (H_pr : ∀ {n} (r : L₁.pr n) (v) (i s k : ℕ) (le : s ≤ i),
     τ (i + k) ((app r v).rew ((λ x, #(x + k))^s)) = (τ i (app r v)).rew ((λ x, #(x + k))^s))
   (H_eq : ∀ (t u : term L₁) (i s k : ℕ) (le : s ≤ i),
-    τ (i + k) ((t ≃ u : formula L₁).rew ((λ x, #(x + k))^s)) = (τ i (t ≃ u)).rew ((λ x, #(x + k))^s)) : translation L₁ L₂ :=
+    τ (i + k) ((t =' u : formula L₁).rew ((λ x, #(x + k))^s)) = (τ i (t =' u)).rew ((λ x, #(x + k))^s)) : translation L₁ L₂ :=
 {  map_pow := λ p i, by { simp,
     have : τ (i + 1) (p.rew (λ x, #(x + 1))) = rew (λ x, #(x + 1)) (τ i p),
     { have := map_pow'_aux τ (@H_pr) (@H_eq) p i 0 1 (by simp), simp at this, exact this },
@@ -161,7 +161,7 @@ namespace translation
   (tr_eq : ℕ → term L₁ → term L₁ → formula L₂) : ℕ → formula L₁ → formula L₂
 | k ⊤                    := ⊤
 | k (app p v)            := tr_pr k p v
-| k ((t : term L₁) ≃ u)  := tr_eq k t u
+| k ((t : term L₁) =' u)  := tr_eq k t u
 | k (p ⟶ q)              := fun_of_atom k p ⟶ fun_of_atom k q
 | k (∼p)                 := ∼fun_of_atom k p
 | k (∀.(p : formula L₁)) := ∀.fun_of_atom (k + 1) p
@@ -276,7 +276,7 @@ namespace term_formula_translation
 open translation
 variables (τ : term_formula_translation L₁ L₂) (k : ℕ)
 
-@[simp] lemma map_equal (t₁ t₂ : term L₁) : τ.p k (t₁ ≃ t₂ : formula L₁) = (τ.t k t₁ ≃ τ.t k t₂) := τ.equal t₁ t₂ k
+@[simp] lemma map_equal (t₁ t₂ : term L₁) : τ.p k (t₁ =' t₂ : formula L₁) = (τ.t k t₁ =' τ.t k t₂) := τ.equal t₁ t₂ k
 
 @[simp] lemma map_app {n} (r : L₁.pr n) (v) :
   τ.p k (formula.app r v) = formula.app (τ.chr r) (λ i, τ.t k (v i)) := τ.app k r v
@@ -364,7 +364,7 @@ def tr_term : term_homomorphism L₁ L₂ :=
 @[simp] def fun_p : formula L₁ → formula L₂
 | ⊤                    := ⊤
 | (app p v)            := app (τ.pr _ p) (λ i, fun_t τ (v i))
-| ((t : term L₁) ≃ u)  := fun_t τ t ≃ fun_t τ u
+| ((t : term L₁) =' u)  := fun_t τ t =' fun_t τ u
 | (p ⟶ q)              := fun_p p ⟶ fun_p q
 | (∼p)                 := ∼fun_p p
 | (∀.(p : formula L₁)) := ∀.fun_p p
@@ -380,7 +380,7 @@ lemma fun_p_rew_var : ∀ (p : formula L₁) (s : ℕ → ℕ),
   (fun_p τ p).rew (λ x, #(s x)) = fun_p τ (p.rew (λ x, #(s x)))
 | ⊤                      _ := by simp
 | (@formula.app _ n r v) s := by { simp, funext i, simp[fun_t_rew_var] }
-| ((t : term L₁) ≃ u)    s := by simp[fun_t_rew_var]
+| ((t : term L₁) =' u)    s := by simp[fun_t_rew_var]
 | (p ⟶ q)                s := by simp[fun_p_rew_var p, fun_p_rew_var q]
 | (∼p)                   s := by simp[fun_p_rew_var p]
 | (∀.(p : formula L₁))   s := by { 
@@ -470,7 +470,7 @@ lemma fun_p_rew : ∀ (p : formula L₁) (s : ℕ → term L₁),
   τ.fun_p (p.rew s) = (τ.fun_p p).rew (λ x, τ.fun_t (s x))
 | ⊤                 s := by simp
 | (formula.app f v) s := by simp[fun_t_rew]
-| (t ≃ u)          s := by simp[fun_t_rew]
+| (t =' u)          s := by simp[fun_t_rew]
 | (p ⟶ q)           s := by simp[fun_p_rew p, fun_p_rew q]
 | (∼p)              s := by simp[fun_p_rew p]
 | (∀.p)             s := by
@@ -500,7 +500,7 @@ lemma fun_p_inversion_of_le {p₁ : formula L₁} {q₂ : formula L₂} (le : q�
 begin
   induction p₁ generalizing q₂,
   case app : n r v { simp at le, refine ⟨app r v, by simp[le]⟩ },
-  case equal : t u { simp at le, refine ⟨t ≃ u, by simp[le]⟩ },
+  case equal : t u { simp at le, refine ⟨t =' u, by simp[le]⟩ },
   case verum { simp at le, refine ⟨⊤, by simp[le]⟩ },
   case imply : p q IH_p IH_q
   { rcases le_iff_lt_or_eq.mp le with (lt | rfl),
@@ -724,7 +724,7 @@ variables [language_translation_coe L₁ L₂]
   (↑(formula.app p v : formula L₁) : formula L₂) = formula.app (p : L₂.pr 2) ‹v 0, v 1› := by simp; ext; simp
 
 @[simp] lemma coe_equal (t u : term L₁) :
-  (↑(t ≃ u : formula L₁) : formula L₂) = ((↑t : term L₂) ≃ ↑u) := rfl
+  (↑(t =' u : formula L₁) : formula L₂) = ((↑t : term L₂) =' ↑u) := rfl
 
 @[simp] lemma coe_imply (p q : formula L₁) :
   (↑(p ⟶ q) : formula L₂) = (↑p ⟶ ↑q) := rfl
@@ -818,12 +818,12 @@ by { induction p; simp[*] }
     by { simp,  rintros rfl, simp, rintros rfl,
          refine ⟨λ h, funext (λ i, term_coe_inj.mp (congr_fun h i)), by { rintros rfl, refl }⟩ }
 | ⊤                   q        := by simp; cases q; simp
-| (formula.app r₁ v₁) (t ≃ u) := by simp
+| (formula.app r₁ v₁) (t =' u) := by simp
 | (formula.app r₁ v₁) ⊤        := by simp
 | (formula.app r₁ v₁) (p ⟶ q)  := by simp
 | (formula.app r₁ v₁) ∼p       := by simp
 | (formula.app r₁ v₁) (∀.p)    := by simp
-| (t ≃ u)            p        := by cases p; simp
+| (t =' u)            p        := by cases p; simp
 | (p ⟶ q)             r        := by cases r; simp[@formula_coe_inj p, @formula_coe_inj q]
 | (∼p)                q        := by cases q; simp[@formula_coe_inj p]
 | (∀.p)               q        := by cases q; simp[@formula_coe_inj p]
@@ -1269,7 +1269,7 @@ instance ltr_subtype (s : set ι) : language_translation_coe (direct_sum (λ i :
   ∀ (p : formula (direct_sum (λ i : s, l i))), ((ext_ss l ss).fun_p p : formula (direct_sum l)) = p
 | ⊤                                       := by simp
 | (app r v)                               := by { simp, rcases r with ⟨⟨i, hi⟩, r⟩, simp[ext_ss], refl }
-| ((t : term (direct_sum (λ (i : s), l i))) ≃ u) := by simp
+| ((t : term (direct_sum (λ (i : s), l i))) =' u) := by simp
 | (p ⟶ q)                                 := by simp[ext_ss_subtype_consistence p, ext_ss_subtype_consistence q]
 | (∼p)                                    := by simp[ext_ss_subtype_consistence p]
 | (∀.p)                                   := by simp[ext_ss_subtype_consistence p]
@@ -1557,7 +1557,7 @@ by { rw[←s.seqs_le_commuts le], simp[comp_fun_p] }
 
 @[simp] def rank_p : formula L → ℕ
 | (app r v)   := max (s.rank_pr r) (⨆ᶠ i, s.rank_t (v i))
-| (t ≃ u) := max (s.rank_t t) (s.rank_t u)
+| (t =' u) := max (s.rank_t t) (s.rank_t u)
 | ⊤           := 0
 | (p ⟶ q)     := max (rank_p p) (rank_p q)
 | (∼p)        := rank_p p
@@ -1571,7 +1571,7 @@ by { rw[←s.seqs_le_commuts le], simp[comp_fun_p] }
 | (equal t u) :=
     let tr₁ : l (s.rank_t t) ↝ᴸ l (s.rank_p (equal t u)) := s.seqs_le (by simp),
         tr₂ : l (s.rank_t u) ↝ᴸ l (s.rank_p (equal t u)) := s.seqs_le (by simp) in
-    (tr₁.fun_t $ s.retruct_t t) ≃ (tr₂.fun_t $ s.retruct_t u)
+    (tr₁.fun_t $ s.retruct_t t) =' (tr₂.fun_t $ s.retruct_t u)
 | ⊤           := ⊤
 | (p ⟶ q)     :=
    let tr₁ : l (s.rank_p p) ↝ᴸ l (s.rank_p (p ⟶ q)) := s.seqs_le (by simp),
@@ -1678,7 +1678,7 @@ by { induction t; simp[term.coe_inv],
 def formula.coe_inv (D : L₁.definitions L₂) : formula (L₁ + L₂) → formula L₁
 | (app r v)                  := by { rcases r, { exact app r (λ i, (v i).coe_inv) },
                                                { exact (D.df_pr r).rew (of_fin (λ i, (v i).coe_inv)) } }
-| ((t : term (L₁ + L₂)) ≃ u) := t.coe_inv ≃ u.coe_inv
+| ((t : term (L₁ + L₂)) =' u) := t.coe_inv =' u.coe_inv
 | ⊤                          := ⊤
 | (p ⟶ q)                    := p.coe_inv ⟶ q.coe_inv
 | (∼p)                       := ∼p.coe_inv
@@ -1707,7 +1707,7 @@ end
 @[simp] def formula.coe_inv_is_open (D : L₁.definitions L₂) : Theory (L₁ + L₂)
 | (app r v)                  := by { rcases r, { exact true },
                                                { exact (D.df_pr r).is_open } }
-| ((t : term (L₁ + L₂)) ≃ u) := true
+| ((t : term (L₁ + L₂)) =' u) := true
 | ⊤                          := true
 | (p ⟶ q)                    := p.coe_inv_is_open ∧ q.coe_inv_is_open
 | (∼p)                       := p.coe_inv_is_open

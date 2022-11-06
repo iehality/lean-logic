@@ -131,7 +131,7 @@ def pConsts (m : ℕ) : Type u := Σ (n : {n | m ≤ n}), formula (Lang L n)
 
 local notation `Lω` := limit L
 
-local infix ` ≃∘ `:50 := ((≃) : term Lω → term Lω → formula Lω)
+local infix ` ='∘ `:50 := ((=') : term Lω → term Lω → formula Lω)
 
 @[reducible] def Ln_to_Lω : Π n, L[n] ↝ᴸ Lω
 | 0     := add_left
@@ -289,14 +289,14 @@ local notation (name := limit) `Lω` := limit _
 
 open axiomatic_classical_logic axiomatic_classical_logic' provable
 
-def Consts.of (t : term Lω) : Consts L := henkin_constant ((t^1) ≃∘ #0)
+def Consts.of (t : term Lω) : Consts L := henkin_constant ((t^1) ='∘ #0)
 #check Consts.of
 
 def Consts.fn {n} (f : (limit L).fn n) (v : finitary (Consts L) n) : Consts L := Consts.of (app f (λ i, (v i)))
 
 def Consts.pr {n} (r : (limit L).pr n) (v : finitary (Consts L) n) : Prop := formula.app r (λ i, (v i)) ∈ Tω⁺
 
-def Consts.equal (p q : Consts L) : Prop := (p ≃∘ q) ∈ Tω⁺
+def Consts.equal (p q : Consts L) : Prop := (p ='∘ q) ∈ Tω⁺
 
 local notation p ` ~[`:50 T :50 `] `:0 q:50 := Consts.equal T p q
 
@@ -319,17 +319,17 @@ theorem Consts.equal_equivalence : equivalence (Consts.equal T) :=
   λ p q r, by { simp[Consts.equal, (Tω_consistent' T).mem_maximal_iff], exact provable.eq_trans }⟩
 
 lemma Consts.of_eq (t : term Lω) :
- t ≃∘ Consts.of t ∈ Tω⁺ :=
+ t ='∘ Consts.of t ∈ Tω⁺ :=
 begin
-  have : ∃.(t^1 ≃∘ #0) ⟶ (t ≃∘ Consts.of t) ∈ Tω, by simpa[Consts.fn] using henkin_mem_Tω L T (t^1 ≃ #0),
-  have lmm₁ : Tω ⊢ ∃.(t^1 ≃∘ #0) ⟶ (t ≃∘ Consts.of t), from by_axiom this,
-  have lmm₂ : Tω ⊢ ∃.(t^1 ≃∘ #0), from provable.use t (by simp),
-  have : Tω ⊢ t ≃∘ Consts.of t, from lmm₁ ⨀ lmm₂,
+  have : ∃.(t^1 ='∘ #0) ⟶ (t ='∘ Consts.of t) ∈ Tω, by simpa[Consts.fn] using henkin_mem_Tω L T (t^1 =' #0),
+  have lmm₁ : Tω ⊢ ∃.(t^1 ='∘ #0) ⟶ (t ='∘ Consts.of t), from by_axiom this,
+  have lmm₂ : Tω ⊢ ∃.(t^1 ='∘ #0), from provable.use t (by simp),
+  have : Tω ⊢ t ='∘ Consts.of t, from lmm₁ ⨀ lmm₂,
   exact mem_Tω'_of_Tω_provable T this
 end
 
 lemma Consts.fn_eq {n} (f : (limit L).fn n) (v : finitary (Consts L) n) :
- (app f (λ i, (v i)) ≃∘ Consts.fn f v) ∈ Tω⁺ :=
+ (app f (λ i, (v i)) ='∘ Consts.fn f v) ∈ Tω⁺ :=
 Consts.of_eq _ _
 
 @[reducible, simp, instance]
@@ -378,12 +378,12 @@ def fn {n} (f : (Lω).fn n) : finitary (Henkin T) n → Henkin T :=
 λ v, lift_on_finitary v (λ v, (⟦Consts.fn f v⟧ : Henkin T)) $ λ v₁ v₂ eqs,
 begin
   simp[of_eq_of, Consts.equal, (Tω_consistent' T).mem_maximal_iff],
-  show      Tω⁺ ⊢ Consts.fn f v₁ ≃∘ Consts.fn f v₂,
-  have b₁ : Tω⁺ ⊢ app f (λ i, (v₁ i)) ≃∘ Consts.fn f v₁, from (Tω_consistent' T).mem_maximal_iff.mp (Consts.fn_eq T f v₁),
-  have b₂ : Tω⁺ ⊢ app f (λ i, (v₂ i)) ≃∘ Consts.fn f v₂, from (Tω_consistent' T).mem_maximal_iff.mp (Consts.fn_eq T f v₂),
-  have b  : Tω⁺ ⊢ app f (λ i, (v₁ i)) ≃∘ app f (λ i, (v₂ i)),
-  { have : ∀ i, Tω⁺ ⊢ v₁ i ≃∘ v₂ i, from λ i, (Tω_consistent' T).mem_maximal_iff.mp (eqs i),
-    have : Tω⁺ ⊢ ⋀ i, v₁ i ≃∘ v₂ i, refine conjunction_iff.mpr this,
+  show      Tω⁺ ⊢ Consts.fn f v₁ ='∘ Consts.fn f v₂,
+  have b₁ : Tω⁺ ⊢ app f (λ i, (v₁ i)) ='∘ Consts.fn f v₁, from (Tω_consistent' T).mem_maximal_iff.mp (Consts.fn_eq T f v₁),
+  have b₂ : Tω⁺ ⊢ app f (λ i, (v₂ i)) ='∘ Consts.fn f v₂, from (Tω_consistent' T).mem_maximal_iff.mp (Consts.fn_eq T f v₂),
+  have b  : Tω⁺ ⊢ app f (λ i, (v₁ i)) ='∘ app f (λ i, (v₂ i)),
+  { have : ∀ i, Tω⁺ ⊢ v₁ i ='∘ v₂ i, from λ i, (Tω_consistent' T).mem_maximal_iff.mp (eqs i),
+    have : Tω⁺ ⊢ ⋀ i, v₁ i ='∘ v₂ i, refine conjunction_iff.mpr this,
     exact function_ext' f (λ i, (v₁ i)) (λ i, (v₂ i)) ⨀ this },
   exact eq_trans (eq_trans b₁.eq_symm b) b₂
 end
@@ -398,8 +398,8 @@ begin
   simp[of_eq_of, Consts.pr, (Tω_consistent' T).mem_maximal_iff],
   suffices : Tω⁺ ⊢ app r (λ i, (v₁ i)) ⟷ app r (λ i, (v₂ i)),
   { split; intros h, { exact (iff_equiv.mp this).1 ⨀ h }, { exact (iff_equiv.mp this).2 ⨀ h } },
-  have : ∀ i, Tω⁺ ⊢ v₁ i ≃∘ v₂ i, from λ i, (Tω_consistent' T).mem_maximal_iff.mp (eqs i),
-  have : Tω⁺ ⊢ ⋀ i, v₁ i ≃∘ v₂ i, refine conjunction_iff.mpr this,
+  have : ∀ i, Tω⁺ ⊢ v₁ i ='∘ v₂ i, from λ i, (Tω_consistent' T).mem_maximal_iff.mp (eqs i),
+  have : Tω⁺ ⊢ ⋀ i, v₁ i ='∘ v₂ i, refine conjunction_iff.mpr this,
   exact predicate_ext'' r (λ i, (v₁ i)) (λ i, (v₂ i)) ⨀ this
 end
 
@@ -416,11 +416,11 @@ local notation `ℌ` := henkin_model T
 @[simp] lemma henkin_model_fn {n} (f : (Lω).fn n) (v) : (ℌ).fn f v = fn f v := rfl
 @[simp] lemma henkin_model_pr {n} (r : (Lω).pr n) (v) : (ℌ).pr r v = pr r v := rfl
 
-lemma eq_Consts_of_eq {t u} : Consts.of t ~[T] Consts.of u ↔ Tω⁺ ⊢ t ≃∘ u  :=
+lemma eq_Consts_of_eq {t u} : Consts.of t ~[T] Consts.of u ↔ Tω⁺ ⊢ t ='∘ u  :=
 begin
   simp[Consts.equal, (Tω_consistent' T).mem_maximal_iff],
-  have lmm₁ : Tω⁺ ⊢ t ≃∘ Consts.of t, from by_axiom (Consts.of_eq T _), 
-  have lmm₂ : Tω⁺ ⊢ u ≃∘ Consts.of u, from by_axiom (Consts.of_eq T _), 
+  have lmm₁ : Tω⁺ ⊢ t ='∘ Consts.of t, from by_axiom (Consts.of_eq T _), 
+  have lmm₂ : Tω⁺ ⊢ u ='∘ Consts.of u, from by_axiom (Consts.of_eq T _), 
   refine ⟨λ h, eq_trans (eq_trans lmm₁ h) (eq_symm lmm₂), λ h, eq_trans (eq_trans (eq_symm lmm₁) h) lmm₂⟩
 end
 
@@ -434,10 +434,10 @@ begin
     have : (λ i, @term.val _ ℌ (λ n, ⟦e n⟧) (v i)) = (λ i, ⟦Consts.of ((v i).rew (λ x, ↑(e x)))⟧),
     { funext i, exact IH i },
     simp[this, Consts.fn],
-    have : Tω⁺ ⊢ app f (λ i, (Consts.of ((v i).rew (λ x, (e x))))) ≃∘ app f (λ i, (v i).rew (λ x, (e x))),
-    { have : ∀ i, Tω⁺ ⊢ Consts.of ((v i).rew (λ x, (e x))) ≃∘ (v i).rew (λ x, (e x)),
+    have : Tω⁺ ⊢ app f (λ i, (Consts.of ((v i).rew (λ x, (e x))))) ='∘ app f (λ i, (v i).rew (λ x, (e x))),
+    { have : ∀ i, Tω⁺ ⊢ Consts.of ((v i).rew (λ x, (e x))) ='∘ (v i).rew (λ x, (e x)),
         from λ i, eq_symm (by_axiom (Consts.of_eq T ((v i).rew (λ x, (e x))))),
-      have : Tω⁺ ⊢ ⋀ i, Consts.of ((v i).rew (λ x, (e x))) ≃∘ (v i).rew (λ x, (e x)),
+      have : Tω⁺ ⊢ ⋀ i, Consts.of ((v i).rew (λ x, (e x))) ='∘ (v i).rew (λ x, (e x)),
         from conjunction_iff.mpr this,
       exact function_ext' f _ _ ⨀ this },
     refine (eq_Consts_of_eq _).mpr this }
@@ -478,9 +478,9 @@ begin
   case app : n r v
   { simp[term_val_eq_quotient, (Tω_consistent' T).mem_maximal_iff],
     suffices :  Tω⁺ ⊢ app r (λ i, (v i).rew (λ x, (s x))) ⟷ app r (λ i, Consts.of ((v i).rew (λ x, (s x)))), from iff_of_equiv this,
-    have : ∀ i, Tω⁺ ⊢ (v i).rew (λ x, (s x)) ≃∘ Consts.of ((v i).rew (λ x, (s x))),
+    have : ∀ i, Tω⁺ ⊢ (v i).rew (λ x, (s x)) ='∘ Consts.of ((v i).rew (λ x, (s x))),
       from λ i, (by_axiom (Consts.of_eq T ((v i).rew (λ x, (s x))))),
-    have :      Tω⁺ ⊢ ⋀ i, (v i).rew (λ x, (s x)) ≃∘ Consts.of ((v i).rew (λ x, (s x))),
+    have :      Tω⁺ ⊢ ⋀ i, (v i).rew (λ x, (s x)) ='∘ Consts.of ((v i).rew (λ x, (s x))),
       from conjunction_iff.mpr this,
     exact predicate_ext'' r _ _ ⨀ this },
   case equal : t u { simp[term_val_eq_quotient, (Tω_consistent' T).mem_maximal_iff], exact iff.symm (eq_Consts_of_eq _) },

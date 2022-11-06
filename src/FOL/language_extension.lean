@@ -107,7 +107,7 @@ by { simp[consts_to_var], exact list.index_of_lt_length.mpr mem }
 
 @[simp] def elim_aux_f : ℕ → formula (L + consts C) → formula L
 | b (app r v)                          := by { rcases r, { refine app r (λ i, elim_aux_t Γ b (v i)) }, { rcases r } }
-| b ((t₁ : term (L + consts C)) ≃ t₂)  := elim_aux_t Γ b t₁ ≃ elim_aux_t Γ b t₂
+| b ((t₁ : term (L + consts C)) =' t₂)  := elim_aux_t Γ b t₁ =' elim_aux_t Γ b t₂
 | b ⊤                                  := ⊤
 | b (p ⟶ q)                            := elim_aux_f b p ⟶ elim_aux_f b q
 | b (∼p)                               := ∼elim_aux_f b p
@@ -391,7 +391,7 @@ by { simp[consts_to_var], exact list.index_of_lt_length.mpr mem }
 
 @[simp] def pelim_aux_f : ℕ → formula (L + consts C) → formula (L + consts C)
 | b (app r v)                          := by { rcases r, { refine app ↑r (λ i, pelim_aux_t Γ b (v i)) }, { rcases r } }
-| b ((t₁ : term (L + consts C)) ≃ t₂)  := pelim_aux_t Γ b t₁ ≃ pelim_aux_t Γ b t₂
+| b ((t₁ : term (L + consts C)) =' t₂)  := pelim_aux_t Γ b t₁ =' pelim_aux_t Γ b t₂
 | b ⊤                                  := ⊤
 | b (p ⟶ q)                            := pelim_aux_f b p ⟶ pelim_aux_f b q
 | b (∼p)                               := ∼pelim_aux_f b p
