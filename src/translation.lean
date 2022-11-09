@@ -56,6 +56,8 @@ by rcases f; rcases g; simp; funext x; by simpa using h x
 
 @[simp] lemma map_bot : f ⊥ = ⊥ := map_bot' f
 
+@[simp] lemma map_iff : f (a ⟷ b) = f a ⟷ f b := by simp[lrarrow_def]
+
 @[simp] lemma map_list_disjunction (P : list F) :
   f P.disjunction = (P.map f).disjunction :=
 by induction P; simp*

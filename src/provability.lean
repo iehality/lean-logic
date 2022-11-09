@@ -303,6 +303,14 @@ by { have : (∼∼p ⟶ ∼∼q) ⟶ ∼q ⟶ ∼p ∈ P, simp,
 @[simp] lemma contraposition_iff (p q : F) : (p ⟶ q) ⟷ (∼q ⟶ ∼p) ∈ P :=
 by simp[iff_equiv_p]
 
+@[simp] lemma contraposition_iff₁ (p q : F) : (∼p ⟶ q) ⟷ (∼q ⟶ p) ∈ P :=
+by { have : ∼p ⟶ q ⟷ ∼q ⟶ ∼∼p ∈ P, from contraposition_iff (∼p) q,
+     refine equiv_of_equiv this (by simp) (equiv_imply_of_equiv (by simp) (by simp)) }
+
+@[simp] lemma contraposition_iff₂ (p q : F) : (p ⟶ ∼q) ⟷ (q ⟶ ∼p) ∈ P :=
+by { have : p ⟶ ∼q ⟷ ∼∼q ⟶ ∼p ∈ P, from contraposition_iff p (∼q),
+     refine equiv_of_equiv this (by simp) (equiv_imply_of_equiv (by simp) (by simp)) }
+
 @[simp] lemma contraposition_iff_inv (p q : F) : (∼p ⟶ ∼q) ⟷ (q ⟶ p) ∈ P :=
 by simp[iff_equiv_p]
 
@@ -324,6 +332,9 @@ begin
     refine (show (p ⟶ ⊥) ⟶ (p ⟶ ∼p) ⟶ ∼p ∈ P, by simp) ⨀₁ this }
 end
 
+@[simp] lemma imply_iff_of {p} (h : p ∈ P) (q) : (p ⟶ q) ⟷ q ∈ P :=
+by simp[iff_equiv_p]; exact (show (p ⟶ q) ⟶ p ⟶ q ∈ P, by simp) ⨀₁ (by simp[h])
+
 @[simp] lemma neg_impl_equiv_and (p q : F) : ∼(p ⟶ q) ⟷ p ⊓ ∼q ∈ P :=
 by simp only [and_def P]; refine (equiv_neg_of_equiv (equiv_imply_of_equiv _ _)); simp
 
@@ -334,8 +345,9 @@ begin
   { refine neg_of_equiv h (equiv_imply_of_equiv _ _); simp }
 end
 
-@[simp] lemma impl_iff_and_p {p q : F} : (p ⟶ q) ⟷ (∼p ⊔ q) ∈ P :=
+@[simp] lemma impl_iff_or_p {p q : F} : (p ⟶ q) ⟷ (∼p ⊔ q) ∈ P :=
 by {simp [or_def P, -iff_equiv_p], refine equiv_imply_of_equiv _ _; simp }
+
 
 @[simp] lemma excluded_middle_p {p : F} : (p ⊔ ∼p) ∈ P :=
 by simp[or_def P]
@@ -349,6 +361,9 @@ by { simp only [and_def P], refine equiv_neg_of_equiv _,
 @[simp] lemma equiv_symm_or (p q : F) : p ⊔ q ⟷ q ⊔ p ∈ P :=
 by { simp only [or_def P],
      refine equiv_of_equiv (show ∼p ⟶ q ⟷ ∼q ⟶ ∼∼p ∈ P, by simp) _ (equiv_imply_of_equiv _ _); simp }
+
+@[simp] lemma impl_iff_or'_p {p q : F} : (p ⟶ q) ⟷ (q ⊔ ∼p) ∈ P :=
+equiv_trans (impl_iff_or_p) (by simp)
 
 @[simp] lemma and_destruct (p q : F) : p ⟶ q ⟶ p ⊓ q ∈ P :=
 by { simp only [and_def P],
@@ -653,6 +668,10 @@ conjunction_iff
 
 lemma iff_equiv {p q : F} : T ⊢ p ⟷ q ↔ (T ⊢ p ⟶ q ∧ T ⊢ q ⟶ p) := iff_equiv_p
 
+lemma equiv_mp {p q : F} (h : T ⊢ p ⟷ q) : T ⊢ p ⟶ q := (iff_equiv.mp h).1
+
+lemma equiv_mpr {p q : F} (h : T ⊢ p ⟷ q) : T ⊢ q ⟶ p := (iff_equiv.mp h).2
+
 lemma iff_of_equiv {p q : F} (h : T ⊢ p ⟷ q) : T ⊢ p ↔ T ⊢ q := iff_of_equiv h
 
 @[refl, simp] lemma equiv_refl (p : F) : T ⊢ p ⟷ p := equiv_refl p
@@ -669,25 +688,38 @@ lemma iff_of_equiv {p q : F} (h : T ⊢ p ⟷ q) : T ⊢ p ↔ T ⊢ q := iff_of
 
 @[simp] lemma contraposition_iff (p q : F) : T ⊢ (p ⟶ q) ⟷ (∼q ⟶ ∼p) := contraposition_iff p q
 
+@[simp] lemma contraposition_iff₁ (p q : F) : T ⊢ (∼p ⟶ q) ⟷ (∼q ⟶ p) := contraposition_iff₁ _ _
+
+@[simp] lemma contraposition_iff₂ (p q : F) : T ⊢ (p ⟶ ∼q) ⟷ (q ⟶ ∼p) := contraposition_iff₂ _ _
+
 @[simp] lemma contraposition_iff_inv (p q : F) : T ⊢ (∼p ⟶ ∼q) ⟷ (q ⟶ p) := contraposition_iff_inv p q
 
 @[simp] lemma neg_hyp' (p : F) : T ⊢ (p ⟶ ∼p) ⟶ ∼p := neg_hyp' p
 
 @[simp] lemma neg_iff (p : F) : T ⊢ ∼p ⟷ (p ⟶ ⊥) := neg_iff p
 
+@[simp] lemma imply_iff_of {p} (h : T ⊢ p) (q) : T ⊢ (p ⟶ q) ⟷ q := imply_iff_of h q
+
 @[simp] lemma neg_impl_equiv_and (p q : F) : T ⊢ ∼(p ⟶ q) ⟷ p ⊓ ∼q := neg_impl_equiv_and p q
+
+
+
 
 lemma neg_impl_iff_and {p q : F} : T ⊢ ∼(p ⟶ q) ↔ T ⊢ p ⊓ ∼q := neg_impl_iff_and_p
 
 lemma of_equiv {p₁ p₂ : F} (h : T ⊢ p₁) (hp : T ⊢ p₁ ⟷ p₂) : T ⊢ p₂ := of_equiv_p h hp
 
-@[simp] lemma impl_iff_and {p q : F} : T ⊢ (p ⟶ q) ⟷ (∼p ⊔ q) := impl_iff_and_p
+@[simp] lemma impl_iff_or {p q : F} : T ⊢ (p ⟶ q) ⟷ (∼p ⊔ q) := impl_iff_or_p
+
+@[simp] lemma impl_iff_or' {p q : F} : T ⊢ (p ⟶ q) ⟷ (q ⊔ ∼p) := impl_iff_or'_p
 
 @[simp] lemma excluded_middle {p : F} : T ⊢ p ⊔ ∼p := excluded_middle_p
 
 @[simp] lemma equiv_symm_and (p q : F) : T ⊢ p ⊓ q ⟷ q ⊓ p := equiv_symm_and p q
 
 @[simp] lemma equiv_symm_equiv (p q : F) : T ⊢ (p ⟷ q) ⟷ (q ⟷ p) := equiv_symm_equiv p q
+
+@[simp] lemma equiv_symm_or (p q : F) : T ⊢ p ⊔ q ⟷ q ⊔ p := equiv_symm_or _ _
 
 @[simp] lemma and_destruct (p q : F) : T ⊢ p ⟶ q ⟶ p ⊓ q := and_destruct p q
 
@@ -776,6 +808,8 @@ case_of_p hpq hpr hqr
 lemma by_axiom' {T : set F} {p : F} : T p → T ⊢ p := by_axiom
 
 @[simp] lemma provable_not_bot_iff : T ⊢ ⊥ ⟷ ∼(⊤ : F) := by simp[@not_top_eq_bot F _ ((⊢) T) _]
+
+@[simp] lemma provable_not_bot_iff' : T ⊢ ∼(⊤ : F) ⟷ ⊥ := by simp[@not_top_eq_bot F _ ((⊢) T) _]
 
 variables (T)
 

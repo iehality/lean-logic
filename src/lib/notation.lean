@@ -40,8 +40,8 @@ localized "infix (name := has_preceq.preceq) ` ≼ `:50 := has_preceq.preceq" in
 localized "infix (name := has_elem.elem) ` ∊ `:50 := has_elem.elem" in logic_symbol
 localized "prefix (name := has_negation.neg) `∼`:75 := has_negation.neg" in logic_symbol
 localized "infixr (name := has_arrow.arrow) ` ⟶ `:60 := has_arrow.arrow" in logic_symbol
-localized "prefix (name := has_univ_quantifier.univ) `∀. `:64 := has_univ_quantifier.univ" in logic_symbol
-localized "prefix (name := has_exists_quantifier.ex) `∃. `:64 := has_exists_quantifier.ex" in logic_symbol
+localized "prefix (name := has_univ_quantifier.univ) `∀.`:64 := has_univ_quantifier.univ" in logic_symbol
+localized "prefix (name := has_exists_quantifier.ex) `∃.`:64 := has_exists_quantifier.ex" in logic_symbol
 localized "prefix (name := has_univ_quantifier'.univ) `∀'`:64 := has_univ_quantifier'.univ" in logic_symbol
 localized "prefix (name := has_exists_quantifier'.ex) `∃'`:64 := has_exists_quantifier'.ex" in logic_symbol
 

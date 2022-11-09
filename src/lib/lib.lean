@@ -66,8 +66,13 @@ by { have := vector.nth_tail (a ::ᵥ v) ⟨i, nat.succ_lt_succ_iff.mp h⟩, sim
 @[simp] lemma succ_nth' (v : vector α n) (a : α) (i : fin n)  :
   (a ::ᵥ v).nth i.succ = v.nth i := by simp[show i.succ = ⟨i + 1, nat.succ_lt_succ i.property⟩, from fin.ext (by simp)]
 
-@[simp] lemma succ_nth_1 (v : vector α (n + 1)) (a : α)  :
+@[simp] lemma succ_nth_1 (v : vector α (n + 1)) (a : α) :
   (a ::ᵥ v).nth 1 = v.nth 0 := succ_nth' v a 0
+
+@[simp] lemma cons_inj (a₁ a₂ : α) (v₁ v₂ : vector α n) :
+  (a₁ ::ᵥ v₁) = (a₂ ::ᵥ v₂) ↔ a₁ = a₂ ∧ v₁ = v₂ :=
+⟨by intros h; refine ⟨by simpa using congr_arg head h, by simpa using congr_arg tail h⟩,
+ by rintros ⟨rfl, rfl⟩; refl⟩
 
 end vector
 
@@ -134,6 +139,8 @@ infix (name:= left_concat) ` *> `:70 := left_concat
 
 @[simp] lemma left_concat_succ (i : fin n) : (a *> s) i.succ = s i := by simp[left_concat]
 
+@[simp] lemma left_concat_comp_succ : (a *> s) ∘ fin.succ = s := funext(by simp)
+
 @[elab_as_eliminator, elab_strategy]
 def right_concat (hcast : fin n → C) (hlast : C) : fin (n + 1) → C := @last_cases n (λ _, C) hlast hcast
 
@@ -142,6 +149,8 @@ infix (name:= right_concat) ` <* `:70 := right_concat
 @[simp] lemma right_concat_last : (s <* a) (last n) = a := by simp[right_concat]
 
 @[simp] lemma right_concat_cast_succ (i : fin n) : (s <* a) i.cast_succ = s i := by simp[right_concat]
+
+@[simp] lemma left_concat_comp_cast : (s <* a) ∘ fin.cast_succ = s := funext(by simp)
 
 @[simp] lemma cases_one
   {a : C} {s : fin 0 → C} (x : fin 1) : (a *> s) x = a :=
@@ -177,6 +186,18 @@ funext (λ i, by refine last_cases _ _ i; simp)
 
 lemma concat_zero {α} {x : α} : x *> fin_zero_elim = (fin_zero_elim : fin 0 → α) <* x :=
 by funext; simp
+
+@[simp] lemma left_concat_inj {a₁ a₂ : C} {s₁ s₂ : fin n → C} :
+  a₁ *> s₁ = a₂ *> s₂ ↔ a₁ = a₂ ∧ s₁ = s₂ :=
+⟨by { intros h, refine ⟨by simpa using congr_fun h 0, _⟩,
+      simpa using congr_arg2 (∘) h (@rfl _ fin.succ) },
+ by { rintros ⟨rfl, rfl⟩, refl }⟩
+
+@[simp] lemma right_concat_inj {a₁ a₂ : C} {s₁ s₂ : fin n → C} :
+  s₁ <* a₁ = s₂ <* a₂ ↔ a₁ = a₂ ∧ s₁ = s₂ :=
+⟨by { intros h, refine ⟨by simpa using congr_fun h (last n), _⟩,
+      simpa using congr_arg (λ s, s ∘ fin.cast_succ) h },
+ by { rintros ⟨rfl, rfl⟩, refl }⟩
 
 end cases
 
