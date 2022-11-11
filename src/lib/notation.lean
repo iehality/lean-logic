@@ -122,10 +122,25 @@ end has_double_turnstile
 class has_logic_symbol (F : Sort*)
   extends has_negation F, has_arrow F, has_inf F, has_sup F, has_top F, has_bot F
 
-def logic_simbol_default (F : Sort*) (top : F) (neg : F → F) (imply : F → F → F) : has_logic_symbol F :=
+section 
+variables (F : Type*) (top : F) (neg : F → F) (imply : F → F → F)
+
+def logic_simbol_default (F : Type*) (top : F) (neg : F → F) (imply : F → F → F) : has_logic_symbol F :=
 { bot := neg top,
   top := top,
   sup := λ p q, imply (neg p) q,
   inf := λ p q, neg (imply p (neg q)),
   arrow := imply,
   neg := neg }
+  
+lemma logic_simbol_default.top_eq :
+  @has_bot.bot F (@has_logic_symbol.to_has_bot F (logic_simbol_default F top neg imply)) = neg top := rfl
+
+lemma logic_simbol_default.or_eq (p q : F) :
+  @has_sup.sup F (@has_logic_symbol.to_has_sup F (logic_simbol_default F top neg imply)) p q = imply (neg p) q := rfl
+
+lemma logic_simbol_default.and_eq (p q : F) :
+  @has_inf.inf F (@has_logic_symbol.to_has_inf F (logic_simbol_default F top neg imply)) p q = neg (imply p (neg q)) := rfl
+
+end 
+

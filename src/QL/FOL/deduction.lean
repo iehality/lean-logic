@@ -306,8 +306,14 @@ by { simp[iff_equiv], split,
   { have : T ⊢ ∀'(p₂ ⟶ p₁), by simpa using generalize (iff_equiv.mp hp).2,
     exact forallK _ _ ⨀ this } }
 
+lemma equiv_forall_of_equiv' {p₁ p₂} (hp : 𝗟'T ⊢ p₁ ⟷ p₂) : T ⊢ ∀' 𝗡 p₁ ⟷ ∀' 𝗡 p₂ :=
+@equiv_forall_of_equiv _ _ T (𝗡 p₁) (𝗡 p₂) (by simpa using hp)
+
 lemma equiv_exists_of_equiv {p₁ p₂} (hp : 𝗟'T ⊢ 𝗠 p₁ ⟷ 𝗠 p₂) : T ⊢ ∃'p₁ ⟷ ∃'p₂ :=
 by simp[ex_def]; refine equiv_neg_of_equiv (equiv_forall_of_equiv (by simpa using equiv_neg_of_equiv hp))
+
+lemma equiv_exists_of_equiv' {p₁ p₂} (hp : 𝗟'T ⊢ p₁ ⟷ p₂) : T ⊢ ∃' 𝗡 p₁ ⟷ ∃' 𝗡 p₂ :=
+@equiv_exists_of_equiv _ _ T (𝗡 p₁) (𝗡 p₂) (by simpa using hp)
 
 lemma univ_imply_dummy (p : subformula L m 1) (q : subformula L m 0) :
   T ⊢ ∀'(p ⟶ 𝗗 q) ⟶ ∃'p ⟶ q :=

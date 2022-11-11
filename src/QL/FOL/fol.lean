@@ -120,6 +120,16 @@ attribute [pattern]  has_eq.eq has_negation.neg has_arrow.arrow has_univ_quantif
 namespace subformula
 variables {L} {m n : ℕ}
 
+def to_str [∀ n, has_to_string (L.fn n)] [∀ n, has_to_string (L.pr n)] : Π {n}, subformula L m n → string
+| n verum          := "⊤"
+| n (relation p v) := has_to_string.to_string p
+| n (equal t u)    := has_to_string.to_string t ++ " = " ++ has_to_string.to_string u
+| n (imply p q)    := to_str p ++ " → " ++ to_str q
+| n (neg p)        := "¬(" ++ to_str p ++ ")"
+| n (fal p)        := "∀(" ++ to_str p ++ ")"
+
+instance [∀ n, has_to_string (L.fn n)] [∀ n, has_to_string (L.pr n)] : has_to_string (subformula L m n) := ⟨to_str⟩
+
 /-
 instance [has_le_symbol L] : has_preceq (subterm L m n) (subformula L m n) := ⟨λ t u, relation has_le_symbol.le ‹t, u›⟩
 
@@ -212,17 +222,6 @@ variables {k : ℕ} (r : L.pr k) (v : finitary (subterm L m n) k) (t u : subterm
 @[simp] lemma fal_ne_neg : ∀'q ≠ ∼p.
 
 end ne
-variables (L) (m)
-
-def to_string [∀ n, has_to_string (L.fn n)] [∀ n, has_to_string (L.pr n)] : Π n, subformula L m n → string
-| n verum          := "⊤"
-| n (relation p v) := has_to_string.to_string p
-| n (equal t u)    := has_to_string.to_string t ++ " = " ++ has_to_string.to_string u
-| n (imply p q)    := to_string _ p ++ " → " ++ to_string _ q
-| n (neg p)        := "¬(" ++ to_string _ p ++ ")"
-| n (fal p)        := "∀(" ++ to_string _ p ++ ")"
-
-instance [∀ n, has_to_string (L.fn n)] [∀ n, has_to_string (L.pr n)] : has_to_string (subformula L m n) := ⟨to_string L m n⟩
 
 end subformula
 
@@ -429,10 +428,6 @@ section dummy
 @[simp] lemma dummy_function {p} (f : L.fn p) (v : finitary (subterm L m n) p) :
   dummy (function f v) = function f (dummy ∘ v) := by simp[dummy]
 
-@[simp] lemma dummy_push (t : subterm L m (n + 1)) : dummy (push t) = mlift t :=
-by { induction t; simp*,
-  case var : x{ refine fin.last_cases _ _ x, {  } } }
-
 end dummy
 
 @[simp] lemma pull_msubst_push_mlift (t : subterm L m (n + 1)) : (pull $ msubst &0 $ push $ mlift t) = t :=
@@ -461,6 +456,14 @@ variables {L} {m m₁ m₂ m₃ n : ℕ}
 | n (imply p q)    := max p.complexity q.complexity + 1
 | n (neg p)        := p.complexity + 1
 | n (fal p)        := p.complexity + 1
+
+@[simp] lemma complexity_top : (⊤ : subformula L m n).complexity = 0 := by refl
+
+@[simp] lemma complexity_equal (t u) : (t =' u : subformula L m n).complexity = 0 := by refl
+
+@[simp] lemma complexity_neg (p : subformula L m n) : (∼p).complexity = p.complexity + 1 := by refl
+
+@[simp] lemma complexity_fal (p : subformula L m (n + 1)) : (∀'p).complexity = p.complexity + 1 := by refl
 
 @[simp] lemma imply_complexity (p q : subformula L m n) : (p ⟶ q).complexity = max p.complexity q.complexity + 1 := by refl
 
@@ -521,6 +524,9 @@ lemma nested_rew {m₁ m₂ m₃} : ∀ {n} (p : subformula L m₁ n) (s₀ : fi
 
 lemma eq_rew_of_eq {p : subformula L m₁ n} {s₁ s₂ : finitary (subterm L m₂ n) m₁} (h : s₁ = s₂) :
   rew s₁ p = rew s₂ p := by rw[h]
+
+@[simp] lemma complexity_rew (p : subformula L m₁ n) : complexity (rew s p) = complexity p :=
+by induction p; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq, *]
 
 end rew
 
@@ -593,6 +599,9 @@ begin
       case fal : _ p₂ { intros h, exact IH _ h } }
 end
 
+@[simp] lemma complexity_mlift (p : subformula L m n) : p.mlift.complexity = p.complexity :=
+by induction p; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq, *]
+
 end mlift
 
 def succ_rec {C : Π n, subformula L m (n + 1) → Sort*}
@@ -644,6 +653,9 @@ lemma push_def (p : subformula L m (n + 1)) : push p = push' p := rfl
 
 @[simp] lemma push_ex (p : subformula L m₁ (n + 1 + 1)) :
   push (∃'p) = ∃'push p := by simp[ex_def]
+
+@[simp] lemma complexity_push : ∀ {n} (p : subformula L m (n + 1)), p.push.complexity = p.complexity :=
+by apply succ_rec; intros; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq, *]
 
 end push
 
@@ -716,6 +728,9 @@ lemma push_rew_pull : ∀ {n} (p : subformula L (m₁ + 1) n) (s : fin m₁ → 
     rw [fin.comp_left_concat, this],
     simpa using push_rew_pull p (subterm.lift ∘ s) }
 
+@[simp] lemma complexity_pull (p : subformula L (m + 1) n) : p.pull.complexity = p.complexity :=
+by induction p; intros; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq, *]
+
 end pull
 
 def msubst (t : subterm L m n) : subformula L (m + 1) n →ₗ subformula L m n :=
@@ -744,6 +759,9 @@ by simp[mlift_eq_rew, msubst, nested_rew]; refine rew_eq_self_of_eq (funext $ by
 lemma mlift_msubst (u : subterm L m n) (p : subformula L (m + 1) n) :
   mlift (msubst u p) = rew (u.mlift *> (subterm.mlift ∘ metavar)) p :=
 by simp[msubst, mlift_rew]; refine eq_rew_of_eq (funext $ λ x, by rcases (fin.eq_zero_or_eq_succ x) with (rfl | ⟨x, rfl⟩); simp)
+
+@[simp] lemma complexity_msubst (p : subformula L (m + 1) n) : (msubst u p).complexity = p.complexity :=
+by simp[msubst]
 
 end msubst
 
@@ -776,6 +794,9 @@ lemma mlift_subst : ∀ {m n} (u : subterm L m n) (p : subformula L m (n + 1)),
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.2.complexity)⟩]}
 
 @[simp] lemma subst_pull_mlift (p : subformula L m n) (u) : (subst u $ pull $ mlift p) = p :=
+by simp[subst]
+
+@[simp] lemma complexity_subst (p : subformula L m (n + 1)) : (subst u p).complexity = p.complexity :=
 by simp[subst]
 
 end subst
@@ -817,13 +838,8 @@ section dummy
 @[simp] lemma dummy_subst (p : subformula L m n) (t) : (subst t $ dummy p) = p :=
 by simp[dummy, subst]
 
-lemma dummy_push  (p : subformula L m (n + 1)) : dummy (push p) = mlift p :=
-by { simp[dummy],
-  --have lmm₁ : subst &0 (dummy $ push p) = push p, from dummy_subst (push p) &0,
-  --   have lmm₂ : subst &0 (mlift p) = push p, from subst_mlift p,
-  --   have : subst &0 (dummy $ push p) = subst &0 (mlift p), by simp[lmm₁, lmm₂],
-
-      }
+@[simp] lemma complexity_dummy (p : subformula L m n) : p.dummy.complexity = p.complexity :=
+by simp[dummy]
 
 end dummy
 
@@ -939,7 +955,7 @@ by simp[mlift]
 
 end preTheory
 
-def s : subformula language.empty 1 0 := (&0 =' &0) ⟶ ∀'((#0 =' &0) ⟶ ∀'((#0 =' #1) ⟶ (#0 =' &0)))
+private def s : subformula language.empty 1 0 := (&0 =' &0) ⟶ ∀'((#0 =' &0) ⟶ ∀'((#0 =' #1) ⟶ (#0 =' &0)))
 
 #eval to_string s
 #eval to_string s.mlift
