@@ -144,6 +144,9 @@ begin
     { intros h v x, exact h (x *> v) } }
 end
 
+@[simp] lemma val_ex (p : subformula L m (n + 1)) :
+  val S me e (∃'p) ↔ ∃ x : S, val S me (x *> e) p := by simp[ex_def]
+
 end subformula
 
 namespace formula
@@ -163,6 +166,10 @@ variables {S} {p q : formula L m}
 
 @[simp] lemma models_fal {p : subformula L m 1} :
   S ⊧[me] (∀'p : subformula _ _ _) ↔ ∀ x, S ⊧[x *> me] p.push :=
+by simp[val, fin.concat_zero]
+
+@[simp] lemma models_ex {p : subformula L m 1} :
+  S ⊧[me] (∃'p : subformula _ _ _) ↔ ∃ x, S ⊧[x *> me] p.push :=
 by simp[val, fin.concat_zero]
 
 @[simp] lemma models_subst {p : subformula L m 1} (t : subterm L m 0) :
@@ -236,6 +243,7 @@ begin
   { intros m T p q S hS me, simp, intros h₁, contrapose, exact h₁ },
   { intros m T p t S hS me, simp, intros h, exact h _ },
   { intros m T p q S hS me, simp, intros h₁ h₂ x, exact h₁ x h₂ },
+  { intros T S hS me, simp },
   { intros T S hS me, simp },
   { intros T S hS me, simp, intros x₁ x₂, exact eq.symm },
   { intros T S hS me, simp, intros x₁ x₂ x₃, exact eq.trans },

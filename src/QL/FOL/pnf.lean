@@ -17,8 +17,6 @@ inductive pnf (m : ℕ) : ℕ → Type u
 
 variables {L m n}
 
-
-
 namespace pnf
 
 instance : has_univ_quantifier' (pnf L m) := ⟨@pnf.fal L m⟩
@@ -272,24 +270,30 @@ lemma equiv_normalize : ∀ {m} (T : preTheory L m) (p), T ⊢ normalize p ⟷ p
 | m T verum          := by simp[top_eq, normalize]
 | m T (relation r v) := by simp[normalize]
 | m T (equal t u)    := by simp[equal_eq, normalize]
-| m T (imply p q)    := by {
-    simp[imply_eq, normalize],
-    have : T ⊢ (p.to_pnf.imply q.to_pnf).to_formula ⟷ (p.normalize ⟶ q.normalize),
-    from equiv_to_formula_imply T p.to_pnf q.to_pnf,
-    exact equiv_trans this (equiv_imply_of_equiv (equiv_normalize T p) (equiv_normalize T q)) }
-| m T (neg p)        := by { 
-    simp[neg_eq, normalize],
-    have : T ⊢ p.to_pnf.neg.to_formula ⟷ ∼p.normalize, from equiv_to_formula_neg T p.to_pnf,
-    exact equiv_trans this (equiv_neg_of_equiv (equiv_normalize T p)) }
-| m T (fal p)        := by { 
-    simp[fal_eq, normalize],
-    have : 𝗟'T ⊢ (𝗠 p).normalize ⟷ 𝗠 p, by simpa using equiv_normalize 𝗟'T p.push,
-    exact equiv_forall_of_equiv (by simpa using this) }
+| m T (imply p q)    :=
+    begin
+      simp[imply_eq, normalize],
+      have : T ⊢ (p.to_pnf.imply q.to_pnf).to_formula ⟷ (p.normalize ⟶ q.normalize),
+      from equiv_to_formula_imply T p.to_pnf q.to_pnf,
+      exact equiv_trans this (equiv_imply_of_equiv (equiv_normalize T p) (equiv_normalize T q))
+    end
+| m T (neg p)        :=
+    begin
+      simp[neg_eq, normalize],
+      have : T ⊢ p.to_pnf.neg.to_formula ⟷ ∼p.normalize, from equiv_to_formula_neg T p.to_pnf,
+      exact equiv_trans this (equiv_neg_of_equiv (equiv_normalize T p)) 
+    end
+| m T (fal p)        :=
+    begin
+      simp[fal_eq, normalize],
+      have : 𝗟'T ⊢ (𝗠 p).normalize ⟷ 𝗠 p, by simpa using equiv_normalize 𝗟'T p.push,
+      exact equiv_forall_of_equiv (by simpa using this)
+    end
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.complexity)⟩]}
 
 end 
 
-private def s : subformula language.empty 1 0 := (&0 =' &0) ⟶ ∀'((#0 =' &0) ⊓ ∃'(#1 =' #2) ⊔ ∀' ∃' ((#0 =' #1) ⟷ (#0 =' &0)))
+private def s : subformula language.empty 1 0 := (&0 =' &0) ⟶ ∀'((#0 =' &0) ⊓ ∃' ∀'(#1 =' #2) ⊔ ∀' ∃' ((#0 =' #1) ⟷ (#0 =' &0)))
 
 #eval to_string s
 #eval to_string s.to_pnf
