@@ -386,6 +386,9 @@ section msubst
 @[simp] lemma msubst_function (u : subterm L m n) {p} (f : L.fn p) (v) :
   msubst u (function f v) = function f (msubst u ∘ v) := by simp[msubst]
 
+@[simp] lemma msubst_mlift (t u : subterm L m n) : msubst u t.mlift = t :=
+by { induction t; simp*, case function : k f v IH { funext i, simp, exact IH i } }
+
 end msubst
 
 /-
@@ -426,6 +429,10 @@ section dummy
 @[simp] lemma dummy_function {p} (f : L.fn p) (v : finitary (subterm L m n) p) :
   dummy (function f v) = function f (dummy ∘ v) := by simp[dummy]
 
+@[simp] lemma dummy_push (t : subterm L m (n + 1)) : dummy (push t) = mlift t :=
+by { induction t; simp*,
+  case var : x{ refine fin.last_cases _ _ x, {  } } }
+
 end dummy
 
 @[simp] lemma pull_msubst_push_mlift (t : subterm L m (n + 1)) : (pull $ msubst &0 $ push $ mlift t) = t :=
@@ -435,6 +442,9 @@ begin
   case function : k f v IH
   { funext i, simpa using IH i }
 end
+
+@[simp] lemma pull_mlift (t : subterm L m n) (u) : (subst u $ pull $ mlift t) = t :=
+by simp[subst]
 
 end rew
 
@@ -765,6 +775,9 @@ lemma mlift_subst : ∀ {m n} (u : subterm L m n) (p : subformula L m (n + 1)),
 | m n u (fal p)        := by simp[fal_eq, subterm.mlift_lift]; exact mlift_subst u.lift p
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.2.complexity)⟩]}
 
+@[simp] lemma subst_pull_mlift (p : subformula L m n) (u) : (subst u $ pull $ mlift p) = p :=
+by simp[subst]
+
 end subst
 
 lemma pull_msubst_push_mlift : ∀ {n} (p : subformula L m (n + 1)), (pull $ msubst &0 $ push $ mlift p) = p
@@ -775,6 +788,10 @@ lemma pull_msubst_push_mlift : ∀ {n} (p : subformula L m (n + 1)), (pull $ msu
 | n (neg p)        := by simp[neg_eq]; exact pull_msubst_push_mlift p
 | n (fal p)        := by simp[fal_eq]; exact pull_msubst_push_mlift p
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.complexity)⟩]}
+
+
+-- lemma subst_inj (u) : function.injective (@subst L m n u)
+
 
 @[simp] lemma subst_mlift (p : subformula L m (n + 1)) : subst &0 (mlift p) = push p :=
 by { suffices : (subst &0 $ mlift p) = (push $ pull $ msubst &0 $ push $ mlift p),
@@ -796,6 +813,17 @@ section dummy
 @[simp] lemma dummy_ex (p : subformula L m (n + 1)) : dummy (∃'p) = ∃'(dummy p) := by simp[dummy]
 
 @[simp] lemma push_dummy  (p : subformula L m n) : push (dummy p) = mlift p := by simp[dummy]
+
+@[simp] lemma dummy_subst (p : subformula L m n) (t) : (subst t $ dummy p) = p :=
+by simp[dummy, subst]
+
+lemma dummy_push  (p : subformula L m (n + 1)) : dummy (push p) = mlift p :=
+by { simp[dummy],
+  --have lmm₁ : subst &0 (dummy $ push p) = push p, from dummy_subst (push p) &0,
+  --   have lmm₂ : subst &0 (mlift p) = push p, from subst_mlift p,
+  --   have : subst &0 (dummy $ push p) = subst &0 (mlift p), by simp[lmm₁, lmm₂],
+
+      }
 
 end dummy
 
@@ -852,11 +880,21 @@ using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.compl
 | n (neg p)        := by simp[neg_eq, qr_pull p]
 | n (fal p)        := by simp[fal_eq, qr_pull p]
 
-lemma top_open : (⊤ : subformula L m n).is_open := by simp[is_open] 
+@[simp] def qr_mlift {m} : Π {n} (p : subformula L m n), p.mlift.qr = p.qr
+| n verum          := by simp[top_eq]
+| n (relation p v) := by simp
+| n (equal t u)    := by simp[equal_eq]
+| n (imply p q)    := by simp[imply_eq, qr_mlift p, qr_mlift q]
+| n (neg p)        := by simp[neg_eq, qr_mlift p]
+| n (fal p)        := by simp[fal_eq, qr_mlift p]
+
+@[simp] lemma top_open : (⊤ : subformula L m n).is_open := by simp[is_open] 
 
 @[simp] lemma relation_open {k} (r : L.pr k) (v) : (relation r v : subformula L m n).is_open := by simp[is_open]
 
 @[simp] lemma equal_open {t u : subterm L m n} : (t =' u : subformula L m n).is_open := by simp[is_open] 
+
+@[simp] lemma bot_open : (⊥ : subformula L m n).is_open := by simp[is_open]
 
 @[simp] lemma imply_open {p q : subformula L m n} : (p ⟶ q).is_open ↔ p.is_open ∧ q.is_open := by simp[is_open] 
 
@@ -869,6 +907,14 @@ lemma top_open : (⊤ : subformula L m n).is_open := by simp[is_open]
 @[simp] lemma fal_not_open {p : subformula L m (n + 1)} : ¬(∀'p).is_open := by simp[is_open] 
 
 @[simp] lemma ex_not_open {p : subformula L m (n + 1)} : ¬(∃'p).is_open := by simp[is_open] 
+
+@[simp] lemma mlift_open {p : subformula L m n} : (mlift p).is_open ↔ p.is_open := by simp[is_open]
+
+@[simp] lemma push_open {p : subformula L m (n + 1)} : (push p).is_open ↔ p.is_open := by simp[is_open]
+
+@[simp] lemma pull_open {p : subformula L (m + 1) n} : (pull p).is_open ↔ p.is_open := by simp[is_open]
+
+@[simp] lemma dummy_open {p : subformula L m n} : (dummy p).is_open ↔ p.is_open := by simp[dummy]
 
 end qr
 

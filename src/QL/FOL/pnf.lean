@@ -5,7 +5,7 @@ import QL.FOL.deduction
 universes u v
 
 namespace fol
-open_locale logic_symbol
+open_locale logic_symbol aclogic
 open subformula
 
 variables (L : language.{u}) (m n : ℕ)
@@ -23,10 +23,95 @@ instance : has_exists_quantifier' (pnf L m) := ⟨@pnf.ex L m⟩
 
 namespace pnf
 
+@[simp] def rank : Π {n}, pnf L m n → ℕ
+| n (openformula p hp) := 0
+| n (fal φ)            := φ.rank + 1
+| n (ex  φ)            := φ.rank + 1
+
+@[simp] lemma rank_forall (φ : pnf L m (n + 1)) : rank (∀'φ) = rank φ + 1 := by simp[has_univ_quantifier'.univ]
+
+@[simp] lemma rank_exists (φ : pnf L m (n + 1)) : rank (∃'φ) = rank φ + 1 := by simp[has_exists_quantifier'.ex]
+
+@[simp] lemma forall_inj (p q : pnf L m (n + 1)) : ∀'p = ∀'q ↔ p = q := ⟨fal.inj, congr_arg _⟩
+
+@[simp] lemma exists_inj (p q : pnf L m (n + 1)) : ∃'p = ∃'q ↔ p = q := ⟨ex.inj, congr_arg _⟩
+
 @[simp] def to_formula : Π {n}, pnf L m n → subformula L m n
 | n (openformula p hp) := p
 | n (fal φ)            := ∀'to_formula φ
 | n (ex  φ)            := ∃'to_formula φ
+
+@[simp] lemma to_formula_forall (φ : pnf L m (n + 1)) : to_formula (∀'φ) = ∀'(to_formula φ) := by simp[has_univ_quantifier'.univ]
+
+@[simp] lemma to_formula_exists (φ : pnf L m (n + 1)) : to_formula (∃'φ) = ∃'(to_formula φ) := by simp[has_exists_quantifier'.ex]
+
+@[simp] def mlift : Π {n}, pnf L m n → pnf L (m + 1) n
+| n (openformula p hp) := openformula p.mlift (by simpa using hp)
+| n (fal φ)            := fal (mlift φ)
+| n (ex  φ)            := ex (mlift φ)
+
+@[simp] lemma mlift_forall (φ : pnf L m (n + 1)) : mlift (∀'φ) = ∀'(mlift φ) := by simp[has_univ_quantifier'.univ]
+
+@[simp] lemma mlift_exists (φ : pnf L m (n + 1)) : mlift (∃'φ) = ∃'(mlift φ) := by simp[has_exists_quantifier'.ex]
+
+@[simp] lemma mlift_to_formula : ∀ {n} (φ : pnf L m n), φ.mlift.to_formula = 𝗟 φ.to_formula
+| _ (openformula p hp) := by simp
+| _ (fal φ)            := by simp; exact mlift_to_formula φ
+| _ (ex φ)             := by simp; exact mlift_to_formula φ
+
+@[simp] def push : Π {n}, pnf L m (n + 1) → pnf L (m + 1) n
+| n (openformula p hp) := openformula p.push (by simpa using hp)
+| n (fal φ)            := fal (push φ)
+| n (ex  φ)            := ex (push φ)
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.rank)⟩]}
+
+@[simp] lemma push_forall (φ : pnf L m (n + 1 + 1)) : push (∀'φ) = ∀'(push φ) := by simp[has_univ_quantifier'.univ]
+
+@[simp] lemma push_exists (φ : pnf L m (n + 1 + 1)) : push (∃'φ) = ∃'(push φ) := by simp[has_exists_quantifier'.ex]
+
+lemma push_to_formula : ∀ {n} (φ : pnf L m (n + 1)), φ.push.to_formula = 𝗠 φ.to_formula
+| _ (openformula p hp) := by simp
+| _ (fal φ)            := by simp; exact push_to_formula φ
+| _ (ex φ)             := by simp; exact push_to_formula φ
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.rank)⟩]}
+
+@[simp] lemma rank_push : ∀ {n} (φ : pnf L m (n + 1)), rank (push φ) = rank φ
+| n (openformula p hp) := by simp
+| n (fal p) := by show (∀'p).push.rank = p.fal.rank; simpa using rank_push p
+| n (ex p) := by show (∃'p).push.rank = p.ex.rank; simpa using rank_push p
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.rank)⟩]}
+
+@[simp] def pull : Π {n}, pnf L (m + 1) n → pnf L m (n + 1)
+| n (openformula p hp) := openformula p.pull (by simpa using hp)
+| n (fal φ)            := fal (pull φ)
+| n (ex  φ)            := ex (pull φ)
+
+@[simp] lemma pull_forall (φ : pnf L (m + 1) (n + 1)) : pull (∀'φ) = ∀'(pull φ) := by simp[has_univ_quantifier'.univ]
+
+@[simp] lemma pull_exists (φ : pnf L (m + 1) (n + 1)) : pull (∃'φ) = ∃'(pull φ) := by simp[has_exists_quantifier'.ex]
+
+lemma pull_to_formula : ∀ {n} (φ : pnf L (m + 1) n), φ.pull.to_formula = 𝗡 φ.to_formula
+| _ (openformula p hp) := by simp
+| _ (fal φ)            := by simp; exact pull_to_formula φ
+| _ (ex φ)             := by simp; exact pull_to_formula φ
+
+def dummy : pnf L m n → pnf L m (n + 1) := pull ∘ mlift
+
+lemma dummy_openformula (p : subformula L m n) (hp) :
+  dummy (openformula p hp) = openformula p.dummy (by simpa using hp) := by simp[dummy]; refl
+
+@[simp] lemma dummy_forall (φ : pnf L m (n + 1)) : dummy (∀'φ) = ∀'(dummy φ) := by simp[dummy]
+
+@[simp] lemma dummy_exists (φ : pnf L m (n + 1)) : dummy (∃'φ) = ∃'(dummy φ) := by simp[dummy]
+
+lemma dummy_to_formula (φ : pnf L (m + 1) n) : φ.dummy.to_formula = 𝗗 φ.to_formula :=
+by simp[mlift_to_formula, pull_to_formula, dummy, subformula.dummy]
+
+@[simp] lemma rank_dummy : ∀ {n} (φ : pnf L m n), rank (dummy φ) = rank φ
+| n (openformula p hp) := by simp[dummy_openformula]
+| n (fal p) := by show (∀'p).dummy.rank = p.fal.rank; simpa using rank_dummy p
+| n (ex p) := by show (∃'p).dummy.rank = p.ex.rank; simpa using rank_dummy p
+
 
 instance : has_coe (pnf L m n) (subformula L m n) := ⟨@to_formula L m n⟩
 
@@ -35,12 +120,75 @@ instance : has_coe (pnf L m n) (subformula L m n) := ⟨@to_formula L m n⟩
 | n (fal φ)            := ∃'φ.neg
 | n (ex φ)             := ∀'φ.neg
 
+lemma push_neg : ∀ {n} (p : pnf L m (n + 1)), p.neg.push = p.push.neg
+| _ (openformula p hp) := by simp
+| _ (fal φ)            := by simp[push_neg φ]
+| _ (ex φ)             := by simp[push_neg φ]
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.rank)⟩]}
+
 @[simp] def imply : Π {n}, pnf L m n → pnf L m n → pnf L m n
 | n (openformula p hp) (openformula q hq) := openformula (p ⟶ q) (by simp; exact ⟨hp, hq⟩)
-| n (openformula p hp) (fal φ)            := ∃'φ.neg
-| n (openformula p hp) (ex φ)             := ∀'φ.neg
+| n (openformula p hp) (fal ψ)            := ∀'(imply (dummy $ openformula p hp) ψ)
+| n (openformula p hp) (ex ψ)             := ∃'(imply (dummy $ openformula p hp) ψ)
+| n (fal φ)            ψ                  := ∃'(imply φ (dummy ψ))
+| n (ex φ)             ψ                  := ∀'(imply φ (dummy ψ))
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.1.rank + x.2.2.rank)⟩]}
+
+lemma push_imply : ∀ {n} (p q : pnf L m (n + 1)), (p.imply q).push = p.push.imply q.push
+| n (openformula p hp) (openformula q hq) := by simp
+| n (openformula p hp) (fal ψ)            := by { simp[dummy_openformula], have := push_imply (dummy $ openformula p hp) ψ, }
+| n (openformula p hp) (ex ψ)             := by {  }
+| n (fal φ)            ψ                  := by {  }
+| n (ex φ)             ψ                  := by {  }
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.1.rank + x.2.2.rank)⟩]}
 
 
+end pnf
+
+namespace formula
+open pnf axiomatic_classical_logic' axiomatic_classical_logic provable
+variables {L m n} (T : preTheory L m)
+
+@[simp] def to_pnf : Π {n}, subformula L m n → pnf L m n
+| _ verum          := openformula ⊤ (by simp)
+| _ (relation r v) := openformula (relation r v) (by simp)
+| _ (equal t u)    := openformula (t =' u) (by simp)
+| _ (imply p q)    := (to_pnf p).imply (to_pnf q)
+| _ (neg p)        := (to_pnf p).neg
+| _ (fal p)        := ∀'(to_pnf p)
+
+lemma equiv_normalize_neg : ∀ {m} (T : preTheory L m) (p : pnf L m 0), T ⊢ (p.neg).to_formula ⟷ ∼p.to_formula
+| m T (openformula p hp) := by simp
+| m T (pnf.fal φ) := by {
+  have : 𝗟'T ⊢ 𝗠 φ.neg.to_formula ⟷ ∼𝗠 φ.to_formula, by simpa[push_to_formula, ←push_neg] using equiv_normalize_neg 𝗟'T φ.push,
+  have : 𝗟'T ⊢ ∼𝗠 φ.neg.to_formula ⟷ ∼∼𝗠 φ.to_formula, from equiv_neg_of_equiv this,
+  refine equiv_neg_of_equiv (equiv_forall_of_equiv $ equiv_of_equiv this (by simp[neg_eq]) (by simp)) }
+| m T (pnf.ex φ) := by {
+  have : 𝗟'T ⊢ 𝗠 φ.neg.to_formula ⟷ ∼𝗠 φ.to_formula, by simpa[push_to_formula, ←push_neg] using equiv_normalize_neg 𝗟'T φ.push,
+  have : T ⊢ ∀'φ.neg.to_formula ⟷ ∀'∼φ.to_formula, from equiv_forall_of_equiv (by simpa using this),
+  exact equiv_of_equiv this (equiv_refl _) (by simp[ex_def]) }
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.rank)⟩]}
+
+lemma equiv_normalize_imply : ∀ {m} (T : preTheory L m) (p q : pnf L m 0),
+  T ⊢ (p.imply q).to_formula ⟷ (p.to_formula ⟶ q.to_formula)
+| m T (openformula p hp) (openformula q hq) := by simp
+| m T (openformula p hp) (fal ψ)            :=
+    let φ := openformula p.dummy (by simpa using hp) in
+    by { simp,
+      show T ⊢ ∀'(φ.imply ψ).to_formula ⟷ p ⟶ ∀' ψ.to_formula,
+      have : 𝗟'T ⊢ 𝗠 (φ.imply ψ).to_formula ⟷ φ.push.to_formula ⟶ ψ.push.to_formula,
+      { simp[←push_to_formula],
+        have := equiv_normalize_imply 𝗟'T φ.push ψ.push, sorry
+            },
+      have : T ⊢ ∀'((φ.imply ψ).to_formula) ⟷ ∀'(φ.to_formula ⟶ ψ.to_formula),
+      refine equiv_forall_of_equiv (by { simp,  }),
+
+
+       }
+| m T (openformula p hp) (ex ψ)             := by sorry
+| m T (fal φ)            ψ                  := by sorry
+| m T (ex φ)             ψ                  := by sorry
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.1.rank + x.2.2.rank)⟩]}
 #check 0
 /--/
 
@@ -49,89 +197,9 @@ instance : has_coe (pnf L m n) (subformula L m n) := ⟨@to_formula L m n⟩
 #check 0
 /-
 
-@[simp] def rank : pnf L → ℕ := λ p, p.1.length
 
-def rew (s : ℕ → term L) : pnf L → pnf L
-| ⟨Q, p, h⟩ := ⟨Q, p.rew (s^Q.length), by simp[h]⟩
 
-instance : has_pow (pnf L) ℕ := ⟨λ p i, p.rew (λ x, #(x + i))⟩
 
-@[simp] lemma rew_to_formula_eq_to_formula_rew : ∀ (p : pnf L) (s : ℕ → term L),
-  (p.rew s).to_formula = p.to_formula.rew s
-| ⟨[], p, h⟩     s := by simp[rew]
-| ⟨𝚷 :: Q, p, h⟩ s := by simp[rew, ←rew_to_formula_eq_to_formula_rew ⟨Q, p, by simp[h]⟩ (s^1),
-    rewriting_sf_itr.pow_add, show 1 + Q.length = Q.length + 1, from add_comm _ _]
-| ⟨𝚺 :: Q, p, h⟩ s := by simp[rew, ←rew_to_formula_eq_to_formula_rew ⟨Q, p, by simp[h]⟩ (s^1),
-    rewriting_sf_itr.pow_add, show 1 + Q.length = Q.length + 1, from add_comm _ _]
-
-@[simp] lemma pow_to_formula_eq_to_formula_pow (p : pnf L) (i : ℕ) : (p^i).to_formula = p.to_formula^i :=
-by simp[formula.pow_eq, rew_to_formula_eq_to_formula_rew, has_pow.pow]
-
-lemma rew_fal (Q : list bool) (p : formula L) {h} (s : ℕ → term L) :
-  (⟨(𝚷 :: Q), p, h⟩ : pnf L).rew s = ∀.(⟨Q, p, h⟩ : pnf L).rew (s^1) :=
-by simp[rew, show Q.length + 1 = 1 + Q.length, from add_comm _ _, rewriting_sf_itr.pow_add]
-
-@[simp] lemma rew_fal' : ∀ (p : pnf L) (s : ℕ → term L),
-  (∀.p : pnf L).rew s = ∀.(p.rew (s^1))
-| ⟨Q, p, h⟩ s := by simp[rew_fal]
-
-lemma rew_ex (Q : list bool) (p : formula L) {h} (s : ℕ → term L) :
-  (⟨(𝚺 :: Q), p, h⟩ : pnf L).rew s = ∃.(⟨Q, p, h⟩ : pnf L).rew (s^1) :=
-by simp[rew, show Q.length + 1 = 1 + Q.length, from add_comm _ _, rewriting_sf_itr.pow_add]
-
-@[simp] lemma rew_ex' : ∀ (p : pnf L) (s : ℕ → term L),
-  (∃.p : pnf L).rew s = ∃.(p.rew (s^1))
-| ⟨Q, p, h⟩ s := by simp[rew_ex]
-
-lemma nested_rew (p : pnf L) (s₀ s₁) :
-  (p.rew s₀).rew s₁ = p.rew (λ x, (s₀ x).rew s₁) :=
-to_formula_inj.mp (by simp[formula.nested_rew])
-
-@[simp] lemma rew_rank : ∀ (p : pnf L) (s), (p.rew s).rank = p.rank
-| ⟨[], p, h⟩     s := by simp[rew]
-| ⟨𝚷 :: Q, p, h⟩ s := by simp[rew]
-| ⟨𝚺 :: Q, p, h⟩ s := by simp[rew]
-
-@[simp] lemma pow_rank (p : pnf L) (i : ℕ) : (p^i).rank = p.rank :=
-by simp[has_pow.pow]
-
-@[simp] def neg : pnf L → pnf L
-| ⟨[], p, h⟩ := ⟨[], ∼p, by simp[h]⟩
-| ⟨𝚷 :: Q, p, h⟩ := ∃.neg ⟨Q, p, by simp[h]⟩
-| ⟨𝚺 :: Q, p, h⟩ := ∀.neg ⟨Q, p, by simp[h]⟩
-using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf rank⟩]}
-
-instance : has_negation (pnf L) := ⟨neg⟩
-
-@[simp] def imply : pnf L → pnf L → pnf L
-| ⟨[], p₁, h₁⟩      ⟨[], p₂, h₂⟩      := ⟨[], p₁ ⟶ p₂, by simp[h₁, h₂]⟩
-| ⟨[], p₁, h₁⟩      ⟨𝚷 :: Q₂, p₂, h₂⟩ := ∀.imply (⟨[], p₁^1, by simp[h₁]⟩) ⟨Q₂, p₂, h₂⟩
-| ⟨[], p₁, h₁⟩      ⟨𝚺 :: Q₂, p₂, h₂⟩ := ∃.imply ⟨[], p₁^1, by simp[h₁]⟩ ⟨Q₂, p₂, h₂⟩
-| ⟨𝚷 :: Q₁, p₁, h₁⟩ ⟨[], p₂, h₂⟩      := ∃.imply ⟨Q₁, p₁, by simp[h₁]⟩ ⟨[], p₂^1, by simp[h₂]⟩
-| ⟨𝚷 :: Q₁, p₁, h₁⟩ ⟨𝚷 :: Q₂, p₂, h₂⟩ :=
-    ∃.(∀.imply (pnf.mk Q₁ p₁ h₁^1) ((pnf.mk Q₂ p₂ (by simp[h₂])).rew ı-{1}) : pnf L)
-| ⟨𝚷 :: Q₁, p₁, h₁⟩ ⟨𝚺 :: Q₂, p₂, h₂⟩ :=
-    ∃.(∃.imply (pnf.mk Q₁ p₁ h₁^1) ((pnf.mk Q₂ p₂ (by simp[h₂])).rew ı-{1}) : pnf L)
-| ⟨𝚺 :: Q₁, p₁, h₁⟩ ⟨[], p₂, h₂⟩      := ∀.imply ⟨Q₁, p₁, by simp[h₁]⟩ ⟨[], p₂^1, by simp[h₂]⟩
-| ⟨𝚺 :: Q₁, p₁, h₁⟩ ⟨𝚷 :: Q₂, p₂, h₂⟩ :=
-    ∀.(∀.imply (pnf.mk Q₁ p₁ h₁^1) ((pnf.mk Q₂ p₂ (by simp[h₂])).rew ı-{1}) : pnf L)
-| ⟨𝚺 :: Q₁, p₁, h₁⟩ ⟨𝚺 :: Q₂, p₂, h₂⟩ :=
-    ∀.(∃.imply (pnf.mk Q₁ p₁ h₁^1) ((pnf.mk Q₂ p₂ (by simp[h₂])).rew ı-{1}) : pnf L)
-using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.fst.rank + x.snd.rank)⟩]}
-
-instance : has_arrow (pnf L) := ⟨imply⟩
-
-end pnf
-
-namespace formula
-
-@[simp] def to_pnf : formula L → pnf L
-| ⊤         := ⟨[], ⊤, by simp⟩
-| (app p v) := ⟨[], app p v, by simp⟩
-| ((t : term L) =' u) := ⟨[], (t : term L) =' u, by simp⟩
-| (p ⟶ q) := (to_pnf p).imply (to_pnf q)
-| (∼p) := (to_pnf p).neg
-| (∀.(p : formula L)) := ∀.(to_pnf p)
 
 end formula
 

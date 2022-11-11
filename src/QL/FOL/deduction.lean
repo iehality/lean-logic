@@ -7,11 +7,11 @@ open_locale logic_symbol
 open subterm subformula logic logic.Theory
 variables {L : language.{u}} {m : ℕ}
 
-local prefix (name := mlift) `𝗟`:max := subformula.mlift
-local prefix (name := preTheory.mlift) `𝗟'`:max := preTheory.mlift
-local prefix (name := push) `𝗠`:max := subformula.push
-local prefix (name := pull) `𝗡`:max := subformula.pull
-local prefix (name := dummy) `𝗗`:max := subformula.dummy
+localized "prefix (name := mlift) `𝗟`:max := subformula.mlift" in aclogic
+localized "prefix (name := preTheory.mlift) `𝗟'`:max := preTheory.mlift" in aclogic
+localized "prefix (name := push) `𝗠`:max := subformula.push" in aclogic
+localized "prefix (name := pull) `𝗡`:max := subformula.pull" in aclogic
+localized "prefix (name := dummy) `𝗗`:max := subformula.dummy" in aclogic
 
 def fin.bit0 {n} : fin n → fin (bit0 n)
 | ⟨i, hi⟩ := ⟨bit0 i, by simpa using hi⟩
