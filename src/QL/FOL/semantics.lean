@@ -1,4 +1,4 @@
-import QL.FOL.deduction
+import QL.FOL.deduction QL.FOL.language
 
 universes u v
 open_locale logic_symbol
@@ -126,11 +126,11 @@ using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.com
   val S me (e <* x) p.dummy ↔ val S me e p :=
 by simp[dummy]
 
-lemma val_msubst (p : subformula L (m + 1) n) (t : subterm L m n) :
+@[simp] lemma val_msubst (p : subformula L (m + 1) n) (t : subterm L m n) :
   val S me e (msubst t p) ↔ val S (subterm.val S me e t *> me) e p :=
 by simp[msubst, val_rew, fin.comp_left_concat, show subterm.val S me e ∘ metavar = me, from funext (by simp)]
 
-lemma val_subst (p : subformula L m (n + 1)) (t : subterm L m n) :
+@[simp] lemma val_subst (p : subformula L m (n + 1)) (t : subterm L m n) :
   val S me e (subst t p) ↔ val S me (e <* subterm.val S me e t) p :=
 by simp[subst, val_msubst]
 
@@ -188,6 +188,8 @@ def models (S : Structure L) (p : formula L m) : Prop := ∀ e, S ⊧[e] p
 instance : semantics (formula L m) (Structure L) := ⟨models⟩
 
 lemma models_def {S : Structure L} {p : formula L m} : S ⊧ p ↔ (∀ e, S ⊧[e] p) := by refl
+
+lemma formula_models_def {S : Structure L} {p : sentence L} : S ⊧ p ↔ S ⊧[fin_zero_elim] p := by simp[models_def]
 
 abbreviation satisfiable (p : formula L m) : Prop := semantics.satisfiable (Structure L) p
 
@@ -252,16 +254,92 @@ begin
 end
 
 namespace Structure
-variables {L} (A B : Structure L)
+variables {L}
+
+
+
+
+
+variables {L₁ L₂ : language.{u}} (S₁ : Structure L₁) (S₂ : Structure L₂) (τ : L₁ ⤳ᴸ L₂)
+
+
 
 structure hom :=
-(to_fun : A → B)
-(function {k} (f : L.fn k) : ∀ (a : fin k → A), to_fun (A.fn f a) = B.fn f (to_fun ∘ a))
-(relation {k} (r : L.pr k) : ∀ (a : fin k → A), A.pr r a ↔ B.pr r (to_fun ∘ a))
+(to_fun : S₁ → S₂)
+(injective : function.injective to_fun)
+(map_fn' {k} (f : L₁.fn k) (v : fin k → S₁) : to_fun (S₁.fn f v) = S₂.fn (τ.fn _ f) (to_fun ∘ v))
+(map_pr' {k} (r : L₁.pr k) (v : fin k → S₁) : S₁.pr r v ↔ S₂.pr (τ.pr _ r) (to_fun ∘ v))
 
-infix ` →ₛ `:50 := hom
+notation S₁ ` →ₛ[`:50 τ` ] `:0 S₂ := hom S₁ S₂ τ
 
-instance : has_coe_to_fun (hom A B) (λ _, A → B) := ⟨hom.to_fun⟩
+namespace hom
+open language
+variables {S₁ S₂ τ} (F : S₁ →ₛ[τ] S₂)
+
+instance : has_coe_to_fun (S₁ →ₛ[τ] S₂) (λ _, S₁ → S₂) := ⟨hom.to_fun⟩
+
+lemma map_fn {k} (f : L₁.fn k) (v : fin k → S₁) : F (S₁.fn f v) = S₂.fn (τ.fn _ f) (F ∘ v) := F.map_fn' f v
+
+lemma map_pr {k} (r : L₁.pr k) (v : fin k → S₁) : S₁.pr r v ↔ S₂.pr (τ.pr _ r) (F ∘ v) := F.map_pr' r v
+
+lemma map_val (me : fin m → S₁) (e : fin n → S₁) (t : subterm L₁ m n) :
+  F (subterm.val S₁ me e t) = subterm.val S₂ (F ∘ me) (F ∘ e) (subterm.of_lhom τ t) :=
+by { induction t; simp,
+     case function : k f v IH { simp[map_fn], refine congr_arg _ (by funext i; exact IH i) } }
+
+lemma val_iff (me : fin m → S₁) : ∀ {n} (e : fin n → S₁) (p : subformula L₁ m n) (hp : p.is_open),
+  subformula.val S₁ me e p ↔ subformula.val S₂ (F ∘ me) (F ∘ e) (subformula.of_lhom τ p)
+| n e verum          _  := by simp[top_eq]
+| n e (relation r v) _  := by simp[map_pr F]; refine (iff_of_eq $ congr_arg _ $ funext $ by simp[map_val])
+| n e (equal t u)    _  := by simp[equal_eq, map_pr F, ←map_val]; exact ⟨congr_arg F, λ h, F.injective h⟩
+| n e (imply p q)    hp :=
+  begin
+    simp[imply_eq] at hp ⊢,
+    have IH₁ : subformula.val S₁ me e p ↔ subformula.val S₂ (F ∘ me) (F ∘ e) (of_lhom τ p), from val_iff e p hp.1,
+    have IH₂ : subformula.val S₁ me e q ↔ subformula.val S₂ (F ∘ me) (F ∘ e) (of_lhom τ q), from val_iff e q hp.2,
+    simp[IH₁, IH₂]
+  end
+| n e (neg p)        hp :=
+  begin
+    simp[neg_eq] at hp ⊢,
+    have IH : subformula.val S₁ me e p ↔ subformula.val S₂ (F ∘ me) (F ∘ e) (of_lhom τ p), from val_iff e p hp,
+    simp[IH]
+  end
+| n e (fal p)        hp := by exfalso; simpa using hp
+
+lemma formula_val_iff (me : fin m → S₁) (p : formula L₁ m) (hp : p.is_open) :
+  S₁ ⊧[me] p ↔ S₂ ⊧[F ∘ me] subformula.of_lhom τ p :=
+by simpa[show F ∘ fin_zero_elim = fin_zero_elim, from funext (by simp)] using F.val_iff me fin_zero_elim p hp
+
+lemma models_iff (me : fin m → S₁) (p : subformula L₁ m n) (hp : p.is_open) :
+  S₂ ⊧[F ∘ me] subformula.of_lhom τ (∀'*p) → S₁ ⊧[me] ∀'*p :=
+by simp[formula.val]; intros h e; exact (F.val_iff me e p hp).mpr (h (F ∘ e))
+
+lemma models_of_lhom (F : S₁ →ₛ[τ] S₂) (p : subformula L₁ 0 n) (hp : p.is_open) :
+  S₂ ⊧ subformula.of_lhom τ (∀'*p) → S₁ ⊧ ∀'*p :=
+by simpa only [formula_models_def, show F ∘ fin_zero_elim = fin_zero_elim, from funext (by simp)] using F.models_iff fin_zero_elim p hp
+
+end hom
+
+def translation : Structure L₁ :=
+{ dom := S₂.dom,
+  inhabited := S₂.inhabited,
+  fn := λ k f v, S₂.fn (τ.fn k f) v,
+  pr := λ k r v, S₂.pr (τ.pr k r) v }
+
+def of_lfin : S₂.translation τ →ₛ[τ] S₂ :=
+{ to_fun := id,
+  injective := function.injective_id,
+  map_fn' := by intros; refl,
+  map_pr' := by intros; refl }
+
+lemma of_lfin.val_iff (me) {n} (e) (p : subformula L₁ m n) (hp : p.is_open) :
+  subformula.val (S₂.translation τ) me e p ↔ subformula.val S₂ (S₂.of_lfin τ ∘ me) (S₂.of_lfin τ ∘ e) (subformula.of_lhom τ p) :=
+(S₂.of_lfin τ).val_iff  me e p hp
+
+lemma of_lfin.formula_val_iff (me) (p : formula L₁ m) (hp : p.is_open) :
+  S₂.translation τ ⊧[me] p ↔ S₂ ⊧[S₂.of_lfin τ ∘ me] subformula.of_lhom τ p :=
+(S₂.of_lfin τ).formula_val_iff me p hp
 
 end Structure
 
