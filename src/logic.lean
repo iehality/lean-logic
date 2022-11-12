@@ -147,14 +147,11 @@ by { contrapose, simp[Theory.consistent], intros p hp₁ hp₂ hyp,
      have : T ⊢ (⊥ : F), from axiomatic_classical_logic'.explosion hp₁ hp₂,
      exact h (soundness this hyp) }
 
+variables (S)
+
+lemma tautology_of_tautology (p : F) (h : ⬝⊢ p) : S ⊧ p :=
+by { have : semantics.consequence 𝓢 ∅ p, from soundness h, exact this (show S ⊧ ∅, by simp) }
+
 end sound
-
-
-
-def soundness (𝓢 : Type*) [semantics F 𝓢] : Prop :=
-  ∀ {T : Theory F} {p}, T ⊢ p → semantics.consequence 𝓢 T p
-
-def complete (𝓢 : Type*) [semantics F 𝓢] : Prop :=
-  ∀ {T : Theory F} {p}, T ⊢ p ↔ semantics.consequence 𝓢 T p
 
 end logic

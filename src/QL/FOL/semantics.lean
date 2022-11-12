@@ -135,10 +135,10 @@ by simp[msubst, val_rew, fin.comp_left_concat, show subterm.val S me e ∘ metav
 by simp[subst, val_msubst]
 
 @[simp] lemma val_universal_closure (p : subformula L m n) :
-  val S me fin_zero_elim (∀'* p) ↔ ∀ v, val S me v p :=
+  val S me fin.nil (∀'* p) ↔ ∀ v, val S me v p :=
 begin
   induction n with n IH,
-  { simp },
+  { simp[fin.nil] },
   { simp[IH (∀'p)], split,
     { intros h v, simpa[fin.left_concat_eq] using h (v ∘ fin.succ) (v 0) },
     { intros h v x, exact h (x *> v) } }
@@ -152,17 +152,17 @@ end subformula
 namespace formula
 variables (S) {me : fin m → S}
 
-@[reducible] def val (me : fin m → S) : formula L m →ₗ Prop := subformula.val S me fin_zero_elim
+@[reducible] def val (me : fin m → S) : formula L m →ₗ Prop := subformula.val S me fin.nil
 
 notation S` ⊧[`:80 e`] `p :50 := val S e p
 
 variables {S} {p q : formula L m}
 
 @[simp] lemma models_relation {k} {r : L.pr k} {v} :
-  S ⊧[me] relation r v ↔ S.pr r (subterm.val S me fin_zero_elim ∘ v) := by simp[val]
+  S ⊧[me] relation r v ↔ S.pr r (subterm.val S me fin.nil ∘ v) := by simp[val]
 
 @[simp] lemma models_equal {t u : term L m} :
-  S ⊧[me] (t =' u) ↔ t.val S me fin_zero_elim = u.val S me fin_zero_elim := by simp[val]
+  S ⊧[me] (t =' u) ↔ t.val S me fin.nil = u.val S me fin.nil := by simp[val]
 
 @[simp] lemma models_fal {p : subformula L m 1} :
   S ⊧[me] (∀'p : subformula _ _ _) ↔ ∀ x, S ⊧[x *> me] p.push :=
@@ -173,7 +173,7 @@ by simp[val, fin.concat_zero]
 by simp[val, fin.concat_zero]
 
 @[simp] lemma models_subst {p : subformula L m 1} (t : subterm L m 0) :
-  S ⊧[me] (subst t p : subformula _ _ _) ↔ S ⊧[subterm.val S me fin_zero_elim t *> me] p.push :=
+  S ⊧[me] (subst t p : subformula _ _ _) ↔ S ⊧[subterm.val S me fin.nil t *> me] p.push :=
 by simp[val, subformula.val_subst]
 
 @[simp] lemma models_rew {x : S} : S ⊧[x *> me] p.mlift ↔ S ⊧[me] p :=
@@ -181,7 +181,7 @@ by simp[val]
 
 end formula
 
-def sentence.val : sentence L → Prop := formula.val S fin_zero_elim
+def sentence.val : sentence L → Prop := formula.val S fin.nil
 
 def models (S : Structure L) (p : formula L m) : Prop := ∀ e, S ⊧[e] p
 
@@ -189,11 +189,15 @@ instance : semantics (formula L m) (Structure L) := ⟨models⟩
 
 lemma models_def {S : Structure L} {p : formula L m} : S ⊧ p ↔ (∀ e, S ⊧[e] p) := by refl
 
-lemma formula_models_def {S : Structure L} {p : sentence L} : S ⊧ p ↔ S ⊧[fin_zero_elim] p := by simp[models_def]
+lemma sentence_models_def {S : Structure L} {p : sentence L} : S ⊧ p ↔ S ⊧[fin.nil] p := by simp[models_def, fin.nil]
 
 abbreviation satisfiable (p : formula L m) : Prop := semantics.satisfiable (Structure L) p
 
+lemma satisfiable_def (p : formula L m) : satisfiable p ↔ ∃ S : Structure L, S ⊧ p := by refl
+
 abbreviation Satisfiable (T : preTheory L m) : Prop := semantics.Satisfiable (Structure L) T
+
+lemma Satisfiable_def (T : preTheory L m) : Satisfiable T ↔ ∃ S : Structure L, S ⊧ T := by refl
 
 namespace formula
 variables {S} {m}
@@ -206,6 +210,23 @@ by{ simp[models_def], split,
     { intros h e, rw ←fin.left_concat_eq e, simpa using h (e ∘ fin.succ)} }
 
 end formula
+
+namespace sentence
+variables {S} {p q : sentence L}
+
+@[simp] lemma models_verum : S ⊧ (⊤ : sentence L) := by simp[sentence_models_def]
+
+@[simp] lemma models_imply : S ⊧ p ⟶ q ↔ (S ⊧ p → S ⊧ q) := by simp[sentence_models_def]
+
+@[simp] lemma models_neg : S ⊧ ∼p ↔ ¬S ⊧ p := by simp[sentence_models_def]
+
+@[simp] lemma models_and : S ⊧ p ⊓ q ↔ S ⊧ p ∧ S ⊧ q := by simp[sentence_models_def]
+
+@[simp] lemma models_or : S ⊧ p ⊔ q ↔ S ⊧ p ∨ S ⊧ q := by simp[sentence_models_def]
+
+@[simp] lemma models_iff : S ⊧ p ⟷ q ↔ (S ⊧ p ↔ S ⊧ q) := by simp[sentence_models_def]
+
+end sentence
 
 namespace preTheory
 variables {S} {m} {T : preTheory L m}
@@ -253,16 +274,13 @@ begin
   { intros T k r S hS me, simp[eq_axiom5], intros v h, exact cast (congr_arg _ (funext h)) }
 end
 
+instance : logic.sound (formula L m) (Structure L) :=
+⟨λ T p, soundness⟩
+
 namespace Structure
 variables {L}
 
-
-
-
-
 variables {L₁ L₂ : language.{u}} (S₁ : Structure L₁) (S₂ : Structure L₂) (τ : L₁ ⤳ᴸ L₂)
-
-
 
 structure hom :=
 (to_fun : S₁ → S₂)
@@ -309,7 +327,7 @@ lemma val_iff (me : fin m → S₁) : ∀ {n} (e : fin n → S₁) (p : subformu
 
 lemma formula_val_iff (me : fin m → S₁) (p : formula L₁ m) (hp : p.is_open) :
   S₁ ⊧[me] p ↔ S₂ ⊧[F ∘ me] subformula.of_lhom τ p :=
-by simpa[show F ∘ fin_zero_elim = fin_zero_elim, from funext (by simp)] using F.val_iff me fin_zero_elim p hp
+by simpa[show F ∘ fin.nil = fin.nil, from funext (by simp)] using F.val_iff me fin.nil p hp
 
 lemma models_iff (me : fin m → S₁) (p : subformula L₁ m n) (hp : p.is_open) :
   S₂ ⊧[F ∘ me] subformula.of_lhom τ (∀'*p) → S₁ ⊧[me] ∀'*p :=
@@ -317,7 +335,7 @@ by simp[formula.val]; intros h e; exact (F.val_iff me e p hp).mpr (h (F ∘ e))
 
 lemma models_of_lhom (F : S₁ →ₛ[τ] S₂) (p : subformula L₁ 0 n) (hp : p.is_open) :
   S₂ ⊧ subformula.of_lhom τ (∀'*p) → S₁ ⊧ ∀'*p :=
-by simpa only [formula_models_def, show F ∘ fin_zero_elim = fin_zero_elim, from funext (by simp)] using F.models_iff fin_zero_elim p hp
+by simpa only [sentence_models_def, show F ∘ fin.nil = fin.nil, from funext (by simp)] using F.models_iff fin.nil p hp
 
 end hom
 

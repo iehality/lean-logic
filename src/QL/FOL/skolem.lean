@@ -9,7 +9,7 @@ open subformula logic logic.Theory
 
 namespace language
 
-def skolem : language :=
+@[reducible] def skolem : language :=
 { fn := λ m, pnf L m 1, pr := λ _, pempty }
 
 def skolem' := skolem L + L
@@ -34,38 +34,103 @@ variables {m n : ℕ}
 
 def skolem_term (φ : pnf L m 1) : subterm L.skolem m 0 := subterm.function φ subterm.metavar
 
-@[simp] def to_skolem : Π {m}, pnf L m 0 → pnf (L + L.skolem) m 0
+@[simp] def skolemize : Π {m}, pnf L m 0 → pnf (L + L.skolem) m 0
 | n (openformula p hp) := openformula p.left (by simpa[left] using hp)
-| n (fal φ)            := ∀' pnf.pull (push φ).to_skolem
-| n (ex φ)             := pnf.msubst (skolem_term φ).right (push φ).to_skolem
+| n (fal φ)            := ∀' pnf.pull (push φ).skolemize
+| n (ex φ)             := pnf.msubst (skolem_term φ).right (push φ).skolemize
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.rank)⟩]}
 
 end pnf
 
 namespace skolem
 open language pnf
-variables {m n : ℕ} (S : Structure (L + L.skolem))
+variables {m n : ℕ} (Sₛₖ : Structure (L + L.skolem)) (T : preTheory L m)
 
-lemma val_open_formula (me) (p : formula L m) (hp : p.is_open) : S ⊧[me] p.left ↔ S.translation add_left ⊧[me] p :=
-(Structure.of_lfin.formula_val_iff S add_left me p hp).symm
+lemma val_open_formula (me) (p : formula L m) (hp : p.is_open) : Sₛₖ ⊧[me] p.left ↔ Sₛₖ.translation add_left ⊧[me] p :=
+(Structure.of_lfin.formula_val_iff Sₛₖ add_left me p hp).symm
 
-lemma val_to_skolem : ∀ {m} (me) (φ : pnf L m 0), S ⊧[me] φ.to_skolem.to_formula → S.translation add_left ⊧[me] φ.to_formula
-| m me (openformula p hp) := by simpa using (val_open_formula S me p hp).mp
+lemma Sₛₖ_val : ∀ {m} (me) (φ : pnf L m 0),
+  Sₛₖ ⊧[me] φ.skolemize.to_formula → Sₛₖ.translation add_left ⊧[me] φ.to_formula
+| m me (openformula p hp) := by simpa using (val_open_formula Sₛₖ me p hp).mp
 | m me (fal φ)            :=
     begin
       simp, intros h x,
-      have IH : S ⊧[x *> me] φ.push.to_skolem.to_formula → formula.val (S.translation add_left) (x *> me) φ.push.to_formula,
-      from val_to_skolem (x *> me) φ.push,
+      have IH : Sₛₖ ⊧[x *> me] φ.push.skolemize.to_formula → formula.val (Sₛₖ.translation add_left) (x *> me) φ.push.to_formula,
+      from Sₛₖ_val (x *> me) φ.push,
       simpa[formula.val] using IH (h x)
     end
 | m me (ex φ)            :=
     begin
       simp, intros h,
-      let z := subterm.val S me fin_zero_elim (subterm.right φ.skolem_term),
-      have h : S ⊧[z *> me] φ.push.to_skolem.to_formula, by simpa using h,
-      refine ⟨z, by simpa using val_to_skolem (z *> me) φ.push h⟩
+      let z := subterm.val Sₛₖ me fin.nil (subterm.right φ.skolem_term),
+      have h : Sₛₖ ⊧[z *> me] φ.push.skolemize.to_formula, by simpa using h,
+      refine ⟨z, by simpa using Sₛₖ_val (z *> me) φ.push h⟩
     end
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.rank)⟩]}
+
+variables (S : Structure L) 
+
+@[reducible] noncomputable def Skolemize : Structure (L + L.skolem) :=
+{ dom := S,
+  inhabited := S.inhabited,
+  fn := λ m f, sum.cases_on f S.fn (λ φ me, classical.epsilon (λ z, val S me (fin.nil <* z) φ.to_formula)),
+  pr := λ n r, sum.cases_on r S.pr (by rintros ⟨⟩) }
+
+def to_Skolemize : S →ₛ[add_left] Skolemize S :=
+{ to_fun := id,
+  injective := function.injective_id,
+  map_fn' := by intros; refl,
+  map_pr' := by intros; refl }
+
+variables {S}
+
+lemma Str_sk_val_open_formula (me) (p : formula L m) (hp : p.is_open) : S ⊧[me] p ↔ Skolemize S ⊧[me] p.left :=
+by simpa using Structure.hom.val_iff (to_Skolemize S) me fin.nil p hp
+
+noncomputable def sk_value (me) (φ : pnf L m 1) := subterm.val (Skolemize S) me fin.nil φ.skolem_term.right
+
+lemma sk_value_spec (me) (φ : pnf L m 1) (z) (h : val S me (fin.nil <* z) φ.to_formula) :
+  val S me (fin.nil <* sk_value me φ) φ.to_formula:=
+classical.epsilon_spec ⟨z, h⟩
+
+lemma Skolemize_val : ∀ {m} (me) (φ : pnf L m 0),
+  S ⊧[me] φ.to_formula → Skolemize S ⊧[me] φ.skolemize.to_formula
+| m me (openformula p hp) := by simpa using (Str_sk_val_open_formula me p hp).mp
+| m me (fal φ)            :=
+    begin
+      simp, intros h x,
+      have : val S me ((fin.nil : fin 0 → S) <* x) φ.to_formula → Skolemize S ⊧[x *> me] φ.push.skolemize.to_formula,
+      by simpa using Skolemize_val (x *> me) φ.push,
+      exact this (h x)
+    end
+| m me (ex φ)            :=
+    begin
+      simp, intros z h,
+      show Skolemize S ⊧[sk_value me φ *> me] φ.push.skolemize.to_formula,
+      have : val S me (fin.nil <* sk_value me φ) φ.to_formula → Skolemize S ⊧[sk_value me φ *> me] φ.push.skolemize.to_formula,
+        by simpa using Skolemize_val (sk_value me φ *> me) φ.push,
+      exact this (sk_value_spec me φ z h)
+    end
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.rank)⟩]}
+
+lemma satisfiability (p : sentence L) : satisfiable p ↔ satisfiable p.to_pnf.skolemize.to_formula :=
+⟨ begin
+    rintros ⟨S, hS⟩, use Skolemize S,
+    have lmm₁ : S ⊧ p.normalize,
+    { have : S ⊧ normalize p ↔ S ⊧ p, by simpa using logic.tautology_of_tautology S (p.normalize ⟷ p) (equiv_normalize ∅ p),
+      exact this.mpr hS },
+    have lmm₂ : S ⊧ p.normalize → Skolemize S ⊧ (to_pnf p).skolemize.to_formula,
+    { simp[sentence_models_def], exact Skolemize_val fin.nil p.to_pnf },
+    exact lmm₂ lmm₁
+  end,
+  begin
+    rintros ⟨S, hS⟩, use S.translation add_left,
+    have lmm₁ : S.translation add_left ⊧ p.normalize ↔ S.translation add_left ⊧ p,
+    by simpa using logic.tautology_of_tautology (S.translation add_left) (p.normalize ⟷ p) (equiv_normalize ∅ p),    
+    have lmm₂ : S.translation add_left ⊧ p.normalize,
+    { simp[sentence_models_def] at hS ⊢, exact Sₛₖ_val S fin.nil p.to_pnf hS },
+    exact lmm₁.mp lmm₂
+  end⟩
 
 end skolem
 
@@ -73,7 +138,7 @@ private def s : subformula language.empty 0 0 := ∀' ∃' ∀' ∃'((#0 =' #1) 
 
 #eval to_string s
 #eval to_string s.to_pnf
-#eval to_string s.to_pnf.to_skolem
+#eval to_string s.to_pnf.skolemize
 
 end fol
 
