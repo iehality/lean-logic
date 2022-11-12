@@ -48,11 +48,36 @@ instance [∀ n, has_to_string (L.fn n)] [∀ n, has_to_string (L.pr n)] : has_t
 | n (fal φ)            := ∀'to_formula φ
 | n (ex  φ)            := ∃'to_formula φ
 
-instance : has_coe (pnf L m n) (subformula L m n) := ⟨@to_formula L m n⟩
+--instance : has_coe (pnf L m n) (subformula L m n) := ⟨@to_formula L m n⟩
 
 @[simp] lemma to_formula_forall (φ : pnf L m (n + 1)) : to_formula (∀'φ) = ∀'(to_formula φ) := by simp[has_univ_quantifier'.univ]
 
 @[simp] lemma to_formula_exists (φ : pnf L m (n + 1)) : to_formula (∃'φ) = ∃'(to_formula φ) := by simp[has_exists_quantifier'.ex]
+
+section rew
+variables {m₁ m₂ : ℕ} (s : fin m₁ → subterm L m₂ n)
+
+@[simp] def rew : Π {n} (s : fin m₁ → subterm L m₂ n), pnf L m₁ n → pnf L m₂ n
+| n s (openformula p hp) := openformula (subformula.rew s p) (by simpa using hp)
+| n s (fal φ)            := ∀'φ.rew (subterm.lift ∘ s)
+| n s (ex  φ)            := ∃'φ.rew (subterm.lift ∘ s)
+
+@[simp] lemma rew_forall (φ : pnf L m₁ (n + 1)) : rew s (∀'φ) = ∀'(rew (subterm.lift ∘ s) φ) := by simp[has_univ_quantifier'.univ]
+
+@[simp] lemma rew_exists (φ : pnf L m₁ (n + 1)) : rew s (∃'φ) = ∃'(rew (subterm.lift ∘ s) φ) := by simp[has_exists_quantifier'.ex]
+
+@[simp] def rew_to_formula : Π {n} (s : fin m₁ → subterm L m₂ n) (φ : pnf L m₁ n),
+  (rew s φ).to_formula = subformula.rew s φ.to_formula
+| n s (openformula p hp) := by simp
+| n s (fal φ)            := by simp[rew_to_formula _ φ]
+| n s (ex  φ)            := by simp[rew_to_formula _ φ]
+
+@[simp] def rank_rew : Π {n} (s : fin m₁ → subterm L m₂ n) (φ : pnf L m₁ n), (rew s φ).rank = φ.rank
+| n s (openformula p hp) := by simp
+| n s (fal φ)            := by simp[rank_rew _ φ]
+| n s (ex  φ)            := by simp[rank_rew _ φ]
+
+end rew
 
 section mlift
 
@@ -125,6 +150,27 @@ section pull
 | _ (ex φ)             := by simpa using pull_push φ
 
 end pull
+
+section subst
+
+def msubst (u : subterm L m n) : pnf L (m + 1) n → pnf L m n := rew (u *> subterm.metavar)
+
+def subst (u : subterm L m n) : pnf L m (n + 1) → pnf L m n := msubst u ∘ push
+
+@[simp] lemma msubst_fal (u) (φ : pnf L (m + 1) (n + 1)) : msubst u (∀'φ) = ∀'msubst u.lift φ :=
+by simp[msubst, fin.comp_left_concat]
+
+@[simp] lemma msubst_ex (u) (φ : pnf L (m + 1) (n + 1)) : msubst u (∃'φ) = ∃'msubst u.lift φ :=
+by simp[msubst, fin.comp_left_concat]
+
+@[simp] def msubat_to_formula (u) (φ : pnf L (m + 1) n) :
+  (msubst u φ).to_formula = subformula.msubst u φ.to_formula :=
+by simp[msubst]; refl
+
+@[simp] def rank_msubat (u) (φ : pnf L (m + 1) n) : (msubst u φ).rank = φ.rank :=
+by simp[msubst]
+
+end subst
 
 section dummy
 
@@ -227,8 +273,7 @@ lemma equiv_to_formula_imply : ∀ {m} (T : preTheory L m) (p q : pnf L m 0),
     end
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.1.rank + x.2.2.2.rank)⟩]}
 
-instance : has_logic_symbol (pnf L m n) :=
-logic_simbol_default (pnf L m n) (openformula ⊤ (by simp)) neg imply
+--instance : has_logic_symbol (pnf L m n) := logic_simbol_default (pnf L m n) (openformula ⊤ (by simp)) neg imply
 
 end pnf
 
@@ -258,7 +303,7 @@ by unfold has_arrow.arrow; simp; refl
 @[simp] lemma to_pnf_neg (p : subformula L m n) : to_pnf (∼p) = (to_pnf p).neg :=
 by unfold has_negation.neg; simp; refl
 
-@[simp] lemma to_pnf_fal (p : subformula L m (n + 1)) : to_pnf (∀'p) = ∀' pnf.pull (to_pnf $ 𝗠 p) :=
+@[simp] lemma to_pnf_fal (p : subformula L m (n + 1)) : to_pnf (∀'p) = ∀'(pnf.pull $ to_pnf $ 𝗠 p) :=
 by unfold has_univ_quantifier'.univ; simp; refl
 
 end subformula
