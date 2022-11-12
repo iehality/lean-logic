@@ -124,17 +124,12 @@ def to_str [∀ n, has_to_string (L.fn n)] [∀ n, has_to_string (L.pr n)] : Π 
 | n verum          := "⊤"
 | n (relation p v) := has_to_string.to_string p
 | n (equal t u)    := has_to_string.to_string t ++ " = " ++ has_to_string.to_string u
-| n (imply p q)    := to_str p ++ " → " ++ to_str q
-| n (neg p)        := "¬(" ++ to_str p ++ ")"
-| n (fal p)        := "∀(" ++ to_str p ++ ")"
+| n (imply p q)    := "(" ++ to_str p ++ " → " ++ to_str q ++ ")"
+| n (neg p)        := "¬" ++ to_str p
+| n (fal p)        := "∀" ++ to_str p
 
 instance [∀ n, has_to_string (L.fn n)] [∀ n, has_to_string (L.pr n)] : has_to_string (subformula L m n) := ⟨to_str⟩
 
-/-
-instance [has_le_symbol L] : has_preceq (subterm L m n) (subformula L m n) := ⟨λ t u, relation has_le_symbol.le ‹t, u›⟩
-
-instance [has_mem_symbol L] : has_elem (subterm L m n) (subformula L m n) := ⟨λ t u, relation has_mem_symbol.mem ‹t, u›⟩
--/
 def and (p : subformula L m n) (q : subformula L m n) : subformula L m n := (p.imply q.neg).neg
 
 def or (p : subformula L m n) (q : subformula L m n) : subformula L m n := p.neg.imply q
