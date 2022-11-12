@@ -92,11 +92,9 @@ variables (L) (m n)
 def to_string [∀ n, has_to_string (L.fn n)] : subterm L m n → string
 | &n                            := "&" ++ has_to_string.to_string n
 | #n                            := "#" ++ has_to_string.to_string n
-| (@function _ _ _ 0 c v)       := has_to_string.to_string c
-| (@function _ _ _ 1 c v)       := has_to_string.to_string c ++ "(" ++ to_string (v 0) ++ ")"
-| (@function _ _ _ 2 c v)       := to_string (v 0) ++ has_to_string.to_string c ++ to_string (v 1)
-| (@function _ _ _ (n + 3) c v) :=
-    has_to_string.to_string c ++ "(" ++ @has_to_string.to_string (finitary _ _) _ (λ i, to_string (v i)) ++ ")"
+| (@function _ _ _ 0 c v)       := "⟨" ++ has_to_string.to_string c ++ "⟩"
+| (@function _ _ _ (n + 1) c v) :=
+    "⟨" ++ has_to_string.to_string c ++ "⟩" ++ @has_to_string.to_string (finitary _ _) _ (λ i, to_string (v i))
 
 instance [∀ n, has_to_string (L.fn n)] : has_to_string (subterm L m n) := ⟨to_string L m n⟩
 
@@ -157,6 +155,7 @@ lemma imply_eq : @subformula.imply L m n = (⟶) := rfl
 lemma equal_eq : @subformula.equal L m n = (=') := rfl
 lemma neg_eq : @subformula.neg L m n = has_negation.neg := rfl
 lemma fal_eq : @subformula.fal L m n = has_univ_quantifier'.univ := rfl
+lemma ex_eq : @subformula.ex L m n = has_exists_quantifier'.ex := rfl
 
 lemma ex_def (p : subformula L m (n + 1)) : ∃'p = ∼∀'∼p := rfl
 
@@ -261,6 +260,9 @@ section lift
 
 lemma lift_rew (s : finitary (subterm L m₂ n) m₁) (t : subterm L m₁ n) : (t.rew s).lift = t.lift.rew (lift ∘ s) :=
 by induction t with x x p f v IH; simp; exact funext IH
+
+@[simp] lemma lift_metavar : lift ∘ (metavar : fin m → subterm L m n) = metavar :=
+funext (by simp)
 
 end lift
 
@@ -500,8 +502,7 @@ variables {s}
 
 lemma rew_eq_self_of_eq {s : finitary (subterm L m n) m} (h : s = metavar) (p : subformula L m n) : rew s p = p :=
 by { induction p; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq, subterm.mlift_rew, *],
-     case relation : n p r v { funext x; simp },
-     case fal : n p IH { refine IH (funext $ by simp) } }
+     case relation : n p r v { funext x; simp } }
 
 @[simp] lemma rew_metavar (p : subformula L m n) : rew metavar p = p := rew_eq_self_of_eq rfl p
 
@@ -773,7 +774,7 @@ variables (u : subterm L m n)
 
 @[simp] lemma subst_fal (p : subformula L m n.succ.succ) :
   subst u (∀'p) = ∀'subst u.lift p :=
-by simp[subst]; refine eq_rew_of_eq (funext $ λ x, by rcases (fin.eq_zero_or_eq_succ x) with (rfl | ⟨x, rfl⟩); simp)
+by simp[subst]
 
 @[simp] lemma subst_ex (p : subformula L m n.succ.succ) :
   subst u (∃'p) = ∃'subst u.lift p := by simp[ex_def]
@@ -874,6 +875,17 @@ variables {m n}
 
 @[simp] lemma qr_ex (p : subformula L m (n + 1)) : (∃'p).qr = p.qr + 1 := rfl
 
+@[simp] lemma qr_rew {m₁ m₂} : Π {n} (p : subformula L m₁ n) (s : fin m₁ → subterm L m₂ n), (rew s p).qr = p.qr
+| n verum          := by simp[top_eq]
+| n (relation p v) := by simp
+| n (equal t u)    := by simp[equal_eq]
+| n (imply p q)    := by simp[imply_eq, qr_rew p, qr_rew q]
+| n (neg p)        := by simp[neg_eq, qr_rew p]
+| n (fal p)        := by simp[fal_eq, qr_rew p]
+
+@[simp] lemma qr_msubst (u : subterm L m n) (p : subformula L (m + 1) n) : (msubst u p).qr = p.qr :=
+by simp[msubst]
+
 @[simp] def qr_push {m} : Π {n} (p : subformula L m (n + 1)), p.push.qr = p.qr
 | n verum          := by simp[top_eq]
 | n (relation p v) := by simp
@@ -899,6 +911,9 @@ using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.compl
 | n (neg p)        := by simp[neg_eq, qr_mlift p]
 | n (fal p)        := by simp[fal_eq, qr_mlift p]
 
+@[simp] lemma qr_subst (u : subterm L m n) (p : subformula L m (n + 1)) : (subst u p).qr = p.qr :=
+by simp[subst]
+
 @[simp] lemma top_open : (⊤ : subformula L m n).is_open := by simp[is_open] 
 
 @[simp] lemma relation_open {k} (r : L.pr k) (v) : (relation r v : subformula L m n).is_open := by simp[is_open]
@@ -919,17 +934,35 @@ using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.compl
 
 @[simp] lemma ex_not_open {p : subformula L m (n + 1)} : ¬(∃'p).is_open := by simp[is_open] 
 
+@[simp] lemma rew_open {m₁ m₂} {p : subformula L m₁ n} {s : fin m₁ → subterm L m₂ n} :
+  (rew s p).is_open ↔ p.is_open := by simp[is_open]
+
 @[simp] lemma mlift_open {p : subformula L m n} : (mlift p).is_open ↔ p.is_open := by simp[is_open]
+
+@[simp] lemma msubst_open {u} {p : subformula L (m + 1) n} : (msubst u p).is_open ↔ p.is_open := by simp[is_open]
 
 @[simp] lemma push_open {p : subformula L m (n + 1)} : (push p).is_open ↔ p.is_open := by simp[is_open]
 
 @[simp] lemma pull_open {p : subformula L (m + 1) n} : (pull p).is_open ↔ p.is_open := by simp[is_open]
+
+@[simp] lemma subst_open {u} {p : subformula L m (n + 1)} : (subst u p).is_open ↔ p.is_open := by simp[is_open]
 
 @[simp] lemma dummy_open {p : subformula L m n} : (dummy p).is_open ↔ p.is_open := by simp[dummy]
 
 end qr
 
 end subformula
+
+section
+variables (L) (m n : ℕ)
+
+def open_subformula := {p : subformula L m n // p.is_open}
+
+@[reducible] def open_formula := open_subformula L m 0
+
+@[reducible] def open_sentence := open_formula L 0
+
+end 
 
 namespace preTheory
 variables {L} {m : ℕ} (T U : preTheory L m)
