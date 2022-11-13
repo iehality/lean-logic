@@ -184,7 +184,9 @@ funext (λ i, by refine cases _ _ i; simp)
 lemma right_concat_eq {α} {n} (f : fin (n + 1) → α) : f ∘ fin.cast_succ <* f (last n) = f :=
 funext (λ i, by refine last_cases _ _ i; simp)
 
-lemma concat_zero {α} {x : α} : x *> fin_zero_elim = (fin_zero_elim : fin 0 → α) <* x :=
+protected def nil : fin 0 → C := fin_zero_elim
+
+lemma concat_zero {α} {x : α} : x *> fin.nil = fin.nil <* x :=
 by funext; simp
 
 @[simp] lemma left_concat_inj {a₁ a₂ : C} {s₁ s₂ : fin n → C} :

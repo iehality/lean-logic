@@ -305,7 +305,52 @@ lemma map_val (me : fin m → S₁) (e : fin n → S₁) (t : subterm L₁ m n) 
 by { induction t; simp,
      case function : k f v IH { simp[map_fn], refine congr_arg _ (by funext i; exact IH i) } }
 
-lemma val_iff (me : fin m → S₁) : ∀ {n} (e : fin n → S₁) (p : subformula L₁ m n) (hp : p.is_open),
+lemma val_iff_of_surjective (surj : function.surjective F) (me : fin m → S₁) : ∀ {n} (e : fin n → S₁) (p : subformula L₁ m n),
+  subformula.val S₁ me e p ↔ subformula.val S₂ (F ∘ me) (F ∘ e) (of_lhom τ p)
+| n e verum          := by simp[top_eq]
+| n e (relation r v) := by simp[map_pr F]; refine (iff_of_eq $ congr_arg _ $ funext $ by simp[map_val])
+| n e (equal t u)    := by simp[equal_eq, map_pr F, ←map_val]; exact ⟨congr_arg F, λ h, F.injective h⟩
+| n e (imply p q)    :=
+  begin
+    simp[imply_eq],
+    have IH₁ : subformula.val S₁ me e p ↔ subformula.val S₂ (F ∘ me) (F ∘ e) (of_lhom τ p), from val_iff_of_surjective e p,
+    have IH₂ : subformula.val S₁ me e q ↔ subformula.val S₂ (F ∘ me) (F ∘ e) (of_lhom τ q), from val_iff_of_surjective e q,
+    simp[IH₁, IH₂]
+  end
+| n e (neg p)        :=
+  begin
+    simp[neg_eq],
+    have IH : subformula.val S₁ me e p ↔ subformula.val S₂ (F ∘ me) (F ∘ e) (of_lhom τ p), from val_iff_of_surjective e p,
+    simp[IH]
+  end
+| n e (fal p)        :=
+    begin
+      simp[fal_eq], split,
+      { intros h y,
+        have : ∃ x : S₁, F x = y, from surj y, rcases this with ⟨x, rfl⟩,
+        simpa[fin.comp_left_concat] using (val_iff_of_surjective (x *> e) p).mp (h x) },
+      { intros h x,
+        exact (val_iff_of_surjective (x *> e) p).mpr (by simpa[fin.comp_left_concat] using h (F x)) }
+    end
+
+lemma formula_val_iff_of_surjective (surj : function.surjective F) (me : fin m → S₁) (p : formula L₁ m) :
+  S₁ ⊧[me] p ↔ S₂ ⊧[F ∘ me] of_lhom τ p :=
+by simpa[show F ∘ fin.nil = fin.nil, from funext (by simp)] using val_iff_of_surjective F surj me fin.nil p
+
+lemma models_iff_of_surjective (surj : function.surjective F) (p : formula L₁ m) :
+  S₁ ⊧ p ↔ S₂ ⊧ of_lhom τ p :=
+begin
+  simp[models_def], split,
+  { intros h me, let e' := function.surj_inv surj ∘ me,
+    have : S₁ ⊧[function.surj_inv surj ∘ me] p, from h (function.surj_inv surj ∘ me),
+    have : S₂ ⊧[F ∘ function.surj_inv surj ∘ me] of_lhom τ p,
+    from (formula_val_iff_of_surjective F surj (function.surj_inv surj ∘ me) p).mp this,
+    simpa[show F ∘ function.surj_inv surj ∘ me = me, by funext i; simp; exact function.surj_inv_eq _ _ ] using this },
+  { intros h me,
+    exact (formula_val_iff_of_surjective F surj me p).mpr (h (F ∘ me)) }
+end
+
+lemma val_iff_of_open (me : fin m → S₁) : ∀ {n} (e : fin n → S₁) (p : subformula L₁ m n) (hp : p.is_open),
   subformula.val S₁ me e p ↔ subformula.val S₂ (F ∘ me) (F ∘ e) (subformula.of_lhom τ p)
 | n e verum          _  := by simp[top_eq]
 | n e (relation r v) _  := by simp[map_pr F]; refine (iff_of_eq $ congr_arg _ $ funext $ by simp[map_val])
@@ -313,25 +358,25 @@ lemma val_iff (me : fin m → S₁) : ∀ {n} (e : fin n → S₁) (p : subformu
 | n e (imply p q)    hp :=
   begin
     simp[imply_eq] at hp ⊢,
-    have IH₁ : subformula.val S₁ me e p ↔ subformula.val S₂ (F ∘ me) (F ∘ e) (of_lhom τ p), from val_iff e p hp.1,
-    have IH₂ : subformula.val S₁ me e q ↔ subformula.val S₂ (F ∘ me) (F ∘ e) (of_lhom τ q), from val_iff e q hp.2,
+    have IH₁ : subformula.val S₁ me e p ↔ subformula.val S₂ (F ∘ me) (F ∘ e) (of_lhom τ p), from val_iff_of_open e p hp.1,
+    have IH₂ : subformula.val S₁ me e q ↔ subformula.val S₂ (F ∘ me) (F ∘ e) (of_lhom τ q), from val_iff_of_open e q hp.2,
     simp[IH₁, IH₂]
   end
 | n e (neg p)        hp :=
   begin
     simp[neg_eq] at hp ⊢,
-    have IH : subformula.val S₁ me e p ↔ subformula.val S₂ (F ∘ me) (F ∘ e) (of_lhom τ p), from val_iff e p hp,
+    have IH : subformula.val S₁ me e p ↔ subformula.val S₂ (F ∘ me) (F ∘ e) (of_lhom τ p), from val_iff_of_open e p hp,
     simp[IH]
   end
 | n e (fal p)        hp := by exfalso; simpa using hp
 
-lemma formula_val_iff (me : fin m → S₁) (p : formula L₁ m) (hp : p.is_open) :
+lemma formula_val_iff_of_open (me : fin m → S₁) (p : formula L₁ m) (hp : p.is_open) :
   S₁ ⊧[me] p ↔ S₂ ⊧[F ∘ me] subformula.of_lhom τ p :=
-by simpa[show F ∘ fin.nil = fin.nil, from funext (by simp)] using F.val_iff me fin.nil p hp
+by simpa[show F ∘ fin.nil = fin.nil, from funext (by simp)] using F.val_iff_of_open me fin.nil p hp
 
 lemma models_iff (me : fin m → S₁) (p : subformula L₁ m n) (hp : p.is_open) :
   S₂ ⊧[F ∘ me] subformula.of_lhom τ (∀'*p) → S₁ ⊧[me] ∀'*p :=
-by simp[formula.val]; intros h e; exact (F.val_iff me e p hp).mpr (h (F ∘ e))
+by simp[formula.val]; intros h e; exact (F.val_iff_of_open me e p hp).mpr (h (F ∘ e))
 
 lemma models_of_lhom (F : S₁ →ₛ[τ] S₂) (p : subformula L₁ 0 n) (hp : p.is_open) :
   S₂ ⊧ subformula.of_lhom τ (∀'*p) → S₁ ⊧ ∀'*p :=
@@ -340,7 +385,7 @@ by simpa only [sentence_models_def, show F ∘ fin.nil = fin.nil, from funext (b
 end hom
 
 def translation : Structure L₁ :=
-{ dom := S₂.dom,
+{ dom := S₂,
   inhabited := S₂.inhabited,
   fn := λ k f v, S₂.fn (τ.fn k f) v,
   pr := λ k r v, S₂.pr (τ.pr k r) v }
@@ -351,13 +396,17 @@ def of_lfin : S₂.translation τ →ₛ[τ] S₂ :=
   map_fn' := by intros; refl,
   map_pr' := by intros; refl }
 
-lemma of_lfin.val_iff (me) {n} (e) (p : subformula L₁ m n) (hp : p.is_open) :
+lemma of_lfin.val_iff (me) {n} (e) (p : subformula L₁ m n) :
   subformula.val (S₂.translation τ) me e p ↔ subformula.val S₂ (S₂.of_lfin τ ∘ me) (S₂.of_lfin τ ∘ e) (subformula.of_lhom τ p) :=
-(S₂.of_lfin τ).val_iff  me e p hp
+(S₂.of_lfin τ).val_iff_of_surjective function.surjective_id me e p
 
-lemma of_lfin.formula_val_iff (me) (p : formula L₁ m) (hp : p.is_open) :
+lemma of_lfin.formula_val_iff (me) (p : formula L₁ m) :
   S₂.translation τ ⊧[me] p ↔ S₂ ⊧[S₂.of_lfin τ ∘ me] subformula.of_lhom τ p :=
-(S₂.of_lfin τ).formula_val_iff me p hp
+(S₂.of_lfin τ).formula_val_iff_of_surjective function.surjective_id me p
+
+lemma of_lfin.models_iff (p : formula L₁ m) :
+  S₂.translation τ ⊧ p ↔ S₂ ⊧ subformula.of_lhom τ p :=
+(S₂.of_lfin τ).models_iff_of_surjective function.surjective_id p
 
 end Structure
 
