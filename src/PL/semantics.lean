@@ -7,7 +7,7 @@ open_locale logic_symbol
 open formula logic
 variables (A : Type u)
 
-structure Structure := (val : A → bool)
+structure Structure := (val : A → Prop)
 
 variables {A} (S : Structure A)
 
@@ -18,6 +18,8 @@ variables {A} (S : Structure A)
 | (∼p)     := ¬p.val
 
 instance : semantics (formula A) (Structure A) := ⟨λ S p, p.val S⟩
+
+abbreviation Satisfiable (T : Theory A) : Prop := semantics.Satisfiable (Structure A) T
 
 lemma models_def (S : Structure A) (p : formula A) : S ⊧ p ↔ p.val S :=
 by refl 
@@ -61,7 +63,7 @@ namespace completeness
 open logic.Theory.consistent logic.semantics
 variables {T}
 
-noncomputable def model (T : Theory A) : Structure A := ⟨λ a, atom a ∈ maximal T⟩
+def model (T : Theory A) : Structure A := ⟨λ a, atom a ∈ maximal T⟩
 
 lemma model_models_iff (consis : T.consistent) : p ∈ maximal T ↔ model T ⊧ p :=
 begin
@@ -75,7 +77,7 @@ end
 lemma model_models (consis : T.consistent) : model T ⊧ T := λ p hp,
 (model_models_iff consis).mp (ss_maximal consis hp)
 
-theorem consistent_iff_satisfiable : Theory.consistent T ↔ Satisfiable (Structure A) T :=
+theorem consistent_iff_satisfiable : Theory.consistent T ↔ Satisfiable T :=
 ⟨λ consis,  ⟨_, model_models consis⟩, by { rintros ⟨M, hM⟩, by { exact Structure_consistent (by simp) hM }}⟩
 
 theorem completeness {p : formula A} : T ⊢ p ↔ T ⊧ p :=

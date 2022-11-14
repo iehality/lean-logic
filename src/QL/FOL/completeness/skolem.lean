@@ -52,17 +52,17 @@ namespace skolem
 open language pnf
 variables {m n : ℕ} (Sₛₖ : Structure (L + L.skolem)) (T : preTheory L m)
 
-lemma val_open_formula (me) (p : formula L m) : Sₛₖ ⊧[me] p.left ↔ Sₛₖ.translation add_left ⊧[me] p :=
+lemma val_open_formula (me) (p : formula L m) : Sₛₖ ⊧[me] p.left ↔ Sₛₖ.restrict add_left ⊧[me] p :=
 (Structure.of_lfin.formula_val_iff Sₛₖ add_left me p).symm
 
-lemma translation_val : ∀ {m} (me) (φ : pnf L m 0),
-  Sₛₖ ⊧[me] φ.skolemize.to_formula → Sₛₖ.translation add_left ⊧[me] φ.to_formula
+lemma restrict_val : ∀ {m} (me) (φ : pnf L m 0),
+  Sₛₖ ⊧[me] φ.skolemize.to_formula → Sₛₖ.restrict add_left ⊧[me] φ.to_formula
 | m me (openformula p hp) := by simpa using (val_open_formula Sₛₖ me p).mp
 | m me (fal φ)            :=
     begin
       simp, intros h x,
-      have IH : Sₛₖ ⊧[x *> me] φ.push.skolemize.to_formula → formula.val (Sₛₖ.translation add_left) (x *> me) φ.push.to_formula,
-      from translation_val (x *> me) φ.push,
+      have IH : Sₛₖ ⊧[x *> me] φ.push.skolemize.to_formula → formula.val (Sₛₖ.restrict add_left) (x *> me) φ.push.to_formula,
+      from restrict_val (x *> me) φ.push,
       simpa[formula.val] using IH (h x)
     end
 | m me (ex φ)            :=
@@ -70,18 +70,18 @@ lemma translation_val : ∀ {m} (me) (φ : pnf L m 0),
       simp, intros h,
       let z := subterm.val Sₛₖ me fin.nil φ.skolem_term.right,
       have h : Sₛₖ ⊧[z *> me] φ.push.skolemize.to_formula, by simpa using h,
-      refine ⟨z, by simpa using translation_val (z *> me) φ.push h⟩
+      refine ⟨z, by simpa using restrict_val (z *> me) φ.push h⟩
     end
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.rank)⟩]}
 
 variables {Sₛₖ}
 
-lemma translation_models (p : formula L m) :
-  Sₛₖ ⊧ p.to_snf → Sₛₖ.translation add_left ⊧ p := λ h me,
+lemma restrict_models (p : formula L m) :
+  Sₛₖ ⊧ p.to_snf → Sₛₖ.restrict add_left ⊧ p := λ h me,
 begin
-  have iff : ∀ me, Sₛₖ.translation add_left ⊧[me] p.normalize ↔ Sₛₖ.translation add_left ⊧[me] p,
-  by simpa[models_def] using logic.tautology_of_tautology (Sₛₖ.translation add_left) (p.normalize ⟷ p) (equiv_normalize ∅ p),
-  have : Sₛₖ.translation add_left ⊧[me] p.normalize, from translation_val Sₛₖ me p.to_pnf (h me),
+  have iff : ∀ me, Sₛₖ.restrict add_left ⊧[me] p.normalize ↔ Sₛₖ.restrict add_left ⊧[me] p,
+  by simpa[models_def] using logic.tautology_of_tautology (Sₛₖ.restrict add_left) (p.normalize ⟷ p) (equiv_normalize ∅ p),
+  have : Sₛₖ.restrict add_left ⊧[me] p.normalize, from restrict_val Sₛₖ me p.to_pnf (h me),
   exact (iff me).mp this
 end
 
@@ -144,7 +144,7 @@ end
 
 lemma satisfiability (p : formula L m) : satisfiable p ↔ satisfiable p.to_snf :=
 ⟨by { rintros ⟨S, hS⟩, refine ⟨Skolemize S, Skolemize_models p hS⟩, },
- by { rintros ⟨Sₛₖ, hSₛₖ⟩, refine ⟨Sₛₖ.translation add_left, translation_models p hSₛₖ⟩ }⟩
+ by { rintros ⟨Sₛₖ, hSₛₖ⟩, refine ⟨Sₛₖ.restrict add_left, restrict_models p hSₛₖ⟩ }⟩
 
 end skolem
 
