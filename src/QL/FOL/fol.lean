@@ -11,19 +11,6 @@ structure language : Type (u+1) :=
 
 namespace language
 variables (L : language.{u})
-/-
-class has_zero_symbol (L : language) := (zero : L.fn 0)
-
-class has_succ_symbol (L : language) := (succ : L.fn 1)
-
-class has_add_symbol (L : language) := (add : L.fn 2)
-
-class has_mul_symbol (L : language) := (mul : L.fn 2)
-
-class has_le_symbol (L : language) := (le : L.pr 2)
-
-class has_mem_symbol (L : language) := (mem : L.pr 2)
--/
 
 protected def empty : language.{u} :=
 { fn := λ _, pempty, pr := λ _, pempty }
@@ -58,34 +45,6 @@ prefix `&`:max := subterm.metavar
 def term.const (f : L.fn 0) : subterm L m n := function f finitary.nil
 
 instance [inhabited (fin m)] : inhabited (subterm L m n) := ⟨&default⟩
-
-/-
-instance [has_zero_symbol L] : has_zero (subterm L m n) := ⟨function has_zero_symbol.zero finitary.nil⟩
-
-instance [has_succ_symbol L] : has_succ (subterm L m n) := ⟨λ t, function has_succ_symbol.succ ‹t›⟩
-
-instance [has_add_symbol L] : has_add (subterm L m n) := ⟨λ t u, function has_add_symbol.add ‹t, u›⟩
-
-instance [has_mul_symbol L] : has_mul (subterm L m n) := ⟨λ t u, function has_mul_symbol.mul ‹t, u›⟩
-
-postfix `˙`:max := numeral
--/
-
-/-
-notation `##'` := idvar_inv _
-
-@[simp] lemma idvar_inv_function (n : ℕ) (i : fin n) : (##' : finitary (term L) n) i = #(n - i - 1) := rfl
-
-@[simp] lemma idvar_inv_nil : (##' : finitary (term L) 0) = finitary.nil := by ext
-
-@[simp] lemma idvar_inv_eq_singleton : (##' : finitary (term L) 1) = ‹#0› := by ext; by simp
-
-@[simp] lemma idvar_inv_eq_doubleton : (##' : finitary (term L) 2) = ‹#1, #0› := by ext; by simp
-
-variables (L)
-
-
--/
 
 variables (L) (m n)
 
@@ -296,6 +255,7 @@ lemma mlift_inj : function.injective (@mlift L m n)
        simp, intros h, funext i, exact @mlift_inj (v₁ i) (v₂ i) (congr_fun h i) }
 
 end mlift
+
 /-
   #0 #1 #2 #3 #4 ... #(n - 1) #n &0 &1 &3 &4 ... &(m - 1)
       ↓push                       ↑pull
@@ -962,7 +922,94 @@ def open_subformula := {p : subformula L m n // p.is_open}
 
 @[reducible] def open_sentence := open_formula L 0
 
-end 
+end
+
+namespace open_subformula
+variables {L} {m n : ℕ}
+
+instance : has_logic_symbol (open_subformula L m n) :=
+logic_simbol_default (open_subformula L m n)
+  ⟨⊤, by simp⟩
+  (λ ⟨p, hp⟩, ⟨∼p, by simpa using hp⟩)
+  (λ ⟨p, hp⟩ ⟨q, hq⟩, ⟨p ⟶ q, by simp[hp, hq]⟩)
+
+lemma top_eq : (⊤ : open_subformula L m n) = ⟨⊤, by simp⟩ := rfl
+
+lemma imply_eq (p q : subformula L m n) (hp hq) :
+  @has_arrow.arrow (open_subformula L m n) _ ⟨p, hp⟩ ⟨q, hq⟩ = ⟨p ⟶ q, by simp[hp, hq]⟩ := rfl
+
+def to_subformula : open_subformula L m n →ₗ subformula L m n :=
+{ to_fun := subtype.val,
+  map_neg' := λ p, by rcases p; refl,
+  map_imply' := λ p q, by rcases p; rcases q; refl,
+  map_and' := λ p q, by rcases p; rcases q; refl,
+  map_or' := λ p q, by rcases p; rcases q; refl,
+  map_top' := by refl,
+  map_bot' := by refl }
+
+@[simp] lemma to_subformula_mk (p : subformula L m n) (hp) : to_subformula (⟨p, hp⟩ : open_subformula L m n) = p := rfl
+
+def rec {C : open_subformula L m n → Sort*}
+  (hverum : C ⊤)
+  (hrel : Π (k) (r : L.pr k) (v : fin k → subterm L m n), C ⟨subformula.relation r v, by simp⟩)
+  (hequal : Π (t u : subterm L m n), C ⟨t =' u, by simp⟩)
+  (himply : Π (p q : open_subformula L m n), C p → C q → C (p ⟶ q))
+  (hneg : Π (p : open_subformula L m n), C p → C ∼p) :
+  Π (p : open_subformula L m n), C p
+| ⟨⊤, _⟩                       := hverum
+| ⟨subformula.relation r v, _⟩ := hrel _ r v
+| ⟨t =' u, _⟩                  := hequal t u
+| ⟨p ⟶ q, h⟩                  := have p.is_open ∧ q.is_open, by simpa using h,
+    himply ⟨p, this.1⟩ ⟨q, this.2⟩ (rec ⟨p, this.1⟩) (rec ⟨q, this.2⟩)
+| ⟨∼p, h⟩                      := have p.is_open, by simpa using h, hneg ⟨p, this⟩ (rec ⟨p, this⟩)
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.to_subformula.complexity)⟩]}
+
+def rec_on (p : open_subformula L m n) {C : open_subformula L m n → Sort*}
+  (hverum : C ⊤)
+  (hrel : Π (k) (r : L.pr k) (v : fin k → subterm L m n), C ⟨subformula.relation r v, by simp⟩)
+  (hequal : Π (t u : subterm L m n), C ⟨t =' u, by simp⟩)
+  (himply : Π (p q : open_subformula L m n), C p → C q → C (p ⟶ q))
+  (hneg : Π (p : open_subformula L m n), C p → C ∼p) :
+  C p :=
+rec hverum hrel hequal himply hneg p
+
+section rec
+variables {C : open_subformula L m n → Sort*}
+
+@[simp] lemma rec_app_top {hverum hrel hequal himply hneg} : @rec L m n C hverum hrel hequal himply hneg ⊤ = hverum := by { 
+  suffices : rec hverum hrel hequal himply hneg ⟨⊤, by simp⟩ = hverum, from this,
+  simp[rec] }
+
+@[simp] lemma rec_app_rel {hverum hrel hequal himply hneg} {k} (r : L.pr k) (v : fin k → subterm L m n) (h):
+  @rec L m n C hverum hrel hequal himply hneg ⟨subformula.relation r v, h⟩ = hrel k r v := by simp[rec]
+
+@[simp] lemma rec_app_equal {hverum hrel hequal himply hneg} (t u : subterm L m n) (h):
+  @rec L m n C hverum hrel hequal himply hneg ⟨t =' u, h⟩ = hequal t u := by simp[rec]
+
+@[simp] lemma rec_app_imply {hverum hrel hequal himply hneg} (p q : open_subformula L m n):
+  @rec L m n C hverum hrel hequal himply hneg (p ⟶ q) =
+  himply p q (rec hverum hrel hequal himply hneg p) (rec hverum hrel hequal himply hneg q) :=
+begin
+  rcases p with ⟨p, hp⟩, rcases q with ⟨q, hq⟩,
+  suffices :
+    rec hverum hrel hequal himply hneg ⟨p ⟶ q, by simp[hp, hq]⟩ =
+    himply ⟨p, hp⟩ ⟨q, hq⟩ (rec hverum hrel hequal himply hneg ⟨p, hp⟩)
+      (rec hverum hrel hequal himply hneg ⟨q, hq⟩), from this,
+  simp[rec]
+end
+
+@[simp] lemma rec_app_neg {hverum hrel hequal himply hneg} (p : open_subformula L m n):
+  @rec L m n C hverum hrel hequal himply hneg (∼p) = hneg p (rec hverum hrel hequal himply hneg p) :=
+begin
+  rcases p with ⟨p, hp⟩,
+  suffices :
+    rec hverum hrel hequal himply hneg ⟨∼p, by simp[hp]⟩ = hneg ⟨p, hp⟩ (rec hverum hrel hequal himply hneg ⟨p, hp⟩), from this,
+  simp[rec]
+end
+
+end rec
+
+end open_subformula
 
 namespace preTheory
 variables {L} {m : ℕ} (T U : preTheory L m)
@@ -980,6 +1027,8 @@ function.injective.mem_set_image subformula.mlift_inj
 lemma mem_mlift_iff {p} :
   p ∈ T.mlift ↔ ∃ q ∈ T, subformula.mlift q = p :=
 by simp[mlift]
+
+def is_open : Prop := ∀ p ∈ T, subformula.is_open p
 
 end preTheory
 

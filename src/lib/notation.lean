@@ -132,15 +132,31 @@ def logic_simbol_default (F : Type*) (top : F) (neg : F → F) (imply : F → F 
   inf := λ p q, neg (imply p (neg q)),
   arrow := imply,
   neg := neg }
-  
-lemma logic_simbol_default.top_eq :
-  @has_bot.bot F (@has_logic_symbol.to_has_bot F (logic_simbol_default F top neg imply)) = neg top := rfl
 
-lemma logic_simbol_default.or_eq (p q : F) :
-  @has_sup.sup F (@has_logic_symbol.to_has_sup F (logic_simbol_default F top neg imply)) p q = imply (neg p) q := rfl
+lemma default_bot_def :
+  @has_bot.bot F (@has_logic_symbol.to_has_bot F (logic_simbol_default F top neg imply)) =
+  @has_negation.neg F (@has_logic_symbol.to_has_negation F (logic_simbol_default F top neg imply))
+    (@has_top.top F (@has_logic_symbol.to_has_top F (logic_simbol_default F top neg imply))) := rfl
 
-lemma logic_simbol_default.and_eq (p q : F) :
-  @has_inf.inf F (@has_logic_symbol.to_has_inf F (logic_simbol_default F top neg imply)) p q = neg (imply p (neg q)) := rfl
+lemma default_top_def :
+  @has_top.top F (@has_logic_symbol.to_has_top F (logic_simbol_default F top neg imply)) = top := rfl
+
+lemma default_or_def (p q : F) :
+  @has_sup.sup F (@has_logic_symbol.to_has_sup F (logic_simbol_default F top neg imply)) p q =
+  @has_arrow.arrow F (@has_logic_symbol.to_has_arrow F (logic_simbol_default F top neg imply))
+    (@has_negation.neg F (@has_logic_symbol.to_has_negation F (logic_simbol_default F top neg imply)) p) q := rfl
+
+lemma default_and_def (p q : F) :
+  @has_inf.inf F (@has_logic_symbol.to_has_inf F (logic_simbol_default F top neg imply)) p q =
+  @has_negation.neg F (@has_logic_symbol.to_has_negation F (logic_simbol_default F top neg imply))
+    (@has_arrow.arrow F (@has_logic_symbol.to_has_arrow F (logic_simbol_default F top neg imply))
+      p (@has_negation.neg F (@has_logic_symbol.to_has_negation F (logic_simbol_default F top neg imply)) q)) := rfl
+
+lemma default_imply_def (p q : F) :
+  @has_arrow.arrow F (@has_logic_symbol.to_has_arrow F (logic_simbol_default F top neg imply)) p q = imply p q := rfl
+
+lemma default_neg_def (p : F) :
+  @has_negation.neg F (@has_logic_symbol.to_has_negation F (logic_simbol_default F top neg imply)) p = neg p := rfl
 
 end 
 
