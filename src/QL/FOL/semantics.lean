@@ -8,7 +8,7 @@ open logic formula
 
 structure Structure (L : language.{u}) :=
 (dom : Type u)
-(inhabited : inhabited dom)
+(dom_inhabited : inhabited dom)
 (fn : ∀ {n}, L.fn n → (fin n → dom) → dom)
 (pr : ∀ {n}, L.pr n → (fin n → dom) → Prop)
 
@@ -16,7 +16,7 @@ instance {L : language} : has_coe_to_sort (Structure L) (Type*) := ⟨Structure.
 
 variables {L : language.{u}} {S : Structure L}
 
-instance (S : Structure L) : inhabited S.dom := S.inhabited
+instance (S : Structure L) : inhabited S.dom := S.dom_inhabited
 
 variables (S) {m n : ℕ}
 
@@ -266,12 +266,12 @@ begin
   { intros m T p q S hS me, simp, intros h₁, contrapose, exact h₁ },
   { intros m T p t S hS me, simp, intros h, exact h _ },
   { intros m T p q S hS me, simp, intros h₁ h₂ x, exact h₁ x h₂ },
-  { intros T S hS me, simp },
-  { intros T S hS me, simp },
-  { intros T S hS me, simp, intros x₁ x₂, exact eq.symm },
-  { intros T S hS me, simp, intros x₁ x₂ x₃, exact eq.trans },
-  { intros T k f S hS me, simp[eq_axiom4], intros v h, exact congr_arg _ (funext h) },
-  { intros T k r S hS me, simp[eq_axiom5], intros v h, exact cast (congr_arg _ (funext h)) }
+  { intros m T S hS me, simp },
+  { intros m T S hS me, simp },
+  { intros m T S hS me, simp, intros x₁ x₂, exact eq.symm },
+  { intros m T S hS me, simp, intros x₁ x₂ x₃, exact eq.trans },
+  { intros m T k f S hS me, simp[eq_axiom4], intros v h, exact congr_arg _ (funext h) },
+  { intros m T k r S hS me, simp[eq_axiom5], intros v h, exact iff_of_eq (congr_arg _ (funext h)) }
 end
 
 instance : logic.sound (formula L m) (Structure L) :=
@@ -384,28 +384,28 @@ by simpa only [sentence_models_def, show F ∘ fin.nil = fin.nil, from funext (b
 
 end hom
 
-def translation : Structure L₁ :=
+def restrict : Structure L₁ :=
 { dom := S₂,
-  inhabited := S₂.inhabited,
+  dom_inhabited := S₂.dom_inhabited,
   fn := λ k f v, S₂.fn (τ.fn k f) v,
   pr := λ k r v, S₂.pr (τ.pr k r) v }
 
-def of_lfin : S₂.translation τ →ₛ[τ] S₂ :=
+def of_lfin : S₂.restrict τ →ₛ[τ] S₂ :=
 { to_fun := id,
   injective := function.injective_id,
   map_fn' := by intros; refl,
   map_pr' := by intros; refl }
 
 lemma of_lfin.val_iff (me) {n} (e) (p : subformula L₁ m n) :
-  subformula.val (S₂.translation τ) me e p ↔ subformula.val S₂ (S₂.of_lfin τ ∘ me) (S₂.of_lfin τ ∘ e) (subformula.of_lhom τ p) :=
+  subformula.val (S₂.restrict τ) me e p ↔ subformula.val S₂ (S₂.of_lfin τ ∘ me) (S₂.of_lfin τ ∘ e) (subformula.of_lhom τ p) :=
 (S₂.of_lfin τ).val_iff_of_surjective function.surjective_id me e p
 
 lemma of_lfin.formula_val_iff (me) (p : formula L₁ m) :
-  S₂.translation τ ⊧[me] p ↔ S₂ ⊧[S₂.of_lfin τ ∘ me] subformula.of_lhom τ p :=
+  S₂.restrict τ ⊧[me] p ↔ S₂ ⊧[S₂.of_lfin τ ∘ me] subformula.of_lhom τ p :=
 (S₂.of_lfin τ).formula_val_iff_of_surjective function.surjective_id me p
 
 lemma of_lfin.models_iff (p : formula L₁ m) :
-  S₂.translation τ ⊧ p ↔ S₂ ⊧ subformula.of_lhom τ p :=
+  S₂.restrict τ ⊧ p ↔ S₂ ⊧ subformula.of_lhom τ p :=
 (S₂.of_lfin τ).models_iff_of_surjective function.surjective_id p
 
 end Structure

@@ -1,4 +1,4 @@
-import PL.deduction
+import PL.deduction translation
 
 universes u
 
@@ -10,18 +10,36 @@ variables (A : Type u)
 structure Structure := (val : A → Prop)
 
 variables {A} (S : Structure A)
+namespace formula
 
-@[simp] def formula.val : formula A → Prop
+@[simp] def val' : formula A → Prop
 | (atom a) := S.val a
 | ⊤        := true
-| (p ⟶ q) := p.val → q.val
-| (∼p)     := ¬p.val
+| (p ⟶ q) := p.val' → q.val'
+| (∼p)     := ¬p.val'
 
-instance : semantics (formula A) (Structure A) := ⟨λ S p, p.val S⟩
+def val : formula A →ₗ Prop :=
+{ to_fun := formula.val' S,
+  map_neg' := by simp,
+  map_imply' := by simp,
+  map_and' := by intros; unfold has_inf.inf; simp[formula.and]; refl,
+  map_or' := by intros; unfold has_sup.sup; simp[formula.or, ←or_iff_not_imp_left]; refl,
+  map_top' := by refl,
+  map_bot' := by unfold has_bot.bot; simp; exact not_false }
+
+variables {S}
+
+@[simp] lemma val_app (a : A) : val S (atom a) =  S.val a := rfl
+
+end formula
+
+open formula
+
+instance : semantics (formula A) (Structure A) := ⟨λ S p, val S p⟩
 
 abbreviation Satisfiable (T : Theory A) : Prop := semantics.Satisfiable (Structure A) T
 
-lemma models_def (S : Structure A) (p : formula A) : S ⊧ p ↔ p.val S :=
+lemma models_def (S : Structure A) (p : formula A) : S ⊧ p ↔ formula.val S p :=
 by refl 
 
 instance : has_double_turnstile (Theory A) (formula A) := ⟨semantics.consequence (Structure A)⟩
@@ -83,7 +101,7 @@ theorem consistent_iff_satisfiable : Theory.consistent T ↔ Satisfiable T :=
 theorem completeness {p : formula A} : T ⊢ p ↔ T ⊧ p :=
 ⟨soundness, by {
   simp[Theory.provable_iff_inconsistent, consistent_iff_satisfiable], rintros h ⟨S, hS⟩,
-  have l : ¬p.val S ∧ S ⊧ T, by simpa[models_def] using hS,
+  have l : ¬val S p ∧ S ⊧ T, by simpa[models_def] using hS,
   have : S ⊧ p, from h l.2,
   have : ¬S ⊧ p, from l.1,
   contradiction }⟩

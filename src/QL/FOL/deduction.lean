@@ -494,10 +494,8 @@ by simpa using eq_refl T ⊚ t
 
 @[simp] lemma eq_symm' (t u : subterm L m 0) : T ⊢ (t =' u) ⟶ (u =' t) :=
 begin
-  have : T ⊢ ∀'((u.lift.subst #0 =' u.lift.subst #1) ⟶ (u.lift.subst #1 =' u.lift.subst #0)),
-  by simpa using eq_symm T ⊚ u,
-  have : T ⊢ (t.subst (u.lift.subst #0) =' t.subst (u.lift.subst #1)) ⟶ (t.subst (u.lift.subst #1) =' t.subst (u.lift.subst #0)),
-  by simpa using this ⊚ t,
+  have : T ⊢ ∀'(_ ⟶ _), by simpa using eq_symm T ⊚ u,
+  have : T ⊢ _ ⟶ _, by simpa using this ⊚ t, simp at this,
   simp only [show (0 : fin (0 + 1 + 1)) = (fin.last 0).cast_succ, by refl,
              show (1 : fin (0 + 1 + 1)) = fin.last 1, by refl,
              subst_var_cast_succ,
@@ -513,8 +511,7 @@ end
 
 @[simp] lemma eq_trans' (t₁ t₂ t₃: subterm L m 0) : T ⊢ (t₁ =' t₂) ⟶ (t₂ =' t₃) ⟶ (t₁ =' t₃) :=
 begin
-  have : T ⊢ ∀' ∀'(_ ⟶ _ ⟶ _),
-  by simpa using eq_trans T ⊚ t₃,
+  have : T ⊢ ∀' ∀'(_ ⟶ _ ⟶ _), by simpa using eq_trans T ⊚ t₃,
   have : T ⊢ ∀'(_ ⟶ _ ⟶ _), by simpa using this ⊚ t₂,
   have : T ⊢ _ ⟶ _ ⟶ _, by simpa using this ⊚ t₁, simp at this,
   simp only [show (0 : fin (0 + 1 + 1 + 1)) = (fin.last 0).cast_succ.cast_succ, by refl,
@@ -531,7 +528,7 @@ end
 @[trans] lemma equal_trans (t₁ t₂ t₃: subterm L m 0) : T ⊢ t₁ =' t₂ → T ⊢ t₂ =' t₃ → T ⊢ t₁ =' t₃ :=
 λ h₁ h₂, eq_trans' t₁ t₂ t₃ ⨀ h₁ ⨀ h₂
 
-lemma function_ext' {k} (f : L.fn k) (v w : fin k → subterm L m 0) :
+@[simp] lemma function_ext' {k} (f : L.fn k) (v w : fin k → subterm L m 0) :
   T ⊢ (⋀ i, v i =' w i) ⟶ (function f v =' function f w) :=
 begin
   let x : fin (k + k) → subterm L m 0 := @fin.add_cases k k (λ _, subterm L m 0) v w,
@@ -544,12 +541,12 @@ lemma eq_function_of_equal {k} (f : L.fn k) {v w : fin k → subterm L m 0}
   (h : ∀ i, T ⊢ v i =' w i) : T ⊢ function f v =' function f w :=
 function_ext' f v w ⨀ by simpa using h
 
-lemma relation_ext' {k} (r : L.pr k) (v w : fin k → subterm L m 0) :
+@[simp] lemma relation_ext' {k} (r : L.pr k) (v w : fin k → subterm L m 0) :
   T ⊢ (⋀ i, v i =' w i) ⟶ (relation r v ⟷ relation r w) :=
 begin
   let x : fin (k + k) → subterm L m 0 := @fin.add_cases k k (λ _, subterm L m 0) v w,
   have : T ⊢ ∀'*((⋀ i, #(fin.cast_add k i) =' #(fin.nat_add k i)) ⟶
-  (relation r (var ∘ fin.cast_add k) ⟷ relation r (var ∘ fin.nat_add k))), from relation_ext T r,
+    (relation r (var ∘ fin.cast_add k) ⟷ relation r (var ∘ fin.nat_add k))), from relation_ext T r,
   simpa[x, (∘)] using foralls_substs this x
 end
 
@@ -558,6 +555,28 @@ lemma equiv_relation_of_equal {k} (r : L.pr k) {v w : fin k → subterm L m 0}
 relation_ext' r v w ⨀ by simpa using h
 
 end equal
+
+end provable
+
+namespace open_sentence
+variables (L)
+
+inductive equal_axioms : set (open_sentence L)
+| eq_refl : ∀ t, equal_axioms ⟨t =' t, by simp⟩
+| eq_symm : ∀ t₁ t₂, equal_axioms ⟨(t₁ =' t₂) ⟶ (t₂ =' t₁), by simp⟩
+| eq_trans : ∀ t₁ t₂ t₃, equal_axioms ⟨(t₁ =' t₂) ⟶ (t₂ =' t₃) ⟶ (t₁ =' t₃), by simp⟩
+| func_ext : ∀ {k} (f : L.fn k) (v w : fin k → subterm L 0 0),
+    equal_axioms ⟨(⋀ i, v i =' w i) ⟶ (function f v =' function f w), by simp⟩
+| rel_ext : ∀ {k} (r : L.pr k) (v w : fin k → subterm L 0 0),
+    equal_axioms ⟨(⋀ i, v i =' w i) ⟶ (relation r v ⟷ relation r w), by simp⟩
+
+end open_sentence
+
+namespace provable
+variables {L} {T₀ : Theory L}
+
+lemma equal_axioms {p} (h : p ∈ open_sentence.equal_axioms L) : T₀ ⊢ p.to_subformula :=
+by induction h; simp
 
 end provable
 

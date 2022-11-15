@@ -958,9 +958,23 @@ by simp[subst]
 
 @[simp] lemma imply_open {p q : subformula L m n} : (p ⟶ q).is_open ↔ p.is_open ∧ q.is_open := by simp[is_open] 
 
-@[simp] lemma and_open {p q : subformula L m n} : (p ⊓ q).is_open ↔ p.is_open ∧ q.is_open := by simp[is_open] 
+@[simp] lemma and_open {p q : subformula L m n} : (p ⊓ q).is_open ↔ p.is_open ∧ q.is_open := by simp[is_open]
+
+@[simp] lemma iff_open {p q : subformula L m n} : (p ⟷ q).is_open ↔ p.is_open ∧ q.is_open := by simp[is_open]
+
+@[simp] lemma finitary_conjunction_open {k} {p : fin k → subformula L m n} :
+  (⋀ i, p i).is_open ↔ ∀ i, (p i).is_open :=
+by { induction k with k IH; simp*,
+  { refine ⟨by { rintros ⟨hlast, hcast⟩, refine fin.last_cases _ _, exact hlast, exact hcast },
+    by { intros h, simp[h] }⟩ } }
 
 @[simp] lemma or_open {p q : subformula L m n} : (p ⊔ q).is_open ↔ p.is_open ∧ q.is_open := by simp[is_open] 
+
+@[simp] lemma finitary_disjunction_open {k} {p : fin k → subformula L m n} :
+  (⋁ i, p i).is_open ↔ ∀ i, (p i).is_open :=
+by { induction k with k IH; simp*,
+  { refine ⟨by { rintros ⟨hcast, hlast⟩, refine fin.last_cases _ _, exact hlast, exact hcast },
+    by { intros h, simp[h] }⟩ } }
 
 @[simp] lemma neg_open {p : subformula L m n} : (∼p).is_open ↔ p.is_open := by simp[is_open] 
 
@@ -1011,6 +1025,33 @@ lemma top_eq : (⊤ : open_subformula L m n) = ⟨⊤, by simp⟩ := rfl
 
 lemma imply_eq (p q : subformula L m n) (hp hq) :
   @has_arrow.arrow (open_subformula L m n) _ ⟨p, hp⟩ ⟨q, hq⟩ = ⟨p ⟶ q, by simp[hp, hq]⟩ := rfl
+
+@[simp] lemma top_eq' (h) :
+  (⟨⊤, h⟩ : open_subformula L m n) = @has_top.top (open_subformula L m n) _ := rfl
+
+@[simp] lemma imply_eq' (p q : subformula L m n) (h) :
+  (⟨p ⟶ q, h⟩ : open_subformula L m n) =
+  @has_arrow.arrow (open_subformula L m n) _ ⟨p, by simp at h; exact h.1⟩ ⟨q, by simp at h; exact h.2⟩ := rfl
+
+@[simp] lemma neg_eq (p : subformula L m n) (h) :
+  (⟨∼p, h⟩ : open_subformula L m n) = @has_negation.neg (open_subformula L m n) _ ⟨p, by simpa using h⟩ := rfl
+
+@[simp] lemma and_eq (p q : subformula L m n) (h) :
+  (⟨p ⊓ q, h⟩ : open_subformula L m n) =
+  @has_inf.inf (open_subformula L m n) _ ⟨p, by simp at h; exact h.1⟩ ⟨q, by simp at h; exact h.2⟩ := rfl
+
+@[simp] lemma iff_eq (p q : subformula L m n) (h) :
+  (⟨p ⟷ q, h⟩ : open_subformula L m n) =
+  @has_arrow.lrarrow (open_subformula L m n) _ _ ⟨p, by simp at h; exact h.1⟩ ⟨q, by simp at h; exact h.2⟩ := rfl
+
+@[simp] lemma finitary_conjunction_eq {k} (p : fin k → subformula L m n) (h) :
+  (⟨⋀ i, p i, h⟩ : open_subformula L m n) =
+  @finitary.conjunction (open_subformula L m n) _ _ k (λ i, (⟨p i, by { simp at h, exact h i }⟩)) :=
+by induction k; simp*
+
+@[simp] lemma or_eq (p q : subformula L m n) (h) :
+  (⟨p ⊔ q, h⟩ : open_subformula L m n) =
+  @has_sup.sup (open_subformula L m n) _ ⟨p, by simp at h; exact h.1⟩ ⟨q, by simp at h; exact h.2⟩ := rfl
 
 def to_subformula : open_subformula L m n →ₗ subformula L m n :=
 { to_fun := subtype.val,
