@@ -29,9 +29,9 @@ by{ induction n with n IH, { simp },
 @[simp] lemma prop_finitary_disj {n} (p : finitary Prop n) : finitary.disjunction n p ↔ ∃ x, p x :=
 by{ induction n with n IH, { simp },
     { simp[IH], split,
-      { rintros (hlast | ⟨_, h⟩), { exact ⟨_, hlast⟩ }, { exact ⟨_, h⟩ } },
+      { rintros (⟨_, h⟩ | hlast), { exact ⟨_, h⟩ }, { exact ⟨_, hlast⟩ } },
       { rintros ⟨x, h⟩, rcases fin.eq_last_or_eq_cast_succ x with (rfl | ⟨x, rfl⟩),
-        { exact or.inl h }, { exact or.inr ⟨x, h⟩ } } } }
+        { exact or.inr h }, { exact or.inl ⟨x, h⟩ } } } }
 
 end prop
 

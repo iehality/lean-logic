@@ -514,13 +514,13 @@ by simp[insert]
 
 @[simp] def finitary.conjunction {α : Type*} [has_top α] [has_inf α] : ∀ n, (fin n → α) → α
 | 0 _        := ⊤
-| (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊓ finitary.conjunction n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
+| (n + 1) f  := f (fin.last n) ⊓ finitary.conjunction n (f ∘ fin.cast_succ)
 
 notation `⋀` binders `, ` r:(scoped p, finitary.conjunction _ p) := r
 
 @[simp] def finitary.disjunction {α : Type*} [has_bot α] [has_sup α] : ∀ n, (fin n → α) → α
 | 0 _        := ⊥
-| (n + 1) f  := (f ⟨n, lt_add_one n⟩) ⊔ finitary.disjunction n (λ i, f ⟨i.val, nat.lt.step i.property⟩)
+| (n + 1) f  := finitary.disjunction n (f ∘ fin.cast_succ) ⊔ f (fin.last n)
 
 notation `⋁` binders `, ` r:(scoped p, finitary.disjunction _ p) := r
 
