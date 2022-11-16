@@ -89,7 +89,7 @@ variables (S : Structure L)
 
 @[reducible] noncomputable def Skolemize : Structure (L + L.skolem) :=
 { dom := S,
-  inhabited := S.inhabited,
+  dom_inhabited := S.dom_inhabited,
   fn := λ m f, sum.cases_on f S.fn (λ φ me, classical.epsilon (λ z, val S me (fin.nil <* z) φ.to_formula)),
   pr := λ n r, sum.cases_on r S.pr (by rintros ⟨⟩) }
 

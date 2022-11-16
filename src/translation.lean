@@ -103,6 +103,35 @@ by simp[eq_to_fun, comp]
 
 end homomorphism
 
+variables (F G)
+
+class iso :=
+(to_fun : F →ₗ G)
+(inv_fun : G →ₗ F)
+(left_inv : function.left_inverse inv_fun to_fun)
+(right_inv : function.right_inverse inv_fun to_fun)
+
+namespace iso
+variables {F G} [iso F G] {a a₁ a₂ a₃ : F} {b b₁ b₂ b₃ : G}
+
+instance coe : has_coe F G := ⟨to_fun⟩
+
+instance inv_coe : has_coe G F := ⟨inv_fun⟩
+
+@[simp] lemma to_fun_inv_fun : ((a : G) : F) = a := left_inv a
+
+@[simp] lemma inv_fun_to_fun : ((b : F) : G) = b := right_inv b
+
+lemma coe_to_fun (a : F) : (a : G) = to_fun a := rfl
+
+lemma coe_inv_fun (b : G) : (b : F) = inv_fun b := rfl
+
+@[simp] lemma coe_neg : (↑(∼a) : G) = ∼(a : G) := by simp[coe_to_fun]
+
+@[simp] lemma inv_coe_neg : (↑(∼b) : F) = ∼(b : F) := by simp[coe_inv_fun]
+
+end iso
+
 variables {Ω : Type u} (Φ : Ω → Type v) [∀ L, has_logic_symbol (Φ L)] [∀ L, axiomatic_classical_logic (Φ L)]
 
 structure system :=

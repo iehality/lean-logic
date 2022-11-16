@@ -558,26 +558,4 @@ end equal
 
 end provable
 
-namespace open_sentence
-variables (L)
-
-inductive equal_axioms : set (open_sentence L)
-| eq_refl : ∀ t, equal_axioms ⟨t =' t, by simp⟩
-| eq_symm : ∀ t₁ t₂, equal_axioms ⟨(t₁ =' t₂) ⟶ (t₂ =' t₁), by simp⟩
-| eq_trans : ∀ t₁ t₂ t₃, equal_axioms ⟨(t₁ =' t₂) ⟶ (t₂ =' t₃) ⟶ (t₁ =' t₃), by simp⟩
-| func_ext : ∀ {k} (f : L.fn k) (v w : fin k → subterm L 0 0),
-    equal_axioms ⟨(⋀ i, v i =' w i) ⟶ (function f v =' function f w), by simp⟩
-| rel_ext : ∀ {k} (r : L.pr k) (v w : fin k → subterm L 0 0),
-    equal_axioms ⟨(⋀ i, v i =' w i) ⟶ (relation r v ⟷ relation r w), by simp⟩
-
-end open_sentence
-
-namespace provable
-variables {L} {T₀ : Theory L}
-
-lemma equal_axioms {p} (h : p ∈ open_sentence.equal_axioms L) : T₀ ⊢ p.to_subformula :=
-by induction h; simp
-
-end provable
-
 end fol

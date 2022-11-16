@@ -997,6 +997,55 @@ by { induction k with k IH; simp*,
 
 @[simp] lemma dummy_open {p : subformula L m n} : (dummy p).is_open ↔ p.is_open := by simp[dummy]
 
+def open_rec {C : Π p : subformula L m n, p.is_open → Sort*}
+  (hverum : C ⊤ top_open)
+  (hrel : Π (k) (r : L.pr k) (v : fin k → subterm L m n), C (subformula.relation r v) (relation_open r v))
+  (hequal : Π (t u : subterm L m n), C (t =' u) equal_open)
+  (himply : Π (p q : subformula L m n) (hp hq), C p hp → C q hq → C (p ⟶ q) (by simp[hp, hq]))
+  (hneg : Π (p : subformula L m n) (hp), C p hp → C (∼p) (by simp[hp])) :
+  Π (p : subformula L m n) (h : p.is_open), C p h
+| ⊤                         _ := hverum
+| (subformula.relation r v) _ := hrel _ r v
+| (t =' u)                  _ := hequal t u
+| (p ⟶ q)                   h := have p.is_open ∧ q.is_open, by simpa using h,
+    himply p q this.1 this.2 (open_rec p this.1) (open_rec q this.2)
+| (∼p)                      h := have p.is_open, by simpa using h, hneg p this (open_rec p this)
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.1.complexity)⟩]}
+
+def open_rec_on (p : subformula L m n) (h : p.is_open) {C : Π p : subformula L m n, p.is_open → Sort*}
+  (hverum : C ⊤ top_open)
+  (hrel : Π (k) (r : L.pr k) (v : fin k → subterm L m n), C (subformula.relation r v) (relation_open r v))
+  (hequal : Π (t u : subterm L m n), C (t =' u) equal_open)
+  (himply : Π (p q : subformula L m n) (hp hq), C p hp → C q hq → C (p ⟶ q) (by simp[hp, hq]))
+  (hneg : Π (p : subformula L m n) (hp), C p hp → C (∼p) (by simp[hp])) :
+  C p h := open_rec hverum hrel hequal himply hneg p h
+
+section open_rec
+variables {C : Π p : subformula L m n, p.is_open → Sort*}
+
+@[simp] lemma rec_app_top {hverum hrel hequal himply hneg h} : @open_rec L m n C hverum hrel hequal himply hneg ⊤ h = hverum :=
+by simp[open_rec]
+
+@[simp] lemma rec_app_rel {hverum hrel hequal himply hneg} {k} (r : L.pr k) (v : fin k → subterm L m n) {h} :
+  @open_rec L m n C hverum hrel hequal himply hneg (subformula.relation r v) h = hrel k r v := by simp[open_rec]
+
+@[simp] lemma rec_app_equal {hverum hrel hequal himply hneg} (t u : subterm L m n) {h} :
+  @open_rec L m n C hverum hrel hequal himply hneg (t =' u) h = hequal t u := by simp[open_rec]
+
+@[simp] lemma rec_app_imply {hverum hrel hequal himply hneg} (p q : subformula L m n) {h} :
+  @open_rec L m n C hverum hrel hequal himply hneg (p ⟶ q) h =
+  himply p q (by simp at h; exact h.1) (by simp at h; exact h.2)
+    (open_rec hverum hrel hequal himply hneg p (by simp at h; exact h.1))
+    (open_rec hverum hrel hequal himply hneg q (by simp at h; exact h.2)) :=
+by simp[open_rec]
+
+@[simp] lemma rec_app_neg {hverum hrel hequal himply hneg} (p : subformula L m n) {h} :
+  @open_rec L m n C hverum hrel hequal himply hneg (∼p) h =
+  hneg p (by simpa using h) (open_rec hverum hrel hequal himply hneg p (by simpa using h)) :=
+by simp[open_rec]
+
+end open_rec
+
 end qr
 
 end subformula
@@ -1011,120 +1060,6 @@ def open_subformula := {p : subformula L m n // p.is_open}
 @[reducible] def open_sentence := open_formula L 0
 
 end
-
-namespace open_subformula
-variables {L} {m n : ℕ}
-
-instance : has_logic_symbol (open_subformula L m n) :=
-logic_simbol_default (open_subformula L m n)
-  ⟨⊤, by simp⟩
-  (λ ⟨p, hp⟩, ⟨∼p, by simpa using hp⟩)
-  (λ ⟨p, hp⟩ ⟨q, hq⟩, ⟨p ⟶ q, by simp[hp, hq]⟩)
-
-lemma top_eq : (⊤ : open_subformula L m n) = ⟨⊤, by simp⟩ := rfl
-
-lemma imply_eq (p q : subformula L m n) (hp hq) :
-  @has_arrow.arrow (open_subformula L m n) _ ⟨p, hp⟩ ⟨q, hq⟩ = ⟨p ⟶ q, by simp[hp, hq]⟩ := rfl
-
-@[simp] lemma top_eq' (h) :
-  (⟨⊤, h⟩ : open_subformula L m n) = @has_top.top (open_subformula L m n) _ := rfl
-
-@[simp] lemma imply_eq' (p q : subformula L m n) (h) :
-  (⟨p ⟶ q, h⟩ : open_subformula L m n) =
-  @has_arrow.arrow (open_subformula L m n) _ ⟨p, by simp at h; exact h.1⟩ ⟨q, by simp at h; exact h.2⟩ := rfl
-
-@[simp] lemma neg_eq (p : subformula L m n) (h) :
-  (⟨∼p, h⟩ : open_subformula L m n) = @has_negation.neg (open_subformula L m n) _ ⟨p, by simpa using h⟩ := rfl
-
-@[simp] lemma and_eq (p q : subformula L m n) (h) :
-  (⟨p ⊓ q, h⟩ : open_subformula L m n) =
-  @has_inf.inf (open_subformula L m n) _ ⟨p, by simp at h; exact h.1⟩ ⟨q, by simp at h; exact h.2⟩ := rfl
-
-@[simp] lemma iff_eq (p q : subformula L m n) (h) :
-  (⟨p ⟷ q, h⟩ : open_subformula L m n) =
-  @has_arrow.lrarrow (open_subformula L m n) _ _ ⟨p, by simp at h; exact h.1⟩ ⟨q, by simp at h; exact h.2⟩ := rfl
-
-@[simp] lemma finitary_conjunction_eq {k} (p : fin k → subformula L m n) (h) :
-  (⟨⋀ i, p i, h⟩ : open_subformula L m n) =
-  @finitary.conjunction (open_subformula L m n) _ _ k (λ i, (⟨p i, by { simp at h, exact h i }⟩)) :=
-by induction k; simp*
-
-@[simp] lemma or_eq (p q : subformula L m n) (h) :
-  (⟨p ⊔ q, h⟩ : open_subformula L m n) =
-  @has_sup.sup (open_subformula L m n) _ ⟨p, by simp at h; exact h.1⟩ ⟨q, by simp at h; exact h.2⟩ := rfl
-
-def to_subformula : open_subformula L m n →ₗ subformula L m n :=
-{ to_fun := subtype.val,
-  map_neg' := λ p, by rcases p; refl,
-  map_imply' := λ p q, by rcases p; rcases q; refl,
-  map_and' := λ p q, by rcases p; rcases q; refl,
-  map_or' := λ p q, by rcases p; rcases q; refl,
-  map_top' := by refl,
-  map_bot' := by refl }
-
-@[simp] lemma to_subformula_mk (p : subformula L m n) (hp) : to_subformula (⟨p, hp⟩ : open_subformula L m n) = p := rfl
-
-def rec {C : open_subformula L m n → Sort*}
-  (hverum : C ⊤)
-  (hrel : Π (k) (r : L.pr k) (v : fin k → subterm L m n), C ⟨subformula.relation r v, by simp⟩)
-  (hequal : Π (t u : subterm L m n), C ⟨t =' u, by simp⟩)
-  (himply : Π (p q : open_subformula L m n), C p → C q → C (p ⟶ q))
-  (hneg : Π (p : open_subformula L m n), C p → C ∼p) :
-  Π (p : open_subformula L m n), C p
-| ⟨⊤, _⟩                       := hverum
-| ⟨subformula.relation r v, _⟩ := hrel _ r v
-| ⟨t =' u, _⟩                  := hequal t u
-| ⟨p ⟶ q, h⟩                  := have p.is_open ∧ q.is_open, by simpa using h,
-    himply ⟨p, this.1⟩ ⟨q, this.2⟩ (rec ⟨p, this.1⟩) (rec ⟨q, this.2⟩)
-| ⟨∼p, h⟩                      := have p.is_open, by simpa using h, hneg ⟨p, this⟩ (rec ⟨p, this⟩)
-using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.to_subformula.complexity)⟩]}
-
-def rec_on (p : open_subformula L m n) {C : open_subformula L m n → Sort*}
-  (hverum : C ⊤)
-  (hrel : Π (k) (r : L.pr k) (v : fin k → subterm L m n), C ⟨subformula.relation r v, by simp⟩)
-  (hequal : Π (t u : subterm L m n), C ⟨t =' u, by simp⟩)
-  (himply : Π (p q : open_subformula L m n), C p → C q → C (p ⟶ q))
-  (hneg : Π (p : open_subformula L m n), C p → C ∼p) :
-  C p :=
-rec hverum hrel hequal himply hneg p
-
-section rec
-variables {C : open_subformula L m n → Sort*}
-
-@[simp] lemma rec_app_top {hverum hrel hequal himply hneg} : @rec L m n C hverum hrel hequal himply hneg ⊤ = hverum := by { 
-  suffices : rec hverum hrel hequal himply hneg ⟨⊤, by simp⟩ = hverum, from this,
-  simp[rec] }
-
-@[simp] lemma rec_app_rel {hverum hrel hequal himply hneg} {k} (r : L.pr k) (v : fin k → subterm L m n) (h):
-  @rec L m n C hverum hrel hequal himply hneg ⟨subformula.relation r v, h⟩ = hrel k r v := by simp[rec]
-
-@[simp] lemma rec_app_equal {hverum hrel hequal himply hneg} (t u : subterm L m n) (h):
-  @rec L m n C hverum hrel hequal himply hneg ⟨t =' u, h⟩ = hequal t u := by simp[rec]
-
-@[simp] lemma rec_app_imply {hverum hrel hequal himply hneg} (p q : open_subformula L m n):
-  @rec L m n C hverum hrel hequal himply hneg (p ⟶ q) =
-  himply p q (rec hverum hrel hequal himply hneg p) (rec hverum hrel hequal himply hneg q) :=
-begin
-  rcases p with ⟨p, hp⟩, rcases q with ⟨q, hq⟩,
-  suffices :
-    rec hverum hrel hequal himply hneg ⟨p ⟶ q, by simp[hp, hq]⟩ =
-    himply ⟨p, hp⟩ ⟨q, hq⟩ (rec hverum hrel hequal himply hneg ⟨p, hp⟩)
-      (rec hverum hrel hequal himply hneg ⟨q, hq⟩), from this,
-  simp[rec]
-end
-
-@[simp] lemma rec_app_neg {hverum hrel hequal himply hneg} (p : open_subformula L m n):
-  @rec L m n C hverum hrel hequal himply hneg (∼p) = hneg p (rec hverum hrel hequal himply hneg p) :=
-begin
-  rcases p with ⟨p, hp⟩,
-  suffices :
-    rec hverum hrel hequal himply hneg ⟨∼p, by simp[hp]⟩ = hneg ⟨p, hp⟩ (rec hverum hrel hequal himply hneg ⟨p, hp⟩), from this,
-  simp[rec]
-end
-
-end rec
-
-end open_subformula
 
 namespace preTheory
 variables {L} {m : ℕ} (T U : preTheory L m)

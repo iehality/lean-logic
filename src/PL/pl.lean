@@ -1,4 +1,4 @@
-import lib.lib logic logic.encodable.basic
+import lib.lib logic logic.encodable.basic translation
 
 universe u
 
