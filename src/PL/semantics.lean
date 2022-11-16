@@ -35,7 +35,7 @@ end formula
 
 open formula
 
-instance : semantics (formula A) (Structure A) := ⟨λ S p, val S p⟩
+instance : semantics (formula A) (Structure A) := ⟨λ S p, val S p, by simp, by simp⟩
 
 abbreviation Satisfiable (T : Theory A) : Prop := semantics.Satisfiable (Structure A) T
 
@@ -95,8 +95,11 @@ end
 lemma model_models (consis : T.consistent) : model T ⊧ T := λ p hp,
 (model_models_iff consis).mp (ss_maximal consis hp)
 
+end completeness
+
 theorem consistent_iff_satisfiable : Theory.consistent T ↔ Satisfiable T :=
-⟨λ consis,  ⟨_, model_models consis⟩, by { rintros ⟨M, hM⟩, by { exact Structure_consistent (by simp) hM }}⟩
+⟨λ consis,  ⟨_, completeness.model_models consis⟩,
+ by { rintros ⟨M, hM⟩, by { exact sound.consistent_of_Satisfiable ⟨M, hM⟩ }}⟩
 
 theorem completeness {p : formula A} : T ⊢ p ↔ T ⊧ p :=
 ⟨soundness, by {
@@ -106,6 +109,9 @@ theorem completeness {p : formula A} : T ⊢ p ↔ T ⊧ p :=
   have : ¬S ⊧ p, from l.1,
   contradiction }⟩
 
-end completeness
+instance : complete (formula A) (Structure A) := ⟨λ T p h, completeness.mpr h⟩
+
+theorem compactness {T : Theory A} : Satisfiable T ↔ (∀ u ⊆ T, u.finite → Satisfiable u) :=
+complete.compactness
 
 end pl

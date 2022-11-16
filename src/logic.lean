@@ -95,6 +95,8 @@ variables (F)
 
 class semantics (𝓢 : Type*) :=
 (models : 𝓢 → F → Prop)
+(models_verum : ∀ S, models S ⊤)
+(models_falsum : ∀ S, ¬models S ⊥)
 
 namespace semantics
 variables {F} {𝓢 : Type*} [semantics F 𝓢] (S : 𝓢)
@@ -121,6 +123,9 @@ variables {𝓢} {S} (T U : Theory F)
 
 @[simp] lemma models_empty : S ⊧ (∅ : Theory F) := λ _, by simp
 
+@[simp] lemma models_of_ss {U T : Theory F} (ss : U ⊆ T) : S ⊧ T → S ⊧ U := λ h p hp,
+h (ss hp)
+
 @[simp] lemma models_union : S ⊧ T ∪ U ↔ S ⊧ T ∧ S ⊧ U :=
 ⟨λ h, ⟨λ p hp, h (set.mem_union_left U hp), λ p hp, h (set.mem_union_right T hp)⟩,
   by { rintros ⟨hT, hU⟩ p (hp | hp), { exact hT hp}, { exact hU hp } }⟩
@@ -138,14 +143,16 @@ variables (F)
 class sound (𝓢 : Type*) [semantics F 𝓢] :=
 (soundness : ∀ {T : Theory F} {p}, T ⊢ p → semantics.consequence 𝓢 T p)
 
-section sound
-open sound
+namespace sound
 variables {F} {𝓢 : Type*} [semantics F 𝓢] [sound F 𝓢] {S : 𝓢}
 
-theorem Structure_consistent (h : ¬S ⊧ (⊥ : F)) {T : Theory F} : S ⊧ T → Theory.consistent T :=
-by { contrapose, simp[Theory.consistent], intros p hp₁ hp₂ hyp,
-     have : T ⊢ (⊥ : F), from axiomatic_classical_logic'.explosion hp₁ hp₂,
-     exact h (soundness this hyp) }
+theorem consistent_of_Satisfiable {T : Theory F} : semantics.Satisfiable 𝓢 T → Theory.consistent T :=
+begin
+  rintros ⟨S, hS⟩, revert hS, contrapose,
+  simp[Theory.consistent], intros p hp₁ hp₂ hyp,
+  have : T ⊢ (⊥ : F), from axiomatic_classical_logic'.explosion hp₁ hp₂,
+  exact semantics.models_falsum S (soundness this hyp)
+end
 
 variables (S)
 
@@ -153,5 +160,21 @@ lemma tautology_of_tautology (p : F) (h : ⬝⊢ p) : S ⊧ p :=
 by { have : semantics.consequence 𝓢 ∅ p, from soundness h, exact this (show S ⊧ ∅, by simp) }
 
 end sound
+
+class complete (𝓢 : Type*) [semantics F 𝓢] extends sound F 𝓢  :=
+(completeness' : ∀ {T : Theory F} {p}, semantics.consequence 𝓢 T p → T ⊢ p)
+
+namespace complete
+variables {F} {𝓢 : Type*} [semantics F 𝓢] [complete F 𝓢] {S : 𝓢}
+
+theorem completeness {T : Theory F} {p} : T ⊢ p ↔ semantics.consequence 𝓢 T p :=
+⟨sound.soundness, completeness'⟩
+
+theorem consistent_iff_Satisfiable {T : Theory F} : Theory.consistent T ↔ semantics.Satisfiable 𝓢 T :=
+⟨by { contrapose, intros h,
+  have : semantics.consequence 𝓢 T ⊥, { intros S hS, exfalso, exact h ⟨S, hS⟩ },
+  have : T ⊢ ⊥, from completeness.mpr this,
+  exact Theory.not_consistent_iff_bot.mpr this }, sound.consistent_of_Satisfiable⟩
+end complete
 
 end logic

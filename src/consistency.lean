@@ -184,4 +184,21 @@ lemma provable_iff_inconsistent {p : F} : T ⊢ p ↔ ¬consistent (T +{∼p}) :
 
 end Theory
 
+namespace complete
+open Theory
+variables {F} {𝓢 : Type*} [has_finite_character F] [semantics F 𝓢] [complete F 𝓢] {S : 𝓢}
+
+theorem compactness {T : Theory F} :
+  semantics.Satisfiable 𝓢 T ↔ (∀ u ⊆ T, u.finite → semantics.Satisfiable 𝓢 (u : set F)) :=
+⟨by rintros ⟨S, hS⟩ u ss hu; refine ⟨S, semantics.models_of_ss ss hS⟩,
+  begin
+    intros h,
+    have : consistent T,
+    from consistent.finite_character.mpr
+      (by { intros u ss hu, exact consistent_iff_Satisfiable.mpr (h u ss hu) }),
+    exact consistent_iff_Satisfiable.mp this
+  end⟩
+
+end complete
+
 end logic
