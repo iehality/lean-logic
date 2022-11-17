@@ -272,7 +272,7 @@ end
 instance : has_finite_character (formula L m) :=
 finite_character_of_finite_provable (formula L m) (λ T p, finite_character_aux)
 
-lemma exists_of_subst (p : subformula L m 1) (t) : T ⊢ subst t p ⟶ ∃' p :=
+lemma exists_of_subst (p : subformula L m 1) (t) : T ⊢ subst t p ⟶ ∃'p :=
 contrapose.mp (imply_of_equiv
   (show T ⊢ p.neg.fal ⟶ ∼subst t p, by simpa using specialize T (∼p) t)
   (iff_dn_refl_right $ ∀'∼p) (equiv_refl _))
@@ -347,7 +347,27 @@ section prenex_normal_form
 lemma neg_forall_pnf (p) : T ⊢ ∼∀'p ⟷ ∃'∼p :=
 equiv_neg_of_equiv (equiv_forall_of_equiv (by simp[neg_eq]))
 
+lemma neg_univ_closure_pnf {n} (p : subformula L m n) : T ⊢ ∼∀'*p ⟷ ∃'*∼p :=
+begin
+  induction n with n IH generalizing m, { simp },
+  { simp[forall_comm, subformula.exists_comm],
+    have lmm₁ : T ⊢ ∼∀'𝗡 (∀'* 𝗠 p) ⟷ ∃'∼𝗡 (∀'* 𝗠 p), from neg_forall_pnf _,
+    have : 𝗟'T ⊢ ∼∀'* (𝗠 p) ⟷ ∃'* (∼𝗠 p), from IH (𝗠 p),
+    have lmm₂ : T ⊢ ∃'∼𝗡 (∀'* 𝗠 p) ⟷ ∃'𝗡 (∃'* ∼𝗠 p), by simpa using equiv_exists_of_equiv' this,
+    exact equiv_trans lmm₁ lmm₂ }
+end
+
 lemma neg_exists_pnf (p) : T ⊢ ∼∃'p ⟷ ∀'∼p := by simp[ex_def]
+
+lemma neg_exists_closure_pnf {n} (p : subformula L m n) : T ⊢ ∼∃'*p ⟷ ∀'*∼p :=
+begin
+  induction n with n IH generalizing m, { simp },
+  { simp[forall_comm, subformula.exists_comm],
+    have lmm₁ : T ⊢ ∼∃'𝗡 (∃'* 𝗠 p) ⟷ ∀'∼𝗡 (∃'* 𝗠 p), from neg_exists_pnf _,
+    have : 𝗟'T ⊢ ∼∃'* (𝗠 p) ⟷ ∀'* (∼𝗠 p), from IH (𝗠 p),
+    have lmm₂ : T ⊢ ∀'∼𝗡 (∃'* 𝗠 p) ⟷ ∀'𝗡 (∀'* ∼𝗠 p), by simpa using equiv_forall_of_equiv' this,
+    exact equiv_trans lmm₁ lmm₂ }
+end
 
 @[simp] lemma or_forall_pnf (p q) : T ⊢ (∀'p) ⊔ q ⟷ ∀'(p ⊔ 𝗗 q) :=
 begin
@@ -472,6 +492,27 @@ section equal
 variables {m} {n : ℕ}
 
 lemma specialize_foralls (p : subformula L m n) (w : fin n → subterm L m 0) : T ⊢ ∀'*p ⟶ substs w p :=
+begin
+  induction n with n IH generalizing m,
+  { simp },
+  { have : 𝗟'T ⊢ ∀'* 𝗠 p ⟶ substs (mlift ∘ w ∘ fin.cast_succ) (𝗠 p),
+    from IH (𝗠 p) (subterm.mlift ∘ w ∘ fin.cast_succ),
+    have : T ⊢ ∀'(𝗡 (∀'*𝗠 p) ⟶ 𝗡 (substs (mlift ∘ w ∘ fin.cast_succ) (𝗠 p))),
+    by simpa using generalize this,
+    have lmm₁ : T ⊢ ∀'*p ⟶ ∀'𝗡 (substs (mlift ∘ w ∘ fin.cast_succ) (𝗠 p)),
+    by simpa[forall_comm] using forallK _ _ ⨀ this,
+    have lmm₂ : T ⊢ ∀'𝗡 (substs (mlift ∘ w ∘ fin.cast_succ) (𝗠 p)) ⟶ substs w p,
+    from specialize T (𝗡 (substs (mlift ∘ w ∘ fin.cast_succ) (𝗠 p))) (w $ fin.last n),
+    exact imply_trans lmm₁ lmm₂ }
+end
+
+lemma exists_dn (p : subformula L m n) : T ⊢ ∃'*∼∼p ⟷ ∃'*p :=
+begin
+  induction n with n IH generalizing m; simp[subformula.exists_comm],
+  refine equiv_exists_of_equiv (by simpa using IH (𝗠 p))
+end
+
+lemma exists_of_substs (p : subformula L m n) (w : fin n → subterm L m 0) : T ⊢ ∀'*p ⟶ substs w p :=
 begin
   induction n with n IH generalizing m,
   { simp },

@@ -744,6 +744,9 @@ end pull
 lemma forall_comm (p : subformula L m (n + 1)) : ∀'*(∀'p) = ∀'(pull $ ∀'* (push p)) :=
 by induction n with n IH; simp*
 
+lemma exists_comm (p : subformula L m (n + 1)) : ∃'*(∃'p) = ∃'(pull $ ∃'* (push p)) :=
+by induction n with n IH; simp*
+
 def msubst (t : subterm L m n) : subformula L (m + 1) n →ₗ subformula L m n :=
 rew (t *> metavar)
 
@@ -996,6 +999,9 @@ by { induction k with k IH; simp*,
 @[simp] lemma subst_open {u} {p : subformula L m (n + 1)} : (subst u p).is_open ↔ p.is_open := by simp[is_open]
 
 @[simp] lemma dummy_open {p : subformula L m n} : (dummy p).is_open ↔ p.is_open := by simp[dummy]
+
+@[simp] lemma substs_open {p : subformula L m n} {v} : (substs v p).is_open ↔ p.is_open :=
+by induction n with n IH generalizing m; simp[substs, *]
 
 def open_rec {C : Π p : subformula L m n, p.is_open → Sort*}
   (hverum : C ⊤ top_open)
