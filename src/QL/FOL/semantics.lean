@@ -134,6 +134,12 @@ by simp[msubst, val_rew, fin.comp_left_concat, show subterm.val S me e ∘ metav
   val S me e (subst t p) ↔ val S me (e <* subterm.val S me e t) p :=
 by simp[subst, val_msubst]
 
+@[simp] lemma val_substs (p : subformula L m n) (v : fin n → subterm L m 0) :
+  val S me fin.nil (substs v p) ↔ val S me (subterm.val S me fin.nil ∘ v) p :=
+by { induction n with n IH generalizing m; simp[substs],
+  { rw[show subterm.val S me fin.nil ∘ v = fin.nil, by simp] },
+  { simp[IH, (∘), ←fin.comp_right_concat] } }
+
 @[simp] lemma val_universal_closure (p : subformula L m n) :
   val S me fin.nil (∀'* p) ↔ ∀ v, val S me v p :=
 begin
@@ -146,6 +152,17 @@ end
 
 @[simp] lemma val_ex (p : subformula L m (n + 1)) :
   val S me e (∃'p) ↔ ∃ x : S, val S me (x *> e) p := by simp[ex_def]
+
+@[simp] lemma val_exists_closure (p : subformula L m n) :
+  val S me fin.nil (∃'*p) ↔ ∃ v, val S me v p :=
+begin
+  induction n with n IH,
+  { simp[fin.nil] },
+  { simp[IH (∃'p)], split,
+    { rintros ⟨v, x, h⟩, exact ⟨x *> v, h⟩ },
+    { rintros ⟨v, h⟩,
+      exact ⟨v ∘ fin.succ, v 0, by simpa[fin.left_concat_eq] using h⟩ } }
+end
 
 end subformula
 
@@ -176,6 +193,10 @@ by simp[val, fin.concat_zero]
   S ⊧[me] (subst t p : subformula _ _ _) ↔ S ⊧[subterm.val S me fin.nil t *> me] p.push :=
 by simp[val, subformula.val_subst]
 
+@[simp] lemma modfels_substs (p : subformula L m n) (v : fin n → subterm L m 0) :
+  S ⊧[me] substs v p ↔ subformula.val S me (subterm.val S me fin.nil ∘ v) p :=
+by simp
+
 @[simp] lemma models_rew {x : S} : S ⊧[x *> me] p.mlift ↔ S ⊧[me] p :=
 by simp[val]
 
@@ -185,13 +206,17 @@ def sentence.val : sentence L → Prop := formula.val S fin.nil
 
 def models (S : Structure L) (p : formula L m) : Prop := ∀ e, S ⊧[e] p
 
-instance : semantics (formula L m) (Structure L) := ⟨models⟩
+instance : semantics (formula L m) (Structure L) := ⟨models, by simp[models], by simp[models]⟩
 
 lemma models_def {S : Structure L} {p : formula L m} : S ⊧ p ↔ (∀ e, S ⊧[e] p) := by refl
 
 lemma sentence_models_def {S : Structure L} {p : sentence L} : S ⊧ p ↔ S ⊧[fin.nil] p := by simp[models_def, fin.nil]
 
-abbreviation satisfiable (p : formula L m) : Prop := semantics.satisfiable (Structure L) p
+abbreviation valid (p : subformula L m 0) : Prop := semantics.valid (Structure L) p
+
+abbreviation satisfiable (p : subformula L m 0) : Prop := semantics.satisfiable (Structure L) p
+
+lemma valid_def (p : formula L m) : valid p ↔ ∀ S : Structure L, S ⊧ p := by refl
 
 lemma satisfiable_def (p : formula L m) : satisfiable p ↔ ∃ S : Structure L, S ⊧ p := by refl
 

@@ -37,6 +37,13 @@ open formula
 
 instance : semantics (formula A) (Structure A) := ⟨λ S p, val S p, by simp, by simp⟩
 
+abbreviation tautology (p : formula A) : Prop := semantics.valid (Structure A) p
+
+abbreviation tautology_iff (p : formula A) :
+  tautology p ↔ ∀ V : Structure A, V ⊧ p := by refl
+
+abbreviation satisfiable (p : formula A) : Prop := semantics.satisfiable (Structure A) p
+
 abbreviation Satisfiable (T : Theory A) : Prop := semantics.Satisfiable (Structure A) T
 
 lemma models_def (S : Structure A) (p : formula A) : S ⊧ p ↔ formula.val S p :=
