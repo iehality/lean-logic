@@ -101,6 +101,50 @@ def comp : F₁ →ₗ F₃ :=
 @[simp] lemma app_comp (a) : (f₂.comp f₁) a = f₂ (f₁ a) :=
 by simp[eq_to_fun, comp] 
 
+section prop
+
+instance : has_logic_symbol Prop :=
+{ arrow := (→),
+  neg := not }
+
+@[simp] lemma top_to_true : (⊤ : Prop) ↔ true := by refl
+
+@[simp] lemma bot_to_false : (⊥ : Prop) ↔ false := by refl
+
+@[simp] lemma arrow_to_to (p q : Prop) : (p ⟶ q) ↔ (p → q) := by refl
+
+@[simp] lemma lrarrow_to_iff (p q : Prop) : (p ⟷ q) ↔ (p ↔ q) := by simp[lrarrow_def]; exact iff_def.symm
+
+@[simp] lemma neg_to_not (p : Prop) : ∼p ↔ ¬p := by refl
+
+@[simp] lemma prop_finitary_conj {n} (p : finitary Prop n) : finitary.conjunction n p ↔ ∀ x, p x :=
+by{ induction n with n IH, { simp },
+    { simp[IH], split,
+      { rintros ⟨hlast, h⟩, intros x, refine fin.last_cases hlast h x },
+      { rintros h, simp[h] } } }
+
+@[simp] lemma prop_finitary_disj {n} (p : finitary Prop n) : finitary.disjunction n p ↔ ∃ x, p x :=
+by{ induction n with n IH, { simp },
+    { simp[IH], split,
+      { rintros (⟨_, h⟩ | hlast), { exact ⟨_, h⟩ }, { exact ⟨_, hlast⟩ } },
+      { rintros ⟨x, h⟩, rcases fin.eq_last_or_eq_cast_succ x with (rfl | ⟨x, rfl⟩),
+        { exact or.inr h }, { exact or.inl ⟨x, h⟩ } } } }
+
+@[simp] lemma prop_list_conj {α} (l : list α) (p : α → Prop) : list.conjunction (l.map p) ↔ ∀ a ∈ l, p a :=
+by induction l with a l IH; simp*
+
+@[simp] lemma prop_list_disj {α} (l : list α) (p : α → Prop) : list.disjunction (l.map p) ↔ ∃ a ∈ l, p a :=
+begin
+  induction l with a l IH; simp*,
+  split,
+  { rintros (h | ⟨b, hl, hb⟩),
+    { exact ⟨a, by simp[h]⟩ },
+    { refine ⟨b, by simp[hb, hl]⟩ } },
+  { rintros ⟨b, (rfl | hl), hb⟩, { simp[hb] }, { exact or.inr ⟨b, hl, hb⟩ } }
+end
+
+end prop
+
 end homomorphism
 
 variables (F G)

@@ -201,6 +201,12 @@ by funext; simp
       simpa using congr_arg (λ s, s ∘ fin.cast_succ) h },
  by { rintros ⟨rfl, rfl⟩, refl }⟩
 
+@[simp] lemma zero_concat_succ : (0 *> fin.succ : fin (n + 1) → fin (n + 1)) = id :=
+by simpa using left_concat_eq id
+
+@[simp] lemma cast_concat_last : (fin.cast_succ <* fin.last n) = id :=
+by simpa using right_concat_eq id
+
 end cases
 
 end fin
@@ -674,8 +680,27 @@ variables [has_inf α] [has_top α]
 
 end inf
 
-
 end list
+
+namespace set
+variables {α : Type*} {β : Type*}
+
+lemma image_finite_inversion_aux (s : set β) (h : s.finite) (f : α → β) : ∀ (z : set α), s ⊆ f '' z → ∃ u ⊆ z, u.finite ∧ f '' u = s :=
+begin
+  apply set.finite.induction_on h,
+  { intros, refine ⟨∅, by simp⟩ },
+  { rintros b s hb sfin IH z ss,
+    have : (∃ a, a ∈ z ∧ f a = b) ∧ s ⊆ f '' z, by simpa[set.insert_subset] using ss,
+    rcases this with ⟨⟨a, ha, rfl⟩, hs⟩,
+    have : ∃ u ⊆ z, u.finite ∧ f '' u = s, from IH z hs,
+    rcases this with ⟨u, hu, u_fin, rfl⟩,
+    refine ⟨insert a u, by simp[set.insert_subset, ha, hu], finite.insert a u_fin, image_insert_eq⟩ }
+end
+
+lemma image_finite_inversion {f : α → β} {s : set α} (h : (f '' s).finite) : ∃ u ⊆ s, u.finite ∧ f '' u = f '' s :=
+image_finite_inversion_aux (f '' s) h f s (by refl)
+
+end set
 
 section classical
 attribute [instance, priority 0] classical.prop_decidable

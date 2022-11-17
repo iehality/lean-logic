@@ -4,37 +4,6 @@ universes u v
 
 open_locale logic_symbol
 
-section prop
-
-instance : has_logic_symbol Prop :=
-{ arrow := (→),
-  neg := not }
-
-@[simp] lemma top_to_true : (⊤ : Prop) ↔ true := by refl
-
-@[simp] lemma bot_to_false : (⊥ : Prop) ↔ false := by refl
-
-@[simp] lemma arrow_to_to (p q : Prop) : (p ⟶ q) ↔ (p → q) := by refl
-
-@[simp] lemma lrarrow_to_iff (p q : Prop) : (p ⟷ q) ↔ (p ↔ q) := by simp[lrarrow_def]; exact iff_def.symm
-
-@[simp] lemma neg_to_not (p : Prop) : ∼p ↔ ¬p := by refl
-
-@[simp] lemma prop_finitary_conj {n} (p : finitary Prop n) : finitary.conjunction n p ↔ ∀ x, p x :=
-by{ induction n with n IH, { simp },
-    { simp[IH], split,
-      { rintros ⟨hlast, h⟩, intros x, refine fin.last_cases hlast h x },
-      { rintros h, simp[h] } } }
-
-@[simp] lemma prop_finitary_disj {n} (p : finitary Prop n) : finitary.disjunction n p ↔ ∃ x, p x :=
-by{ induction n with n IH, { simp },
-    { simp[IH], split,
-      { rintros (⟨_, h⟩ | hlast), { exact ⟨_, h⟩ }, { exact ⟨_, hlast⟩ } },
-      { rintros ⟨x, h⟩, rcases fin.eq_last_or_eq_cast_succ x with (rfl | ⟨x, rfl⟩),
-        { exact or.inr h }, { exact or.inl ⟨x, h⟩ } } } }
-
-end prop
-
 namespace logic
 
 @[reducible] def Theory (F : Type*) [has_logic_symbol F] := set F
@@ -111,7 +80,11 @@ def Models_def {T : Theory F} : S ⊧ T ↔ ∀ p ∈ T, S ⊧ p := by refl
 
 variables (𝓢)
 
+def valid (p : F) : Prop := ∀ S : 𝓢, S ⊧ p
+
 def satisfiable (p : F) : Prop := ∃ S : 𝓢, S ⊧ p
+
+def Valid (T : Theory F) : Prop := ∀ S : 𝓢, S ⊧ T
 
 def Satisfiable (T : Theory F) : Prop := ∃ S : 𝓢, S ⊧ T
 
