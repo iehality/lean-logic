@@ -10,6 +10,8 @@ open subformula logic logic.Theory
 
 @[reducible] def herbrand_universe := subterm L 0 0
 
+instance [inhabited (L.fn 0)] : inhabited (herbrand_universe L) := ⟨subterm.function default fin.nil⟩
+
 inductive herbrand_basis
 | relation : Π {k} (r : L.pr k), (fin k → herbrand_universe L) → herbrand_basis
 | equal    : herbrand_universe L → herbrand_universe L → herbrand_basis
@@ -144,7 +146,9 @@ lemma pl_equiv_equivalence : equivalence (pl_equiv V H) :=
  by { intros x y, simpa using H (pl.formula.equal_axioms.eq_symm x y) },
  by { intros x y z, simpa using H (pl.formula.equal_axioms.eq_trans x y z) }⟩
 
-def domain := quotient (⟨pl_equiv V H, pl_equiv_equivalence V H⟩ : setoid (herbrand_universe L))
+instance : setoid (herbrand_universe L) := ⟨pl_equiv V H, pl_equiv_equivalence V H⟩
+
+def domain := quotient (herbrand_universe.setoid V H)
 
 def qu (t : herbrand_universe L) : domain V H := quotient.mk' t
 
@@ -212,12 +216,40 @@ variables {L} (V : pl.Structure (herbrand_basis L)) (H : V ⊧ pl.formula.equal_
 @[simp] lemma models_val (t : herbrand_universe L) : subterm.val (Herbrand V H) fin.nil fin.nil t = qu V H t :=
 by { induction t; simp[*, -of_eq_of]; { exact fin_zero_elim t } }
 
+lemma models_relation_iff' {k} (r : L.pr k) (v : fin k → herbrand_universe L) :
+  Herbrand V H ⊧ subformula.relation r v ↔ V.val (herbrand_basis.relation r v) :=
+by simp[sentence_models_def, (∘)]
+
 lemma models_relation_iff {k} (r : L.pr k) (v : fin k → herbrand_universe L) :
   Herbrand V H ⊧ subformula.relation r v ↔ V.val (herbrand_basis.relation r v) :=
 by simp[sentence_models_def, (∘)]
 
+variables {V H}
+
+noncomputable def qu_inv (x : Herbrand V H) : herbrand_universe L := classical.epsilon (λ t, qu V H t = x)
+
+@[simp] lemma qu_to_hu (x : Herbrand V H) : qu V H (qu_inv x) = x := 
+@classical.epsilon_spec (herbrand_universe L) (λ t, qu V H t = x)
+(by induction x using fol.Structure.Herbrand.ind_on; exact ⟨x, by refl⟩)
+
+lemma subterm_subst {n} (x) : ∀ (t : subterm L 0 n), subterm.val (Herbrand V H) fin.nil x t = qu V H (subterm.substs (qu_inv ∘ x) t)
+| #x := by simp
+| &x := fin_zero_elim x
+| (subterm.function f v) := by simp[λ i, subterm_subst (v i), -of_eq_of]
+
+lemma val_iff_subst {n} (p : subformula L 0 n) (hp : p.is_open) : ∀ x,
+  val (Herbrand V H) fin.nil x p ↔ V ⊧ sentence.to_pl (substs (qu_inv ∘ x) p) (by simpa using hp) :=
+begin
+  apply open_rec_on p hp,
+  { simp },
+  { intros k r v x, simp[pl.models_def, (∘), subterm_subst] },
+  { intros t u x, simp[pl.models_def, subterm_subst] },
+  { intros p q hp hq IHp IHq x, simp[IHp, IHq] },
+  { intros p hp IH x, simp[IH] }
+end
+
 protected lemma models : ∀ {p : pl.formula (fol.herbrand_basis L)}, Herbrand V H ⊧ p.to_fol ↔ V ⊧ p
-| ⊤ := by simp
+| ⊤                                               := by simp
 | (pl.formula.atom (herbrand_basis.relation r v)) := by simp[sentence_models_def, (∘), pl.models_def]
 | (pl.formula.atom (herbrand_basis.equal t u))    := by simp[sentence_models_def, pl.models_def]
 | (p ⟶ q)                                         := by simp[@models p, @models q]
@@ -231,7 +263,7 @@ end Herbrand
 namespace to_pl
 variables (S : Structure L)
 
-lemma to_pl_equal_axioms : S.to_pl ⊧ pl.formula.equal_axioms L := λ p h,
+@[simp] lemma to_pl_equal_axioms : S.to_pl ⊧ pl.formula.equal_axioms L := λ p h,
 begin
   induction h,
   case eq_refl { simp[to_pl.models, sentence_models_def] },
@@ -243,7 +275,7 @@ end
 
 lemma Herbran_models {S : Structure L} (p : pl.formula (fol.herbrand_basis L)): 
   S ⊧ p.to_fol ↔ Herbrand (S.to_pl) (to_pl_equal_axioms S) ⊧ p.to_fol :=
-to_pl.models.symm.trans (Herbrand.models _ _).symm
+to_pl.models.symm.trans Herbrand.models.symm
 
 end to_pl
 
@@ -251,49 +283,67 @@ end Structure
 
 namespace herbrand_universe
 open Structure
-variables {L} {m n : ℕ}
+variables {L} {m n : ℕ} [inhabited (L.fn 0)]
 
-lemma Herbrand_aux (p : subformula L 0 n) (hp : p.is_open)
+lemma Herbrand_aux (p : subformula L 0 n) (p_open : p.is_open)
   (H : ∀ (w : list (fin n → herbrand_universe L)), 
-    ∃ V : pl.Structure (herbrand_basis L), ∀ x ∈ w, V ⊧ sentence.to_pl (∼substs x p) (by simpa using hp)) :
+    ∃ V : pl.Structure (herbrand_basis L), V ⊧ pl.formula.equal_axioms L ∧
+    ∀ x ∈ w, V ⊧ sentence.to_pl (∼substs x p) (by simpa using p_open)) :
   satisfiable (∼∃'*p) :=
 begin
-  let T := set.range (λ x, sentence.to_pl (∼substs x p) (by simpa using hp)),
-  have : pl.Satisfiable T,
-  { refine pl.compactness.mpr _, simp[T, set.subset_range_iff_exists_image_eq, set.finite_image_iff],
-    intros s h,
-    
+  let T := set.range (λ x, sentence.to_pl (∼substs x p) (by simpa using p_open)),
+  have : pl.Satisfiable (T ∪ pl.formula.equal_axioms L),
+  { refine pl.compactness.mpr _,
+    simp[T, set.subset_range_iff_exists_image_eq, set.finite_image_iff],
+    intros s s_ss s_fin,
+    have : ∃ u' sₑ,
+      sₑ ⊆ pl.formula.equal_axioms L ∧
+      s = (λ x, ∼sentence.to_pl (substs x p) _) '' u' ∪ sₑ,
+    by simpa[set.subset_union_iff_exists, set.subset_range_iff_exists_image_eq] using s_ss,
+    rcases this with ⟨u', sₑ, hsₑ, rfl⟩,
+    simp at s_fin,
     have : ∃ u : finset (fin n → subterm L 0 0),
-      (λ x, ∼sentence.to_pl (substs x p) (by simpa using hp)) '' u = (λ x, ∼sentence.to_pl (substs x p) (by simpa using hp)) '' s,
-    { have : ∃ u ⊆ s, u.finite ∧ (λ x, ∼sentence.to_pl (substs x p) _) '' u = (λ x, ∼sentence.to_pl (substs x p) _) '' s,
-      from set.image_finite_inversion h,
+      (λ x, ∼sentence.to_pl (substs x p) (by simpa using p_open)) '' u = (λ x, ∼sentence.to_pl (substs x p) (by simpa using p_open)) '' u',
+    { have : ∃ u ⊆ u', u.finite ∧ (λ x, ∼sentence.to_pl (substs x p) _) '' u = (λ x, ∼sentence.to_pl (substs x p) _) '' u',
+      from set.image_finite_inversion s_fin.1,
       rcases this with ⟨u, hu, u_fin, eqn⟩,
       refine ⟨set.finite.to_finset u_fin, by simpa using eqn⟩ },
     rcases this with ⟨u, eqn⟩,
-
-    suffices : pl.Satisfiable ((λ x, ∼sentence.to_pl (substs x p) _) '' u), from cast (congr_arg _ eqn) this,
-    have : ∃ (V : pl.Structure (herbrand_basis L)), ∀ x ∈ u, V ⊧ ∼sentence.to_pl (substs x p) (by simpa using hp),
-    by simpa[pl.models_def] using H u.to_list,
-    rcases this with ⟨V, hV⟩,
-    refine ⟨V, by simpa[logic.semantics.Models_def] using hV⟩ },
-  rcases this with ⟨V, hV⟩,
-  sorry
+    suffices : pl.Satisfiable ((λ x, ∼sentence.to_pl (substs x p) (by simpa using p_open)) '' u ∪ sₑ),
+    by simpa[eqn] using this,
+    rcases H u.to_list with ⟨V, hVₑ, hVᵤ⟩,
+    refine ⟨V, _⟩,
+    rintros q (hq | hq),
+    { simp at hq, rcases hq with ⟨x, hx, rfl⟩,
+      by simpa using hVᵤ x (by simpa using hx) },
+    { exact hVₑ (hsₑ hq) } },
+  rcases this with ⟨V, hV⟩, simp at hV,
+  have hVT : V ⊧ T, from hV.1,
+  have hVeq : V ⊧ pl.formula.equal_axioms L, from hV.2,
+  refine ⟨Herbrand V hVeq, _⟩,
+  simp[sentence_models_def, Herbrand.val_iff_subst p p_open], intros x,
+  have : V ⊧ ∼sentence.to_pl (substs (Herbrand.qu_inv ∘ x) p) (by simpa using p_open), from hVT (by simp[T]),
+  simpa using this
 end
 
-theorem Herbrand_Theorem (p : subformula L 0 n) (hp : p.is_open) :
+theorem valid_iff_consequence (p : subformula L 0 n) (hp : p.is_open) :
   valid (∃'*p) ↔
   ∃ v : list (fin n → herbrand_universe L),
-  pl.tautology (v.map (λ t, sentence.to_pl (substs t p) (by simpa using hp))).disjunction :=
-⟨by { contrapose, assume h,
+  pl.formula.equal_axioms L ⊧ (v.map (λ t, sentence.to_pl (substs t p) (by simpa using hp))).disjunction :=
+⟨ begin
+    contrapose, assume h,
     have : ∀ (w : list (fin n → herbrand_universe L)),
-      ∃ V : pl.Structure (herbrand_basis L), ∀ x ∈ w, V ⊧ sentence.to_pl (∼substs x p) (by simpa using hp),
-     by simpa[pl.tautology_iff, pl.models_def] using h,
-     sorry
-   }, 
+     ∃ V : pl.Structure (herbrand_basis L), V ⊧ pl.formula.equal_axioms L ∧
+     ∀ x ∈ w, V ⊧ sentence.to_pl (∼substs x p) (by simpa using hp),
+    by simpa[pl.tautology_iff, pl.models_def, pl.consequence_def] using h,
+    have : satisfiable (∼∃'* p), from Herbrand_aux p hp this,
+    simpa using this,
+  end, 
   begin
     rintros ⟨v, h⟩ S, simp[sentence_models_def],
     have : ∃ x ∈ v, val S fin.nil (subterm.val S fin.nil fin.nil ∘ x) p,
-    by simpa [to_pl.models, sentence_models_def] using h S.to_pl,
+    by simpa [to_pl.models, sentence_models_def] using
+      pl.consequence_def.mp h S.to_pl (Structure.to_pl.to_pl_equal_axioms S),
     rcases this with ⟨x, _, h⟩,
     exact ⟨subterm.val S fin.nil fin.nil ∘ x, h⟩
   end⟩

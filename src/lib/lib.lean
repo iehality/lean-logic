@@ -133,7 +133,7 @@ variables {n : ℕ} {C : Sort*} {a b : C} {s : fin n → C}
 -- finitary.cons の書き換え
 @[elab_as_eliminator] def left_concat {C : Sort*} (hzero : C) (hsucc : fin n → C) : fin (n + 1) → C := @cases n (λ _, C) hzero hsucc
 
-infix (name:= left_concat) ` *> `:70 := left_concat
+infixr (name:= left_concat) ` *> `:70 := left_concat
 
 @[simp] lemma left_concat_zero : (a *> s) 0 = a := by simp[left_concat]
 
@@ -144,7 +144,7 @@ infix (name:= left_concat) ` *> `:70 := left_concat
 @[elab_as_eliminator, elab_strategy]
 def right_concat (hcast : fin n → C) (hlast : C) : fin (n + 1) → C := @last_cases n (λ _, C) hlast hcast
 
-infix (name:= right_concat) ` <* `:70 := right_concat
+infixl (name:= right_concat) ` <* `:70 := right_concat
 
 @[simp] lemma right_concat_last : (s <* a) (last n) = a := by simp[right_concat]
 
@@ -699,6 +699,13 @@ end
 
 lemma image_finite_inversion {f : α → β} {s : set α} (h : (f '' s).finite) : ∃ u ⊆ s, u.finite ∧ f '' u = f '' s :=
 image_finite_inversion_aux (f '' s) h f s (by refl)
+
+lemma subset_union_iff_exists {s t u : set α} : s ⊆ t ∪ u ↔ ∃ (t' ⊆ t) (u' ⊆ u), s = t' ∪ u' :=
+⟨by { intros h,
+  refine ⟨s ∩ t, by simp, s ∩ u, by simp, by symmetry; simp[←set.inter_union_distrib_left, h]⟩, 
+   },
+ by { rintros ⟨t', ht', u', hu', rfl⟩,
+      simp[set.subset_union_of_subset_left ht', set.subset_union_of_subset_right hu'] }⟩
 
 end set
 

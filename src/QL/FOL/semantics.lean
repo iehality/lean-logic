@@ -251,6 +251,9 @@ variables {S} {p q : sentence L}
 
 @[simp] lemma models_iff : S ⊧ p ⟷ q ↔ (S ⊧ p ↔ S ⊧ q) := by simp[sentence_models_def]
 
+@[simp] lemma not_valid_iff_satisfiable (p : sentence L) : ¬valid p ↔ satisfiable (∼p) :=
+by simp[valid_def, satisfiable_def]
+
 end sentence
 
 namespace preTheory

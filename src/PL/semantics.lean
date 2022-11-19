@@ -52,7 +52,7 @@ by refl
 instance : has_double_turnstile (Theory A) (formula A) := ⟨semantics.consequence (Structure A)⟩
 
 lemma consequence_def {T : Theory A} {p : formula A} :
-  T ⊧ p ↔ semantics.consequence (Structure A) T p := by refl
+  T ⊧ p ↔ ∀ V : Structure A, V ⊧ T → V ⊧ p := by refl
 
 variables {T : Theory A} {p : formula A}
 
