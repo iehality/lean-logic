@@ -29,6 +29,9 @@ Lean3で論理学を形式化する
   - `arithmetic.lean`：算術に関する証明
   - ~~`model.lean`：超準モデルの構成など~~
 
+### QL：Quantificational Logic
+  - ### FOL：FOLのリファクタリング及び修正
+
 ## 定義
 ### 命題論理
 - ヒルベルト流演繹体系
@@ -68,3 +71,11 @@ Lean3で論理学を形式化する
   - 算術の$\Sigma_1$完全性
   - メタ数学の算術化
   - ゲーデルの不完全性定理
+
+## 参考文献
+  - mathlib https://github.com/leanprover-community/mathlib
+  - ケネス・キューネン, 藤田 博司 訳, キューネン数学基礎論講義
+  - 田中 一之, 数学基礎論序説: 数の体系への論理的アプローチ
+  - 田中 一之, 計算理論と数理論理学
+  - Petr Hajek, Metamathematics of First-Order Arithmetic
+  - flypitch https://flypitch.github.io/
