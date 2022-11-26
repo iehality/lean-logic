@@ -211,6 +211,9 @@ by { induction n with n IH; simp*,
        { rintros h i, refine fin.last_cases _ _ i; simp[h] },
        { intros h, simp[h] } } }
 
+@[simp] lemma list_conjunction_iff {l : list F} : (l.conjunction ∈ P) ↔ (∀ p ∈ l, p ∈ P) :=
+by induction l with a l IH; simp*
+
 @[simp] lemma iff_equiv_p {p q : F} : (p ⟷ q ∈ P) ↔ (p ⟶ q ∈ P ∧ q ⟶ p ∈ P) :=
 by simp[lrarrow_def, iff_and_p]
 
@@ -474,6 +477,20 @@ begin
     refine equiv_of_equiv this (equiv_and_of_equiv (equiv_refl _) (equiv_symm (IH _)))
       (equiv_imply_of_equiv (equiv_symm_or _ _) (by refl)), }
 end
+
+@[simp] lemma lconj_imply_iff_ldisj_imply (l : list F) (q : F) :
+  (l.map (λ p, (p ⟶ q))).conjunction ⟷ (l.disjunction ⟶ q) ∈ P :=
+begin
+  induction l with p l IH, { simp }, 
+  { simp[-iff_equiv_p, (∘)],
+    refine equiv_of_equiv (imply_and_equiv_or_imply p l.disjunction q)
+      (equiv_and_of_equiv (equiv_refl _) (equiv_symm (IH)))
+      (equiv_imply_of_equiv (equiv_symm_or _ _) (by refl)) }
+end
+
+@[simp] lemma ldisj_imply_of {l : list F} {q : F} (h : ∀ p ∈ l, p ⟶ q ∈ P) : (l.disjunction ⟶ q) ∈ P :=
+by { have : (l.map (λ p, (p ⟶ q))).conjunction ∈ P, by simpa using h,
+     exact (iff_equiv_p.mp $ lconj_imply_iff_ldisj_imply l q).1 ⨀ this }
 
 variables (P)
 
@@ -767,6 +784,9 @@ and_imply_of
 @[simp] lemma imply_and_equiv_or_imply (p q r : F) : T ⊢ (p ⟶ r) ⊓ (q ⟶ r) ⟷ p ⊔ q ⟶ r := imply_and_equiv_or_imply p q r
 
 @[simp] lemma conj_imply_iff_disj_imply {n} (p : finitary F n) (q : F) : T ⊢ (⋀ i, (p i ⟶ q)) ⟷ ((⋁ i, p i) ⟶ q) := conj_imply_iff_disj_imply p q
+
+@[simp] lemma ldisj_imply_of {l : list F} {q : F} (h : ∀ p ∈ l, T ⊢ p ⟶ q) : T ⊢ l.disjunction ⟶ q :=
+ldisj_imply_of h
 
 lemma explosion {p : F} (h₁ : T ⊢ p) (h₂ : T ⊢ ∼p) {q : F} : T ⊢ q :=
 explosion h₁ h₂

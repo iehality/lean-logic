@@ -510,14 +510,6 @@ by simp[insert]
 @[simp] lemma set.insert_mem_iff {α : Sort*} {T : set α} {a b : α} :
   b ∈ T +{ a } ↔ b = a ∨ b ∈ T := by simp[insert]
 
-@[simp] def list.conjunction {α : Type*} [has_top α] [has_inf α] : list α → α
-| []        := ⊤
-| (a :: as) := a ⊓ as.conjunction
-
-@[simp] def list.disjunction {α : Type*} [has_bot α] [has_sup α] : list α → α
-| []        := ⊥
-| (a :: as) := a ⊔ as.disjunction
-
 @[simp] def finitary.conjunction {α : Type*} [has_top α] [has_inf α] : ∀ n, (fin n → α) → α
 | 0 _        := ⊤
 | (n + 1) f  := f (fin.last n) ⊓ finitary.conjunction n (f ∘ fin.cast_succ)
@@ -529,6 +521,14 @@ notation `⋀` binders `, ` r:(scoped p, finitary.conjunction _ p) := r
 | (n + 1) f  := finitary.disjunction n (f ∘ fin.cast_succ) ⊔ f (fin.last n)
 
 notation `⋁` binders `, ` r:(scoped p, finitary.disjunction _ p) := r
+
+@[simp] def list.conjunction {α : Type*} [has_top α] [has_inf α] : list α → α
+| []        := ⊤
+| (a :: as) := a ⊓ as.conjunction
+
+@[simp] def list.disjunction {α : Type*} [has_bot α] [has_sup α] : list α → α
+| []        := ⊥
+| (a :: as) := as.disjunction ⊔ a
 
 def fintype_sup {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α] [order_bot α] (f : ι → α) : α :=
   (finset.univ : finset ι).sup f
