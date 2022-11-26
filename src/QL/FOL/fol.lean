@@ -23,6 +23,8 @@ instance (n) : has_to_string (language.empty.fn n) := ⟨by rintros ⟨⟩⟩
 
 instance (n) : has_to_string (language.empty.pr n) := ⟨by rintros ⟨⟩⟩
 
+class has_equal (L : language) := (eq : L.pr 2)
+
 end language
 
 variables (L : language.{u})
@@ -63,12 +65,11 @@ variables (L)
 inductive subformula (m) : ℕ → Type u
 | verum    {n} : subformula n
 | relation {n} : ∀ {p}, L.pr p → (fin p → subterm L m n) → subformula n
-| equal    {n} : subterm L m n  → subterm L m n → subformula n
 | imply    {n} : subformula n → subformula n → subformula n
 | neg      {n} : subformula n → subformula n
 | fal      {n} : subformula (n + 1) → subformula n
 
-attribute [pattern]  has_eq.eq has_negation.neg has_arrow.arrow has_univ_quantifier.univ has_exists_quantifier.ex
+attribute [pattern]  has_negation.neg has_arrow.arrow has_univ_quantifier.univ has_exists_quantifier.ex
 
 @[reducible] def formula (m) := subformula L m 0
 
@@ -80,7 +81,6 @@ variables {L} {m n : ℕ}
 def to_str [∀ n, has_to_string (L.fn n)] [∀ n, has_to_string (L.pr n)] : Π {n}, subformula L m n → string
 | n verum          := "⊤"
 | n (relation p v) := has_to_string.to_string p
-| n (equal t u)    := has_to_string.to_string t ++ " = " ++ has_to_string.to_string u
 | n (imply p q)    := "(" ++ to_str p ++ " → " ++ to_str q ++ ")"
 | n (neg p)        := "¬" ++ to_str p
 | n (fal p)        := "∀" ++ to_str p
@@ -103,7 +103,9 @@ instance : has_logic_symbol (subformula L m n) :=
 
 instance : inhabited (subformula L m n) := ⟨⊤⟩
 
-instance : has_eq (subterm L m n) (subformula L m n) := ⟨equal⟩
+def equal [L.has_equal] (t u : subterm L m n) : subformula L m n := relation language.has_equal.eq (t *> u *> fin.nil) 
+
+instance [L.has_equal] : has_eq (subterm L m n) (subformula L m n) := ⟨equal⟩
 
 instance : has_univ_quantifier' (subformula L m) := ⟨@fal L m⟩
 
@@ -111,7 +113,7 @@ instance : has_exists_quantifier' (subformula L m) := ⟨@ex L m⟩
 
 lemma top_eq : @subformula.verum L m n = (⊤) := rfl
 lemma imply_eq : @subformula.imply L m n = (⟶) := rfl
-lemma equal_eq : @subformula.equal L m n = (=') := rfl
+lemma equal_eq [L.has_equal] : @equal L m n _ = (=') := rfl
 lemma neg_eq : @subformula.neg L m n = has_negation.neg := rfl
 lemma fal_eq : @subformula.fal L m n = has_univ_quantifier'.univ := rfl
 lemma ex_eq : @subformula.ex L m n = has_exists_quantifier'.ex := rfl
@@ -120,8 +122,8 @@ lemma ex_def (p : subformula L m (n + 1)) : ∃'p = ∼∀'∼p := rfl
 
 lemma bot_def : (⊥ : subformula L m n) = ∼⊤ := rfl
 
-@[simp] lemma equal.inj' (t₁ u₁ t₂ u₂ : subterm L m n) : (t₁ =' t₂ : subformula L m n) = (u₁ =' u₂) ↔ t₁ = u₁ ∧ t₂ = u₂ :=
-⟨equal.inj, by simp; exact congr_arg2 (=')⟩
+@[simp] lemma equal.inj' [L.has_equal] (t₁ u₁ t₂ u₂ : subterm L m n) : (t₁ =' t₂ : subformula L m n) = (u₁ =' u₂) ↔ t₁ = u₁ ∧ t₂ = u₂ :=
+⟨by simp[←equal_eq, equal]; intros h₁ h₂; exact ⟨h₁, h₂⟩, by simp; exact congr_arg2 (=')⟩
 
 @[simp] lemma imply.inj' (p₁ q₁ p₂ q₂ : subformula L m n) : p₁ ⟶ p₂ = q₁ ⟶ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
 ⟨imply.inj, by simp; exact congr_arg2 (⟶)⟩
@@ -144,33 +146,23 @@ variables {k : ℕ} (r : L.pr k) (v : finitary (subterm L m n) k) (t u : subterm
   (p p₁ p₂ : subformula L m n) (q : subformula L m (n + 1))
 
 @[simp] lemma verum_ne_predicate : ⊤ ≠ relation r v.
-@[simp] lemma verum_ne_equal : ⊤ ≠ (t =' u : subformula L m n).
 @[simp] lemma verum_ne_imply : ⊤ ≠ (p₁ ⟶ p₂).
 @[simp] lemma verum_ne_neg : ⊤ ≠ ∼p.
 @[simp] lemma verum_ne_fal : ⊤ ≠ ∀'q.
 @[simp] lemma predicate_ne_verum : relation r v ≠ ⊤.
-@[simp] lemma predicate_ne_equal : relation r v ≠ (t =' u).
 @[simp] lemma predicate_ne_imply : relation r v ≠ p₁ ⟶ p₂.
 @[simp] lemma predicate_ne_neg : relation r v ≠ ∼p.
 @[simp] lemma predicate_ne_fal : relation r v ≠ ∀'q.
-@[simp] lemma equal_ne_verum : (t =' u) ≠ (⊤ : subformula L m n).
-@[simp] lemma equal_ne_predivate : (t =' u) ≠ relation r v.
-@[simp] lemma equal_ne_imply : (t =' u) ≠ p₁ ⟶ p₂.
-@[simp] lemma equal_ne_neg : (t =' u) ≠ ∼p.
-@[simp] lemma equal_ne_fal : (t =' u) ≠ ∀'q.
 @[simp] lemma imply_ne_verum : p₁ ⟶ p₂ ≠ ⊤.
 @[simp] lemma imply_ne_relation : p₁ ⟶ p₂ ≠ relation r v.
-@[simp] lemma imply_ne_equal : p₁ ⟶ p₂ ≠ (t =' u).
 @[simp] lemma imply_ne_neg : p₁ ⟶ p₂ ≠ ∼p.
 @[simp] lemma imply_ne_fal : p₁ ⟶ p₂ ≠ ∀'q.
 @[simp] lemma neg_ne_verum : ∼p ≠ ⊤.
 @[simp] lemma neg_ne_relation : ∼p ≠ relation r v.
-@[simp] lemma neg_ne_equal : ∼p ≠ (t =' u).
 @[simp] lemma neg_ne_imply : ∼p ≠ p₁ ⟶ p₂.
 @[simp] lemma neg_ne_fal : ∼p ≠ ∀'q.
 @[simp] lemma fal_ne_verum : ∀'q ≠ ⊤.
 @[simp] lemma fal_ne_relation : ∀'q ≠ relation r v.
-@[simp] lemma fal_ne_equal : ∀'q ≠ (t =' u).
 @[simp] lemma fal_ne_imply : ∀'q ≠ p₁ ⟶ p₂.
 @[simp] lemma fal_ne_neg : ∀'q ≠ ∼p.
 
@@ -461,14 +453,11 @@ variables {L} {m m₁ m₂ m₃ n : ℕ}
 @[simp] def complexity : Π {n}, subformula L m n → ℕ
 | n verum          := 0
 | n (relation p v) := 0
-| n (equal t u)    := 0
 | n (imply p q)    := max p.complexity q.complexity + 1
 | n (neg p)        := p.complexity + 1
 | n (fal p)        := p.complexity + 1
 
 @[simp] lemma complexity_top : (⊤ : subformula L m n).complexity = 0 := by refl
-
-@[simp] lemma complexity_equal (t u) : (t =' u : subformula L m n).complexity = 0 := by refl
 
 @[simp] lemma complexity_neg (p : subformula L m n) : (∼p).complexity = p.complexity + 1 := by refl
 
@@ -479,7 +468,6 @@ variables {L} {m m₁ m₂ m₃ n : ℕ}
 def rew' {m₁ m₂} : Π {n}, finitary (subterm L m₂ n) m₁ → subformula L m₁ n → subformula L m₂ n
 | n s verum          := ⊤
 | n s (relation p v) := relation p (λ i, (v i).rew s)
-| n s (equal t u)    := (t.rew s) =' (u.rew s)
 | n s (imply p q)    := p.rew' s ⟶ q.rew' s
 | n s (neg p)        := ∼p.rew' s
 | n s (fal p)        := ∀'p.rew' (subterm.lift ∘ s)
@@ -503,8 +491,8 @@ variables {s}
 @[simp] lemma rew_relation {p} (r : L.pr p) (v) :
   rew s (relation r v) = relation r (subterm.rew s ∘ v) := rfl
 
-@[simp] lemma rew_equal (t u : subterm L m₁ n) :
-  rew s (t =' u) = (t.rew s =' u.rew s) := rfl
+@[simp] lemma rew_equal [L.has_equal] (t u : subterm L m₁ n) :
+  rew s (t =' u) = (t.rew s =' u.rew s) := by simp[←equal_eq, equal, fin.comp_left_concat]
 
 @[simp] lemma rew_fal (p : subformula L m₁ (n + 1)) :
   rew s (∀'p) = ∀'rew (subterm.lift ∘ s) p := rfl
@@ -522,7 +510,6 @@ lemma nested_rew {m₁ m₂ m₃} : ∀ {n} (p : subformula L m₁ n) (s₀ : fi
   rew s₁ (rew s₀ p) = rew (subterm.rew s₁ ∘ s₀) p
 | n verum          s₀ s₁ := by simp[top_eq]
 | n (relation p v) s₀ s₁ := by simp; funext; simp[subterm.nested_rew]
-| n (equal t u)    s₀ s₁ := by simp[equal_eq, subterm.nested_rew]
 | n (imply p q)    s₀ s₁ := by simp[imply_eq, nested_rew p, nested_rew q]
 | n (neg p)        s₀ s₁ := by simp[neg_eq, nested_rew p]
 | n (fal p)        s₀ s₁ := by simp[fal_eq, nested_rew p]; { 
@@ -541,7 +528,6 @@ end rew
 def mlift' {m} : Π {n}, subformula L m n → subformula L (m + 1) n
 | n verum          := ⊤
 | n (relation p v) := relation p (mlift ∘ v)
-| n (equal t u)    := t.mlift =' u.mlift
 | n (imply p q)    := p.mlift' ⟶ q.mlift'
 | n (neg p)        := ∼p.mlift'
 | n (fal p)        := ∀'p.mlift'
@@ -560,8 +546,9 @@ section mlift
 @[simp] lemma mlift_relation {p} (r : L.pr p) (v : finitary (subterm L m n) p) :
   mlift (relation r v) = relation r (subterm.mlift ∘ v) := rfl
 
-@[simp] lemma mlift_equal (t u : subterm L m n) :
-  mlift (t =' u : subformula L m n) = (t.mlift =' u.mlift) := rfl
+@[simp] lemma mlift_equal [L.has_equal] (t u : subterm L m n) :
+  mlift (t =' u : subformula L m n) = (t.mlift =' u.mlift) :=
+by simp[←equal_eq, equal, fin.comp_left_concat]
 
 @[simp] lemma mlift_fal (p : subformula L m (n + 1)) :
   mlift (∀'p) = ∀'mlift p := rfl
@@ -593,9 +580,6 @@ begin
   { cases q; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq];
     case relation : _ _ r₂ v₂
     { rintros rfl rfl, simp, intros h, funext i, exact @subterm.mlift_inj _ _ _ (v₁ i) (v₂ i) (congr_fun h i) } },
-  case equal : n t₁ u₁
-  { induction q; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq],
-    case equal : _ t₂ u₂ { intros ht hu, exact ⟨subterm.mlift_inj ht, subterm.mlift_inj hu⟩ } },
   case imply : _ p₁ p₂ IH₁ IH₂
   { cases q; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq],
       case imply : _ q₁ q₂ { intros h₁ h₂, exact ⟨IH₁ _ h₁, IH₂ _ h₂⟩ } },
@@ -615,14 +599,12 @@ end mlift
 def succ_rec {C : Π n, subformula L m (n + 1) → Sort*}
   (hverum : Π {n : ℕ}, C n ⊤)
   (hrelation : Π {n l : ℕ} (r : L.pr l) (v : fin l → subterm L m (n + 1)), C n (relation r v))
-  (hequal : Π {n : ℕ} (t u : subterm L m (n + 1)), C n (t =' u))
   (himply : Π {n : ℕ} (p q : subformula L m (n + 1)), C n p → C n q → C n (p ⟶ q))
   (hneg : Π {n : ℕ} (p : subformula L m (n + 1)), C n p → C n ∼p)
   (hfal : Π {n : ℕ} (p : subformula L m (n + 1 + 1)), C (n + 1) p → C n (∀'p)) :
   Π {n : ℕ} (p : subformula L m (n + 1)), C n p
 | n verum := hverum
 | n (relation r v) := hrelation r v
-| n (equal t u)    := hequal t u
 | n (imply p q)    := himply p q (succ_rec p) (succ_rec q)
 | n (neg p)        := hneg p (succ_rec p)
 | n (fal p)        := hfal p (succ_rec p)
@@ -631,7 +613,6 @@ using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.compl
 def push' {m} : Π {n}, subformula L m (n + 1) → subformula L (m + 1) n
 | n verum          := ⊤
 | n (relation p v) := relation p (subterm.push ∘ v)
-| n (equal t u)    := t.push =' u.push
 | n (imply p q)    := p.push' ⟶ q.push'
 | n (neg p)        := ∼p.push'
 | n (fal p)        := ∀'p.push'
@@ -653,8 +634,8 @@ lemma push_def (p : subformula L m (n + 1)) : push p = push' p := rfl
 @[simp] lemma push_relation {p} (r : L.pr p) (v : finitary (subterm L m (n + 1)) p) :
   push (relation r v) = relation r (subterm.push ∘ v) := by simp[push_def, push']
 
-@[simp] lemma push_equal (t u : subterm L m (n + 1)) :
-  push (t =' u : subformula L m (n + 1)) = (t.push =' u.push) := by unfold has_eq.eq; simp[push_def, push']; refl
+@[simp] lemma push_equal [L.has_equal] (t u : subterm L m (n + 1)) :
+  push (t =' u : subformula L m (n + 1)) = (t.push =' u.push) := by simp[←equal_eq, equal, fin.comp_left_concat]
 
 @[simp] lemma push_fal (p : subformula L m (n + 1 + 1)) :
   push (∀'p) = ∀'push p := by unfold has_univ_quantifier'.univ; simp[push_def, push']; refl
@@ -670,7 +651,6 @@ end push
 def pull' {m} : Π {n}, subformula L (m + 1) n → subformula L m (n + 1)
 | n verum          := ⊤
 | n (relation p v) := relation p (subterm.pull ∘ v)
-| n (equal t u)    := t.pull =' u.pull
 | n (imply p q)    := p.pull' ⟶ q.pull'
 | n (neg p)        := ∼p.pull'
 | n (fal p)        := ∀'p.pull'
@@ -691,8 +671,8 @@ lemma pull_def (p : subformula L (m + 1) n) : pull p = pull' p := rfl
 @[simp] lemma pull_relation {p} (r : L.pr p) (v : finitary (subterm L (m + 1) n) p) :
   pull (relation r v) = relation r (subterm.pull ∘ v) := by refl
 
-@[simp] lemma pull_equal (t u : subterm L (m + 1) n) :
-  pull (t =' u : subformula L (m + 1) n) = (t.pull =' u.pull) := by refl
+@[simp] lemma pull_equal [L.has_equal] (t u : subterm L (m + 1) n) :
+  pull (t =' u : subformula L (m + 1) n) = (t.pull =' u.pull) := by simp[←equal_eq, equal, fin.comp_left_concat]
 
 @[simp] lemma pull_fal (p : subformula L (m + 1) (n + 1)) :
   pull (∀'p) = ∀'pull p := by refl
@@ -703,7 +683,6 @@ lemma pull_def (p : subformula L (m + 1) n) : pull p = pull' p := rfl
 @[simp] lemma pull_push : ∀ {n} (p : subformula L m (n + 1)), p.push.pull = p
 | n verum          := by simp[top_eq]
 | n (relation p v) := by simp; funext x; simp
-| n (equal t u)    := by simp[equal_eq]
 | n (imply p q)    := by simp[imply_eq]; exact ⟨pull_push p, pull_push q⟩
 | n (neg p)        := by simp[neg_eq]; exact pull_push p
 | n (fal p)        := by simp[fal_eq]; exact pull_push p
@@ -712,7 +691,6 @@ using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.compl
 @[simp] lemma push_pull : ∀ {n} (p : subformula L (m + 1) n), p.pull.push = p
 | n verum          := by simp[top_eq]
 | n (relation p v) := by simp; funext x; simp
-| n (equal t u)    := by simp[equal_eq]
 | n (imply p q)    := by simp[imply_eq]; exact ⟨push_pull p, push_pull q⟩
 | n (neg p)        := by simp[neg_eq]; exact push_pull p
 | n (fal p)        := by simp[fal_eq]; exact push_pull p
@@ -727,7 +705,6 @@ lemma push_rew_pull : ∀ {n} (p : subformula L (m₁ + 1) n) (s : fin m₁ → 
   (rew s p.pull).push = rew (&0 *> subterm.push ∘ s) p
 | n verum          s := by simp[top_eq]
 | n (relation p v) s := by simp; funext x; simp[subterm.push_rew_pull]
-| n (equal t u)    s := by simp[equal_eq, subterm.push_rew_pull]
 | n (imply p q)    s := by simp[imply_eq]; exact ⟨push_rew_pull p s, push_rew_pull q s⟩
 | n (neg p)        s := by simp[neg_eq]; exact push_rew_pull p s
 | n (fal p)        s := by simp[fal_eq]; {
@@ -756,8 +733,8 @@ variables (u : subterm L m n)
 @[simp] lemma msubst_relation {p} (r : L.pr p) (v) :
   msubst u (relation r v) = relation r (subterm.msubst u ∘ v) := by simp[msubst, subterm.msubst]
 
-@[simp] lemma msubst_equal (t₁ t₂ : subterm L (m + 1) n) :
-  msubst u (t₁ =' t₂) = (u.msubst t₁ =' u.msubst t₂) := by simp[msubst, subterm.msubst]
+@[simp] lemma msubst_equal [L.has_equal] (t₁ t₂ : subterm L (m + 1) n) :
+  msubst u (t₁ =' t₂) = (u.msubst t₁ =' u.msubst t₂) := by simp[←equal_eq, equal, fin.comp_left_concat]
 
 @[simp] lemma msubst_fal (p : subformula L (m + 1) (n + 1)) :
   msubst u (∀'p) = ∀'msubst u.lift p :=
@@ -787,7 +764,7 @@ variables (u : subterm L m n)
 @[simp] lemma subst_relation {p} (r : L.pr p) (v) :
   subst u (relation r v) = relation r (subterm.subst u ∘ v) := by simp[subst, subterm.subst, subterm.msubst]
 
-@[simp] lemma subst_equal (t₁ t₂ : subterm L m (n + 1)) :
+@[simp] lemma subst_equal [L.has_equal] (t₁ t₂ : subterm L m (n + 1)) :
   subst u (t₁ =' t₂) = (u.subst t₁ =' u.subst t₂) := by simp[subst, subterm.subst, subterm.msubst]
 
 @[simp] lemma subst_fal (p : subformula L m n.succ.succ) :
@@ -801,7 +778,6 @@ lemma mlift_subst : ∀ {m n} (u : subterm L m n) (p : subformula L m (n + 1)),
   (subst u p).mlift = subst u.mlift p.mlift
 | m n u verum          := by simp[top_eq]
 | m n u (relation p v) := by simp; funext x; simp[subterm.mlift_subst]
-| m n u (equal t₁ t₂)  := by simp[equal_eq]
 | m n u (imply p q)    := by simp[imply_eq]; exact ⟨mlift_subst u p, mlift_subst u q⟩
 | m n u (neg p)        := by simp[neg_eq]; exact mlift_subst u p
 | m n u (fal p)        := by simp[fal_eq, subterm.mlift_lift]; exact mlift_subst u.lift p
@@ -830,16 +806,15 @@ def substs : Π {m n}, (fin n → subterm L m 0) → subterm L m n → subterm L
   substs w (relation r v) = relation r (subterm.substs w ∘ v) :=
 by induction n with n IH generalizing m; simp[substs, *]; funext i; refl
 
-@[simp] lemma substs_equal (w : fin n → subterm L m 0) (t u : subterm L m n) :
+@[simp] lemma substs_equal [L.has_equal] (w : fin n → subterm L m 0) (t u : subterm L m n) :
   substs w (t =' u) = (subterm.substs w t =' subterm.substs w u) :=
-by induction n with n IH generalizing m; simp[substs, *]; refine ⟨rfl, rfl⟩
+by simp[←equal_eq, equal, fin.comp_left_concat]
 
 end subst
 
 lemma pull_msubst_push_mlift : ∀ {n} (p : subformula L m (n + 1)), (pull $ msubst &0 $ push $ mlift p) = p
 | n verum          := by simp[top_eq]
 | n (relation r v) := by simp; funext i; exact subterm.pull_msubst_push_mlift _
-| n (equal t u)    := by simp[equal_eq]
 | n (imply p q)    := by simp[imply_eq]; exact ⟨pull_msubst_push_mlift p, pull_msubst_push_mlift q⟩
 | n (neg p)        := by simp[neg_eq]; exact pull_msubst_push_mlift p
 | n (fal p)        := by simp[fal_eq]; exact pull_msubst_push_mlift p
@@ -859,7 +834,7 @@ section dummy
 @[simp] lemma dummy_relation {p} (r : L.pr p) (v : finitary (subterm L m n) p) :
   dummy (relation r v) = relation r (subterm.dummy ∘ v) := by simp[dummy, subterm.dummy]
 
-@[simp] lemma dummy_equal (t u : subterm L m n) :
+@[simp] lemma dummy_equal [L.has_equal] (t u : subterm L m n) :
   dummy (t =' u : subformula L m n) = (t.dummy =' u.dummy) := by simp[dummy, subterm.dummy]
 
 @[simp] lemma dummy_fal (p : subformula L m (n + 1)) : dummy (∀'p) = ∀'(dummy p) := by simp[dummy]
@@ -879,7 +854,6 @@ end dummy
 def qr {m} : Π {n}, subformula L m n → ℕ
 | n verum          := 0
 | n (relation r v) := 0
-| n (equal t u)    := 0
 | n (imply p q)    := max p.qr q.qr
 | n (neg p)        := p.qr
 | n (fal p)        := p.qr + 1
@@ -896,7 +870,7 @@ variables {m n}
 
 @[simp] lemma qr_relation {p} (r : L.pr p) (v : finitary (subterm L m n) p) : (relation r v).qr = 0 := rfl
 
-@[simp] lemma qr_equal (t u : subterm L m n) : (t =' u : subformula L m n).qr = 0 := rfl
+@[simp] lemma qr_equal [L.has_equal] (t u : subterm L m n) : (t =' u : subformula L m n).qr = 0 := rfl
 
 @[simp] lemma qr_imply (p q : subformula L m n) : (p ⟶ q : subformula L m n).qr = max p.qr q.qr := rfl
 
@@ -915,7 +889,6 @@ variables {m n}
 @[simp] lemma qr_rew {m₁ m₂} : Π {n} (p : subformula L m₁ n) (s : fin m₁ → subterm L m₂ n), (rew s p).qr = p.qr
 | n verum          := by simp[top_eq]
 | n (relation p v) := by simp
-| n (equal t u)    := by simp[equal_eq]
 | n (imply p q)    := by simp[imply_eq, qr_rew p, qr_rew q]
 | n (neg p)        := by simp[neg_eq, qr_rew p]
 | n (fal p)        := by simp[fal_eq, qr_rew p]
@@ -926,7 +899,6 @@ by simp[msubst]
 @[simp] def qr_push {m} : Π {n} (p : subformula L m (n + 1)), p.push.qr = p.qr
 | n verum          := by simp[top_eq]
 | n (relation p v) := by simp
-| n (equal t u)    := by simp[equal_eq]
 | n (imply p q)    := by simp[imply_eq, qr_push p, qr_push q]
 | n (neg p)        := by simp[neg_eq, qr_push p]
 | n (fal p)        := by simp[fal_eq, qr_push p]
@@ -935,7 +907,6 @@ using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.compl
 @[simp] def qr_pull {m} : Π {n} (p : subformula L (m + 1) n), p.pull.qr = p.qr
 | n verum          := by simp[top_eq]
 | n (relation p v) := by simp
-| n (equal t u)    := by simp[equal_eq]
 | n (imply p q)    := by simp[imply_eq, qr_pull p, qr_pull q]
 | n (neg p)        := by simp[neg_eq, qr_pull p]
 | n (fal p)        := by simp[fal_eq, qr_pull p]
@@ -943,7 +914,6 @@ using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.compl
 @[simp] def qr_mlift {m} : Π {n} (p : subformula L m n), p.mlift.qr = p.qr
 | n verum          := by simp[top_eq]
 | n (relation p v) := by simp
-| n (equal t u)    := by simp[equal_eq]
 | n (imply p q)    := by simp[imply_eq, qr_mlift p, qr_mlift q]
 | n (neg p)        := by simp[neg_eq, qr_mlift p]
 | n (fal p)        := by simp[fal_eq, qr_mlift p]
@@ -955,7 +925,7 @@ by simp[subst]
 
 @[simp] lemma relation_open {k} (r : L.pr k) (v) : (relation r v : subformula L m n).is_open := by simp[is_open]
 
-@[simp] lemma equal_open {t u : subterm L m n} : (t =' u : subformula L m n).is_open := by simp[is_open] 
+@[simp] lemma equal_open [L.has_equal] {t u : subterm L m n} : (t =' u : subformula L m n).is_open := by simp[is_open] 
 
 @[simp] lemma bot_open : (⊥ : subformula L m n).is_open := by simp[is_open]
 
@@ -1006,13 +976,11 @@ by induction n with n IH generalizing m; simp[substs, *]
 def open_rec {C : Π p : subformula L m n, p.is_open → Sort*}
   (hverum : C ⊤ top_open)
   (hrel : Π (k) (r : L.pr k) (v : fin k → subterm L m n), C (subformula.relation r v) (relation_open r v))
-  (hequal : Π (t u : subterm L m n), C (t =' u) equal_open)
   (himply : Π (p q : subformula L m n) (hp hq), C p hp → C q hq → C (p ⟶ q) (by simp[hp, hq]))
   (hneg : Π (p : subformula L m n) (hp), C p hp → C (∼p) (by simp[hp])) :
   Π (p : subformula L m n) (h : p.is_open), C p h
 | ⊤                         _ := hverum
 | (subformula.relation r v) _ := hrel _ r v
-| (t =' u)                  _ := hequal t u
 | (p ⟶ q)                   h := have p.is_open ∧ q.is_open, by simpa using h,
     himply p q this.1 this.2 (open_rec p this.1) (open_rec q this.2)
 | (∼p)                      h := have p.is_open, by simpa using h, hneg p this (open_rec p this)
@@ -1021,33 +989,29 @@ using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.1.compl
 def open_rec_on (p : subformula L m n) (h : p.is_open) {C : Π p : subformula L m n, p.is_open → Sort*}
   (hverum : C ⊤ top_open)
   (hrel : Π (k) (r : L.pr k) (v : fin k → subterm L m n), C (subformula.relation r v) (relation_open r v))
-  (hequal : Π (t u : subterm L m n), C (t =' u) equal_open)
   (himply : Π (p q : subformula L m n) (hp hq), C p hp → C q hq → C (p ⟶ q) (by simp[hp, hq]))
   (hneg : Π (p : subformula L m n) (hp), C p hp → C (∼p) (by simp[hp])) :
-  C p h := open_rec hverum hrel hequal himply hneg p h
+  C p h := open_rec hverum hrel himply hneg p h
 
 section open_rec
 variables {C : Π p : subformula L m n, p.is_open → Sort*}
 
-@[simp] lemma rec_app_top {hverum hrel hequal himply hneg h} : @open_rec L m n C hverum hrel hequal himply hneg ⊤ h = hverum :=
+@[simp] lemma rec_app_top {hverum hrel himply hneg h} : @open_rec L m n C hverum hrel himply hneg ⊤ h = hverum :=
 by simp[open_rec]
 
-@[simp] lemma rec_app_rel {hverum hrel hequal himply hneg} {k} (r : L.pr k) (v : fin k → subterm L m n) {h} :
-  @open_rec L m n C hverum hrel hequal himply hneg (subformula.relation r v) h = hrel k r v := by simp[open_rec]
+@[simp] lemma rec_app_rel {hverum hrel himply hneg} {k} (r : L.pr k) (v : fin k → subterm L m n) {h} :
+  @open_rec L m n C hverum hrel himply hneg (subformula.relation r v) h = hrel k r v := by simp[open_rec]
 
-@[simp] lemma rec_app_equal {hverum hrel hequal himply hneg} (t u : subterm L m n) {h} :
-  @open_rec L m n C hverum hrel hequal himply hneg (t =' u) h = hequal t u := by simp[open_rec]
-
-@[simp] lemma rec_app_imply {hverum hrel hequal himply hneg} (p q : subformula L m n) {h} :
-  @open_rec L m n C hverum hrel hequal himply hneg (p ⟶ q) h =
+@[simp] lemma rec_app_imply {hverum hrel himply hneg} (p q : subformula L m n) {h} :
+  @open_rec L m n C hverum hrel himply hneg (p ⟶ q) h =
   himply p q (by simp at h; exact h.1) (by simp at h; exact h.2)
-    (open_rec hverum hrel hequal himply hneg p (by simp at h; exact h.1))
-    (open_rec hverum hrel hequal himply hneg q (by simp at h; exact h.2)) :=
+    (open_rec hverum hrel himply hneg p (by simp at h; exact h.1))
+    (open_rec hverum hrel himply hneg q (by simp at h; exact h.2)) :=
 by simp[open_rec]
 
-@[simp] lemma rec_app_neg {hverum hrel hequal himply hneg} (p : subformula L m n) {h} :
-  @open_rec L m n C hverum hrel hequal himply hneg (∼p) h =
-  hneg p (by simpa using h) (open_rec hverum hrel hequal himply hneg p (by simpa using h)) :=
+@[simp] lemma rec_app_neg {hverum hrel himply hneg} (p : subformula L m n) {h} :
+  @open_rec L m n C hverum hrel himply hneg (∼p) h =
+  hneg p (by simpa using h) (open_rec hverum hrel himply hneg p (by simpa using h)) :=
 by simp[open_rec]
 
 end open_rec
@@ -1087,11 +1051,5 @@ by simp[mlift]
 def is_open : Prop := ∀ p ∈ T, subformula.is_open p
 
 end preTheory
-
-private def s : subformula language.empty 1 0 := (&0 =' &0) ⟶ ∀'((#0 =' &0) ⟶ ∀'((#0 =' #1) ⟶ (#0 =' &0)))
-
-#eval to_string s
-#eval to_string s.mlift
-#eval to_string s.pull.mlift.push
 
 end fol

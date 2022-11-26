@@ -13,11 +13,14 @@ localized "prefix (name := push) `𝗠`:max := fol.subformula.push" in aclogic
 localized "prefix (name := pull) `𝗡`:max := fol.subformula.pull" in aclogic
 localized "prefix (name := dummy) `𝗗`:max := fol.subformula.dummy" in aclogic
 
-def eq_axiom4 {m k} (f : L.fn k) : subformula L m 0 :=
+def eq_axiom [L.has_equal] : subformula L m 0 :=
+∀'(#0 =' #0) ⊓ ∀' ∀'((#0 =' #1) ⟶ (#1 =' #0)) ⊓ ∀' ∀' ∀'((#0 =' #1) ⟶ (#1 =' #2) ⟶ (#0 =' #2))
+
+def eq_axiom_schema_funext [L.has_equal] {m k} (f : L.fn k) : subformula L m 0 :=
 ∀'*((⋀ i, #(fin.cast_add k i) =' #(fin.nat_add k i)) ⟶
   (function f (var ∘ fin.cast_add k) =' function f (var ∘ fin.nat_add k)) : subformula L m (k + k))
 
-def eq_axiom5 {m k} (r : L.pr k) : subformula L m 0 :=
+def eq_axiom_schema_relext [L.has_equal] {m k} (r : L.pr k) : subformula L m 0 :=
 ∀'*((⋀ i : fin k, #(fin.cast_add k i) =' #(fin.nat_add k i)) ⟶
   (relation r (var ∘ fin.cast_add k) ⟷ relation r (var ∘ fin.nat_add k)))
 
@@ -32,11 +35,6 @@ inductive proof : Π {m}, preTheory L m → subformula L m 0 → Type u
 | specialize   {m} {T : preTheory L m} : ∀ {p} {t}, proof T (∀'p ⟶ subst t p)
 | dummy_univ   {m} {T : preTheory L m} : ∀ {p q}, proof T (∀'(dummy p ⟶ q) ⟶ p ⟶ ∀'q)
 | non_empty    {m} {T : preTheory L m} : proof T (∃'⊤)
-| eq_refl      {m} {T : preTheory L m} : proof T ∀'(#0 =' #0)
-| eq_symm      {m} {T : preTheory L m} : proof T ∀' ∀'((#0 =' #1) ⟶ (#1 =' #0))
-| eq_trans     {m} {T : preTheory L m} : proof T ∀' ∀' ∀'((#0 =' #1) ⟶ (#1 =' #2) ⟶ (#0 =' #2))
-| function_ext {m} {T : preTheory L m} : ∀ {n} {f : L.fn n}, proof T (eq_axiom4 f)
-| relation_ext {m} {T : preTheory L m} : ∀ {n} {r : L.pr n}, proof T (eq_axiom5 r)
 
 instance (m : ℕ) : has_Longarrow (formula L m) := ⟨proof⟩
 
@@ -75,12 +73,7 @@ begin
   { intros U ss, exact contra },
   { intros U ss, exact specialize },
   { intros U ss, exact dummy_univ },
-  { intros U ss, exact non_empty },
-  { intros U ss, exact eq_refl },
-  { intros U ss, exact eq_symm },
-  { intros U ss, exact eq_trans },
-  { intros U ss, exact function_ext },
-  { intros U ss, exact relation_ext }
+  { intros U ss, exact non_empty }
 end
 
 end proof
@@ -116,16 +109,6 @@ variables (T)
 
 @[simp] lemma non_empty : T ⊢ ∃'⊤ := ⟨proof.non_empty⟩
 
-@[simp] lemma eq_refl : T ⊢ ∀'(#0 =' #0) := ⟨proof.eq_refl⟩
-
-@[simp] lemma eq_symm : T ⊢ ∀' ∀'((#0 =' #1) ⟶ (#1 =' #0)) := ⟨proof.eq_symm⟩
-
-@[simp] lemma eq_trans : T ⊢ ∀' ∀' ∀'((#0 =' #1) ⟶ (#1 =' #2) ⟶ (#0 =' #2)) := ⟨proof.eq_trans⟩
-
-@[simp] lemma function_ext {n} (f : L.fn n) : T ⊢ eq_axiom4 f := ⟨proof.function_ext⟩
-
-@[simp] lemma relation_ext {n} (r : L.pr n) : T ⊢ eq_axiom5 r := ⟨proof.relation_ext⟩
-
 variables {T U}
 
 @[elab_as_eliminator]
@@ -140,12 +123,7 @@ theorem rec_on {C : Π {m} (T : preTheory L m) (p : subformula L m 0), T ⊢ p �
   (contra : ∀ {m} {T : preTheory L m} {p q}, C T ((∼p ⟶ ∼q) ⟶ q ⟶ p) (axiomatic_classical_logic'.contraposition p q)) 
   (specialize : ∀ {m} {T : preTheory L m} {p} {t}, C T (∀'p ⟶ subst t p) (specialize T p t))
   (dummy_univ : ∀ {m} {T : preTheory L m} {p q}, C T (∀'(dummy p ⟶ q) ⟶ p ⟶ ∀'q) (dummy_univ T p q))
-  (non_empty : ∀ {m} {T : preTheory L m}, C T (∃'⊤) (non_empty T))
-  (eq_refl : ∀ {m} {T : preTheory L m}, C T (∀'(#0 =' #0)) (eq_refl T))
-  (eq_symm : ∀ {m} {T : preTheory L m}, C T (∀' ∀'((#0 =' #1) ⟶ (#1 =' #0))) (eq_symm T))
-  (eq_trans : ∀ {m} {T : preTheory L m}, C T (∀' ∀' ∀'((#0 =' #1) ⟶ (#1 =' #2) ⟶ (#0 =' #2))) (eq_trans T))
-  (function_ext : ∀ {m} {T : preTheory L m} {p} {f : L.fn p}, C T (eq_axiom4 f) (function_ext T f))
-  (relation_ext : ∀ {m} {T : preTheory L m} {p} {r : L.pr p}, C T (eq_axiom5 r) (relation_ext T r)) :
+  (non_empty : ∀ {m} {T : preTheory L m}, C T (∃'⊤) (non_empty T)) :
   C T p b :=
 begin
   rcases b with ⟨b⟩,
@@ -159,12 +137,7 @@ begin
   case contra : m T p q { exact contra },
   case specialize : m T p t { exact specialize },
   case dummy_univ : m T p q { exact dummy_univ },
-  case non_empty { exact non_empty },
-  case eq_refl : { exact eq_refl },
-  case eq_symm : { exact eq_symm },
-  case eq_trans : { exact eq_trans },
-  case function_ext : T p f { exact function_ext },
-  case relation_ext : T p f { exact relation_ext }
+  case non_empty { exact non_empty }
 end
 
 noncomputable def provable.proof {T : preTheory L m} {p : formula L m} (b : T ⊢ p) : T ⟹ p := nonempty.some b
@@ -175,11 +148,6 @@ begin
   { intros m T p b IH U hyp, refine generalize (IH $ set.image_subset _ hyp) },
   { intros m T p q hyp_pq hyp_p IH₁ IH₂ U hyp, exact (IH₁ hyp) ⨀ (IH₂ hyp) },
   { intros m T p hyp_p U hyp, exact by_axiom (hyp hyp_p) },
-  { intros, simp },
-  { intros, simp },
-  { intros, simp },
-  { intros, simp },
-  { intros, simp },
   { intros, simp },
   { intros, simp },
   { intros, simp },
@@ -207,12 +175,7 @@ begin
   { rintros m T p q U r rfl, simp },
   { rintros m T p t U q rfl, refine hyp_right (specialize _ p t) _ },
   { rintros m T p q U r rfl, refine hyp_right (dummy_univ _ p q) _ },
-  { intros, simp },
-  { intros, simp },
-  { intros, simp },
-  { intros, simp },
-  { rintros m T _ f U p rfl, refine hyp_right (function_ext _ f) _ },
-  { rintros m T _ f U p rfl, refine hyp_right (relation_ext _ f) _ }
+  { intros, simp }
 end
 
 instance : axiomatic_classical_logic (formula L m) :=
@@ -262,12 +225,7 @@ begin
   { rintros m T p q, refine ⟨[], by simp, by simp[empty_axiom]⟩ },
   { rintros m T p t, refine ⟨[], by simp, by simp[empty_axiom]⟩ },
   { rintros m T p q, refine ⟨[], by simp, by simp[empty_axiom]⟩ },
-  { rintros m T, refine ⟨[], by simp, by simp[empty_axiom]⟩ },
-  { rintros m T, refine ⟨[], by simp, by simp[empty_axiom]⟩ },
-  { rintros m T, refine ⟨[], by simp, by simp[empty_axiom]⟩ },
-  { rintros m T, refine ⟨[], by simp, by simp[empty_axiom]⟩ },
-  { rintros m T p f, refine ⟨[], by simp, by simp[empty_axiom]⟩ },
-  { rintros m T p r, refine ⟨[], by simp, by simp[empty_axiom]⟩ },
+  { rintros m T, refine ⟨[], by simp, by simp[empty_axiom]⟩ }
 end
 
 instance : has_finite_character (formula L m) :=
@@ -530,71 +488,6 @@ end
 
 lemma exists_of_substs {p : subformula L m n} (w) (h : T ⊢ substs w p) : T ⊢ ∃'*p :=
 exists_substs p w ⨀ h
-
-@[refl, simp] lemma eq_refl' (t : subterm L m 0) : T ⊢ t =' t :=
-by simpa using eq_refl T ⊚ t
-
-@[simp] lemma eq_symm' (t u : subterm L m 0) : T ⊢ (t =' u) ⟶ (u =' t) :=
-begin
-  have : T ⊢ ∀'(_ ⟶ _), by simpa using eq_symm T ⊚ u,
-  have : T ⊢ _ ⟶ _, by simpa using this ⊚ t, simp at this,
-  simp only [show (0 : fin (0 + 1 + 1)) = (fin.last 0).cast_succ, by refl,
-             show (1 : fin (0 + 1 + 1)) = fin.last 1, by refl,
-             subst_var_cast_succ,
-             subst_var_last,
-             subst_mlift,
-             subst_zero,
-             subst_lift_lift] at this,
-  assumption
-end
-
-@[symm] lemma equal_symm {t u : subterm L m 0} : T ⊢ t =' u → T ⊢ u =' t :=
-λ h, eq_symm' t u ⨀ h
-
-@[simp] lemma eq_trans' (t₁ t₂ t₃: subterm L m 0) : T ⊢ (t₁ =' t₂) ⟶ (t₂ =' t₃) ⟶ (t₁ =' t₃) :=
-begin
-  have : T ⊢ ∀' ∀'(_ ⟶ _ ⟶ _), by simpa using eq_trans T ⊚ t₃,
-  have : T ⊢ ∀'(_ ⟶ _ ⟶ _), by simpa using this ⊚ t₂,
-  have : T ⊢ _ ⟶ _ ⟶ _, by simpa using this ⊚ t₁, simp at this,
-  simp only [show (0 : fin (0 + 1 + 1 + 1)) = (fin.last 0).cast_succ.cast_succ, by refl,
-             show (2 : fin (0 + 1 + 1 + 1)) = fin.last _, by refl] at this,
-  simp only [show (1 : fin (0 + 1 + 1 + 1)) = (fin.last 1).cast_succ, by refl,
-             subst_var_cast_succ,
-             subst_var_last,
-             subst_mlift,
-             subst_zero,
-             subst_lift_lift] at this,
-  exact this
-end
-
-@[trans] lemma equal_trans (t₁ t₂ t₃: subterm L m 0) : T ⊢ t₁ =' t₂ → T ⊢ t₂ =' t₃ → T ⊢ t₁ =' t₃ :=
-λ h₁ h₂, eq_trans' t₁ t₂ t₃ ⨀ h₁ ⨀ h₂
-
-@[simp] lemma function_ext' {k} (f : L.fn k) (v w : fin k → subterm L m 0) :
-  T ⊢ (⋀ i, v i =' w i) ⟶ (function f v =' function f w) :=
-begin
-  let x : fin (k + k) → subterm L m 0 := @fin.add_cases k k (λ _, subterm L m 0) v w,
-  have : T ⊢ ∀'*((⋀ i, #(fin.cast_add k i) =' #(fin.nat_add k i)) ⟶
-    (function f (var ∘ fin.cast_add k) =' function f (var ∘ fin.nat_add k))), from function_ext T f,
-  simpa[x, (∘)] using foralls_substs this x
-end
-
-lemma eq_function_of_equal {k} (f : L.fn k) {v w : fin k → subterm L m 0}
-  (h : ∀ i, T ⊢ v i =' w i) : T ⊢ function f v =' function f w :=
-function_ext' f v w ⨀ by simpa using h
-
-@[simp] lemma relation_ext' {k} (r : L.pr k) (v w : fin k → subterm L m 0) :
-  T ⊢ (⋀ i, v i =' w i) ⟶ (relation r v ⟷ relation r w) :=
-begin
-  let x : fin (k + k) → subterm L m 0 := @fin.add_cases k k (λ _, subterm L m 0) v w,
-  have : T ⊢ ∀'*((⋀ i, #(fin.cast_add k i) =' #(fin.nat_add k i)) ⟶
-    (relation r (var ∘ fin.cast_add k) ⟷ relation r (var ∘ fin.nat_add k))), from relation_ext T r,
-  simpa[x, (∘)] using foralls_substs this x
-end
-
-lemma equiv_relation_of_equal {k} (r : L.pr k) {v w : fin k → subterm L m 0}
-  (h : ∀ i, T ⊢ v i =' w i) : T ⊢ relation r v ⟷ relation r w :=
-relation_ext' r v w ⨀ by simpa using h
 
 end equal
 

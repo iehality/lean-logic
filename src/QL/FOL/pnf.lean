@@ -385,7 +385,6 @@ variables {L m n} (T : preTheory L m)
 @[simp] def to_pnf : Π {m n}, subformula L m n → pnf L m n
 | m n verum          := openformula ⊤ (by simp)
 | m n (relation r v) := openformula (relation r v) (by simp)
-| m n (equal t u)    := openformula (t =' u) (by simp)
 | m n (imply p q)    := (to_pnf p).imply (to_pnf q)
 | m n (neg p)        := (to_pnf p).neg
 | m n (fal p)        := ∀'pnf.pull (to_pnf (𝗠 p))
@@ -394,9 +393,6 @@ using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.com
 def normalize (p : subformula L m n) : subformula L m n := p.to_pnf.to_formula
 
 @[simp] lemma to_pnf_top : to_pnf (⊤ : subformula L m n) = openformula ⊤ (by simp) := by unfold has_top.top; simp; refl
-
-@[simp] lemma to_pnf_equal (t u) : to_pnf (t =' u : subformula L m n) = openformula (t =' u) (by simp) :=
-by unfold has_eq.eq; simp; refl
 
 @[simp] lemma to_pnf_imply (p q : subformula L m n) : to_pnf (p ⟶ q) = (to_pnf p).imply (to_pnf q) :=
 by unfold has_arrow.arrow; simp; refl
@@ -415,7 +411,6 @@ open pnf subformula axiomatic_classical_logic' axiomatic_classical_logic provabl
 lemma equiv_normalize : ∀ {m} (T : preTheory L m) (p), T ⊢ normalize p ⟷ p
 | m T verum          := by simp[top_eq, normalize]
 | m T (relation r v) := by simp[normalize]
-| m T (equal t u)    := by simp[equal_eq, normalize]
 | m T (imply p q)    := by {
     simp[imply_eq, normalize],
     have : T ⊢ (p.to_pnf.imply q.to_pnf).to_formula ⟷ (p.normalize ⟶ q.normalize),
@@ -431,13 +426,6 @@ lemma equiv_normalize : ∀ {m} (T : preTheory L m) (p), T ⊢ normalize p ⟷ p
     exact equiv_forall_of_equiv (by simpa using this) }
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.complexity)⟩]}
 
-end 
-
-private def s : subformula language.empty 1 0 := (&0 =' &0) ⟶ ∀'((#0 =' &0) ⊓ ∃'(#1 =' #2) ⊔ ∀' ∃' ((#0 =' #1) ⟷ (#0 =' &0)))
-
-#eval to_string s
-#eval to_string s.to_pnf
-#eval to_string s.to_pnf.rank
-#eval to_string s.normalize
+end
 
 end fol

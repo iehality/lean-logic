@@ -60,7 +60,6 @@ variables {m₁ m₂ : ℕ} {n} (me : fin m → S) (e : fin n → S)
 @[simp] def val' (me : fin m → S) : ∀ {n} (e : fin n → S), subformula L m n → Prop
 | n _ verum          := true
 | n e (relation p v) := S.pr p (subterm.val S me e ∘ v)
-| n e (equal t u)    := t.val S me e = u.val S me e
 | n e (imply p q)    := p.val' e → q.val' e
 | n e (neg p)        := ¬(p.val' e)
 | n e (fal p)        := ∀ x : S.dom, (p.val' (x *> e))
@@ -77,16 +76,12 @@ variables {m₁ m₂ : ℕ} {n} (me : fin m → S) (e : fin n → S)
 @[simp] lemma val_relation {p} (r : L.pr p) (v) :
   val S me e (relation r v) ↔ S.pr r (subterm.val S me e ∘ v) :=  by simp[val]; refl
 
-@[simp] lemma val_equal (t u : subterm L m n) :
-  val S me e (t =' u) ↔ (t.val S me e = u.val S me e) := by simp[val]; refl
-
 @[simp] lemma val_fal (p : subformula L m (n + 1)) :
   val S me e (∀'p) ↔ ∀ x : S, val S me (x *> e) p := by simp[val]; refl
 
 lemma val_rew (me : fin m₂ → S) : ∀ {n} (e : fin n → S) (s : finitary (subterm L m₂ n) m₁) (p : subformula L m₁ n),
   val S me e (rew s p) ↔ val S (subterm.val S me e ∘ s) e p
 | n e s (relation r v) := by simp[subterm.val_rew]; refine iff_of_eq (congr_arg _ (by ext x; simp[subterm.val_rew]))
-| n e s (equal t u)    := by simp[equal_eq, subterm.val_rew]  
 | n e s verum          := by simp[top_eq]
 | n e s (imply p q)    := by simp[imply_eq, val_rew _ _ p, val_rew _ _ q]
 | n e s (neg p)        := by simp[neg_eq, val_rew _ _ p]
@@ -104,7 +99,6 @@ by { simp[mlift_eq_rew, val_rew],
 @[simp] lemma val_push (x : S) : ∀ {n} (e : fin n → S) (p : subformula L m (n + 1)),
   val S (x *> me) e p.push ↔ val S me (e <* x) p
 | n e (relation r v) := by simp; refine iff_of_eq (congr_arg _ $ funext $ by simp)
-| n e (equal t u)    := by simp[equal_eq]
 | n e verum          := by simp[top_eq]
 | n e (imply p q)    := by simp[imply_eq, val_push _ p, val_push _ q]
 | n e (neg p)        := by simp[neg_eq, val_push _ p]
@@ -115,7 +109,6 @@ using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.com
 @[simp] lemma val_pull (x : S) : ∀ {n} (e : fin n → S) (p : subformula L (m + 1) n),
   val S me (e <* x) p.pull ↔ val S (x *> me) e p
 | n e (relation r v) := by simp; refine iff_of_eq (congr_arg _ $ funext $ by simp)
-| n e (equal t u)    := by simp[equal_eq]
 | n e verum          := by simp[top_eq]
 | n e (imply p q)    := by simp[imply_eq, val_pull _ p, val_pull _ q]
 | n e (neg p)        := by simp[neg_eq, val_pull _ p]
@@ -166,6 +159,9 @@ end
 
 end subformula
 
+class Structure.proper_equal [L.has_equal] {me e} (t u : subterm L m n)
+(val_eq : subformula.val S me e (t =' u) ↔ (t.val S me e = u.val S me e))
+
 namespace formula
 variables (S) {me : fin m → S}
 
@@ -177,9 +173,6 @@ variables {S} {p q : formula L m}
 
 @[simp] lemma models_relation {k} {r : L.pr k} {v} :
   S ⊧[me] relation r v ↔ S.pr r (subterm.val S me fin.nil ∘ v) := by simp[val]
-
-@[simp] lemma models_equal {t u : term L m} :
-  S ⊧[me] (t =' u) ↔ t.val S me fin.nil = u.val S me fin.nil := by simp[val]
 
 @[simp] lemma models_fal {p : subformula L m 1} :
   S ⊧[me] (∀'p : subformula _ _ _) ↔ ∀ x, S ⊧[x *> me] p.push :=
@@ -244,10 +237,6 @@ variables {S} {p q : sentence L}
 @[simp] lemma models_relation {k} (r : L.pr k) (v : fin k → subterm L 0 0) :
   S ⊧ (relation r v) ↔ S.pr r (subterm.val S fin.nil fin.nil ∘ v) := by simp[sentence_models_def]
 
-@[simp] lemma models_equal (t u : subterm L 0 0) :
-  S ⊧ (t =' u : sentence L) ↔ subterm.val S fin.nil fin.nil t = subterm.val S fin.nil fin.nil u :=
-by simp[sentence_models_def]
-
 @[simp] lemma models_imply : S ⊧ p ⟶ q ↔ (S ⊧ p → S ⊧ q) := by simp[sentence_models_def]
 
 @[simp] lemma models_neg : S ⊧ ∼p ↔ ¬S ⊧ p := by simp[sentence_models_def]
@@ -301,12 +290,7 @@ begin
   { intros m T p q S hS me, simp, intros h₁, contrapose, exact h₁ },
   { intros m T p t S hS me, simp, intros h, exact h _ },
   { intros m T p q S hS me, simp, intros h₁ h₂ x, exact h₁ x h₂ },
-  { intros m T S hS me, simp },
-  { intros m T S hS me, simp },
-  { intros m T S hS me, simp, intros x₁ x₂, exact eq.symm },
-  { intros m T S hS me, simp, intros x₁ x₂ x₃, exact eq.trans },
-  { intros m T k f S hS me, simp[eq_axiom4], intros v h, exact congr_arg _ (funext h) },
-  { intros m T k r S hS me, simp[eq_axiom5], intros v h, exact iff_of_eq (congr_arg _ (funext h)) }
+  { intros m T S hS me, simp }
 end
 
 instance : logic.sound (formula L m) (Structure L) :=
@@ -344,7 +328,6 @@ lemma val_iff_of_surjective (surj : function.surjective F) (me : fin m → S₁)
   subformula.val S₁ me e p ↔ subformula.val S₂ (F ∘ me) (F ∘ e) (of_lhom τ p)
 | n e verum          := by simp[top_eq]
 | n e (relation r v) := by simp[map_pr F]; refine (iff_of_eq $ congr_arg _ $ funext $ by simp[map_val])
-| n e (equal t u)    := by simp[equal_eq, map_pr F, ←map_val]; exact ⟨congr_arg F, λ h, F.injective h⟩
 | n e (imply p q)    :=
   begin
     simp[imply_eq],
@@ -389,7 +372,6 @@ lemma val_iff_of_open (me : fin m → S₁) : ∀ {n} (e : fin n → S₁) (p : 
   subformula.val S₁ me e p ↔ subformula.val S₂ (F ∘ me) (F ∘ e) (subformula.of_lhom τ p)
 | n e verum          _  := by simp[top_eq]
 | n e (relation r v) _  := by simp[map_pr F]; refine (iff_of_eq $ congr_arg _ $ funext $ by simp[map_val])
-| n e (equal t u)    _  := by simp[equal_eq, map_pr F, ←map_val]; exact ⟨congr_arg F, λ h, F.injective h⟩
 | n e (imply p q)    hp :=
   begin
     simp[imply_eq] at hp ⊢,
