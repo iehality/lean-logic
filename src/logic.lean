@@ -99,7 +99,7 @@ variables {𝓢} {S} (T U : Theory F)
 @[simp] lemma models_of_ss {U T : Theory F} (ss : U ⊆ T) : S ⊧ T → S ⊧ U := λ h p hp,
 h (ss hp)
 
-@[simp] lemma models_union : S ⊧ T ∪ U ↔ S ⊧ T ∧ S ⊧ U :=
+@[simp] lemma models_union {T U : Theory F} : S ⊧ T ∪ U ↔ S ⊧ T ∧ S ⊧ U :=
 ⟨λ h, ⟨λ p hp, h (set.mem_union_left U hp), λ p hp, h (set.mem_union_right T hp)⟩,
   by { rintros ⟨hT, hU⟩ p (hp | hp), { exact hT hp}, { exact hU hp } }⟩
 
@@ -108,6 +108,9 @@ by simp[Models_def]
 
 @[simp] lemma models_Union {ι} {T : ι → Theory F} : S ⊧ (⋃ n, T n) ↔ ∀ n, S ⊧ T n :=
 by simp[Models_def]; refine ⟨λ h i p, h p i, λ h p i, h i p⟩
+
+lemma Satisfiable_of_ss {T U : Theory F} (ss : T ⊆ U) : Satisfiable 𝓢 U → Satisfiable 𝓢 T :=
+by rintros ⟨S, hS⟩; refine ⟨S, by { intros p hp,refine hS (ss hp) }⟩
 
 end semantics
 

@@ -241,6 +241,13 @@ variables {S} {p q : sentence L}
 
 @[simp] lemma models_verum : S ⊧ (⊤ : sentence L) := by simp[sentence_models_def]
 
+@[simp] lemma models_relation {k} (r : L.pr k) (v : fin k → subterm L 0 0) :
+  S ⊧ (relation r v) ↔ S.pr r (subterm.val S fin.nil fin.nil ∘ v) := by simp[sentence_models_def]
+
+@[simp] lemma models_equal (t u : subterm L 0 0) :
+  S ⊧ (t =' u : sentence L) ↔ subterm.val S fin.nil fin.nil t = subterm.val S fin.nil fin.nil u :=
+by simp[sentence_models_def]
+
 @[simp] lemma models_imply : S ⊧ p ⟶ q ↔ (S ⊧ p → S ⊧ q) := by simp[sentence_models_def]
 
 @[simp] lemma models_neg : S ⊧ ∼p ↔ ¬S ⊧ p := by simp[sentence_models_def]
