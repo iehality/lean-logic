@@ -556,6 +556,14 @@ by simp[←equal_eq, equal, fin.comp_left_concat]
 @[simp] lemma mlift_ex (p : subformula L m₁ (n + 1)) :
   mlift (∃'p) = ∃'mlift p := by simp[ex_def]
 
+@[simp] lemma mlift_univ_closure (p : subformula L m n) :
+  mlift (∀'*p) = ∀'* (mlift p) :=
+by induction n; simp*
+
+@[simp] lemma mlift_ex_closure (p : subformula L m n) :
+  mlift (∃'*p) = ∃'*(mlift p) :=
+by induction n; simp*
+
 variables (s : finitary (subterm L m₂ n) m₁)
 
 lemma mlift_rew (p : subformula L m₁ n) : mlift (rew s p) = rew (subterm.mlift ∘ s) p :=

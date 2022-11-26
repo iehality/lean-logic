@@ -13,17 +13,6 @@ localized "prefix (name := push) `𝗠`:max := fol.subformula.push" in aclogic
 localized "prefix (name := pull) `𝗡`:max := fol.subformula.pull" in aclogic
 localized "prefix (name := dummy) `𝗗`:max := fol.subformula.dummy" in aclogic
 
-def eq_axiom [L.has_equal] : subformula L m 0 :=
-∀'(#0 =' #0) ⊓ ∀' ∀'((#0 =' #1) ⟶ (#1 =' #0)) ⊓ ∀' ∀' ∀'((#0 =' #1) ⟶ (#1 =' #2) ⟶ (#0 =' #2))
-
-def eq_axiom_schema_funext [L.has_equal] {m k} (f : L.fn k) : subformula L m 0 :=
-∀'*((⋀ i, #(fin.cast_add k i) =' #(fin.nat_add k i)) ⟶
-  (function f (var ∘ fin.cast_add k) =' function f (var ∘ fin.nat_add k)) : subformula L m (k + k))
-
-def eq_axiom_schema_relext [L.has_equal] {m k} (r : L.pr k) : subformula L m 0 :=
-∀'*((⋀ i : fin k, #(fin.cast_add k i) =' #(fin.nat_add k i)) ⟶
-  (relation r (var ∘ fin.cast_add k) ⟷ relation r (var ∘ fin.nat_add k)))
-
 inductive proof : Π {m}, preTheory L m → subformula L m 0 → Type u
 | generalize   {m} {T : preTheory L m} : ∀ {p}, proof T.mlift p → proof T (∀'𝗡p)
 | mdp          {m} {T : preTheory L m} : ∀ {p q}, proof T (p ⟶ q) → proof T p → proof T q
@@ -447,7 +436,7 @@ end
 
 end prenex_normal_form
 
-section equal
+section quantifier
 variables {m} {n : ℕ}
 
 lemma specialize_foralls (p : subformula L m n) (w : fin n → subterm L m 0) : T ⊢ ∀'*p ⟶ substs w p :=
@@ -489,8 +478,59 @@ end
 lemma exists_of_substs {p : subformula L m n} (w) (h : T ⊢ substs w p) : T ⊢ ∃'*p :=
 exists_substs p w ⨀ h
 
-end equal
+end quantifier
 
 end provable
+
+namespace preTheory
+variables {L m} (T U : preTheory L m)
+
+instance [T.extend U] : logic.Theory.extend T.mlift U.mlift :=
+⟨by { intros p h, sorry }⟩
+
+end preTheory
+
+section equal
+
+def eq_axiom_schema_funext [L.has_equal] {m k} (f : L.fn k) : subformula L m 0 :=
+∀'*((⋀ i, #(fin.cast_add k i) =' #(fin.nat_add k i)) ⟶
+  (function f (var ∘ fin.cast_add k) =' function f (var ∘ fin.nat_add k)) : subformula L m (k + k))
+
+def eq_axiom_schema_relext [L.has_equal] {m k} (r : L.pr k) : subformula L m 0 :=
+∀'*((⋀ i : fin k, #(fin.cast_add k i) =' #(fin.nat_add k i)) ⟶
+  (relation r (var ∘ fin.cast_add k) ⟷ relation r (var ∘ fin.nat_add k)))
+
+variables {L m} [language.has_equal L]
+
+inductive Eq : preTheory L m
+| eq_refl : Eq (∀'(#0 =' #0))
+| eq_symm : Eq (∀' ∀'((#0 =' #1) ⟶ (#1 =' #0)))
+| eq_trans : Eq (∀' ∀' ∀'((#0 =' #1) ⟶ (#1 =' #2) ⟶ (#0 =' #2)))
+| funext : ∀ {k} (f : L.fn k), Eq (eq_axiom_schema_funext f)
+| relext : ∀ {k} (r : L.pr k), Eq (eq_axiom_schema_relext r)
+
+attribute [simp] Eq.eq_refl Eq.eq_symm Eq.eq_trans Eq.funext Eq.relext
+
+@[simp] lemma mlift_Eq : (Eq : preTheory L m).mlift = Eq :=
+begin
+  ext p, simp[preTheory.mlift], split,
+  { rintros ⟨p, hp, rfl⟩,
+    cases hp; simp[fal_eq],
+    { exact Eq.eq_refl },
+    { exact Eq.eq_symm },
+    { exact Eq.eq_trans },
+    { exact Eq.funext _ },
+    { exact Eq.relext _ } },
+  { intros h, cases h,
+    { simp[fal_eq], refine ⟨_, Eq.eq_refl, by simp⟩ },
+    { simp[fal_eq], refine ⟨_, Eq.eq_symm, by simp⟩ },
+    { simp[fal_eq], refine ⟨_, Eq.eq_trans, by simp⟩ },
+    { refine ⟨_, Eq.funext _, by simp[eq_axiom_schema_funext]⟩ },
+    { refine ⟨_, Eq.relext _, by simp[eq_axiom_schema_relext, (∘)]⟩ } }
+end
+
+--def eq_extend {T : preTheory L m} [extend Eq T] : extend Eq 𝗟'T :=
+
+end equal
 
 end fol

@@ -51,6 +51,9 @@ namespace extend
 
 instance extend_refl (T : set F) : extend T T := ⟨λ p h, h⟩
 
+def of_ss {T U : Theory F} (ss : T ⊆ U) : extend T U :=
+⟨by intros p h; exact weakening ss h⟩
+
 @[trans] def extend.trans (T₁ T₂ T₃ : set F) [extend T₁ T₂]  [extend T₂ T₃] :
   extend T₁ T₃ := ⟨λ p b, extend.le (extend.le b : T₂ ⊢ p)⟩
 
