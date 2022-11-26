@@ -12,6 +12,8 @@ namespace language
 @[reducible] def skolem : language :=
 { fn := λ m, pnf L m 1, pr := λ _, pempty }
 
+instance : inhabited ((L + L.skolem).fn 0) := ⟨sum.inr default⟩
+
 def skolem' := skolem L + L
 
 namespace skolem
@@ -35,8 +37,14 @@ def skolem_term (φ : pnf L m 1) : subterm L.skolem m 0 := subterm.function φ s
 
 @[simp] def skolemize : Π {m}, pnf L m 0 → pnf (L + L.skolem) m 0
 | n (openformula p hp) := openformula p.left (by simpa[left] using hp)
-| n (fal φ)            := ∀' pnf.pull (push φ).skolemize
+| n (fal φ)            := ∀'pnf.pull (push φ).skolemize
 | n (ex φ)             := pnf.msubst (skolem_term φ).right (push φ).skolemize
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.rank)⟩]}
+
+@[simp] lemma forall_pnf_skolemize : ∀ {m} (φ : pnf L m 0), φ.skolemize.forall_pnf
+| m (openformula p hp) := by simp
+| m (fal φ)            := by simp; exact forall_pnf_skolemize (push φ)
+| m (ex φ)             := by simp; exact forall_pnf_skolemize (push φ)
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.rank)⟩]}
 
 end pnf
@@ -44,7 +52,7 @@ end pnf
 namespace subformula
 variables {m n : ℕ} (Sₛₖ : Structure (L + L.skolem)) (T : preTheory L m)
 
-def to_snf (p : formula L m) : formula (L + L.skolem) m :=  p.to_pnf.skolemize.to_formula
+def to_snf (p : formula L m) : formula (L + L.skolem) m := p.to_pnf.skolemize.to_formula
 
 end subformula
 
@@ -80,7 +88,7 @@ lemma restrict_models (p : formula L m) :
   Sₛₖ ⊧ p.to_snf → Sₛₖ.restrict add_left ⊧ p := λ h me,
 begin
   have iff : ∀ me, Sₛₖ.restrict add_left ⊧[me] p.normalize ↔ Sₛₖ.restrict add_left ⊧[me] p,
-  by simpa[models_def] using logic.tautology_of_tautology (Sₛₖ.restrict add_left) (p.normalize ⟷ p) (equiv_normalize ∅ p),
+  by simpa[models_def] using logic.sound.tautology_of_tautology (Sₛₖ.restrict add_left) (p.normalize ⟷ p) (equiv_normalize ∅ p),
   have : Sₛₖ.restrict add_left ⊧[me] p.normalize, from restrict_val Sₛₖ me p.to_pnf (h me),
   exact (iff me).mp this
 end
@@ -138,13 +146,22 @@ lemma Skolemize_models (p : formula L m) :
   S ⊧ p → Skolemize S ⊧ p.to_snf := λ h me,
 begin
   have iff : ∀ me, S ⊧[me] p.normalize ↔ S ⊧[me] p,
-  by simpa[models_def] using logic.tautology_of_tautology S (p.normalize ⟷ p) (equiv_normalize ∅ p),
+  by simpa[models_def] using logic.sound.tautology_of_tautology S (p.normalize ⟷ p) (equiv_normalize ∅ p),
   exact Skolemize_val S me p.to_pnf ((iff me).mpr (h me))
 end
 
-lemma satisfiability (p : formula L m) : satisfiable p ↔ satisfiable p.to_snf :=
-⟨by { rintros ⟨S, hS⟩, refine ⟨Skolemize S, Skolemize_models p hS⟩, },
- by { rintros ⟨Sₛₖ, hSₛₖ⟩, refine ⟨Sₛₖ.restrict add_left, restrict_models p hSₛₖ⟩ }⟩
+lemma satisfiability (p : formula L m) : satisfiable p.to_snf ↔ satisfiable p :=
+⟨by { rintros ⟨Sₛₖ, hSₛₖ⟩, refine ⟨Sₛₖ.restrict add_left, restrict_models p hSₛₖ⟩ },
+ by { rintros ⟨S, hS⟩, refine ⟨Skolemize S, Skolemize_models p hS⟩ }⟩
+
+lemma Satisfiability {T : preTheory L m} : Satisfiable (subformula.to_snf '' T) ↔ Satisfiable T :=
+⟨by { rintros ⟨Sₛₖ, hSₛₖ⟩,
+      refine ⟨Sₛₖ.restrict add_left,
+        by { simp[logic.semantics.Models_def], intros p hp,
+             have : Sₛₖ ⊧ p.to_snf, from hSₛₖ (by simp; refine ⟨p, by simp[hp]⟩),
+             exact restrict_models p this }⟩ },
+ by { rintros ⟨S, hS⟩,
+      refine ⟨Skolemize S, by { simp[logic.semantics.Models_def], intros p hp, exact Skolemize_models p (hS hp) }⟩ }⟩
 
 end skolem
 
