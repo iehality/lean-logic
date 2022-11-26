@@ -3,7 +3,7 @@ import QL.FOL.deduction
 universes u
 
 namespace fol
-open_locale logic_symbol
+open_locale logic_symbol aclogic
 open subterm subformula logic logic.Theory
 variables {L R : language.{u}} {L₁ L₂ L₃ : language} {m n : ℕ}
 
@@ -127,6 +127,9 @@ open language
 structure hom (L₁ : language) (L₂ : language) :=
 (hom : Π {m n}, subformula L₁ m n →ₗ subformula L₂ m n)
 (map_univ' : ∀ {m n} (p : subformula L₁ m (n + 1)), hom (∀'p) = ∀' hom p)
+(map_mlift' : ∀ {m n} (p : subformula L₁ m n), hom p.mlift = (hom p).mlift)
+(map_push' : ∀ {m n} (p : subformula L₁ m (n + 1)), hom p.push = (hom p).push)
+(map_pull' : ∀ {m n} (p : subformula L₁ (m + 1) n), hom p.pull = (hom p).pull)
 
 instance {L₁ L₂ : language} :
   has_coe_to_fun (hom L₁ L₂) (λ _, Π {m n}, subformula L₁ m n →ₗ subformula L₂ m n) :=
@@ -139,8 +142,31 @@ variables (τ : subformula.hom L₁ L₂) {m}
 
 @[simp] lemma map_ex {m n} (p : subformula L₁ m (n + 1)) : τ (∃'p) = ∃'τ p := by simp[ex_def]
 
+@[simp] lemma map_mlift {m n} (p : subformula L₁ m n) : τ p.mlift = (τ p).mlift := τ.map_mlift' p
+
+@[simp] lemma map_push {m n} (p : subformula L₁ m (n + 1)) : τ p.push = (τ p).push := τ.map_push' p
+
+@[simp] lemma map_pull {m n} (p : subformula L₁ (m + 1) n) : τ p.pull = (τ p).pull := τ.map_pull' p
+
+@[simp] lemma map_dummy {m n} (p : subformula L₁ m n) : τ p.dummy = (τ p).dummy :=
+by simp[dummy]
+
 @[simp] lemma map_univ_closure {m n} (p : subformula L₁ m n) : τ (∀'*p) = ∀'*(τ p) :=
 by induction n; simp*
+
+@[simp] lemma map_exists_closure {m n} (p : subformula L₁ m n) : τ (∃'*p) = ∃'*(τ p) :=
+by induction n; simp*
+
+@[reducible] def on_Theory (T : preTheory L₁ m) : preTheory L₂ m := (λ p, τ p) '' T
+
+@[simp] lemma on_Theory_map_mlift {m} (T : preTheory L₁ m) : τ.on_Theory T.mlift = (τ.on_Theory T).mlift :=
+by ext p; simp[on_Theory, preTheory.mlift]
+
+class provable :=
+(subst : ∀ {m} (T : preTheory L₁ m) (p t), τ.on_Theory T ⊢ ∀'τ p ⟶ τ (subst t p))
+(eq_refl : ∀ {m} (T : preTheory L₁ m), τ.on_Theory T ⊢ ∀'τ (#0 =' #0))
+(eq_symm : ∀ {m} (T : preTheory L₁ m), τ.on_Theory T ⊢ ∀' ∀'(τ (#0 =' #1) ⟶ τ (#1 =' #0)))
+(eq_trans : ∀ {m} (T : preTheory L₁ m), τ.on_Theory T ⊢ ∀' ∀' ∀'(τ (#0 =' #1) ⟶ τ (#1 =' #2) ⟶ τ (#0 =' #2)))
 
 end hom
 
@@ -154,6 +180,48 @@ variables (l : L₁ ⤳ᴸ L₂) {m}
 | n (neg p)        := ∼of_lhom_hom p
 | n (fal p)        := ∀' of_lhom_hom p
 
+@[simp] def of_lhom_hom_verum : of_lhom_hom l (⊤ : subformula L₁ m n) = ⊤ := by refl
+
+@[simp] def of_lhom_hom_relation {k} (r : L₁.pr k) (v : fin k → subterm L₁ m n) :
+  of_lhom_hom l (relation r v : subformula L₁ m n) = relation (l.pr _ r) (λ i, subterm.of_lhom l (v i)) := by refl
+
+@[simp] def of_lhom_hom_equal (t u) :
+  of_lhom_hom l (t =' u : subformula L₁ m n) = (subterm.of_lhom l t =' subterm.of_lhom l u) := by refl
+
+@[simp] def of_lhom_hom_imply (p q : subformula L₁ m n) :
+  of_lhom_hom l (p ⟶ q) = (of_lhom_hom l p ⟶ of_lhom_hom l q) := by refl
+
+@[simp] def of_lhom_hom_neg (p : subformula L₁ m n) :
+  of_lhom_hom l (∼p) = ∼of_lhom_hom l p := by refl
+
+@[simp] def of_lhom_hom_fal (p : subformula L₁ m (n + 1)) :
+  of_lhom_hom l (∀'p) = ∀'of_lhom_hom l p := by refl
+
+@[simp] def mlift_of_lhom_hom : Π {n} (p : subformula L₁ m n), mlift (of_lhom_hom l p) = of_lhom_hom l (mlift p)
+| n verum          := by simp[top_eq]; refl
+| n (relation r v) := by simp
+| n (equal t u)    := by simp[equal_eq]
+| n (imply p q)    := by simp[imply_eq, mlift_of_lhom_hom p, mlift_of_lhom_hom q]
+| n (neg p)        := by simp[neg_eq, mlift_of_lhom_hom p]
+| n (fal p)        := by simp[fal_eq, mlift_of_lhom_hom p]
+
+@[simp] def push_of_lhom_hom : Π {n} (p : subformula L₁ m (n + 1)), push (of_lhom_hom l p) = of_lhom_hom l (push p)
+| n verum          := by simp[top_eq]; refl
+| n (relation r v) := by simp
+| n (equal t u)    := by simp[equal_eq]
+| n (imply p q)    := by simp[imply_eq, push_of_lhom_hom p, push_of_lhom_hom q]
+| n (neg p)        := by simp[neg_eq, push_of_lhom_hom p]
+| n (fal p)        := by simp[fal_eq, push_of_lhom_hom p]
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.complexity)⟩]}
+
+@[simp] def pull_of_lhom_hom : Π {n} (p : subformula L₁ (m + 1) n), pull (of_lhom_hom l p) = of_lhom_hom l (pull p)
+| n verum          := by simp[top_eq]; refl
+| n (relation r v) := by simp
+| n (equal t u)    := by simp[equal_eq]
+| n (imply p q)    := by simp[imply_eq, pull_of_lhom_hom p, pull_of_lhom_hom q]
+| n (neg p)        := by simp[neg_eq, pull_of_lhom_hom p]
+| n (fal p)        := by simp[fal_eq, pull_of_lhom_hom p]
+
 def of_lhom : subformula.hom L₁ L₂ :=
 { hom := λ m n,
   { to_fun := of_lhom_hom l,
@@ -163,7 +231,10 @@ def of_lhom : subformula.hom L₁ L₂ :=
     map_or' := λ p q, by refl,
     map_top' := by refl,
     map_bot' := by refl },
-  map_univ' := λ m n p, by refl }
+  map_univ' := λ m n p, by refl,
+  map_mlift' := by simp,
+  map_push' := by simp,
+  map_pull' := by simp }
 
 @[simp] lemma of_lhom_relation {k} (r : L₁.pr k) (v : fin k → subterm L₁ m n) :
   of_lhom l (relation r v) = relation (l.pr _ r) (λ i, (subterm.of_lhom l) (v i)) :=
@@ -199,5 +270,33 @@ def left : subformula.hom L (L + R) := subformula.of_lhom add_left
 def right : subformula.hom R (L + R) := subformula.of_lhom add_right
 
 end subformula
+
+namespace provable
+variables (φ : subformula.hom L₁ L₂) {m} {T : preTheory L₁ m} {p : subformula L₁ m 0}
+ 
+lemma tr (h : T ⊢ p) : φ.on_Theory T ⊢ φ p :=
+begin
+  apply rec_on h,
+  { intros m T p b IH,
+    have : φ.on_Theory T ⊢ ∀' 𝗡 (φ p), from generalize (by simpa using IH),
+    simpa using this },
+  { intros m T p q b₁ b₂ IH₁ IH₂, from (by simpa using IH₁) ⨀ IH₂ },
+  { intros m T p hp, from by_axiom (set.mem_image_of_mem _ hp) },
+  { simp },
+  { intros, simp },
+  { intros, simp },
+  { intros, simp },
+  { intros, simp,sorry  },
+  { intros, simp },
+  { intros, simp,  },
+  { intros, simp, sorry },
+  { intros, simp, sorry },
+  { intros, simp, sorry },
+  { intros, simp, sorry },
+  { intros, simp, sorry },
+  sorry
+end
+
+end provable
 
 end fol
