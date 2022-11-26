@@ -199,6 +199,10 @@ theorem compactness {T : Theory F} :
     exact consistent_iff_Satisfiable.mp this
   end⟩
 
+theorem compactness' {T : Theory F} :
+  ¬semantics.Satisfiable 𝓢 T ↔ (∃ u ⊆ T, u.finite ∧ ¬semantics.Satisfiable 𝓢 (u : set F)) :=
+by rw[compactness]; simp
+
 end complete
 
 end logic

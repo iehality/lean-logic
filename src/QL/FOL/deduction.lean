@@ -7,11 +7,11 @@ open_locale logic_symbol
 open subterm subformula logic logic.Theory
 variables {L : language.{u}} {m : ℕ}
 
-localized "prefix (name := mlift) `𝗟`:max := subformula.mlift" in aclogic
-localized "prefix (name := preTheory.mlift) `𝗟'`:max := preTheory.mlift" in aclogic
-localized "prefix (name := push) `𝗠`:max := subformula.push" in aclogic
-localized "prefix (name := pull) `𝗡`:max := subformula.pull" in aclogic
-localized "prefix (name := dummy) `𝗗`:max := subformula.dummy" in aclogic
+localized "prefix (name := mlift) `𝗟`:max := fol.subformula.mlift" in aclogic
+localized "prefix (name := preTheory.mlift) `𝗟'`:max := fol.preTheory.mlift" in aclogic
+localized "prefix (name := push) `𝗠`:max := fol.subformula.push" in aclogic
+localized "prefix (name := pull) `𝗡`:max := fol.subformula.pull" in aclogic
+localized "prefix (name := dummy) `𝗗`:max := fol.subformula.dummy" in aclogic
 
 def eq_axiom4 {m k} (f : L.fn k) : subformula L m 0 :=
 ∀'*((⋀ i, #(fin.cast_add k i) =' #(fin.nat_add k i)) ⟶
@@ -128,6 +128,7 @@ variables (T)
 
 variables {T U}
 
+@[elab_as_eliminator]
 theorem rec_on {C : Π {m} (T : preTheory L m) (p : subformula L m 0), T ⊢ p → Prop}
   {m : ℕ} {T : preTheory L m} {p : formula L m} (b : T ⊢ p)
   (generalize : ∀ {m} {T : preTheory L m} {p} (b : T.mlift ⊢ p), C T.mlift p b → C T (∀'p.pull) (generalize b))
@@ -506,29 +507,29 @@ begin
     exact imply_trans lmm₁ lmm₂ }
 end
 
-lemma exists_dn (p : subformula L m n) : T ⊢ ∃'*∼∼p ⟷ ∃'*p :=
+lemma foralls_substs {p : subformula L m n} (h : T ⊢ ∀'*p) (w) : T ⊢ substs w p :=
+specialize_foralls p w ⨀ h
+
+@[simp] lemma exists_dn (p : subformula L m n) : T ⊢ ∃'*∼∼p ⟷ ∃'*p :=
 begin
   induction n with n IH generalizing m; simp[subformula.exists_comm],
   refine equiv_exists_of_equiv (by simpa using IH (𝗠 p))
 end
 
-lemma exists_of_substs (p : subformula L m n) (w : fin n → subterm L m 0) : T ⊢ ∀'*p ⟶ substs w p :=
+@[simp] lemma neg_univ_closure_neg (p : subformula L m n) : T ⊢ ∼∀'*(∼p) ⟷ ∃'*p :=
 begin
-  induction n with n IH generalizing m,
-  { simp },
-  { have : 𝗟'T ⊢ ∀'* 𝗠 p ⟶ substs (mlift ∘ w ∘ fin.cast_succ) (𝗠 p),
-    from IH (𝗠 p) (subterm.mlift ∘ w ∘ fin.cast_succ),
-    have : T ⊢ ∀'(𝗡 (∀'*𝗠 p) ⟶ 𝗡 (substs (mlift ∘ w ∘ fin.cast_succ) (𝗠 p))),
-    by simpa using generalize this,
-    have lmm₁ : T ⊢ ∀'*p ⟶ ∀'𝗡 (substs (mlift ∘ w ∘ fin.cast_succ) (𝗠 p)),
-    by simpa[forall_comm] using forallK _ _ ⨀ this,
-    have lmm₂ : T ⊢ ∀'𝗡 (substs (mlift ∘ w ∘ fin.cast_succ) (𝗠 p)) ⟶ substs w p,
-    from specialize T (𝗡 (substs (mlift ∘ w ∘ fin.cast_succ) (𝗠 p))) (w $ fin.last n),
-    exact imply_trans lmm₁ lmm₂ }
+  have : T ⊢ ∼∀'*(∼p) ⟷ ∃'*(∼∼p), from neg_univ_closure_pnf (∼p),
+  refine equiv_trans this (by simp)
 end
 
-lemma foralls_substs {p : subformula L m n} (h : T ⊢ ∀'*p) (w) : T ⊢ substs w p :=
-specialize_foralls p w ⨀ h
+@[simp] lemma exists_substs (p : subformula L m n) (w : fin n → subterm L m 0) : T ⊢ substs w p ⟶ ∃'*p :=
+begin
+  have : T ⊢ ∼∼substs w p ⟶ ∼∀'* (∼p), by simpa using contrapose.mpr (specialize_foralls (∼p) w),
+  refine imply_of_equiv this (by simp) (by simp)
+end
+
+lemma exists_of_substs {p : subformula L m n} (w) (h : T ⊢ substs w p) : T ⊢ ∃'*p :=
+exists_substs p w ⨀ h
 
 @[refl, simp] lemma eq_refl' (t : subterm L m 0) : T ⊢ t =' t :=
 by simpa using eq_refl T ⊚ t

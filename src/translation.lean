@@ -41,6 +41,10 @@ variables {F} {G} (f g : F →ₗ G) (a b : F)
 
 lemma eq_to_fun (a : F) : f a = f.to_fun a := rfl
 
+@[simp] lemma eq_to_fun' {f map_neg' map_imply' map_and' map_or' map_top' map_bot'} (a : F) :
+ ({ to_fun := f, map_neg' := map_neg', map_imply' := map_imply',
+    map_and' := map_and', map_or' := map_or', map_top' := map_top', map_bot' := map_bot' } : F →ₗ G) a = f a := rfl
+
 @[ext] lemma ext (h : ∀ x, f x = g x) : f = g :=
 by rcases f; rcases g; simp; funext x; by simpa using h x
 
@@ -137,10 +141,10 @@ by induction l with a l IH; simp*
 begin
   induction l with a l IH; simp*,
   split,
-  { rintros (h | ⟨b, hl, hb⟩),
-    { exact ⟨a, by simp[h]⟩ },
-    { refine ⟨b, by simp[hb, hl]⟩ } },
-  { rintros ⟨b, (rfl | hl), hb⟩, { simp[hb] }, { exact or.inr ⟨b, hl, hb⟩ } }
+  { rintros (⟨b, hl, hb⟩ | h),
+    { refine ⟨b, by simp[hb, hl]⟩ }, 
+    { exact ⟨a, by simp[h]⟩ } },
+  { rintros ⟨b, (rfl | hl), hb⟩, { simp[hb] }, { exact or.inl ⟨b, hl, hb⟩ } }
 end
 
 end prop

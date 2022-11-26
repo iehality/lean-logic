@@ -121,4 +121,8 @@ instance : complete (formula A) (Structure A) := ⟨λ T p h, completeness.mpr h
 theorem compactness {T : Theory A} : Satisfiable T ↔ (∀ u ⊆ T, u.finite → Satisfiable u) :=
 complete.compactness
 
+theorem compactness' {T : Theory A} :
+  ¬Satisfiable T ↔ (∃ u ⊆ T, u.finite ∧ ¬Satisfiable u) :=
+complete.compactness'
+
 end pl
