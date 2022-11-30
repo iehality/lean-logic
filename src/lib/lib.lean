@@ -530,6 +530,15 @@ notation `⋁` binders `, ` r:(scoped p, finitary.disjunction _ p) := r
 | []        := ⊥
 | (a :: as) := as.disjunction ⊔ a
 
+noncomputable def finset.disjunction {α : Type*} [has_bot α] [has_sup α] (s : finset α) : α := s.to_list.disjunction
+
+section finset_disjunction
+variables {α : Type*} [has_bot α] [has_sup α] (s : finset α)
+
+@[simp] lemma finset.disjunction_empty : (∅ : finset α).disjunction = ⊥ := by simp[finset.disjunction]
+
+end finset_disjunction
+
 def fintype_sup {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α] [order_bot α] (f : ι → α) : α :=
   (finset.univ : finset ι).sup f
 
