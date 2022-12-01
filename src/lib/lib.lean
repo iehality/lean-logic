@@ -39,6 +39,27 @@ by { omega }
 
 @[simp] lemma lt_max_add_one_right (m n : ℕ) : n < max m n + 1 := lt_succ_iff.mpr (le_max_right m n)
 
+section cases
+variables {C : Sort*} {a b : C} {s : ℕ → C}
+
+@[elab_as_eliminator] def left_concat {C : Sort*} (hzero : C) (hsucc : ℕ → C) :
+  ℕ → C := cases hzero hsucc
+
+infixr (name:= nat.left_concat) ` .> `:70 := left_concat
+
+@[simp] lemma left_concat_zero : (a .> s) 0 = a := by simp[left_concat]
+
+@[simp] lemma left_concat_succ (i : ℕ) : (a .> s) i.succ = s i := by simp[left_concat]
+
+@[simp] lemma left_concat_comp_succ : (a .> s) ∘ nat.succ = s := funext(by simp)
+
+lemma comp_left_concat {α : Sort*} (f : C → α) (a : C) (s : ℕ → C) : f ∘ (a .> s) = f a .> f ∘ s :=
+funext (λ i, nat.cases_on i (by simp) (by simp))
+
+lemma left_concat_eq {α} (f : ℕ → α) : f 0 .> f ∘ nat.succ = f :=
+funext (λ i, by cases i; simp)
+
+end cases
 
 end nat
 
@@ -141,6 +162,13 @@ infixr (name:= left_concat) ` *> `:70 := left_concat
 
 @[simp] lemma left_concat_comp_succ : (a *> s) ∘ fin.succ = s := funext(by simp)
 
+lemma comp_left_concat {α : Sort*} (f : C → α) (a : C) (s : fin n → C) : f ∘ (a *> s) = f a *> f ∘ s :=
+funext (λ i, cases (by simp) (by simp) i)
+
+@[simp] lemma cases_one
+  {a : C} {s : fin 0 → C} (x : fin 1) : (a *> s) x = a :=
+by rw [show x = 0, by simp]; simp
+
 @[elab_as_eliminator, elab_strategy]
 def right_concat (hcast : fin n → C) (hlast : C) : fin (n + 1) → C := @last_cases n (λ _, C) hlast hcast
 
@@ -152,9 +180,8 @@ infixl (name:= right_concat) ` <* `:70 := right_concat
 
 @[simp] lemma left_concat_comp_cast : (s <* a) ∘ fin.cast_succ = s := funext(by simp)
 
-@[simp] lemma cases_one
-  {a : C} {s : fin 0 → C} (x : fin 1) : (a *> s) x = a :=
-by rw [show x = 0, by simp]; simp
+lemma comp_right_concat {α : Sort*} (f : C → α) (a : C) (s : fin n → C) : f ∘ (s <* a) = f ∘ s <* f a :=
+funext (λ i, by refine last_cases _ _ i; simp)
 
 @[simp] lemma last_cases_one
   {a : C} {s : fin 0 → C} (x : fin 1) : (s <* a) x = a :=
@@ -171,12 +198,6 @@ funext (by { intros x, rcases eq_zero_or_eq_last_or_interval x with (rfl | h | �
   { suffices : (a *> (s <* b)) x'.cast_succ.succ = ((a *> s) <* b) x'.succ.cast_succ,
     by simpa only [succ_cast_succ] using this,
     simp } })
-
-lemma comp_left_concat {α : Sort*} (f : C → α) (a : C) (s : fin n → C) : f ∘ (a *> s) = f a *> f ∘ s :=
-funext (λ i, cases (by simp) (by simp) i)
-
-lemma comp_right_concat {α : Sort*} (f : C → α) (a : C) (s : fin n → C) : f ∘ (s <* a) = f ∘ s <* f a :=
-funext (λ i, by refine last_cases _ _ i; simp)
 
 lemma left_concat_eq {α} {n} (f : fin (n + 1) → α) : f 0 *> f ∘ fin.succ = f :=
 funext (λ i, by refine cases _ _ i; simp)
