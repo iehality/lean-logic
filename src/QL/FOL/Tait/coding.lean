@@ -45,7 +45,7 @@ def subformula_to_W : (Σ n, subformula L m n) → (Σ n, W_type (arity L m n))
 | ⟨n, falsum⟩           := ⟨n, sum.inr $ sum.inl (), empty.rec _⟩
 | ⟨n, relation r v⟩     := ⟨n, sum.inr $ sum.inr $ sum.inl ⟨_, r, v⟩, empty.rec _⟩
 | ⟨n, neg_relation r v⟩ := ⟨n, sum.inr $ sum.inr $ sum.inr $ sum.inl ⟨_, r, v⟩, empty.rec _⟩
-| ⟨n, and p q⟩          := ⟨n, sum.inr $ sum.inr $ sum.inr $ sum.inr $ sum.inl (), λ b, bool.cases_on b (subformula_to_W ⟨n, p⟩).2 (subformula_to_W ⟨n, q⟩).2⟩
+| ⟨n, and p q⟩          := ⟨n, sum.inr $ sum.inr $ sum.inr $ sum.inr $ sum.inl (), λ b, bool.cases_on b (subformula_to_W p) (subformula_to_W q)⟩
 | ⟨n, or p q⟩           := ⟨n, sum.inr $ sum.inr $ sum.inr $ sum.inr $ sum.inr $ sum.inl (), λ b, bool.cases_on b (subformula_to_W p) (subformula_to_W q)⟩
 | ⟨n, fal p⟩            := ⟨n + 1, sum.inr $ sum.inr $ sum.inr $ sum.inr $ sum.inr $ sum.inr $ sum.inl (), λ _, subformula_to_W p⟩
 | ⟨n, ex p⟩             := ⟨n + 1, sum.inr $ sum.inr $ sum.inr $ sum.inr $ sum.inr $ sum.inr $ sum.inr (), λ _, subformula_to_W p⟩
