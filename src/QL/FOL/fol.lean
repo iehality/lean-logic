@@ -176,6 +176,8 @@ end subformula
 
 namespace subterm
 
+def const {m n} (c : L.fn 0) : subterm L m n := function c fin.nil
+
 section rew
 variables {L} {m m₁ m₂ m₃ n : ℕ} {s : finitary (subterm L m₂ n) m₁}
 
@@ -443,6 +445,16 @@ by { induction n with n IH generalizing m; simp[substs],
      { refine fin.last_cases _ _ x; simp* } }
 
 end rew
+
+section symbol
+variables {m n : ℕ}
+
+def symbol : subterm L m n → set (Σ k, L.fn k)
+| &x             := ∅
+| #x             := ∅
+| (function f v) := insert ⟨_, f⟩ (⋃ i, symbol (v i))
+
+end symbol
 
 end subterm
 
@@ -1059,5 +1071,6 @@ by simp[mlift]
 def is_open : Prop := ∀ p ∈ T, subformula.is_open p
 
 end preTheory
+
 
 end fol

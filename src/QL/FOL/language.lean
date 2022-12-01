@@ -1,6 +1,6 @@
 import QL.FOL.deduction
 
-universes u
+universes u v
 
 namespace fol
 open_locale logic_symbol aclogic
@@ -31,8 +31,10 @@ protected def translation.comp (τ₁ : L₁ ⤳ᴸ L₂) (τ₂ : L₂ ⤳ᴸ L
 
 instance : has_add language := ⟨λ L₁ L₂ : language.{u}, ⟨λ n, L₁.fn n ⊕ L₂.fn n, λ n, L₁.pr n ⊕ L₂.pr n⟩⟩ 
 
+def padd (L₁ : language.{u}) (L₂ : language.{v}) : language.{max u v} := ⟨λ n, L₁.fn n ⊕ L₂.fn n, λ n, L₁.pr n ⊕ L₂.pr n⟩
+
 section add
-variables {L} {R}
+variables {L R}
 
 instance add_to_string_fn [∀ n, has_to_string (L.fn n)] [∀ n, has_to_string (R.fn n)] (n) : has_to_string ((L + R).fn n) :=
 ⟨by { rintros (x | x), { exact to_string x }, { exact to_string x } }⟩
@@ -51,6 +53,30 @@ def add_right : R ⤳ᴸ L + R :=
   pr_inj := λ n, sum.inr_injective }
 
 end add
+
+section padd
+variables {L' : language.{u}} {R' : language.{v}}
+
+def padd_left : L' ⤳ᴸ L'.padd R' :=
+{ fn := λ n f, sum.inl f, pr := λ n r, sum.inl r,
+  fn_inj := λ n, sum.inl_injective,
+  pr_inj := λ n, sum.inl_injective }
+
+def padd_right : R' ⤳ᴸ L'.padd R' :=
+{ fn := λ n f, sum.inr f, pr := λ n r, sum.inr r,
+  fn_inj := λ n, sum.inr_injective,
+  pr_inj := λ n, sum.inr_injective }
+
+end padd
+
+@[reducible] def Constants (α : Type*) : language := { fn := nat.cases α (λ _, pempty), pr := λ _, pempty }
+
+section Constants
+variables {α : Type*}
+
+instance : has_coe α (subterm (Constants α) m n) := ⟨subterm.const (Constants α)⟩
+
+end Constants
 
 end language
 
