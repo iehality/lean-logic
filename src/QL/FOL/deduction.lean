@@ -485,8 +485,7 @@ end provable
 namespace preTheory
 variables {L m} (T U : preTheory L m)
 
-instance [T.extend U] : logic.Theory.extend T.mlift U.mlift :=
-⟨by { intros p h, sorry }⟩
+--instance [T.extend U] : logic.Theory.extend T.mlift U.mlift := ⟨by { intros p h, sorry }⟩
 
 end preTheory
 

@@ -1,11 +1,11 @@
-import QL.FOL.deduction
+import QL.FOL.deduction QL.FOL.language
 
 universes u v
 
 namespace fol
 open_locale logic_symbol aclogic
 open subformula
-variables (L : language.{u}) (m n : ℕ)
+variables (L L₁ L₂ : language.{u}) (m n : ℕ)
 
 namespace Tait
 
@@ -323,5 +323,46 @@ variables {L m n}
 @[simp] lemma to_Tait_verum : to_Tait (⊤ : subformula L m n) = ⊤ := rfl
 
 end subformula
+
+namespace Tait
+
+namespace subformula
+variables {L₁ L₂} (l : L₁ ⤳ᴸ L₂) {m n}
+
+@[simp] def of_lhom' : Π {n}, subformula L₁ m n → subformula L₂ m n
+| n verum              := ⊤
+| n falsum             := ⊥
+| n (relation r v)     := relation (l.pr _ r) (λ i, subterm.of_lhom l (v i))
+| n (neg_relation r v) := neg_relation (l.pr _ r) (λ i, subterm.of_lhom l (v i))
+| n (and p q)          := of_lhom' p ⊓ of_lhom' q
+| n (or p q)           := of_lhom' p ⊔ of_lhom' q
+| n (fal p)            := ∀'of_lhom' p
+| n (ex p)             := ∃'of_lhom' p
+
+@[simp] lemma of_lhom'_neg (p : subformula L₁ m n) : of_lhom' l (∼p) = ∼ of_lhom' l p :=
+by induction p; simp[mlift, ←verum_eq, ←falsum_eq, ←and_eq, ←or_eq, ←not_eq, ←fal_eq, ←ex_eq, *] at*
+
+def of_lhom : subformula L₁ m n →ₗ subformula L₂ m n :=
+{ to_fun := of_lhom' l,
+  map_neg' := λ p, by simp,
+  map_imply' := λ p q, by simp[imply_def, ←or_eq],
+  map_and' := λ p q, by refl,
+  map_or' := λ p q, by refl,
+  map_top' := by refl,
+  map_bot' := by refl }
+
+@[simp] lemma of_lhom_rel {k} (r : L₁.pr k) (v : fin k → subterm L₁ m n) :
+  of_lhom l (relation r v) = relation (l.pr k r) (λ i, subterm.of_lhom l (v i)) := rfl
+
+@[simp] lemma of_lhom_neg_rel {k} (r : L₁.pr k) (v : fin k → subterm L₁ m n) :
+  of_lhom l (neg_relation r v) = neg_relation (l.pr k r) (λ i, subterm.of_lhom l (v i)) := rfl
+
+@[simp] lemma of_lhom_fal (p : subformula L₁ m (n + 1)) : of_lhom l (∀'p) = ∀'of_lhom l p := rfl
+
+@[simp] lemma of_lhom_ex (p : subformula L₁ m (n + 1)) : of_lhom l (∃'p) = ∃'of_lhom l p := rfl
+
+end subformula
+
+end Tait
 
 end fol

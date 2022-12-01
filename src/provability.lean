@@ -361,7 +361,7 @@ by { simp only [and_def P], refine equiv_neg_of_equiv _,
 
 @[simp] lemma equiv_symm_equiv (p q : F) : (p ⟷ q) ⟷ (q ⟷ p) ∈ P := equiv_symm_and _ _
 
-@[simp] lemma equiv_symm_or (p q : F) : p ⊔ q ⟷ q ⊔ p ∈ P :=
+@[simp] lemma equiv_or_symm (p q : F) : p ⊔ q ⟷ q ⊔ p ∈ P :=
 by { simp only [or_def P],
      refine equiv_of_equiv (show ∼p ⟶ q ⟷ ∼q ⟶ ∼∼p ∈ P, by simp) _ (equiv_imply_of_equiv _ _); simp }
 
@@ -389,6 +389,18 @@ begin
     { intros i h, exact imply_or_left _ _ ⨀ (IH i h) } }
 end
 
+@[simp] lemma imply_ldisj {l : list F} {p : F} (h : p ∈ l) : p ⟶ l.disjunction ∈ P :=
+begin
+  induction l with q l IH,
+  { simp at h, contradiction },
+  { simp at h ⊢, rcases h with (rfl| h),
+    { simp },
+    { refine impl_trans (IH h) (by simp) } }
+end
+
+lemma imply_fdisj {s : finset F} {p : F} (h : p ∈ s) : p ⟶ s.disjunction ∈ P :=
+by simp[finset.disjunction]; refine imply_ldisj (by simpa using h)
+
 @[simp] lemma imply_and (p q r : F) : (p ⟶ q) ⟶ (p ⟶ r) ⟶ p ⟶ q ⊓ r ∈ P :=
 begin
   have : (p ⟶ q) ⟶ (p ⟶ r) ⟶ p ⟶ r ⟶ q ⊓ r ∈ P,
@@ -409,7 +421,7 @@ begin
   { have lmm₁ : ∼(p (fin.last n) ⊓ finitary.conjunction n (p ∘ fin.cast_succ)) ⟷
       ∼p (fin.last n) ⊔ ∼finitary.conjunction n (p ∘ fin.cast_succ) ∈ P, from neg_and_equiv_or_neg _ _,
     have lmm₂ : ∼p (fin.last n) ⊔ ∼finitary.conjunction n (p ∘ fin.cast_succ) ⟷ 
-      ∼finitary.conjunction n (p ∘ fin.cast_succ) ⊔ ∼p (fin.last n) ∈ P, from equiv_symm_or _ _,
+      ∼finitary.conjunction n (p ∘ fin.cast_succ) ⊔ ∼p (fin.last n) ∈ P, from equiv_or_symm _ _,
     refine equiv_of_equiv (equiv_trans lmm₁ lmm₂) (equiv_refl _) (equiv_or_of_equiv (IH (p ∘ fin.cast_succ)) (equiv_refl _)) }
 end
 
@@ -475,7 +487,7 @@ begin
     have : (p (fin.last n) ⟶ q) ⊓ ((⋁ i, p i.cast_succ) ⟶ q) ⟷ (p (fin.last n) ⊔ ⋁ i, p i.cast_succ) ⟶ q ∈ P,
     from imply_and_equiv_or_imply (p (fin.last n)) (⋁ i, p i.cast_succ) q,
     refine equiv_of_equiv this (equiv_and_of_equiv (equiv_refl _) (equiv_symm (IH _)))
-      (equiv_imply_of_equiv (equiv_symm_or _ _) (by refl)), }
+      (equiv_imply_of_equiv (equiv_or_symm _ _) (by refl)), }
 end
 
 @[simp] lemma lconj_imply_iff_ldisj_imply (l : list F) (q : F) :
@@ -485,12 +497,41 @@ begin
   { simp[-iff_equiv_p, (∘)],
     refine equiv_of_equiv (imply_and_equiv_or_imply p l.disjunction q)
       (equiv_and_of_equiv (equiv_refl _) (equiv_symm (IH)))
-      (equiv_imply_of_equiv (equiv_symm_or _ _) (by refl)) }
+      (equiv_imply_of_equiv (equiv_or_symm _ _) (by refl)) }
 end
 
-@[simp] lemma ldisj_imply_of {l : list F} {q : F} (h : ∀ p ∈ l, p ⟶ q ∈ P) : (l.disjunction ⟶ q) ∈ P :=
+@[simp] lemma ldisj_imply_of {l : list F} {q : F} (h : ∀ p ∈ l, p ⟶ q ∈ P) : l.disjunction ⟶ q ∈ P :=
 by { have : (l.map (λ p, (p ⟶ q))).conjunction ∈ P, by simpa using h,
      exact (iff_equiv_p.mp $ lconj_imply_iff_ldisj_imply l q).1 ⨀ this }
+
+@[simp] lemma fdisj_imply_of {s : finset F} {q : F} (h : ∀ p ∈ s, p ⟶ q ∈ P) : s.disjunction ⟶ q ∈ P :=
+by simp[finset.disjunction]; exact ldisj_imply_of (by simpa using h)
+
+@[simp] lemma equiv_or_assoc (p q r : F) : (p ⊔ q) ⊔ r ⟷ p ⊔ (q ⊔ r) ∈ P :=
+begin
+  simp, split,
+  { have l₁ : p ⟶ p ⊔ (q ⊔ r) ∈ P, from imply_or_left p (q ⊔ r),
+    have l₂ : q ⟶ p ⊔ (q ⊔ r) ∈ P, from impl_trans (imply_or_left q r) (imply_or_right p (q ⊔ r)),
+    have l₃ : r ⟶ p ⊔ (q ⊔ r) ∈ P, from impl_trans (imply_or_right q r) (imply_or_right p (q ⊔ r)),
+    exact or_imply _ _ _ ⨀ (or_imply _ _ _ ⨀ l₁ ⨀ l₂) ⨀ l₃ },
+  { have l₁ : p ⟶ (p ⊔ q) ⊔ r ∈ P, from impl_trans (imply_or_left p q) (imply_or_left (p ⊔ q) r),
+    have l₂ : q ⟶ (p ⊔ q) ⊔ r ∈ P, from impl_trans (imply_or_right p q) (imply_or_left (p ⊔ q) r),
+    have l₃ : r ⟶ (p ⊔ q) ⊔ r ∈ P, from imply_or_right (p ⊔ q) r,
+    exact or_imply _ _ _ ⨀ l₁ ⨀ (or_imply _ _ _ ⨀ l₂ ⨀ l₃) }
+end
+
+lemma equiv_append (l₁ l₂ : list F) : (l₁ ++ l₂).disjunction ⟷ l₁.disjunction ⊔ l₂.disjunction ∈ P :=
+begin
+  induction l₁; simp[-iff_equiv_p],
+  case nil { simp, refine or_imply ⊥ l₂.disjunction l₂.disjunction ⨀ (hyp_bot l₂.disjunction) ⨀ (refl l₂.disjunction) },
+  case cons : p l IH
+  { have l₁ : (l ++ l₂).disjunction ⊔ p ⟷ l.disjunction ⊔ (l₂.disjunction ⊔ p) ∈ P,
+      from equiv_trans (equiv_or_of_equiv IH (equiv_refl p)) (equiv_or_assoc l.disjunction l₂.disjunction p),
+    have l₂ : l.disjunction ⊔ (l₂.disjunction ⊔ p) ⟷ l.disjunction ⊔ p ⊔ l₂.disjunction ∈ P,
+      from equiv_trans (equiv_or_of_equiv (equiv_refl l.disjunction) (equiv_or_symm l₂.disjunction p))
+      (equiv_symm (equiv_or_assoc _ _ _)),
+    exact equiv_trans l₁ l₂ }
+end
 
 variables (P)
 
@@ -748,7 +789,7 @@ lemma of_equiv {p₁ p₂ : F} (h : T ⊢ p₁) (hp : T ⊢ p₁ ⟷ p₂) : T �
 
 @[simp] lemma equiv_symm_equiv (p q : F) : T ⊢ (p ⟷ q) ⟷ (q ⟷ p) := equiv_symm_equiv p q
 
-@[simp] lemma equiv_symm_or (p q : F) : T ⊢ p ⊔ q ⟷ q ⊔ p := equiv_symm_or _ _
+@[simp] lemma equiv_or_symm (p q : F) : T ⊢ p ⊔ q ⟷ q ⊔ p := equiv_or_symm _ _
 
 @[simp] lemma and_destruct (p q : F) : T ⊢ p ⟶ q ⟶ p ⊓ q := and_destruct p q
 
@@ -835,6 +876,12 @@ equiv_of_equiv h hp hq
 
 lemma case_of_ax {p q r : F} (hpq : T ⊢ p ⊔ q) (hpr : T ⊢ p ⟶ r) (hqr : T ⊢ q ⟶ r) : T ⊢ r :=
 case_of_p hpq hpr hqr
+
+lemma imply_fdisj {s : finset F} {p : F} (h : p ∈ s) : T ⊢ p ⟶ s.disjunction :=
+imply_fdisj h
+
+@[simp] lemma fdisj_imply_of {s : finset F} {q : F} (h : ∀ p ∈ s, T ⊢ p ⟶ q) : T ⊢ s.disjunction ⟶ q :=
+fdisj_imply_of h
 
 @[simp] lemma insert (p) : T +{ p } ⊢ p := by_axiom (by simp)
 
