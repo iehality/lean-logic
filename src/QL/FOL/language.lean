@@ -129,7 +129,7 @@ def of_fn (fn : Π n, L₁.fn n → L₂.fn n) : hom L₁ L₂ :=
   map_function' := by intros; simp,
   map_mlift' := by intros m n t; induction t; simp*,
   map_push' := by {intros m n t; induction t; simp*, case var : x { refine fin.last_cases _ _ x; simp } },
-  map_pull' := by {intros m n t; induction t; simp*, case metavar : x { refine fin.cases _ _ x; simp } } }
+  map_pull' := by {intros m n t; induction t; simp*, case metavar : x { refine fin.last_cases _ _ x; simp } } }
 
 def of_lhom (l : L₁ ⤳ᴸ L₂) : hom L₁ L₂ := of_fn l.fn
 

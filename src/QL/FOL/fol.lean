@@ -202,8 +202,6 @@ by induction t; simp*
 
 end rew
 
-def mlift' : subterm L m n → subterm L (m + 1) n := rew (metavar ∘ fin.succ)
-
 @[simp] def lift : subterm L m n → subterm L m (n + 1)
 | (#x)           := #x.succ
 | (&x)           := &x
@@ -220,13 +218,13 @@ funext (by simp)
 end lift
 
 @[simp] def mlift : subterm L m n → subterm L (m + 1) n
-| (&x)           := &x.succ
+| (&x)           := &x.cast_succ
 | (#x)           := #x
 | (function f v) := function f (λ i, (v i).mlift)
 
 section mlift
 
-lemma mlift_eq_rew : @mlift L m n = rew (metavar ∘ fin.succ) :=
+lemma mlift_eq_rew : @mlift L m n = rew (metavar ∘ fin.cast_succ) :=
 funext (λ t, by induction t; simp*)
 
 lemma mlift_rew (s : finitary (subterm L m₂ n) m₁) (t : subterm L m₁ n) : (t.rew s).mlift = t.rew (mlift ∘ s) :=
@@ -251,21 +249,21 @@ lemma mlift_inj : function.injective (@mlift L m n)
 end mlift
 
 /-
-  #0 #1 #2 #3 #4 ... #(n - 1) #n &0 &1 &3 &4 ... &(m - 1)
+  #0 #1 #2 #3 #4 ... #(n - 1) #n &(m - 1) ... &3 &2 &1 &0 
       ↓push                       ↑pull
-  #0 #1 #2 #3 #4 ... #(n - 1) &0 &1 &3 &4 &5 ... &m
+  #0 #1 #2 #3 #4 ... #(n - 1) &m &(m - 1) ... &3 &2 &1 &0 
 -/
 
 def push : subterm L m (n + 1) → subterm L (m + 1) n
-| (&x)           := &x.succ
-| (#x)           := (var <* &0) x
+| (&x)           := &x.cast_succ
+| (#x)           := (var <* &(fin.last m)) x
 | (function f v) := function f (λ i, (v i).push)
 
 section push
 
-@[simp] lemma push_metavar (x) : (&x : subterm L m (n + 1)).push = &x.succ := rfl
+@[simp] lemma push_metavar (x) : (&x : subterm L m (n + 1)).push = &x.cast_succ := rfl
 
-@[simp] lemma push_var_last : (#(fin.last n) : subterm L m (n + 1)).push = &0 := by simp[push]
+@[simp] lemma push_var_last : (#(fin.last n) : subterm L m (n + 1)).push = &(fin.last m) := by simp[push]
 
 @[simp] lemma push_var_cast (x) : (#(fin.cast_succ x) : subterm L m (n + 1)).push = #x := by simp[push]
 
@@ -274,22 +272,22 @@ section push
 
 lemma push_lift_comm (t : subterm L m (n + 1)) : t.lift.push = t.push.lift :=
 by { induction t; simp*,
-     case var : x { refine fin.last_cases _ _ x; simp[fin.succ_cast_succ] },
+     case var : x { refine fin.last_cases _ _ x; simp[fin.succ_cast_succ], },
      case function : k f v IH
      { funext i, exact IH i } }
 
 end push
 
 def pull : subterm L (m + 1) n → subterm L m (n + 1)
-| (&x)           := (#(fin.last n) *> metavar) x
+| (&x)           := (metavar <* #(fin.last n)) x
 | (#x)           := #x.cast_succ
 | (function f v) := function f (λ i, (v i).pull)
 
 section pull
 
-@[simp] lemma pull_metavar_zero : (&0 : subterm L (m + 1) n).pull = #(fin.last n) := rfl
+@[simp] lemma pull_metavar_zero : (&(fin.last m) : subterm L (m + 1) n).pull = #(fin.last n) := by simp[pull]
 
-@[simp] lemma pull_metavar_succ (x : fin m) : (&x.succ : subterm L (m + 1) n).pull = &x := by simp[pull]
+@[simp] lemma pull_metavar_succ (x : fin m) : (&x.cast_succ : subterm L (m + 1) n).pull = &x := by simp[pull]
 
 @[simp] lemma pull_var (x) : (#x : subterm L (m + 1) n).pull = #x.cast_succ := by simp[pull]
 
@@ -298,46 +296,46 @@ section pull
 
 @[simp] lemma pull_push (t : subterm L m (n + 1)) : t.push.pull = t :=
 by{ induction t, 
-    case metavar : x { simp },
+    case metavar : x { simp, },
     case var : x { refine fin.last_cases _ _ x; simp },
     case function : p f v IH { simp, funext x, simp[IH] } }
 
 @[simp] lemma push_pull (t : subterm L (m + 1) n) : t.pull.push = t :=
 by{ induction t,
-    case metavar : x { refine fin.cases _ _ x; simp },
+    case metavar : x { refine fin.last_cases _ _ x; simp },
     case var : x { simp },
     case function : p f v IH { simp, funext x, simp[IH] } }
 
 lemma push_rew_pull (t : subterm L (m₁ + 1) n) (s : fin m₁ → subterm L m₂ (n + 1)) :
-  (rew s t.pull).push = rew (&0 *> push ∘ s) t :=
+  (rew s t.pull).push = rew (push ∘ s <* &(fin.last m₂)) t :=
 by { induction t; simp*,
-      case metavar : x { refine fin.cases _ _ x; simp },
+      case metavar : x { refine fin.last_cases _ _ x; simp },
       case function : k f v IH
       { funext i, exact IH i } }
 
 lemma pull_lift_comm (t : subterm L (m + 1) n) : t.lift.pull = t.pull.lift :=
 by { induction t; simp[*, fin.succ_cast_succ],
-     case metavar : x { refine fin.cases _ _ x; simp },
+     case metavar : x { refine fin.last_cases _ _ x; simp },
      case function : k f v IH
      { funext i, exact IH i } }
 
 end pull
 
 /-
-  #0 #1 ... #(n-1) &0 &1 ... &m
+  #0 #1 ... #(n-1) &m &(m - 1) ... &0
             ↓msubst u
-  #0 #1 ... #(n-1) u  &0 ... &(m-1)
+  #0 #1 ... #(n-1) u  &(m - 1) ... &0
 -/
 
-def msubst (t : subterm L m n) : subterm L (m + 1) n → subterm L m n := rew (t *> metavar)
+def msubst (t : subterm L m n) : subterm L (m + 1) n → subterm L m n := rew (metavar <* t)
 
 section msubst
 
 @[simp] lemma msubst_var (u : subterm L m n) (x) : msubst u #x = #x := by simp[msubst]
 
-@[simp] lemma msubst_metavar_zero (u : subterm L m n) : msubst u &0 = u := by simp[msubst]
+@[simp] lemma msubst_metavar_zero (u : subterm L m n) : msubst u &(fin.last m) = u := by simp[msubst]
 
-@[simp] lemma msubst_metavar_succ (u : subterm L m n) (x : fin m) : msubst u &x.succ = &x := by simp[msubst]
+@[simp] lemma msubst_metavar_succ (u : subterm L m n) (x : fin m) : msubst u &x.cast_succ = &x := by simp[msubst]
 
 @[simp] lemma msubst_function (u : subterm L m n) {p} (f : L.fn p) (v) :
   msubst u (function f v) = function f (msubst u ∘ v) := by simp[msubst]
@@ -348,9 +346,9 @@ by { induction t; simp*, case function : k f v IH { funext i, simp, exact IH i }
 end msubst
 
 /-
-  #0 #1 ... #(n-1) #n &0 &1 ... &(m-1)
+  #0 #1 ... #(n-1) #n &(m - 1) ... &1 &0
             ↓subst u
-  #0 #1 ... #(n-1) u  &0 &1 ... &(m-1)
+  #0 #1 ... #(n-1) u  &(m - 1) ... &0 &1
 -/
 
 def subst (t : subterm L m n) : subterm L m (n + 1) → subterm L m n := msubst t ∘ push
@@ -400,7 +398,7 @@ section dummy
 
 end dummy
 
-@[simp] lemma pull_msubst_push_mlift (t : subterm L m (n + 1)) : (pull $ msubst &0 $ push $ mlift t) = t :=
+@[simp] lemma pull_msubst_push_mlift (t : subterm L m (n + 1)) : (pull $ msubst &(fin.last m) $ push $ mlift t) = t :=
 begin
   induction t; simp, 
   case var : x { refine fin.last_cases _ _ x; simp },
@@ -588,7 +586,7 @@ begin
     rw[this] }
 end
 
-lemma mlift_eq_rew : @mlift L m n = rew (metavar ∘ fin.succ) :=
+lemma mlift_eq_rew : @mlift L m n = rew (metavar ∘ fin.cast_succ) :=
 by { ext p, induction p; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq, subterm.mlift_eq_rew, *],
      exact eq_rew_of_eq (funext $ λ x, by simp) }
 
@@ -722,7 +720,7 @@ lemma pull_inj : function.injective (@pull L m n) :=
 @function.left_inverse.injective _ _ (@push L m n) _ push_pull
 
 lemma push_rew_pull : ∀ {n} (p : subformula L (m₁ + 1) n) (s : fin m₁ → subterm L m₂ (n + 1)),
-  (rew s p.pull).push = rew (&0 *> subterm.push ∘ s) p
+  (rew s p.pull).push = rew (subterm.push ∘ s <* &(fin.last m₂)) p
 | n verum          s := by simp[top_eq]
 | n (relation p v) s := by simp; funext x; simp[subterm.push_rew_pull]
 | n (imply p q)    s := by simp[imply_eq]; exact ⟨push_rew_pull p s, push_rew_pull q s⟩
@@ -730,7 +728,7 @@ lemma push_rew_pull : ∀ {n} (p : subformula L (m₁ + 1) n) (s : fin m₁ → 
 | n (fal p)        s := by simp[fal_eq]; {
     have : subterm.lift ∘ subterm.push ∘ s = subterm.push ∘ subterm.lift ∘ s,
     { funext i; simp[subterm.push_lift_comm] },
-    rw [fin.comp_left_concat, this],
+    rw [fin.comp_right_concat, this],
     simpa using push_rew_pull p (subterm.lift ∘ s) }
 
 @[simp] lemma complexity_pull (p : subformula L (m + 1) n) : p.pull.complexity = p.complexity :=
@@ -745,7 +743,7 @@ lemma exists_comm (p : subformula L m (n + 1)) : ∃'*(∃'p) = ∃'(pull $ ∃'
 by induction n with n IH; simp*
 
 def msubst (t : subterm L m n) : subformula L (m + 1) n →ₗ subformula L m n :=
-rew (t *> metavar)
+rew (metavar <* t)
 
 section msubst
 variables (u : subterm L m n)
@@ -758,7 +756,7 @@ variables (u : subterm L m n)
 
 @[simp] lemma msubst_fal (p : subformula L (m + 1) (n + 1)) :
   msubst u (∀'p) = ∀'msubst u.lift p :=
-by simp[msubst]; refine eq_rew_of_eq (funext $ λ x, by rcases (fin.eq_zero_or_eq_succ x) with (rfl | ⟨x, rfl⟩); simp)
+by simp[msubst]; refine eq_rew_of_eq (funext $ λ x, by refine fin.last_cases _ _ x; simp)
 
 @[simp] lemma msubst_ex (p : subformula L (m + 1) (n + 1)) :
   msubst u (∃'p) = ∃'msubst u.lift p := by simp[ex_def]
@@ -768,8 +766,8 @@ by simp[msubst]; refine eq_rew_of_eq (funext $ λ x, by rcases (fin.eq_zero_or_e
 by simp[mlift_eq_rew, msubst, nested_rew]; refine rew_eq_self_of_eq (funext $ by simp) _
 
 lemma mlift_msubst (u : subterm L m n) (p : subformula L (m + 1) n) :
-  mlift (msubst u p) = rew (u.mlift *> (subterm.mlift ∘ metavar)) p :=
-by simp[msubst, mlift_rew]; refine eq_rew_of_eq (funext $ λ x, by rcases (fin.eq_zero_or_eq_succ x) with (rfl | ⟨x, rfl⟩); simp)
+  mlift (msubst u p) = rew ((subterm.mlift ∘ metavar) <* u.mlift) p :=
+by simp[msubst, mlift_rew]; refine eq_rew_of_eq (funext $ λ x, by refine fin.last_cases _ _ x; simp)
 
 @[simp] lemma complexity_msubst (p : subformula L (m + 1) n) : (msubst u p).complexity = p.complexity :=
 by simp[msubst]
@@ -832,7 +830,7 @@ by simp[←equal_eq, equal, fin.comp_left_concat]
 
 end subst
 
-lemma pull_msubst_push_mlift : ∀ {n} (p : subformula L m (n + 1)), (pull $ msubst &0 $ push $ mlift p) = p
+lemma pull_msubst_push_mlift : ∀ {n} (p : subformula L m (n + 1)), (pull $ msubst &(fin.last m) $ push $ mlift p) = p
 | n verum          := by simp[top_eq]
 | n (relation r v) := by simp; funext i; exact subterm.pull_msubst_push_mlift _
 | n (imply p q)    := by simp[imply_eq]; exact ⟨pull_msubst_push_mlift p, pull_msubst_push_mlift q⟩
@@ -842,8 +840,8 @@ using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.compl
 
 -- lemma subst_inj (u) : function.injective (@subst L m n u)
 
-@[simp] lemma subst_mlift (p : subformula L m (n + 1)) : subst &0 (mlift p) = push p :=
-by { suffices : (subst &0 $ mlift p) = (push $ pull $ msubst &0 $ push $ mlift p),
+@[simp] lemma subst_mlift (p : subformula L m (n + 1)) : subst &(fin.last m) (mlift p) = push p :=
+by { suffices : (subst &(fin.last m) $ mlift p) = (push $ pull $ msubst &(fin.last m) $ push $ mlift p),
      by simpa[pull_msubst_push_mlift] using this,
      simp only [push_pull], refl }
 
@@ -1071,6 +1069,5 @@ by simp[mlift]
 def is_open : Prop := ∀ p ∈ T, subformula.is_open p
 
 end preTheory
-
 
 end fol

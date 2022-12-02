@@ -37,7 +37,7 @@ lemma val_rew (s : finitary (subterm L m₂ n) m₁) (me : fin m₂ → S) (e : 
 | (function f v) := by simp; refine congr_arg _ (by ext i; exact val_rew (v i))
 
 @[simp] lemma val_mlift (x : S) (t : subterm L m n) :
-  t.mlift.val S (x *> me) e = t.val S me e :=
+  t.mlift.val S (me <* x) e = t.val S me e :=
 by simp[mlift_eq_rew, val_rew]; congr; ext x; simp
 
 @[simp] lemma val_lift (x : S) (t : subterm L m n) :
@@ -45,12 +45,12 @@ by simp[mlift_eq_rew, val_rew]; congr; ext x; simp
 by induction t; simp*
 
 @[simp] lemma val_push (me : fin m → S) (x : S) (e : fin n → S) (t : subterm L m (n + 1)) :
-  val S (x *> me) e t.push = val S me (e <* x) t :=
+  val S (me <* x) e t.push = val S me (e <* x) t :=
 by { induction t; simp*, case var : u { refine fin.last_cases _ _ u; simp } }
 
 @[simp] lemma val_pull (me : fin m → S) (x : S) (e : fin n → S) (t : subterm L (m + 1) n) :
-  val S me (e <* x) t.pull = val S (x *> me) e t :=
-by { induction t; simp*, case metavar : u { refine fin.cases _ _ u; simp } }
+  val S me (e <* x) t.pull = val S (me <* x) e t :=
+by { induction t; simp*, case metavar : u { refine fin.last_cases _ _ u; simp } }
 
 end  subterm
 
@@ -91,13 +91,13 @@ lemma val_rew (me : fin m₂ → S) : ∀ {n} (e : fin n → S) (s : finitary (s
         rw this }
  
 @[simp] lemma val_mlift (e : fin n → S) (x : S) (p : subformula L m n) :
-  val S (x *> me) e p.mlift = val S me e p :=
+  val S (me <* x) e p.mlift = val S me e p :=
 by { simp[mlift_eq_rew, val_rew],
-     have : subterm.val S (x *> me) e ∘ metavar ∘ fin.succ = me, by funext x; simp,
+     have : subterm.val S (me <* x) e ∘ metavar ∘ fin.cast_succ = me, by funext x; simp,
      rw this }
 
 @[simp] lemma val_push (x : S) : ∀ {n} (e : fin n → S) (p : subformula L m (n + 1)),
-  val S (x *> me) e p.push ↔ val S me (e <* x) p
+  val S (me <* x) e p.push ↔ val S me (e <* x) p
 | n e (relation r v) := by simp; refine iff_of_eq (congr_arg _ $ funext $ by simp)
 | n e verum          := by simp[top_eq]
 | n e (imply p q)    := by simp[imply_eq, val_push _ p, val_push _ q]
@@ -107,7 +107,7 @@ by { simp[mlift_eq_rew, val_rew],
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.complexity)⟩]}
 
 @[simp] lemma val_pull (x : S) : ∀ {n} (e : fin n → S) (p : subformula L (m + 1) n),
-  val S me (e <* x) p.pull ↔ val S (x *> me) e p
+  val S me (e <* x) p.pull ↔ val S (me <* x) e p
 | n e (relation r v) := by simp; refine iff_of_eq (congr_arg _ $ funext $ by simp)
 | n e verum          := by simp[top_eq]
 | n e (imply p q)    := by simp[imply_eq, val_pull _ p, val_pull _ q]
@@ -120,8 +120,8 @@ using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.com
 by simp[dummy]
 
 @[simp] lemma val_msubst (p : subformula L (m + 1) n) (t : subterm L m n) :
-  val S me e (msubst t p) ↔ val S (subterm.val S me e t *> me) e p :=
-by simp[msubst, val_rew, fin.comp_left_concat, show subterm.val S me e ∘ metavar = me, from funext (by simp)]
+  val S me e (msubst t p) ↔ val S (me <* subterm.val S me e t) e p :=
+by simp[msubst, val_rew, fin.comp_right_concat, show subterm.val S me e ∘ metavar = me, from funext (by simp)]
 
 @[simp] lemma val_subst (p : subformula L m (n + 1)) (t : subterm L m n) :
   val S me e (subst t p) ↔ val S me (e <* subterm.val S me e t) p :=
@@ -175,22 +175,22 @@ variables {S} {p q : formula L m}
   S ⊧[me] relation r v ↔ S.pr r (subterm.val S me fin.nil ∘ v) := by simp[val]
 
 @[simp] lemma models_fal {p : subformula L m 1} :
-  S ⊧[me] (∀'p : subformula _ _ _) ↔ ∀ x, S ⊧[x *> me] p.push :=
+  S ⊧[me] (∀'p : subformula _ _ _) ↔ ∀ x, S ⊧[me <* x] p.push :=
 by simp[val, fin.concat_zero]
 
 @[simp] lemma models_ex {p : subformula L m 1} :
-  S ⊧[me] (∃'p : subformula _ _ _) ↔ ∃ x, S ⊧[x *> me] p.push :=
+  S ⊧[me] (∃'p : subformula _ _ _) ↔ ∃ x, S ⊧[me <* x] p.push :=
 by simp[val, fin.concat_zero]
 
 @[simp] lemma models_subst {p : subformula L m 1} (t : subterm L m 0) :
-  S ⊧[me] (subst t p : subformula _ _ _) ↔ S ⊧[subterm.val S me fin.nil t *> me] p.push :=
+  S ⊧[me] (subst t p : subformula _ _ _) ↔ S ⊧[me <* subterm.val S me fin.nil t] p.push :=
 by simp[val, subformula.val_subst]
 
 @[simp] lemma modfels_substs (p : subformula L m n) (v : fin n → subterm L m 0) :
   S ⊧[me] substs v p ↔ subformula.val S me (subterm.val S me fin.nil ∘ v) p :=
 by simp
 
-@[simp] lemma models_rew {x : S} : S ⊧[x *> me] p.mlift ↔ S ⊧[me] p :=
+@[simp] lemma models_rew {x : S} : S ⊧[me <* x] p.mlift ↔ S ⊧[me] p :=
 by simp[val]
 
 end formula
@@ -223,9 +223,9 @@ variables {S} {m}
 @[simp] lemma models_mlift {p : formula L m} : S ⊧ p.mlift ↔ S ⊧ p :=
 by{ simp[models_def], split,
     { intros h e,
-      have : S ⊧[default *> e] p.mlift, from h _,
+      have : S ⊧[e <* default] p.mlift, from h _,
       exact models_rew.mp this },
-    { intros h e, rw ←fin.left_concat_eq e, simpa using h (e ∘ fin.succ)} }
+    { intros h e, rw ←fin.right_concat_eq e, simpa using h (e ∘ fin.cast_succ)} }
 
 end formula
 
@@ -278,7 +278,7 @@ begin
   { intros m T p b IH S hT me,
     simp[formula.val], intros x,
     have : S ⊧ p, from @IH S (by simpa using hT),
-    exact this (x *> me) },
+    exact this (me <* x) },
   { intros m T p q b₁ b₂ m₁ m₂ S hT me,
     have h₁ : S ⊧[me] p → S ⊧[me] q, by simpa using m₁ hT me,
     have h₂ : S ⊧[me] p, from m₂ hT me,

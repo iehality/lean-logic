@@ -226,7 +226,7 @@ contrapose.mp (imply_of_equiv
   (iff_dn_refl_right $ ∀'∼p) (equiv_refl _))
 
 lemma specialize' {T} (p : subformula L m 1) : T ⊢ ∀' 𝗟 p ⟶ 𝗠 p :=
-by { have : T ⊢ ∀' 𝗟 p ⟶ subst &0 p.mlift, from specialize T p.mlift &0, simpa using this }
+by { have : T ⊢ ∀' 𝗟 p ⟶ subst &(fin.last _) p.mlift, from specialize T p.mlift &(fin.last _), simpa using this }
 
 lemma use {p : subformula L m 1} (t) (h : T ⊢ subst t p) : T ⊢ ∃'p :=
 exists_of_subst p t ⨀ h

@@ -174,19 +174,19 @@ end pull
 
 section subst
 
-def msubst (u : subterm L m n) : pnf L (m + 1) n → pnf L m n := rew (u *> subterm.metavar)
+def msubst (u : subterm L m n) : pnf L (m + 1) n → pnf L m n := rew (subterm.metavar <* u)
 
 def subst (u : subterm L m n) : pnf L m (n + 1) → pnf L m n := msubst u ∘ push
 
 @[simp] lemma msubst_openformula (u) (p : subformula L (m + 1) n) (hp) :
   msubst u (openformula p hp) = openformula (subformula.msubst u p) (by simpa using hp) :=
-by simp[msubst, fin.comp_left_concat]; refl
+by simp[msubst, fin.comp_right_concat]; refl
 
 @[simp] lemma msubst_fal (u) (φ : pnf L (m + 1) (n + 1)) : msubst u (∀'φ) = ∀'msubst u.lift φ :=
-by simp[msubst, fin.comp_left_concat]
+by simp[msubst, fin.comp_right_concat]; refl
 
 @[simp] lemma msubst_ex (u) (φ : pnf L (m + 1) (n + 1)) : msubst u (∃'φ) = ∃'msubst u.lift φ :=
-by simp[msubst, fin.comp_left_concat]
+by simp[msubst, fin.comp_right_concat]
 
 @[simp] def msubat_to_formula (u) (φ : pnf L (m + 1) n) :
   (msubst u φ).to_formula = subformula.msubst u φ.to_formula :=
