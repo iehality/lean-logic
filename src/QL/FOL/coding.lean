@@ -6,18 +6,8 @@ namespace fol
 open_locale logic_symbol
 variables (L : language.{u}) {m n : ℕ}
 
-inductive uniform_subterm : Type u
-| metavar {} : ℕ → uniform_subterm
-| var     {} : ℕ → uniform_subterm
-| function   : ∀ {p}, L.fn p → (fin p → uniform_subterm) → uniform_subterm
-
 namespace subterm
 variables {L m n}
-
-def to_uniform_subterm : subterm L m n → uniform_subterm L
-| &x             := uniform_subterm.metavar x
-| #x             := uniform_subterm.var x
-| (function f v) := uniform_subterm.function f (λ i, to_uniform_subterm (v i))
 
 section encode
 variables (L m n)
