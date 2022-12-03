@@ -578,7 +578,14 @@ lemma fintype_sup_le {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α]
 finset.sup_le (λ i _, h i)
 
 namespace fintype_sup
-variables {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α] [order_bot α]
+variables {ι : Type*} [fintype ι] {α : Type*}
+
+section semilattice
+variables [semilattice_sup α] [order_bot α]
+
+@[simp] lemma fintype_sup_le_iff {f : ι → α} {a : α} :
+  (⨆ᶠ i, f i) ≤ a ↔ (∀ i, f i ≤ a):=
+by simp[fintype_sup]
 
 @[simp] lemma finsup_eq_0_of_empty [is_empty ι] (f : ι → α) :
   (⨆ᶠ i, f i) = (⊥ : α) := by simp[fintype_sup]
@@ -600,6 +607,24 @@ begin
   { refine fintype_sup_le (λ ⟨i, hi⟩, by { rcases i; simp; rcases i; simp[← nat.add_one, add_assoc] at hi ⊢, contradiction }) },
   { simp }
 end
+
+end semilattice
+
+section linear_order
+variables [linear_order α] [order_bot α]
+
+@[simp] lemma fintype_sup_lt [inhabited ι] {f : ι → α} {a : α} :
+  (⨆ᶠ i, f i) < a ↔ (∀ i, f i < a):=
+begin
+  simp[fintype_sup], 
+  by_cases C : a ≤ ⊥,
+  { have : a = ⊥, from eq_bot_iff.mpr C, rcases this with rfl,
+    simp, },
+  { have : ⊥ < a, exact not_le.mp C,
+    simp[this] }
+end
+
+end linear_order
 
 end fintype_sup
 
