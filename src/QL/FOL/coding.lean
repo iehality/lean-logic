@@ -227,7 +227,7 @@ def to_nat : subformula L m n → ℕ := λ p, encodable.encode p.to_uniform
 variables (L m n)
 
 def of_nat : ℕ → option (subformula L m n) := λ i,
-  let p := encodable.decode (uniform_subformula L n) i in
+  let p := encodable.decode₂ (uniform_subformula L n) i in
   p.bind (λ p, if h : p.uvars ≤ m then some (p.to_subformula h) else none)
 
 variables {L m n}
@@ -237,6 +237,11 @@ by induction p; simp*
 
 @[simp] lemma to_nat_of_nat (p : subformula L m n) : of_nat L m n p.to_nat = some p :=
 by simp[to_nat, of_nat]
+
+lemma of_nat_eq_some {e} {p : subformula L m n} : of_nat L m n e = some p ↔ p.to_nat = e :=
+by { simp[of_nat, to_nat, encodable.decode₂_eq_some, dite_eq_iff], split,
+  { simp, rintros _ rfl h rfl, simp },
+  { rintros rfl, refine ⟨p.to_uniform, rfl, by simp⟩ } }
 
 @[simp] lemma of_nat_to_nat (p : subformula L m n) : to_nat p.mlift = to_nat p :=
 by simp[to_nat]

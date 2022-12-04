@@ -735,6 +735,8 @@ variables [has_inf α] [has_top α]
 
 end inf
 
+lemma map_to_list_option {β} (f : α → β) (o : option α) : list.map f o.to_list = (o.map f).to_list := by cases o; simp; refl
+
 end list
 
 namespace set
@@ -763,6 +765,24 @@ lemma subset_union_iff_exists {s t u : set α} : s ⊆ t ∪ u ↔ ∃ (t' ⊆ t
       simp[set.subset_union_of_subset_left ht', set.subset_union_of_subset_right hu'] }⟩
 
 end set
+
+namespace option
+
+@[simp] lemma to_list_to_finset_eq {α} (a : option α) : a.to_list.to_finset = a.to_finset :=
+by { rcases a; simp[], ext x, simp, exact comm }
+
+end option
+
+namespace finset
+variables {α : Type*} {β : Type*}
+
+theorem image_to_finset_list (l : list α) (f : α → β) :
+  l.to_finset.image f = (l.map f).to_finset := ext (by simp)
+
+theorem image_to_finset_option (o : option α) (f : α → β) :
+  o.to_finset.image f = (o.map f).to_finset := ext (by simp)
+
+end finset
 
 section classical
 attribute [instance, priority 0] classical.prop_decidable

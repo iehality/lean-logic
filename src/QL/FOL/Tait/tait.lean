@@ -10,8 +10,8 @@ variables (L L₁ L₂ : language.{u}) (m n : ℕ)
 namespace Tait
 
 inductive subformula (m) : ℕ → Type u
-| verum          {n} : subformula n
-| falsum        {n} : subformula n
+| verum        {n} : subformula n
+| falsum       {n} : subformula n
 | relation     {n} : ∀ {p}, L.pr p → (fin p → subterm L m n) → subformula n
 | neg_relation {n} : ∀ {p}, L.pr p → (fin p → subterm L m n) → subformula n
 | and          {n} : subformula n → subformula n → subformula n
@@ -246,7 +246,7 @@ def pull : subformula L (m + 1) n →ₗ subformula L m (n + 1) :=
 end pull
 
 def msubst (t : subterm L m n) : subformula L (m + 1) n →ₗ subformula L m n :=
-rew (t *> subterm.metavar)
+rew (subterm.metavar <* t)
 
 section msubst
 variables (u : subterm L m n)
@@ -258,10 +258,10 @@ variables (u : subterm L m n)
   msubst u (neg_relation r v) = neg_relation r (subterm.msubst u ∘ v) := by simp[msubst, subterm.msubst]
 
 @[simp] lemma msubst_fal (p : subformula L (m + 1) (n + 1)) :
-  msubst u (∀'p) = ∀'msubst u.lift p := by simp[msubst, fin.comp_left_concat]
+  msubst u (∀'p) = ∀'msubst u.lift p := by simp[msubst, fin.comp_right_concat]
 
 @[simp] lemma msubst_ex (p : subformula L (m + 1) (n + 1)) :
-  msubst u (∃'p) = ∃'msubst u.lift p := by simp[msubst, fin.comp_left_concat]
+  msubst u (∃'p) = ∃'msubst u.lift p := by simp[msubst, fin.comp_right_concat]
 
 end msubst
 
