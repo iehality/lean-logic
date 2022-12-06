@@ -17,6 +17,8 @@ noncomputable def descending_chain (z : α) : ℕ → α
 | 0       := z
 | (i + 1) := @classical.epsilon α ⟨z⟩ (λ y, y ≺ descending_chain i ∧ ¬acc (≺) y)
 
+@[simp] lemma descending_chain_zero (z : α) : descending_chain (≺) z 0 = z := rfl
+
 lemma infinite_descending_chain_of_non_acc (z : α) (hz : ¬acc (≺) z) : infinite_descending_chain (≺) (descending_chain (≺) z) :=
 begin
   haveI : nonempty α, from ⟨z⟩,

@@ -163,11 +163,17 @@ variables {L m n}
 @[simp] lemma subformula_uvars (p : subformula L m n) : p.to_uniform.uvars ≤ m :=
 by induction p; simp*
 
+@[simp] lemma sentence_uvars (σ : subformula L 0 n) : σ.to_uniform.uvars ≤ m :=
+le_trans (subformula_uvars σ) (by simp)
+
 @[simp] lemma to_nat_of_nat (p : subformula L m n) : of_nat L m n p.to_nat = some p :=
 by simp[to_nat, of_nat]
 
 @[simp] lemma of_nat_to_nat (p : subformula L m n) : to_nat p.mlift = to_nat p :=
 by simp[to_nat]
+
+@[simp] lemma of_nat_to_uniform (p : subformula L m n) : encodable.decode₂ (uniform_subformula L n) p.to_nat = p.to_uniform :=
+by simp[to_nat]; refl
 
 lemma of_nat_eq_some {e} {p : subformula L m n} : of_nat L m n e = some p ↔ p.to_nat = e :=
 by { simp[of_nat, to_nat, encodable.decode₂_eq_some, dite_eq_iff], split,

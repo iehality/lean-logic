@@ -6,7 +6,7 @@ namespace fol
 open_locale logic_symbol
 variables (L : language.{u}) {m n : ℕ}
 
-inductive uniform_subterm (n : ℕ) : Type u
+inductive uniform_subterm  (n : ℕ) : Type u
 | uvar  {} : ℕ → uniform_subterm
 | var   {} : fin n → uniform_subterm
 | function : ∀ {k}, L.fn k → (fin k → uniform_subterm) → uniform_subterm

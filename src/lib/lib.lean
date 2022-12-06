@@ -737,6 +737,10 @@ end inf
 
 lemma map_to_list_option {β} (f : α → β) (o : option α) : list.map f o.to_list = (o.map f).to_list := by cases o; simp; refl
 
+lemma prefix_nth_le (l₁ l₂ : list α) (i : ℕ) (hi : i < l₁.length) (h : l₁ <+: l₂) :
+  l₁.nth_le i hi = l₂.nth_le i (gt_of_ge_of_gt (is_prefix.length_le h) hi) :=
+by { rcases h with ⟨l, rfl⟩, exact (list.nth_le_append _ _).symm }
+
 end list
 
 namespace set
