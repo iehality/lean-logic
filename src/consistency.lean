@@ -188,6 +188,7 @@ namespace complete
 open Theory
 variables {F} {𝓢 : Type*} [has_finite_character F] [semantics F 𝓢] [complete F 𝓢] {S : 𝓢}
 
+/-
 theorem compactness {T : Theory F} :
   semantics.Satisfiable 𝓢 T ↔ (∀ u ⊆ T, u.finite → semantics.Satisfiable 𝓢 (u : set F)) :=
 ⟨by rintros ⟨S, hS⟩ u ss hu; refine ⟨S, semantics.models_of_ss ss hS⟩,
@@ -202,6 +203,7 @@ theorem compactness {T : Theory F} :
 theorem compactness' {T : Theory F} :
   ¬semantics.Satisfiable 𝓢 T ↔ (∃ u ⊆ T, u.finite ∧ ¬semantics.Satisfiable 𝓢 (u : set F)) :=
 by rw[compactness]; simp
+-/
 
 end complete
 

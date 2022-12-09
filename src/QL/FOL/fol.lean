@@ -59,6 +59,8 @@ def to_string [∀ n, has_to_string (L.fn n)] : subterm L m n → string
 
 instance [∀ n, has_to_string (L.fn n)] : has_to_string (subterm L m n) := ⟨to_string L m n⟩
 
+instance inhabited_of_inhabited [inhabited (L.fn 0)] : inhabited (subterm L m n) := ⟨function default fin.nil⟩
+
 end subterm
 
 variables (L)

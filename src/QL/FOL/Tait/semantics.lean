@@ -19,8 +19,8 @@ variables (S : Structure L) {n} {me : fin m → S} {e : fin n → S}
 | n e (neg_relation p v) := ¬S.pr p (subterm.val S me e ∘ v)
 | n e (and p q)          := p.val' e ∧ q.val' e
 | n e (or p q)           := p.val' e ∨ q.val' e
-| n e (fal p)            := ∀ x : S.dom, (p.val' (x *> e))
-| n e (ex p)             := ∃ x : S.dom, (p.val' (x *> e))
+| n e (fal p)            := ∀ x : S, (p.val' (x *> e))
+| n e (ex p)             := ∃ x : S, (p.val' (x *> e))
 
 @[simp] lemma val'_neg (p : subformula L m n) : val' S me e (∼p) = ¬val' S me e p :=
 by induction p generalizing me e; simp[mlift, ←verum_eq, ←falsum_eq, ←and_eq, ←or_eq, ←not_eq, ←fal_eq, ←ex_eq, or_iff_not_imp_left, *] at*
@@ -67,6 +67,56 @@ by simp[models, fin.nil]
 
 end sentence
 
+namespace uniform_subformula
+
+variables (S : Structure L) {n} {me : ℕ → S} {e : fin n → S}
+
+@[simp] def val (me : ℕ → S) : ∀ {n} (e : fin n → S), uniform_subformula L n → Prop
+| n _ verum              := true
+| n _ falsum             := false
+| n e (relation p v)     := S.pr p (uniform_subterm.val S me e ∘ v)
+| n e (neg_relation p v) := ¬S.pr p (uniform_subterm.val S me e ∘ v)
+| n e (and p q)          := p.val e ∧ q.val e
+| n e (or p q)           := p.val e ∨ q.val e
+| n e (fal p)            := ∀ x : S, (p.val (x *> e))
+| n e (ex p)             := ∃ x : S, (p.val (x *> e))
+
+@[simp] lemma val_neg (p : uniform_subformula L n) : val S me e (not p) = ¬val S me e p :=
+by induction p generalizing me e; simp[or_iff_not_imp_left, *]
+
+@[simp] lemma val_relation {p} (r : L.pr p) (v) :
+  val S me e (relation r v) ↔ S.pr r (uniform_subterm.val S me e ∘ v) :=  by simp[val]; refl
+
+@[simp] lemma val_neg_relation {p} (r : L.pr p) (v) :
+  val S me e (neg_relation r v) ↔ ¬S.pr r (uniform_subterm.val S me e ∘ v) := by simp[val]; refl
+
+@[simp] lemma val_fal (p : uniform_subformula L (n + 1)) :
+  val S me e (fal p) ↔ ∀ x : S, val S me (x *> e) p := by simp[val]; refl
+
+@[simp] lemma val_ex (p : uniform_subformula L (n + 1)) :
+  val S me e (ex p) ↔ ∃ x : S, val S me (x *> e) p := by simp[val]; refl
+
+@[simp] lemma val_subst : ∀ {n} {e : fin n → S} (t : uniform_subterm L n) (p : uniform_subformula L (n + 1)),
+  val S me e (subst t p) ↔ val S me (e <* t.val S me e) p
+| n e t verum := by simp
+| n e t falsum := by simp
+| n e t (relation r v) := by simp[(∘)]
+| n e t (neg_relation r v) := by simp[(∘)]
+| n e t (and p q) := by simp[val_subst t p, val_subst t q]
+| n e t (or p q) := by simp[val_subst t p, val_subst t q]
+| n e t (fal p) := by simp[val_subst t.lift p, fin.left_right_concat_assoc]
+| n e t (ex p) := by simp[val_subst t.lift p, fin.left_right_concat_assoc]
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.2.complexity)⟩]}
+
+end uniform_subformula
+
+namespace subformula
+variables (S : Structure L) {n} {me : ℕ → S} {e : fin n → S}
+
+lemma val_uniform (p : subformula L m n) : uniform_subformula.val S me e p.uniform ↔ val S (λ i, me i) e p :=
+by induction p; simp[verum_eq, falsum_eq, and_eq, or_eq, fal_eq, ex_eq, (∘), *]
+
+end subformula
 
 end Tait
 

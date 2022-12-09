@@ -57,6 +57,9 @@ def of_ss {T U : Theory F} (ss : T ⊆ U) : extend T U :=
 @[trans] def extend.trans (T₁ T₂ T₃ : set F) [extend T₁ T₂]  [extend T₂ T₃] :
   extend T₁ T₃ := ⟨λ p b, extend.le (extend.le b : T₂ ⊢ p)⟩
 
+lemma by_axiom (T₁ T₂ : set F) [extend T₁ T₂] {p : F} (hp : p ∈ T₁) : T₂ ⊢ p :=
+extend.le (axiomatic_classical_logic'.by_axiom hp)
+
 end extend
 
 def th (T : Theory F) : Theory F := {p | T ⊢ p}
@@ -67,8 +70,6 @@ variables (F)
 
 class semantics (𝓢 : Type*) :=
 (models : 𝓢 → F → Prop)
-(models_verum : ∀ S, models S ⊤)
-(models_falsum : ∀ S, ¬models S ⊥)
 
 namespace semantics
 variables {F} {𝓢 : Type*} [semantics F 𝓢] (S : 𝓢)
@@ -125,6 +126,7 @@ class sound (𝓢 : Type*) [semantics F 𝓢] :=
 namespace sound
 variables {F} {𝓢 : Type*} [semantics F 𝓢] [sound F 𝓢] {S : 𝓢}
 
+/-
 theorem consistent_of_Satisfiable {T : Theory F} : semantics.Satisfiable 𝓢 T → Theory.consistent T :=
 begin
   rintros ⟨S, hS⟩, revert hS, contrapose,
@@ -132,6 +134,7 @@ begin
   have : T ⊢ (⊥ : F), from axiomatic_classical_logic'.explosion hp₁ hp₂,
   exact semantics.models_falsum S (soundness this hyp)
 end
+-/
 
 variables (S)
 
@@ -149,11 +152,13 @@ variables {F} {𝓢 : Type*} [semantics F 𝓢] [complete F 𝓢] {S : 𝓢}
 theorem completeness {T : Theory F} {p} : T ⊢ p ↔ semantics.consequence 𝓢 T p :=
 ⟨sound.soundness, completeness'⟩
 
+/-
 theorem consistent_iff_Satisfiable {T : Theory F} : Theory.consistent T ↔ semantics.Satisfiable 𝓢 T :=
 ⟨by { contrapose, intros h,
   have : semantics.consequence 𝓢 T ⊥, { intros S hS, exfalso, exact h ⟨S, hS⟩ },
   have : T ⊢ ⊥, from completeness.mpr this,
   exact Theory.not_consistent_iff_bot.mpr this }, sound.consistent_of_Satisfiable⟩
+-/
 end complete
 
 end logic

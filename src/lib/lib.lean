@@ -614,7 +614,7 @@ section linear_order
 variables [linear_order α] [order_bot α]
 
 @[simp] lemma fintype_sup_lt [inhabited ι] {f : ι → α} {a : α} :
-  (⨆ᶠ i, f i) < a ↔ (∀ i, f i < a):=
+  (⨆ᶠ i, f i) < a ↔ (∀ i, f i < a) :=
 begin
   simp[fintype_sup], 
   by_cases C : a ≤ ⊥,
@@ -623,6 +623,23 @@ begin
   { have : ⊥ < a, exact not_le.mp C,
     simp[this] }
 end
+
+private lemma exists_sup {ι} (f : ι → α) (s : finset ι) : s ≠ ∅ → ∃ i, f i = s.sup f :=
+begin
+  refine finset.induction_on s (by simp) _,
+  intros i s hi IH hs, simp,
+  by_cases C : s = ∅,
+  { rcases C with rfl, refine ⟨i, by simp⟩ },
+  { rcases IH C with ⟨j, hj⟩, simp[←hj],
+    have : f i ≤ f j ∨ f j ≤ f i, from le_total _ _,
+    rcases this with (le | le),
+    { refine ⟨j, by simp[le]⟩ },
+    { refine ⟨i, by simp[le]⟩ } }
+end
+
+lemma exists_sup_index [inhabited ι] (f : ι → α) :
+  ∃ i, f i = (⨆ᶠ i, f i) :=
+exists_sup f _ (by simp[finset.univ_eq_empty_iff])
 
 end linear_order
 

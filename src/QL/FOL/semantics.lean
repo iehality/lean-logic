@@ -8,15 +8,12 @@ open logic formula
 
 structure Structure (L : language.{u}) :=
 (dom : Type u)
-(dom_inhabited : inhabited dom)
 (fn : ∀ {n}, L.fn n → (fin n → dom) → dom)
 (pr : ∀ {n}, L.pr n → (fin n → dom) → Prop)
 
 instance {L : language} : has_coe_to_sort (Structure L) (Type*) := ⟨Structure.dom⟩
 
 variables {L : language.{u}} {S : Structure L}
-
-instance (S : Structure L) : inhabited S.dom := S.dom_inhabited
 
 variables (S) {m n : ℕ}
 
@@ -199,7 +196,7 @@ def sentence.val : sentence L → Prop := formula.val S fin.nil
 
 def models (S : Structure L) (p : formula L m) : Prop := ∀ e, S ⊧[e] p
 
-instance : semantics (formula L m) (Structure L) := ⟨models, by simp[models], by simp[models]⟩
+instance : semantics (formula L m) (Structure L) := ⟨models⟩
 
 lemma models_def {S : Structure L} {p : formula L m} : S ⊧ p ↔ (∀ e, S ⊧[e] p) := by refl
 
@@ -220,7 +217,7 @@ lemma Satisfiable_def (T : preTheory L m) : Satisfiable T ↔ ∃ S : Structure 
 namespace formula
 variables {S} {m}
 
-@[simp] lemma models_mlift {p : formula L m} : S ⊧ p.mlift ↔ S ⊧ p :=
+@[simp] lemma models_mlift [inhabited S] {p : formula L m} : S ⊧ p.mlift ↔ S ⊧ p :=
 by{ simp[models_def], split,
     { intros h e,
       have : S ⊧[e <* default] p.mlift, from h _,
@@ -255,7 +252,7 @@ end sentence
 namespace preTheory
 variables {S} {m} {T : preTheory L m}
 
-@[simp] lemma models_mlift : S ⊧ T.mlift ↔ S ⊧ T :=
+@[simp] lemma models_mlift [inhabited S] : S ⊧ T.mlift ↔ S ⊧ T :=
 ⟨by { intros h p hp,
       have : S ⊧ p.mlift, from @h p.mlift (by simpa using hp),
       exact formula.models_mlift.mp this },
@@ -277,6 +274,7 @@ begin
   apply provable.rec_on h,
   { intros m T p b IH S hT me,
     simp[formula.val], intros x,
+    haveI : inhabited S, from ⟨x⟩,
     have : S ⊧ p, from @IH S (by simpa using hT),
     exact this (me <* x) },
   { intros m T p q b₁ b₂ m₁ m₂ S hT me,
@@ -289,8 +287,7 @@ begin
   { intros m T p q r S hS me, simp,  intros h₁ h₂ h₃, exact h₁ h₃ (h₂ h₃) },
   { intros m T p q S hS me, simp, intros h₁, contrapose, exact h₁ },
   { intros m T p t S hS me, simp, intros h, exact h _ },
-  { intros m T p q S hS me, simp, intros h₁ h₂ x, exact h₁ x h₂ },
-  { intros m T S hS me, simp }
+  { intros m T p q S hS me, simp, intros h₁ h₂ x, exact h₁ x h₂ }
 end
 
 instance : logic.sound (formula L m) (Structure L) :=
@@ -403,7 +400,6 @@ end hom
 
 def restrict : Structure L₁ :=
 { dom := S₂,
-  dom_inhabited := S₂.dom_inhabited,
   fn := λ k f v, S₂.fn (τ.fn k f) v,
   pr := λ k r v, S₂.pr (τ.pr k r) v }
 

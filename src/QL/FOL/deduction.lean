@@ -23,7 +23,6 @@ inductive proof : Π {m}, preTheory L m → subformula L m 0 → Type u
 | contra       {m} {T : preTheory L m} : ∀ {p q}, proof T ((∼p ⟶ ∼q) ⟶ q ⟶ p)
 | specialize   {m} {T : preTheory L m} : ∀ {p} {t}, proof T (∀'p ⟶ subst t p)
 | dummy_univ   {m} {T : preTheory L m} : ∀ {p q}, proof T (∀'(dummy p ⟶ q) ⟶ p ⟶ ∀'q)
-| non_empty    {m} {T : preTheory L m} : proof T (∃'⊤)
 
 instance (m : ℕ) : has_Longarrow (formula L m) := ⟨proof⟩
 
@@ -62,7 +61,6 @@ begin
   { intros U ss, exact contra },
   { intros U ss, exact specialize },
   { intros U ss, exact dummy_univ },
-  { intros U ss, exact non_empty }
 end
 
 end proof
@@ -96,8 +94,6 @@ variables (T)
 
 @[simp] lemma dummy_univ (p q) : T ⊢ ∀'(dummy p ⟶ q) ⟶ p ⟶ ∀'q := ⟨proof.dummy_univ⟩
 
-@[simp] lemma non_empty : T ⊢ ∃'⊤ := ⟨proof.non_empty⟩
-
 variables {T U}
 
 @[elab_as_eliminator]
@@ -111,8 +107,7 @@ theorem rec_on {C : Π {m} (T : preTheory L m) (p : subformula L m 0), T ⊢ p �
   (imply₂ : ∀ {m} {T : preTheory L m} {p q r}, C T ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r) (axiomatic_classical_logic'.imply₂ p q r))
   (contra : ∀ {m} {T : preTheory L m} {p q}, C T ((∼p ⟶ ∼q) ⟶ q ⟶ p) (axiomatic_classical_logic'.contraposition p q)) 
   (specialize : ∀ {m} {T : preTheory L m} {p} {t}, C T (∀'p ⟶ subst t p) (specialize T p t))
-  (dummy_univ : ∀ {m} {T : preTheory L m} {p q}, C T (∀'(dummy p ⟶ q) ⟶ p ⟶ ∀'q) (dummy_univ T p q))
-  (non_empty : ∀ {m} {T : preTheory L m}, C T (∃'⊤) (non_empty T)) :
+  (dummy_univ : ∀ {m} {T : preTheory L m} {p q}, C T (∀'(dummy p ⟶ q) ⟶ p ⟶ ∀'q) (dummy_univ T p q)) :
   C T p b :=
 begin
   rcases b with ⟨b⟩,
@@ -125,8 +120,7 @@ begin
   case imply₂ : m T p q r { exact imply₂ },
   case contra : m T p q { exact contra },
   case specialize : m T p t { exact specialize },
-  case dummy_univ : m T p q { exact dummy_univ },
-  case non_empty { exact non_empty }
+  case dummy_univ : m T p q { exact dummy_univ }
 end
 
 noncomputable def provable.proof {T : preTheory L m} {p : formula L m} (b : T ⊢ p) : T ⟹ p := nonempty.some b
@@ -137,7 +131,6 @@ begin
   { intros m T p b IH U hyp, refine generalize (IH $ set.image_subset _ hyp) },
   { intros m T p q hyp_pq hyp_p IH₁ IH₂ U hyp, exact (IH₁ hyp) ⨀ (IH₂ hyp) },
   { intros m T p hyp_p U hyp, exact by_axiom (hyp hyp_p) },
-  { intros, simp },
   { intros, simp },
   { intros, simp },
   { intros, simp },
@@ -163,8 +156,7 @@ begin
   { rintros m T p q r U s rfl, simp },
   { rintros m T p q U r rfl, simp },
   { rintros m T p t U q rfl, refine hyp_right (specialize _ p t) _ },
-  { rintros m T p q U r rfl, refine hyp_right (dummy_univ _ p q) _ },
-  { intros, simp }
+  { rintros m T p q U r rfl, refine hyp_right (dummy_univ _ p q) _ }
 end
 
 instance : axiomatic_classical_logic (formula L m) :=
@@ -213,12 +205,19 @@ begin
   { rintros m T p q r, refine ⟨[], by simp, by simp[empty_axiom]⟩ },
   { rintros m T p q, refine ⟨[], by simp, by simp[empty_axiom]⟩ },
   { rintros m T p t, refine ⟨[], by simp, by simp[empty_axiom]⟩ },
-  { rintros m T p q, refine ⟨[], by simp, by simp[empty_axiom]⟩ },
-  { rintros m T, refine ⟨[], by simp, by simp[empty_axiom]⟩ }
+  { rintros m T p q, refine ⟨[], by simp, by simp[empty_axiom]⟩ }
 end
 
 instance : has_finite_character (formula L m) :=
 finite_character_of_finite_provable (formula L m) (λ T p, finite_character_aux)
+
+def extend_of (h : ∀ p ∈ T, U ⊢ p) : extend T U :=
+⟨begin
+  intros p b,
+  rcases finite_character_aux b with ⟨P, hP, b⟩,
+  have : U ⊢ P.conjunction, from list_conjunction_provable (λ p hp, h _ (hP p hp)),
+  exact of_empty_axiom _ b ⨀ this
+end⟩
 
 lemma exists_of_subst (p : subformula L m 1) (t) : T ⊢ subst t p ⟶ ∃'p :=
 contrapose.mp (imply_of_equiv
@@ -276,13 +275,24 @@ lemma exists_intro (p : subformula L m 1) (q : subformula L m 0)
 by { have : T ⊢ ∀'(p ⟶ 𝗗 q), by simpa using generalize h,
      exact univ_imply_dummy p q ⨀ this }
 
-@[simp] lemma forall_bot : T ⊢ ∀'⊥ ⟷ ⊥ :=
+def Nonempty : preTheory L m := { ∃'⊤, }
+
+instance preTheory_Nonempty (T : preTheory L (m + 1)) : Nonempty.extend T :=
+extend_of (by simp[Nonempty]; refine use &0 (by simp))
+
+instance preTheory_of_inhabited [inhabited (L.fn 0)] : Nonempty.extend T :=
+extend_of (by simp[Nonempty]; refine use default (by simp))
+
+@[simp] lemma non_empty [Nonempty.extend T] : T ⊢ ∃'⊤ :=
+logic.Theory.extend.by_axiom Nonempty T (by simp[Nonempty])
+
+@[simp] lemma forall_bot [Nonempty.extend T] : T ⊢ ∀'⊥ ⟷ ⊥ :=
 by { simp[iff_equiv],
      have : T ⊢ ∼∀'∼⊤, by simp[←ex_def],
      refine of_equiv (neg_of_equiv this (equiv_forall_of_equiv (by simp)))
      (neg_iff (∀'⊥)) }
 
-@[simp] lemma forall_dummy (p : formula L m) : T ⊢ ∀'𝗗 p ⟷ p :=
+@[simp] lemma forall_dummy [Nonempty.extend T] (p : formula L m) : T ⊢ ∀'𝗗 p ⟷ p :=
 begin
   simp[iff_equiv], split,
   { have : T ⊢ ∀'(⊤ ⟶ 𝗗 p) ⟶ ∃'⊤ ⟶ p, from univ_imply_dummy ⊤ p,
@@ -344,7 +354,7 @@ begin
     refine equiv_neg_of_equiv (equiv_forall_of_equiv $ equiv_symm (by simp[neg_eq])) }
 end
 
-@[simp] lemma and_forall_pnf (p q) : T ⊢ (∀'p) ⊓ q ⟷ ∀'(p ⊓ 𝗗 q) :=
+@[simp] lemma and_forall_pnf [Nonempty.extend T] (p q) : T ⊢ (∀'p) ⊓ q ⟷ ∀'(p ⊓ 𝗗 q) :=
 begin
   have lmm₁ : T ⊢ (∀'p) ⊓ q ⟶ ∀'(p ⊓ 𝗗 q),
   { have : 𝗟'T ⊢ (∀'𝗟 p) ⊓ 𝗟 q ⟶ 𝗠 p ⊓ 𝗟 q,
@@ -362,7 +372,7 @@ begin
   refine iff_equiv.mpr ⟨lmm₁, lmm₂⟩
 end
 
-@[simp] lemma or_exists_pnf (p q) : T ⊢ (∃'p) ⊔ q ⟷ ∃'(p ⊔ 𝗗 q) :=
+@[simp] lemma or_exists_pnf [Nonempty.extend T] (p q) : T ⊢ (∃'p) ⊔ q ⟷ ∃'(p ⊔ 𝗗 q) :=
 begin
   have : T ⊢ (∀'∼p) ⊓ ∼q ⟷ ∀'∼p ⊓ 𝗗 (∼q), from and_forall_pnf (∼p) (∼q),
   have := equiv_neg_of_equiv this,
@@ -379,7 +389,7 @@ by { have : T ⊢ ((∀'q) ⊔ ∼p) ⟷ ∀'(q ⊔ ∼𝗗 p), by simpa using o
      exact equiv_of_equiv this (equiv_symm (by simp))
        (equiv_forall_of_equiv (equiv_symm (by simp))) }
 
-lemma imply_exists_pnf (p q) : T ⊢ (p ⟶ ∃'q) ⟷ ∃'(𝗗 p ⟶ q) :=
+lemma imply_exists_pnf [Nonempty.extend T] (p q) : T ⊢ (p ⟶ ∃'q) ⟷ ∃'(𝗗 p ⟶ q) :=
 by{ have : T ⊢ ((∃'q) ⊔ ∼p) ⟷ ∃'(q ⊔ ∼𝗗 p), by simpa using or_exists_pnf q ∼p,
     refine equiv_of_equiv this (equiv_symm impl_iff_or')
       (equiv_exists_of_equiv $ equiv_symm $ by simp)}
@@ -391,14 +401,14 @@ by{ have : T ⊢ ((∀'∼p) ⊔ q) ⟷ ∀'(∼p ⊔ 𝗗 q), by simp,
       refine equiv_trans (equiv_or_of_equiv _ _) this; simp },
     { refine equiv_forall_of_equiv (equiv_symm $ by simp) } }
 
-lemma forall_imply_pnf (p q) : T ⊢ (∀'p ⟶ q) ⟷ ∃'(p ⟶ 𝗗 q) :=
+lemma forall_imply_pnf [Nonempty.extend T] (p q) : T ⊢ (∀'p ⟶ q) ⟷ ∃'(p ⟶ 𝗗 q) :=
 by{ have : T ⊢ ((∃'∼p) ⊔ q) ⟷ ∃'(∼p ⊔ 𝗗 q), by simp,
     refine equiv_of_equiv this _ _,
     { have : T ⊢ (∃'∼p) ⊔ q ⟷ ∀'∼∼p ⟶ q, from equiv_symm (by simp[ex_def]),
       refine equiv_trans this (equiv_imply_of_equiv (equiv_forall_of_equiv _) _); simp },
     { refine equiv_exists_of_equiv (equiv_symm $ by simp) } }
 
-lemma forall_imply_forall_pnf (p q) : T ⊢ (∀'p ⟶ ∀'q) ⟷ ∃' ∀'(𝗡 𝗗 𝗠 p ⟶ 𝗗 q) :=
+lemma forall_imply_forall_pnf [Nonempty.extend T] (p q) : T ⊢ (∀'p ⟶ ∀'q) ⟷ ∃' ∀'(𝗡 𝗗 𝗠 p ⟶ 𝗗 q) :=
 begin
   have : 𝗟'T ⊢ (𝗠 p ⟶ ∀'𝗟 q) ⟷ ∀'(𝗗 𝗠 p ⟶ 𝗟 q), from imply_forall_pnf (𝗠 p) (𝗟 q),
   have lmm₁ : T ⊢ ∃'(p ⟶ ∀' 𝗗 q) ⟷ ∃' ∀'(𝗡 𝗗 𝗠 p ⟶ 𝗗 q),
@@ -407,7 +417,7 @@ begin
   exact equiv_trans lmm₂ lmm₁
 end
 
-lemma forall_imply_exists_pnf (p q) : T ⊢ (∀'p ⟶ ∃'q) ⟷ ∃' ∃'(𝗡 𝗗 𝗠 p ⟶ 𝗗 q) :=
+lemma forall_imply_exists_pnf [Nonempty.extend T] (p q) : T ⊢ (∀'p ⟶ ∃'q) ⟷ ∃' ∃'(𝗡 𝗗 𝗠 p ⟶ 𝗗 q) :=
 begin
   have : 𝗟'T ⊢ (𝗠 p ⟶ ∃'𝗟 q) ⟷ ∃'(𝗗 𝗠 p ⟶ 𝗟 q), from imply_exists_pnf (𝗠 p) (𝗟 q),
   have lmm₁ : T ⊢ ∃'(p ⟶ ∃' 𝗗 q) ⟷ ∃' ∃'(𝗡 𝗗 𝗠 p ⟶ 𝗗 q),
