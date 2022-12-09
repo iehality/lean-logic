@@ -160,3 +160,23 @@ lemma default_neg_def (p : F) :
 
 end 
 
+-- Tait formula
+namespace Tait
+
+variables (F : Type*) (top : F) (bot : F) (neg : F → F) (and : F → F → F) (or : F → F → F)
+
+@[reducible] def logic_simbol_default : has_logic_symbol F :=
+{ bot := bot,
+  top := top,
+  sup := or,
+  inf := and,
+  arrow := λ p q, or (neg p) q,
+  neg := neg }
+
+lemma default_imply_def (p q) :
+  @has_arrow.arrow F (@has_logic_symbol.to_has_arrow F (logic_simbol_default F top bot neg and or)) p q =
+  @has_sup.sup F (@has_logic_symbol.to_has_sup F (logic_simbol_default F top bot neg and or))
+    (@has_negation.neg F (@has_logic_symbol.to_has_negation F (logic_simbol_default F top bot neg and or)) p)
+    q := rfl
+
+end Tait

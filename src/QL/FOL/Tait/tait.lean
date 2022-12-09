@@ -1,4 +1,4 @@
-import QL.FOL.deduction QL.FOL.language
+import QL.FOL.deduction QL.FOL.language QL.FOL.uniform
 
 universes u v
 
@@ -45,13 +45,7 @@ attribute [pattern]  has_sup.sup has_inf.inf has_univ_quantifier.univ has_exists
 
 def imply (p q : subformula L m n) := or (not p) q
 
-instance : has_logic_symbol (subformula L m n) :=
-{ bot := falsum,
-  top := verum,
-  sup := or,
-  inf := and,
-  arrow := imply,
-  neg := not }
+instance : has_logic_symbol (subformula L m n) := Tait.logic_simbol_default (subformula L m n) verum falsum not and or
 
 lemma verum_eq : @verum L m n = ⊤ := rfl
 lemma falsum_eq : @falsum L m n = ⊥ := rfl
@@ -360,6 +354,125 @@ def of_lhom : subformula L₁ m n →ₗ subformula L₂ m n :=
 @[simp] lemma of_lhom_fal (p : subformula L₁ m (n + 1)) : of_lhom l (∀'p) = ∀'of_lhom l p := rfl
 
 @[simp] lemma of_lhom_ex (p : subformula L₁ m (n + 1)) : of_lhom l (∃'p) = ∃'of_lhom l p := rfl
+
+end subformula
+
+variables (L)
+
+inductive uniform_subformula : ℕ → Type u
+| verum        {n} : uniform_subformula n
+| falsum       {n} : uniform_subformula n
+| relation     {n} : ∀ {p}, L.pr p → (fin p → uniform_subterm L n) → uniform_subformula n
+| neg_relation {n} : ∀ {p}, L.pr p → (fin p → uniform_subterm L n) → uniform_subformula n
+| and          {n} : uniform_subformula n → uniform_subformula n → uniform_subformula n
+| or           {n} : uniform_subformula n → uniform_subformula n → uniform_subformula n
+| fal          {n} : uniform_subformula (n + 1) → uniform_subformula n
+| ex           {n} : uniform_subformula (n + 1) → uniform_subformula n
+
+@[reducible] def uniform_formula := uniform_subformula L 0
+
+namespace uniform_subformula
+variables {L m n}
+
+@[simp] def not : Π {n}, Tait.uniform_subformula L n → Tait.uniform_subformula L n
+| n verum              := falsum
+| n falsum             := verum
+| n (relation r v)     := neg_relation r v
+| n (neg_relation r v) := relation r v
+| n (and p q)          := or p.not q.not
+| n (or p q)           := and p.not q.not
+| n (fal p)            := ex p.not
+| n (ex p)             := fal p.not
+
+instance : has_logic_symbol (uniform_subformula L n) := Tait.logic_simbol_default (uniform_subformula L n) verum falsum not and or
+
+@[simp] def arity : Π {n}, Tait.uniform_subformula L n → ℕ
+| n verum              := 0
+| n falsum             := 0
+| n (relation r v)     := ⨆ᶠ i, (v i).arity
+| n (neg_relation r v) := ⨆ᶠ i, (v i).arity
+| n (and p q)          := max p.arity q.arity
+| n (or p q)           := max p.arity q.arity
+| n (fal p)            := p.arity
+| n (ex p)             := p.arity
+
+@[simp] def to_subformula : ∀ {n} (p : uniform_subformula L n), p.arity ≤ m → subformula L m n
+| n verum              h := ⊤
+| n falsum             h := ⊥
+| n (relation r v)     h := subformula.relation r (λ i, (v i).to_subterm (by show (v i).arity ≤ m; simp at h; exact h i))
+| n (neg_relation r v) h := subformula.neg_relation r (λ i, (v i).to_subterm (by show (v i).arity ≤ m; simp at h; exact h i))
+| n (and p q)          h := have h : p.arity ≤ m ∧ q.arity ≤ m, by simpa using h, p.to_subformula h.1 ⊓ q.to_subformula h.2
+| n (or p q)           h := have h : p.arity ≤ m ∧ q.arity ≤ m, by simpa using h, p.to_subformula h.1 ⊔ q.to_subformula h.2
+| n (fal p)            h := ∀'p.to_subformula (by simpa using h)
+| n (ex p)             h := ∃'p.to_subformula (by simpa using h)
+
+@[simp] def complexity : Π {n}, uniform_subformula L n → ℕ
+| n verum              := 0
+| n falsum             := 0
+| n (relation p v)     := 0
+| n (neg_relation p v) := 0
+| n (and p q)          := max p.complexity q.complexity + 1
+| n (or p q)           := max p.complexity q.complexity + 1
+| n (fal p)            := p.complexity + 1
+| n (ex p)             := p.complexity + 1
+
+section subst
+
+@[simp] def subst : Π {n}, uniform_subterm L n → Tait.uniform_subformula L (n + 1) → Tait.uniform_subformula L n
+| n t verum              := verum
+| n t falsum             := falsum
+| n t (relation r v)     := relation r (uniform_subterm.subst t ∘ v)
+| n t (neg_relation r v) := neg_relation r (uniform_subterm.subst t ∘ v)
+| n t (and p q)          := and (subst t p) (subst t q)
+| n t (or p q)           := or (subst t p) (subst t q)
+| n t (fal p)            := fal (subst t.lift p)
+| n t (ex p)             := ex (subst t.lift p)
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.complexity)⟩]}
+
+end subst
+
+end uniform_subformula
+
+namespace subformula
+open uniform_subformula
+variables {L m n}
+
+@[simp] def uniform : Π {n}, subformula L m n → uniform_subformula L n
+| n verum              := uniform_subformula.verum
+| n falsum             := uniform_subformula.falsum
+| n (relation r v)     := uniform_subformula.relation r (subterm.uniform ∘ v)
+| n (neg_relation r v) := uniform_subformula.neg_relation r (subterm.uniform ∘ v)
+| n (and p q)          := uniform_subformula.and p.uniform q.uniform
+| n (or p q)           := uniform_subformula.or p.uniform q.uniform
+| n (fal p)            := uniform_subformula.fal p.uniform
+| n (ex p)             := uniform_subformula.ex p.uniform
+
+@[simp] lemma top_uniform_verum : (⊤ : subformula L m n).uniform = uniform_subformula.verum := rfl
+
+@[simp] lemma top_uniform_falsum : (⊥ : subformula L m n).uniform = uniform_subformula.falsum := rfl
+
+@[simp] lemma uniform_and (p q : subformula L m n) : (p ⊓ q).uniform = p.uniform.and q.uniform := rfl
+
+@[simp] lemma uniform_or (p q : subformula L m n) : (p ⊔ q).uniform = p.uniform.or q.uniform := rfl
+
+@[simp] lemma uniform_fal (p : subformula L m (n + 1)) : (∀'p).uniform = p.uniform.fal := rfl
+
+@[simp] lemma uniform_ex (p : subformula L m (n + 1)) : (∃'p).uniform = p.uniform.ex := rfl
+
+@[simp] lemma uniform_mlift (p : subformula L m n) : p.mlift.uniform = p.uniform :=
+by simp[mlift]; induction p; simp[mlift', ←fal_eq, ←verum_eq, ←falsum_eq, ←and_eq, ←or_eq, ←fal_eq, ←ex_eq, (∘), *]
+
+@[simp] lemma uniform_to_subterm (p : subformula L m n) (h) : p.uniform.to_subformula h = p :=
+by induction p; simp*; refl
+
+@[simp] lemma to_subterm_uniform (p : uniform_subformula L n) (h : p.arity ≤ m) : (p.to_subformula h).uniform = p :=
+by induction p; simp[←fal_eq, ←verum_eq, ←falsum_eq, ←and_eq, ←or_eq, ←fal_eq, ←ex_eq, (∘), *]
+
+@[simp] lemma subformula_arity (p : subformula L m n) : p.uniform.arity ≤ m :=
+by induction p; simp*
+
+@[simp] lemma sentence_arity (σ : subformula L 0 n) : σ.uniform.arity ≤ m :=
+le_trans (subformula_arity σ) (by simp)
 
 end subformula
 
