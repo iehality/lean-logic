@@ -13,24 +13,24 @@ open subformula
 noncomputable def finset_mlift (Δ : finset (subformula L m n)) : finset (subformula L (m + 1) n) := Δ.image mlift
 
 -- Tate caluculus
-inductive derivative : Π {m}, finset (formula L m) → Type u
+inductive derivation : Π {m}, finset (formula L m) → Type u
 | AxL {m} : ∀ (Δ : finset (formula L m)) {k} (r : L.pr k) (v : fin k → subterm L m 0),
-    relation r v ∈ Δ → neg_relation r v ∈ Δ → derivative Δ
-| verum {m} : ∀ (Δ : finset (formula L m)), ⊤ ∈ Δ → derivative Δ
+    relation r v ∈ Δ → neg_relation r v ∈ Δ → derivation Δ
+| verum {m} : ∀ (Δ : finset (formula L m)), ⊤ ∈ Δ → derivation Δ
 | or_left {m} : ∀ (Δ : finset (formula L m)) (p q : formula L m),
-    derivative (insert p Δ) → derivative (insert (p ⊔ q) Δ)
+    derivation (insert p Δ) → derivation (insert (p ⊔ q) Δ)
 | or_right {m} : ∀ (Δ : finset (formula L m)) (p q : formula L m),
-    derivative (insert q Δ) → derivative (insert (p ⊔ q) Δ)
+    derivation (insert q Δ) → derivation (insert (p ⊔ q) Δ)
 | and {m} : ∀ (Δ : finset (formula L m)) (p q : formula L m),
-    derivative (insert p Δ) → derivative (insert q Δ) → derivative (insert (p ⊓ q) Δ)
+    derivation (insert p Δ) → derivation (insert q Δ) → derivation (insert (p ⊓ q) Δ)
 | all {m} : ∀ (Δ : finset (subformula L m 0)) (p : subformula L m 1),
-    derivative (insert p.push (finset_mlift Δ)) → derivative (insert (∀'p) Δ)
+    derivation (insert p.push (finset_mlift Δ)) → derivation (insert (∀'p) Δ)
 | ex {m} : ∀ (Δ : finset (subformula L m 0)) (t : subterm L m 0) (p : subformula L m 1),
-    derivative (insert (subst t p) Δ) → derivative (insert (∃'p) Δ)
+    derivation (insert (subst t p) Δ) → derivation (insert (∃'p) Δ)
 
 variables {L m}
 
-def derivable {m} (Δ : finset (formula L m)) : Prop := nonempty (derivative Δ)
+def derivable {m} (Δ : finset (formula L m)) : Prop := nonempty (derivation Δ)
 
 prefix `⊢ᵀ `:45 := derivable
 
@@ -38,19 +38,19 @@ namespace derivable
 variables {m} {Δ Γ : finset (formula L m)}
 
 lemma AxL {k} (r : L.pr k) (v : fin k → subterm L m 0) (h : relation r v ∈ Δ) (hneg : neg_relation r v ∈ Δ) : ⊢ᵀ Δ :=
-⟨derivative.AxL Δ r v h hneg⟩
+⟨derivation.AxL Δ r v h hneg⟩
 
-lemma verum (h : ⊤ ∈ Δ) : ⊢ᵀ Δ := ⟨derivative.verum Δ h⟩
+lemma verum (h : ⊤ ∈ Δ) : ⊢ᵀ Δ := ⟨derivation.verum Δ h⟩
 
-lemma or_left (p q : formula L m) : ⊢ᵀ insert p Δ → ⊢ᵀ insert (p ⊔ q) Δ := λ ⟨d⟩, ⟨derivative.or_left Δ p q d⟩
+lemma or_left (p q : formula L m) : ⊢ᵀ insert p Δ → ⊢ᵀ insert (p ⊔ q) Δ := λ ⟨d⟩, ⟨derivation.or_left Δ p q d⟩
 
-lemma or_right (p q : formula L m) : ⊢ᵀ insert q Δ → ⊢ᵀ insert (p ⊔ q) Δ := λ ⟨d⟩, ⟨derivative.or_right Δ p q d⟩
+lemma or_right (p q : formula L m) : ⊢ᵀ insert q Δ → ⊢ᵀ insert (p ⊔ q) Δ := λ ⟨d⟩, ⟨derivation.or_right Δ p q d⟩
 
-lemma and (p q : formula L m) : ⊢ᵀ insert p Δ → ⊢ᵀ insert q Δ → ⊢ᵀ insert (p ⊓ q) Δ := λ ⟨d₁⟩ ⟨d₂⟩, ⟨derivative.and Δ p q d₁ d₂⟩
+lemma and (p q : formula L m) : ⊢ᵀ insert p Δ → ⊢ᵀ insert q Δ → ⊢ᵀ insert (p ⊓ q) Δ := λ ⟨d₁⟩ ⟨d₂⟩, ⟨derivation.and Δ p q d₁ d₂⟩
 
-lemma all (p : subformula L m 1) : ⊢ᵀ insert p.push (finset_mlift Δ) → ⊢ᵀ insert (∀'p) Δ := λ ⟨d⟩, ⟨derivative.all Δ p d⟩
+lemma all (p : subformula L m 1) : ⊢ᵀ insert p.push (finset_mlift Δ) → ⊢ᵀ insert (∀'p) Δ := λ ⟨d⟩, ⟨derivation.all Δ p d⟩
 
-lemma ex (t) (p : subformula L m 1) : ⊢ᵀ insert (subst t p) Δ → ⊢ᵀ insert (∃'p) Δ := λ ⟨d⟩, ⟨derivative.ex Δ t p d⟩
+lemma ex (t) (p : subformula L m 1) : ⊢ᵀ insert (subst t p) Δ → ⊢ᵀ insert (∃'p) Δ := λ ⟨d⟩, ⟨derivation.ex Δ t p d⟩
 
 protected lemma cast (h : ⊢ᵀ Δ) (e : Δ = Γ) : ⊢ᵀ Γ := cast (by rw e) h
 
@@ -118,7 +118,7 @@ section
 variables {Δ : finset (formula L m)}
 open axiomatic_classical_logic' axiomatic_classical_logic
 
-lemma provable_of_derivative : derivative Δ → ∅ ⊢ (Δ.image to_fol).disjunction := λ h,
+lemma provable_of_derivation : derivation Δ → ∅ ⊢ (Δ.image to_fol).disjunction := λ h,
 begin
   induction h,
   case AxL : m Δ k r v h nh
