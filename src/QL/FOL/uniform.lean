@@ -4,7 +4,7 @@ universes u v
 
 namespace fol
 open_locale logic_symbol
-variables (L : language.{u}) {m n : ℕ}
+variables (L : language.{u}) {m m₁ m₂ n : ℕ}
 
 inductive uniform_subterm (n : ℕ) : Type u
 | uvar  {} : ℕ → uniform_subterm
@@ -51,7 +51,7 @@ section subst
 end subst
 
 section semantics
-variables (S : Structure L) {m} {m₁ m₂ : ℕ} {n} (me : ℕ → S) (e : fin n → S)
+variables (S : Structure L) {m m₁ m₂} {n} (me : ℕ → S) (e : fin n → S)
 
 @[simp] def val (me : ℕ → S) (e : fin n → S) : uniform_subterm L n → S
 | &&x           := me x
@@ -84,6 +84,9 @@ variables {L m n}
 @[simp] lemma uniform_mlift (t : subterm L m n) : t.mlift.uniform = t.uniform :=
 by induction t; simp*
 
+@[simp] lemma uniform_cast_le (h : m₁ ≤ m₂) (t : subterm L m₁ n) : (t.cast_le h).uniform = t.uniform :=
+by induction t; simp*
+
 @[simp] lemma uniform_to_subterm (t : subterm L m n) (h) : t.uniform.to_subterm h = t :=
 by induction t; simp*
 
@@ -110,7 +113,7 @@ by induction t; simp*
 end subst
 
 section semantics
-variables (S : Structure L) {m} {m₁ m₂ : ℕ} {n} (me : ℕ → S) (e : fin n → S)
+variables (S : Structure L) {m m₁ m₂} {n} (me : ℕ → S) (e : fin n → S)
 
 @[simp] lemma uniform_val (t : subterm L m n) : t.uniform.val S me e = t.val S (λ i, me i) e :=
 by induction t; simp*

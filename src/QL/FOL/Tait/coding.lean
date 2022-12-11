@@ -137,30 +137,30 @@ section subst
 
 @[simp] lemma uniform_subst : ∀ {n} (u : subterm L m n) (p : Tait.subformula L m (n + 1)),
   (subst u p).uniform = Tait.uniform_subformula.subst u.uniform p.uniform
-| n u verum              := by simp[verum_eq]
-| n u falsum             := by simp[falsum_eq]
+| n u verum              := by simp[verum_eq, uniform_subformula.verum_eq]
+| n u falsum             := by simp[falsum_eq, uniform_subformula.falsum_eq]
 | n u (relation r v)     := by simp[(∘)]
 | n u (neg_relation r v) := by simp[(∘)]
-| n u (and p q)          := by simp[and_eq]; exact ⟨uniform_subst u p, uniform_subst u q⟩
-| n u (or p q)           := by simp[or_eq]; exact ⟨uniform_subst u p, uniform_subst u q⟩
-| n u (fal p)            := by simp[fal_eq, ←subterm.uniform_lift]; exact uniform_subst u.lift p
-| n u (ex p)             := by simp[ex_eq, ←subterm.uniform_lift]; exact uniform_subst u.lift p
+| n u (and p q)          := by simp[and_eq, uniform_subformula.and_eq]; exact ⟨uniform_subst u p, uniform_subst u q⟩
+| n u (or p q)           := by simp[or_eq, uniform_subformula.or_eq]; exact ⟨uniform_subst u p, uniform_subst u q⟩
+| n u (fal p)            := by simp[fal_eq, uniform_subformula.fal_eq, ←subterm.uniform_lift]; exact uniform_subst u.lift p
+| n u (ex p)             := by simp[ex_eq, uniform_subformula.ex_eq, ←subterm.uniform_lift]; exact uniform_subst u.lift p
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.complexity)⟩]}
 
 @[simp] lemma uniform_push : ∀ {n} (p : Tait.subformula L m (n + 1)),
   (push p).uniform = Tait.uniform_subformula.subst (&&m) p.uniform
-| n verum              := by simp[verum_eq]
-| n falsum             := by simp[falsum_eq]
+| n verum              := by simp[verum_eq, uniform_subformula.verum_eq]
+| n falsum             := by simp[falsum_eq, uniform_subformula.falsum_eq]
 | n (relation r v)     := by simp[(∘)]
 | n (neg_relation r v) := by simp[(∘)]
-| n (and p q)          := by simp[and_eq]; exact ⟨uniform_push p, uniform_push q⟩
-| n (or p q)           := by simp[or_eq];  exact ⟨uniform_push p, uniform_push q⟩
-| n (fal p)            := by simp[fal_eq, ←subterm.uniform_lift]; exact uniform_push p
-| n (ex p)             := by simp[ex_eq, ←subterm.uniform_lift]; exact uniform_push p
+| n (and p q)          := by simp[and_eq, uniform_subformula.and_eq]; exact ⟨uniform_push p, uniform_push q⟩
+| n (or p q)           := by simp[or_eq, uniform_subformula.or_eq]; exact ⟨uniform_push p, uniform_push q⟩
+| n (fal p)            := by simp[fal_eq, uniform_subformula.fal_eq, ←subterm.uniform_lift]; exact uniform_push p
+| n (ex p)             := by simp[ex_eq, uniform_subformula.ex_eq, ←subterm.uniform_lift]; exact uniform_push p
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.complexity)⟩]}
 
 end subst
-
+/- -/
 end subformula
 
 end Tait

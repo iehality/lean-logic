@@ -4,7 +4,7 @@ universes u v
 
 namespace fol
 open_locale logic_symbol
-variables (L : language.{u}) {m n : ℕ}
+variables (L : language.{u}) {m m₁ m₂ n : ℕ}
 
 namespace uniform_subterm
 variables {L n}
@@ -77,12 +77,15 @@ def of_nat : ℕ → option (subterm L m n) := λ i,
   let t := encodable.decode (uniform_subterm L n) i in
   t.bind (λ t, if h : t.arity ≤ m then some (t.to_subterm h) else none)
 
-variables {L m n}
+variables {L m m₁ m₂ n}
 
 @[simp] lemma to_nat_of_nat (t : subterm L m n) : of_nat L m n t.to_nat = some t :=
 by simp[to_nat, of_nat]
 
-@[simp] lemma of_nat_to_nat (t : subterm L m n) : to_nat t.mlift = to_nat t :=
+@[simp] lemma of_nat_mlift (t : subterm L m n) : to_nat t.mlift = to_nat t :=
+by simp[to_nat]
+
+@[simp] lemma of_nat_cast_le (h : m₁ ≤ m₂) (t : subterm L m₁ n) : to_nat (t.cast_le h) = to_nat t :=
 by simp[to_nat]
 
 end encode

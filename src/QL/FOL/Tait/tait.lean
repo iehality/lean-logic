@@ -5,7 +5,7 @@ universes u v
 namespace fol
 open_locale logic_symbol aclogic
 open subformula
-variables (L L₁ L₂ : language.{u}) (m n : ℕ)
+variables (L L₁ L₂ : language.{u}) (m m₁ m₂ n : ℕ)
 
 namespace Tait
 
@@ -57,6 +57,18 @@ lemma imply_def (p q : subformula L m n) : (p ⟶ q) = (∼p) ⊔ q := by simp[�
 lemma fal_eq : @fal L m n = has_univ_quantifier'.univ := rfl
 lemma ex_eq : @ex L m n = has_exists_quantifier'.ex := rfl
 
+
+@[simp] lemma and.inj' (p₁ q₁ p₂ q₂ : subformula L m n) : p₁ ⊓ p₂ = q₁ ⊓ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
+by simp[has_inf.inf]
+
+@[simp] lemma or.inj' (p₁ q₁ p₂ q₂ : subformula L m n) : p₁ ⊔ p₂ = q₁ ⊔ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
+by simp[has_sup.sup]
+
+@[simp] lemma fal.inj' (p q : subformula L m (n + 1)) : (∀'p : subformula L m n) = ∀'q ↔ p = q := ⟨fal.inj, congr_arg _⟩
+
+@[simp] lemma ex.inj' (p q : subformula L m (n + 1)) : (∃'p : subformula L m n) = ∃'q ↔ p = q := 
+by simp[has_exists_quantifier'.ex]
+
 @[simp] lemma not_falsum : ∼(⊥ : subformula L m n) = ⊤ := rfl
 
 @[simp] lemma not_verum : ∼(⊤ : subformula L m n) = ⊥ := rfl
@@ -84,7 +96,7 @@ lemma ex_eq : @ex L m n = has_exists_quantifier'.ex := rfl
 | n (ex p)             := p.complexity + 1
 
 section rew
-variables {m₁ m₂ : ℕ} (s : fin m₁ → subterm L m₂ n)
+variables {m₁ m₂} (s : fin m₁ → subterm L m₂ n)
 
 @[simp] def rew' {m₁ m₂} : Π {n}, (fin m₁ → subterm L m₂ n) → subformula L m₁ n → subformula L m₂ n
 | n s verum              := ⊤
@@ -157,6 +169,27 @@ def mlift : subformula L m n →ₗ subformula L (m + 1) n :=
 
 @[simp] lemma mslift_ex (p : subformula L m (n + 1)) :
   mlift (∃'p) = ∃'mlift p := rfl
+
+variables {m₁ m₂} (h : m₁ ≤ m₂)
+
+def cast_le (h : m₁ ≤ m₂) : subformula L m₁ n →ₗ subformula L m₂ n :=
+rew (subterm.metavar ∘ fin.cast_le h)
+
+@[simp] lemma cast_le_function {k} (r : L.pr k) (v : fin k → subterm L m₁ n) :
+  cast_le h (relation r v) = relation r (subterm.cast_le h ∘ v) :=
+by simp[cast_le]; refl
+
+@[simp] lemma cast_le_neg_function {k} (r : L.pr k) (v : fin k → subterm L m₁ n) :
+  cast_le h (neg_relation r v) = neg_relation r (subterm.cast_le h ∘ v) :=
+by simp[cast_le]; refl
+
+@[simp] lemma cast_le_fal (p : subformula L m₁ (n + 1)) :
+  cast_le h (∀'p) = ∀'(cast_le h p) :=
+by simp[cast_le]; refl
+
+@[simp] lemma cast_le_ex (p : subformula L m₁ (n + 1)) :
+  cast_le h (∃'p) = ∃'(cast_le h p) :=
+by simp[cast_le]; refl
 
 end mlift
 
@@ -276,6 +309,18 @@ variables (u : subterm L m n)
 @[simp] lemma subst_ex (p : subformula L m (n + 1 + 1)) :
   subst u (∃'p) = ∃'subst u.lift p := by simp[subst]
 
+@[simp] lemma cast_le_subst (h : m₁ ≤ m₂) : ∀ {n} (u : subterm L m₁ n) (p : subformula L m₁ (n + 1)),
+  cast_le h (subst u p) = subst (u.cast_le h) (cast_le h p)
+| n u verum              := by simp[verum_eq]
+| n u falsum             := by simp[falsum_eq]
+| n u (relation r v)     := by simp[(∘)]
+| n u (neg_relation r v) := by simp[(∘)]
+| n u (and p q)          := by simp[and_eq]; exact ⟨cast_le_subst u p, cast_le_subst u q⟩
+| n u (or p q)           := by simp[or_eq]; exact ⟨cast_le_subst u p, cast_le_subst u q⟩
+| n u (fal p)            := by simp[fal_eq]; refine cast_le_subst u.lift p
+| n u (ex p)             := by simp[ex_eq]; refine cast_le_subst u.lift p
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.complexity)⟩]}
+
 end subst
 
 @[simp] def to_fol : Π {n}, subformula L m n → fol.subformula L m n
@@ -374,6 +419,10 @@ inductive uniform_subformula : ℕ → Type u
 namespace uniform_subformula
 variables {L m n}
 
+instance : has_univ_quantifier' (uniform_subformula L) := ⟨@fal L⟩
+
+instance : has_exists_quantifier' (uniform_subformula L) := ⟨@ex L⟩
+
 @[simp] def not : Π {n}, Tait.uniform_subformula L n → Tait.uniform_subformula L n
 | n verum              := falsum
 | n falsum             := verum
@@ -385,6 +434,45 @@ variables {L m n}
 | n (ex p)             := fal p.not
 
 instance : has_logic_symbol (uniform_subformula L n) := Tait.logic_simbol_default (uniform_subformula L n) verum falsum not and or
+
+lemma verum_eq : @verum L n = ⊤ := rfl
+lemma falsum_eq : @falsum L n = ⊥ := rfl
+lemma and_eq : @and L n = has_inf.inf := rfl
+lemma or_eq : @or L n = has_sup.sup := rfl
+lemma not_eq : @not L n = has_negation.neg := rfl
+lemma imply_def (p q : uniform_subformula L n) : (p ⟶ q) = (∼p) ⊔ q := by refl
+lemma fal_eq : @fal L n = has_univ_quantifier'.univ := rfl
+lemma ex_eq : @ex L n = has_exists_quantifier'.ex := rfl
+
+@[simp] lemma and.inj' (p₁ q₁ p₂ q₂ : uniform_subformula L n) : p₁ ⊓ p₂ = q₁ ⊓ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
+by simp[has_inf.inf]
+
+@[simp] lemma or.inj' (p₁ q₁ p₂ q₂ : uniform_subformula L n) : p₁ ⊔ p₂ = q₁ ⊔ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
+by simp[has_sup.sup]
+
+@[simp] lemma fal.inj' (p q : uniform_subformula L (n + 1)) : ∀'p = ∀'q ↔ p = q :=
+by simp[has_univ_quantifier'.univ]
+
+@[simp] lemma ex.inj' (p q : uniform_subformula L (n + 1)) : ∃'p = ∃'q ↔ p = q := 
+by simp[has_exists_quantifier'.ex]
+
+@[simp] lemma not_verum : ∼(⊤ : uniform_subformula L n) = ⊥ := by refl
+
+@[simp] lemma not_falsum : ∼(⊥ : uniform_subformula L n) = ⊤ := by refl
+
+@[simp] lemma not_relation {k} (r : L.pr k) (v : fin k → uniform_subterm L n) :
+  ∼(relation r v) = neg_relation r v := by refl
+
+@[simp] lemma not_neg_relation {k} (r : L.pr k) (v : fin k → uniform_subterm L n) :
+  ∼(neg_relation r v) = relation r v := by refl
+
+@[simp] lemma not_and (p q : uniform_subformula L n) : ∼(p ⊓ q) = ∼p ⊔ ∼q := by refl
+
+@[simp] lemma not_or (p q : uniform_subformula L n) : ∼(p ⊔ q) = ∼p ⊓ ∼q := by refl
+
+@[simp] lemma not_fal (p : uniform_subformula L (n + 1)) : ∼(∀'p) = ∃'∼p := by refl
+
+@[simp] lemma not_ex (p : uniform_subformula L (n + 1)) : ∼(∃'p) = ∀'∼p := by refl
 
 @[simp] def arity : Π {n}, Tait.uniform_subformula L n → ℕ
 | n verum              := 0
@@ -418,16 +506,48 @@ instance : has_logic_symbol (uniform_subformula L n) := Tait.logic_simbol_defaul
 
 section subst
 
-@[simp] def subst : Π {n}, uniform_subterm L n → Tait.uniform_subformula L (n + 1) → Tait.uniform_subformula L n
-| n t verum              := verum
-| n t falsum             := falsum
+@[simp] def subst' : Π {n}, uniform_subterm L n → Tait.uniform_subformula L (n + 1) → Tait.uniform_subformula L n
+| n t verum              := ⊤
+| n t falsum             := ⊥
 | n t (relation r v)     := relation r (uniform_subterm.subst t ∘ v)
 | n t (neg_relation r v) := neg_relation r (uniform_subterm.subst t ∘ v)
-| n t (and p q)          := and (subst t p) (subst t q)
-| n t (or p q)           := or (subst t p) (subst t q)
-| n t (fal p)            := fal (subst t.lift p)
-| n t (ex p)             := ex (subst t.lift p)
+| n t (and p q)          := (subst' t p) ⊓ (subst' t q)
+| n t (or p q)           := (subst' t p) ⊔ (subst' t q)
+| n t (fal p)            := ∀'(subst' t.lift p)
+| n t (ex p)             := ∃'(subst' t.lift p)
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.complexity)⟩]}
+
+@[simp] lemma subst'_neg : ∀ {n} (t) (p : uniform_subformula L (n + 1)), subst' t (∼p) = ∼(subst' t p)
+| n t verum              := by simp[←not_eq]; refl
+| n t falsum             := by simp[←not_eq]; refl
+| n t (relation r v)     := by simp
+| n t (neg_relation r v) := by simp
+| n t (and p q)          := by {simp[←not_eq, ←or_eq, ←and_eq], refine ⟨subst'_neg t p, subst'_neg t q⟩ }
+| n t (or p q)           := by {simp[←not_eq, ←or_eq, ←and_eq], refine ⟨subst'_neg t p, subst'_neg t q⟩ }
+| n t (fal p)            := by { simp[←not_eq, ←fal_eq, ←ex_eq], refine subst'_neg t.lift p }
+| n t (ex p)             := by { simp[←not_eq, ←fal_eq, ←ex_eq], refine subst'_neg t.lift p }
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.complexity)⟩]}
+
+def subst (t : uniform_subterm L n) : Tait.uniform_subformula L (n + 1) →ₗ Tait.uniform_subformula L n :=
+{ to_fun := subst' t,
+  map_neg' := λ p, by simp,
+  map_imply' := λ p q, by simp[imply_def, ←or_eq],
+  map_and' := λ p q, by simp[←or_eq, ←and_eq],
+  map_or' := λ p q, by simp[←or_eq, ←and_eq],
+  map_top' := by simp[←verum_eq],
+  map_bot' := by simp[←falsum_eq] }
+
+@[simp] lemma subst_relation (t : uniform_subterm L n) {k} (r : L.pr k) (v : fin k → uniform_subterm L (n + 1)) :
+  subst t (relation r v) = relation r (uniform_subterm.subst t ∘ v) := by simp[subst]
+
+@[simp] lemma subst_neg_relation (t : uniform_subterm L n) {k} (r : L.pr k) (v : fin k → uniform_subterm L (n + 1)) :
+  subst t (neg_relation r v) = neg_relation r (uniform_subterm.subst t ∘ v) := by simp[subst]
+
+@[simp] lemma subst_fal (t : uniform_subterm L n) (p : uniform_subformula L (n + 1 + 1)) :
+  subst t (∀'p) = ∀'(subst t.lift p) := by simp[subst, ←fal_eq]
+
+@[simp] lemma subst_ex (t : uniform_subterm L n) (p : uniform_subformula L (n + 1 + 1)) :
+  subst t (∃'p) = ∃'(subst t.lift p) := by simp[subst, ←ex_eq]
 
 end subst
 

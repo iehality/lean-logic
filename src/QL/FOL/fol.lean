@@ -78,7 +78,7 @@ attribute [pattern]  has_negation.neg has_arrow.arrow has_univ_quantifier.univ h
 @[reducible] def sentence := formula L 0
 
 namespace subformula
-variables {L} {m n : ℕ}
+variables {L} {m m₁ m₂ n : ℕ}
 
 def to_str [∀ n, has_to_string (L.fn n)] [∀ n, has_to_string (L.pr n)] : Π {n}, subformula L m n → string
 | n verum          := "⊤"
@@ -202,6 +202,19 @@ lemma nested_rew {m₁ m₂ m₃} (s₀ : finitary (subterm L m₂ n) m₁) (s�
 @[simp] lemma rew_metavar (t : subterm L m n) : rew metavar t = t :=
 by induction t; simp*
 
+lemma rew_metavar_inj (f : fin m₁ → fin m₂) (I : function.injective f) : function.injective (rew (@metavar L m₂ n ∘ f))
+| (&x)             (&y)             := by simp; exact λ h, I h
+| (&x)             (#y)             := by simp
+| (&x)             (function f v)   := by simp
+| (#x)             (&y)             := by simp
+| (#x)             (#y)             := by simp
+| (#x)             (function f v)   := by simp
+| (function f₁ v₁) (&y)             := by simp
+| (function f₁ v₁) (#y)             := by simp
+| (function f₁ v₁) (function f₂ v₂) :=
+  by { simp, rintros rfl rfl,
+       simp, intros h, funext i, exact @rew_metavar_inj (v₁ i) (v₂ i) (congr_fun h i) }
+
 end rew
 
 @[simp] def lift : subterm L m n → subterm L m (n + 1)
@@ -235,18 +248,32 @@ by induction t with x x p f v IH; simp; exact funext IH
 lemma mlift_lift (t : subterm L m n) : t.mlift.lift = t.lift.mlift :=
 by induction t; simp*
 
-lemma mlift_inj : function.injective (@mlift L m n)
-| (&x)             (&y)             := by simp
-| (&x)             (#y)             := by simp
-| (&x)             (function f v)   := by simp
-| (#x)             (&y)             := by simp
-| (#x)             (#y)             := by simp
-| (#x)             (function f v)   := by simp
-| (function f₁ v₁) (&y)             := by simp
-| (function f₁ v₁) (#y)             := by simp
-| (function f₁ v₁) (function f₂ v₂) :=
-  by { simp, rintros rfl rfl,
-       simp, intros h, funext i, exact @mlift_inj (v₁ i) (v₂ i) (congr_fun h i) }
+lemma mlift_inj : function.injective (@mlift L m n) :=
+by rw mlift_eq_rew; refine rew_metavar_inj _ (rel_embedding.injective _)
+
+def cast_le (h : m₁ ≤ m₂) : subterm L m₁ n → subterm L m₂ n :=
+rew (metavar ∘ fin.cast_le h)
+
+variables {m₁ m₂} (h : m₁ ≤ m₂)
+
+@[simp] lemma cast_le_of_eq (t : subterm L m n) {h} : t.cast_le h = t := 
+by simp[cast_le, show ⇑(fin.cast_le h) = id, by ext; simp]
+
+@[simp] lemma cast_le_metavar (x : fin m₁) : (&x : subterm L m₁ n).cast_le h = &(fin.cast_le h x) :=
+by simp[cast_le]
+
+@[simp] lemma cast_le_var (x : fin n) : (#x : subterm L m₁ n).cast_le h = #x :=
+by simp[cast_le]
+
+@[simp] lemma cast_le_function {k} (f : L.fn k) (v : fin k → subterm L m₁ n) :
+  (function f v).cast_le h = function f (cast_le h ∘ v) :=
+by simp[cast_le]
+
+lemma cast_le_inj : function.injective (@cast_le L m₁ m₂ n h) :=
+rew_metavar_inj _ (rel_embedding.injective _)
+
+@[simp] lemma case_le_lift (h : m₁ ≤ m₂) (t : subterm L m₁ n) : (cast_le h t).lift = cast_le h t.lift :=
+by induction t; simp*
 
 end mlift
 
@@ -384,6 +411,10 @@ by { induction t; simp*,
 by { induction t; simp*,
      case var : i { refine fin.last_cases _ _ i; simp[fin.succ_cast_succ], },
      case function : k f v IH { funext i, simp[IH] } }
+
+@[simp] lemma cast_le_subst (h : m₁ ≤ m₂) (u : subterm L m₁ n) (t : subterm L m₁ (n + 1)) :
+  cast_le h (subst u t) = subst (u.cast_le h) (cast_le h t) :=
+by { induction t; simp[(∘), *], case var : x { refine fin.last_cases _ _ x; simp } }
 
 end subst
 
@@ -535,6 +566,26 @@ lemma eq_rew_of_eq {p : subformula L m₁ n} {s₁ s₂ : finitary (subterm L m�
 @[simp] lemma complexity_rew (p : subformula L m₁ n) : complexity (rew s p) = complexity p :=
 by induction p; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq, *]
 
+lemma rew_metavar_inj (f : fin m₁ → fin m₂) (I : function.injective f) :
+  function.injective (rew (@metavar L m₂ n ∘ f)) := λ p q,
+begin
+  induction p,
+  case verum { cases q; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq] },
+  case relation : n k r v₁
+  { cases q; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq];
+    case relation : _ _ r₂ v₂
+    { rintros rfl rfl, simp, intros h, funext i, exact subterm.rew_metavar_inj f I (congr_fun h i) } },
+  case imply : _ p₁ p₂ IH₁ IH₂
+  { cases q; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq],
+      case imply : _ q₁ q₂ { intros h₁ h₂, exact ⟨IH₁ _ h₁, IH₂ _ h₂⟩ } },
+  case neg : n p IH
+  { cases q; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq],
+      case neg : _ p₂ { intros h, exact IH _ h } },
+  case fal : n p IH
+  { cases q; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq],
+      case fal : _ p₂ { intros h, exact IH _ h } }
+end
+
 end rew
 
 def mlift' {m} : Π {n}, subformula L m n → subformula L (m + 1) n
@@ -592,27 +643,34 @@ lemma mlift_eq_rew : @mlift L m n = rew (metavar ∘ fin.cast_succ) :=
 by { ext p, induction p; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq, subterm.mlift_eq_rew, *],
      exact eq_rew_of_eq (funext $ λ x, by simp) }
 
-lemma mlift_inj : function.injective (@mlift L m n) := λ p q,
-begin
-  induction p,
-  case verum { cases q; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq] },
-  case relation : n k r v₁
-  { cases q; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq];
-    case relation : _ _ r₂ v₂
-    { rintros rfl rfl, simp, intros h, funext i, exact @subterm.mlift_inj _ _ _ (v₁ i) (v₂ i) (congr_fun h i) } },
-  case imply : _ p₁ p₂ IH₁ IH₂
-  { cases q; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq],
-      case imply : _ q₁ q₂ { intros h₁ h₂, exact ⟨IH₁ _ h₁, IH₂ _ h₂⟩ } },
-  case neg : n p IH
-  { cases q; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq],
-      case neg : _ p₂ { intros h, exact IH _ h } },
-  case fal : n p IH
-  { cases q; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq],
-      case fal : _ p₂ { intros h, exact IH _ h } }
-end
-
 @[simp] lemma complexity_mlift (p : subformula L m n) : p.mlift.complexity = p.complexity :=
 by induction p; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq, *]
+
+lemma mlift_inj : function.injective (@mlift L m n) :=
+by rw mlift_eq_rew; refine rew_metavar_inj _ (rel_embedding.injective _)
+
+def cast_le (h : m₁ ≤ m₂) : subformula L m₁ n →ₗ subformula L m₂ n :=
+rew (metavar ∘ fin.cast_le h)
+
+variables {m₁ m₂} (h : m₁ ≤ m₂)
+
+@[simp] lemma cast_le_of_eq (p : subformula L m n) {h} : cast_le h p = p := 
+by simp[cast_le, show ⇑(fin.cast_le h) = id, by ext; simp]
+
+@[simp] lemma cast_le_function {k} (r : L.pr k) (v : fin k → subterm L m₁ n) :
+  cast_le h (relation r v) = relation r (subterm.cast_le h ∘ v) :=
+by simp[cast_le]; refl
+
+@[simp] lemma cast_le_fal (p : subformula L m₁ (n + 1)) :
+  cast_le h (∀'p) = ∀'(cast_le h p) :=
+by simp[cast_le]; refl
+
+@[simp] lemma cast_le_ex (p : subformula L m₁ (n + 1)) :
+  cast_le h (∃'p) = ∃'(cast_le h p) :=
+by simp[cast_le]; refl
+
+lemma cast_le_inj : function.injective (@cast_le L m₁ m₂ n h) :=
+rew_metavar_inj _ (rel_embedding.injective _)
 
 end mlift
 

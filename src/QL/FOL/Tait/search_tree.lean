@@ -541,7 +541,7 @@ begin
   simp[←fal_eq, decomp] at hdecomp,
   rcases hdecomp with ⟨rfl, rfl⟩,
   refine ⟨⟨&&m, m + 1, ⟨i + z + 1, by simp[hcsucc]⟩, by simp⟩,
-    i + z + 1, by { simp[uniform_chain, -list.mem_map], rw hcsucc, simp, }⟩
+    i + z + 1, by { simp[uniform_chain, -list.mem_map], rw hcsucc, simp }⟩
 end
 
 lemma ex_infinitely_mem (p : uniform_subformula L 1) :
@@ -613,7 +613,7 @@ uniform_subformula.neg_relation r (λ i, (v i).val) ∈ ⛓️
   fn := λ k f, model_fn wf f,
   pr := λ k r, model_pr wf r }
 
-def assignment : ℕ → model wf := λ x, by {  }
+def assignment : ℕ → ↥(model wf)
 
 lemma model.val_term (e) (t : uniform_term L) : (uniform_subterm.val (model wf) e fin.nil t).val = t :=
 by { induction t; simp*, }
