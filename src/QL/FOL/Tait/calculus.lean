@@ -10,65 +10,66 @@ namespace Tait
 
 open subformula
 
-noncomputable def finset_mlift (Δ : finset (subformula L m n)) : finset (subformula L (m + 1) n) := Δ.image mlift
+noncomputable def finset_mlift (Δ : finset (bounded_subformula L m n)) :
+  finset (bounded_subformula L (m + 1) n) := Δ.image mlift
 
 -- Tate caluculus
-inductive derivation : Π {m}, finset (formula L m) → Type u
-| AxL {m} : ∀ (Δ : finset (formula L m)) {k} (r : L.pr k) (v : fin k → subterm L m 0),
+inductive derivation : Π {m}, finset (bounded_formula L m) → Type u
+| AxL {m} : ∀ (Δ : finset (bounded_formula L m)) {k} (r : L.pr k) (v : fin k → bounded_term L m),
     relation r v ∈ Δ → neg_relation r v ∈ Δ → derivation Δ
-| verum {m} : ∀ (Δ : finset (formula L m)), ⊤ ∈ Δ → derivation Δ
-| or_left {m} : ∀ (Δ : finset (formula L m)) (p q : formula L m),
+| verum {m} : ∀ (Δ : finset (bounded_formula L m)), ⊤ ∈ Δ → derivation Δ
+| or_left {m} : ∀ (Δ : finset (bounded_formula L m)) (p q : bounded_formula L m),
     derivation (insert p Δ) → derivation (insert (p ⊔ q) Δ)
-| or_right {m} : ∀ (Δ : finset (formula L m)) (p q : formula L m),
+| or_right {m} : ∀ (Δ : finset (bounded_formula L m)) (p q : bounded_formula L m),
     derivation (insert q Δ) → derivation (insert (p ⊔ q) Δ)
-| and {m} : ∀ (Δ : finset (formula L m)) (p q : formula L m),
+| and {m} : ∀ (Δ : finset (bounded_formula L m)) (p q : bounded_formula L m),
     derivation (insert p Δ) → derivation (insert q Δ) → derivation (insert (p ⊓ q) Δ)
-| all {m} : ∀ (Δ : finset (subformula L m 0)) (p : subformula L m 1),
+| all {m} : ∀ (Δ : finset (bounded_subformula L m 0)) (p : bounded_subformula L m 1),
     derivation (insert p.push (finset_mlift Δ)) → derivation (insert (∀'p) Δ)
-| ex {m} : ∀ (Δ : finset (subformula L m 0)) (t : subterm L m 0) (p : subformula L m 1),
+| ex {m} : ∀ (Δ : finset (bounded_subformula L m 0)) (t : bounded_term L m) (p : bounded_subformula L m 1),
     derivation (insert (subst t p) Δ) → derivation (insert (∃'p) Δ)
 
 variables {L m}
 
-def derivable {m} (Δ : finset (formula L m)) : Prop := nonempty (derivation Δ)
+def derivable {m} (Δ : finset (bounded_formula L m)) : Prop := nonempty (derivation Δ)
 
 prefix `⊢ᵀ `:45 := derivable
 
 namespace derivable
-variables {m} {Δ Γ : finset (formula L m)}
+variables {m} {Δ Γ : finset (bounded_formula L m)}
 
-lemma AxL {k} (r : L.pr k) (v : fin k → subterm L m 0) (h : relation r v ∈ Δ) (hneg : neg_relation r v ∈ Δ) : ⊢ᵀ Δ :=
+lemma AxL {k} (r : L.pr k) (v : fin k → bounded_term L m) (h : relation r v ∈ Δ) (hneg : neg_relation r v ∈ Δ) : ⊢ᵀ Δ :=
 ⟨derivation.AxL Δ r v h hneg⟩
 
 lemma verum (h : ⊤ ∈ Δ) : ⊢ᵀ Δ := ⟨derivation.verum Δ h⟩
 
-lemma or_left (p q : formula L m) : ⊢ᵀ insert p Δ → ⊢ᵀ insert (p ⊔ q) Δ := λ ⟨d⟩, ⟨derivation.or_left Δ p q d⟩
+lemma or_left (p q : bounded_formula L m) : ⊢ᵀ insert p Δ → ⊢ᵀ insert (p ⊔ q) Δ := λ ⟨d⟩, ⟨derivation.or_left Δ p q d⟩
 
-lemma or_right (p q : formula L m) : ⊢ᵀ insert q Δ → ⊢ᵀ insert (p ⊔ q) Δ := λ ⟨d⟩, ⟨derivation.or_right Δ p q d⟩
+lemma or_right (p q : bounded_formula L m) : ⊢ᵀ insert q Δ → ⊢ᵀ insert (p ⊔ q) Δ := λ ⟨d⟩, ⟨derivation.or_right Δ p q d⟩
 
-lemma and (p q : formula L m) : ⊢ᵀ insert p Δ → ⊢ᵀ insert q Δ → ⊢ᵀ insert (p ⊓ q) Δ := λ ⟨d₁⟩ ⟨d₂⟩, ⟨derivation.and Δ p q d₁ d₂⟩
+lemma and (p q : bounded_formula L m) : ⊢ᵀ insert p Δ → ⊢ᵀ insert q Δ → ⊢ᵀ insert (p ⊓ q) Δ := λ ⟨d₁⟩ ⟨d₂⟩, ⟨derivation.and Δ p q d₁ d₂⟩
 
-lemma all (p : subformula L m 1) : ⊢ᵀ insert p.push (finset_mlift Δ) → ⊢ᵀ insert (∀'p) Δ := λ ⟨d⟩, ⟨derivation.all Δ p d⟩
+lemma all (p : bounded_subformula L m 1) : ⊢ᵀ insert p.push (finset_mlift Δ) → ⊢ᵀ insert (∀'p) Δ := λ ⟨d⟩, ⟨derivation.all Δ p d⟩
 
-lemma ex (t) (p : subformula L m 1) : ⊢ᵀ insert (subst t p) Δ → ⊢ᵀ insert (∃'p) Δ := λ ⟨d⟩, ⟨derivation.ex Δ t p d⟩
+lemma ex (t) (p : bounded_subformula L m 1) : ⊢ᵀ insert (subst t p) Δ → ⊢ᵀ insert (∃'p) Δ := λ ⟨d⟩, ⟨derivation.ex Δ t p d⟩
 
 protected lemma cast (h : ⊢ᵀ Δ) (e : Δ = Γ) : ⊢ᵀ Γ := cast (by rw e) h
 
 @[elab_as_eliminator]
-theorem rec_on {C : Π {m} (Δ : finset (formula L m)), ⊢ᵀ Δ → Prop}
-  {m : ℕ} {Δ : finset (formula L m)} (d : ⊢ᵀ Δ)
-  (hAxL : ∀ {m} (Δ : finset (formula L m)) {k} (r : L.pr k) (v : fin k → subterm L m 0)
+theorem rec_on {C : Π {m} (Δ : finset (bounded_formula L m)), ⊢ᵀ Δ → Prop}
+  {m : ℕ} {Δ : finset (bounded_formula L m)} (d : ⊢ᵀ Δ)
+  (hAxL : ∀ {m} (Δ : finset (bounded_formula L m)) {k} (r : L.pr k) (v : fin k → bounded_term L m)
     (h : relation r v ∈ Δ) (hneg : neg_relation r v ∈ Δ), C Δ (AxL r v h hneg))
-  (hverum : ∀ {m} (Δ : finset (formula L m)) (h : ⊤ ∈ Δ), C Δ (verum h))
-  (hor_left : ∀ {m} (Δ : finset (formula L m)) (p q : formula L m) (d : ⊢ᵀ insert p Δ),
+  (hverum : ∀ {m} (Δ : finset (bounded_formula L m)) (h : ⊤ ∈ Δ), C Δ (verum h))
+  (hor_left : ∀ {m} (Δ : finset (bounded_formula L m)) (p q : bounded_formula L m) (d : ⊢ᵀ insert p Δ),
     C (insert p Δ) d → C (insert (p ⊔ q) Δ) (or_left p q d))
-  (hor_right : ∀ {m} (Δ : finset (formula L m)) (p q : formula L m) (d : ⊢ᵀ insert q Δ),
+  (hor_right : ∀ {m} (Δ : finset (bounded_formula L m)) (p q : bounded_formula L m) (d : ⊢ᵀ insert q Δ),
     C (insert q Δ) d → C (insert (p ⊔ q) Δ) (or_right p q d))
-  (hand : ∀ {m} (Δ : finset (formula L m)) (p q : formula L m) (d₁ : ⊢ᵀ insert p Δ) (d₂ : ⊢ᵀ insert q Δ),
+  (hand : ∀ {m} (Δ : finset (bounded_formula L m)) (p q : bounded_formula L m) (d₁ : ⊢ᵀ insert p Δ) (d₂ : ⊢ᵀ insert q Δ),
     C (insert p Δ) d₁ → C (insert q Δ) d₂ → C (insert (p ⊓ q) Δ) (and p q d₁ d₂))
-  (hall : ∀ {m} (Δ : finset (formula L m)) (p : subformula L m 1) (d : ⊢ᵀ insert p.push (finset_mlift Δ)),
+  (hall : ∀ {m} (Δ : finset (bounded_formula L m)) (p : bounded_subformula L m 1) (d : ⊢ᵀ insert p.push (finset_mlift Δ)),
     C (insert p.push (finset_mlift Δ)) d → C (insert (∀'p) Δ) (all p d))
-  (hex : ∀ {m} (Δ : finset (formula L m)) (t) (p : subformula L m 1) (d : ⊢ᵀ insert (subst t p) Δ),
+  (hex : ∀ {m} (Δ : finset (bounded_formula L m)) (t) (p : bounded_subformula L m 1) (d : ⊢ᵀ insert (subst t p) Δ),
     C (insert (subst t p) Δ) d → C (insert (∃'p) Δ) (ex t p d)) : C Δ d :=
  by unfreezingI {
   begin
@@ -115,7 +116,7 @@ end
 end derivable
 
 section
-variables {Δ : finset (formula L m)}
+variables {Δ : finset (bounded_formula L m)}
 open axiomatic_classical_logic' axiomatic_classical_logic
 
 lemma provable_of_derivation : derivation Δ → ∅ ⊢ (Δ.image to_fol).disjunction := λ h,

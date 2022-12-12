@@ -8,10 +8,10 @@ namespace logic
 
 @[reducible] def Theory (F : Type*) [has_logic_symbol F] := set F
 
-variables {F : Type*} [has_logic_symbol F] [axiomatic_classical_logic F]
+variables {F : Type*} [has_logic_symbol F]
 
 namespace Theory
-variables (T : Theory F)
+variables [axiomatic_classical_logic F] (T : Theory F) 
 
 def mk (S : set F) : Theory F := S
 
@@ -118,7 +118,7 @@ by rintros ⟨S, hS⟩; refine ⟨S, by { intros p hp,refine hS (ss hp) }⟩
 
 end semantics
 
-variables (F)
+variables (F) [axiomatic_classical_logic F]
 
 class sound (𝓢 : Type*) [semantics F 𝓢] :=
 (soundness : ∀ {T : Theory F} {p}, T ⊢ p → semantics.consequence 𝓢 T p)

@@ -8,28 +8,28 @@ open subterm subformula logic logic.Theory
 variables {L : language.{u}} {m : ℕ}
 
 localized "prefix (name := mlift) `𝗟`:max := fol.subformula.mlift" in aclogic
-localized "prefix (name := preTheory.mlift) `𝗟'`:max := fol.preTheory.mlift" in aclogic
+localized "prefix (name := bounded_preTheory.mlift) `𝗟'`:max := fol.bounded_preTheory.mlift" in aclogic
 localized "prefix (name := push) `𝗠`:max := fol.subformula.push" in aclogic
 localized "prefix (name := pull) `𝗡`:max := fol.subformula.pull" in aclogic
 localized "prefix (name := dummy) `𝗗`:max := fol.subformula.dummy" in aclogic
 
-inductive proof : Π {m}, preTheory L m → subformula L m 0 → Type u
-| generalize   {m} {T : preTheory L m} : ∀ {p}, proof T.mlift p → proof T (∀'𝗡p)
-| mdp          {m} {T : preTheory L m} : ∀ {p q}, proof T (p ⟶ q) → proof T p → proof T q
-| by_axiom     {m} {T : preTheory L m} : ∀ {p}, p ∈ T → proof T p
-| verum        {m} {T : preTheory L m} : proof T ⊤
-| imply₁       {m} {T : preTheory L m} : ∀ {p q}, proof T (p ⟶ q ⟶ p)
-| imply₂       {m} {T : preTheory L m} : ∀ {p q r}, proof T ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r)
-| contra       {m} {T : preTheory L m} : ∀ {p q}, proof T ((∼p ⟶ ∼q) ⟶ q ⟶ p)
-| specialize   {m} {T : preTheory L m} : ∀ {p} {t}, proof T (∀'p ⟶ subst t p)
-| dummy_univ   {m} {T : preTheory L m} : ∀ {p q}, proof T (∀'(dummy p ⟶ q) ⟶ p ⟶ ∀'q)
+inductive proof : Π {m}, bounded_preTheory L m → bounded_subformula L m 0 → Type u
+| generalize   {m} {T : bounded_preTheory L m} : ∀ {p}, proof T.mlift p → proof T (∀'𝗡p)
+| mdp          {m} {T : bounded_preTheory L m} : ∀ {p q}, proof T (p ⟶ q) → proof T p → proof T q
+| by_axiom     {m} {T : bounded_preTheory L m} : ∀ {p}, p ∈ T → proof T p
+| verum        {m} {T : bounded_preTheory L m} : proof T ⊤
+| imply₁       {m} {T : bounded_preTheory L m} : ∀ {p q}, proof T (p ⟶ q ⟶ p)
+| imply₂       {m} {T : bounded_preTheory L m} : ∀ {p q r}, proof T ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r)
+| contra       {m} {T : bounded_preTheory L m} : ∀ {p q}, proof T ((∼p ⟶ ∼q) ⟶ q ⟶ p)
+| specialize   {m} {T : bounded_preTheory L m} : ∀ {p} {t}, proof T (∀'p ⟶ subst t p)
+| dummy_univ   {m} {T : bounded_preTheory L m} : ∀ {p q}, proof T (∀'(dummy p ⟶ q) ⟶ p ⟶ ∀'q)
 
-instance (m : ℕ) : has_Longarrow (formula L m) := ⟨proof⟩
+instance : has_Longarrow (bounded_formula L m) := ⟨proof⟩
 
-def provable (m) (T : preTheory L m) (p : formula L m) : Prop := nonempty (T ⟹ p)
+def provable (T : bounded_preTheory L m) (p : bounded_formula L m) : Prop := nonempty (T ⟹ p)
 
-instance (m) : axiomatic_classical_logic' (formula L m) :=
-{ turnstile := provable m,
+instance : axiomatic_classical_logic' (bounded_formula L m) :=
+{ turnstile := @provable _ m,
   classical := λ T,
   { modus_ponens := λ p q ⟨bpq⟩ ⟨bp⟩, ⟨bpq.mdp bp⟩,
     imply₁ := λ p q, ⟨proof.imply₁⟩, 
@@ -44,7 +44,7 @@ instance (m) : axiomatic_classical_logic' (formula L m) :=
 open_locale aclogic
 
 namespace proof
-variables {T : preTheory L m}
+variables {T : bounded_preTheory L m}
 
 def weakening' {p} (h : T ⟹ p) : ∀ {U}, T ⊆ U → U ⟹ p :=
 begin
@@ -67,14 +67,14 @@ end proof
 
 namespace provable
 open axiomatic_classical_logic' axiomatic_classical_logic
-variables {T U : preTheory L m}
+variables {T U : bounded_preTheory L m}
 
 lemma generalize {p} (h : T.mlift ⊢ p) : T ⊢ ∀'p.pull := by rcases h; exact ⟨h.generalize⟩
 
-lemma generalize' {T : preTheory L (m + 1)} {p} (h : T ⊢ p) (hT : T = U.mlift) : U ⊢ ∀'p.pull :=
+lemma generalize' {T : bounded_preTheory L (m + 1)} {p} (h : T ⊢ p) (hT : T = U.mlift) : U ⊢ ∀'p.pull :=
 by rcases hT with rfl; exact generalize h
 
-lemma gen {p : subformula L m 1} (h : T.mlift ⊢ p.push) : T ⊢ ∀'p :=
+lemma gen {p : bounded_subformula L m 1} (h : T.mlift ⊢ p.push) : T ⊢ ∀'p :=
 by rw[←subformula.pull_push p]; exact generalize h
 
 lemma by_axiom {p} (h : p ∈ T) : T ⊢ p := ⟨proof.by_axiom h⟩
@@ -97,17 +97,17 @@ variables (T)
 variables {T U}
 
 @[elab_as_eliminator]
-theorem rec_on {C : Π {m} (T : preTheory L m) (p : subformula L m 0), T ⊢ p → Prop}
-  {m : ℕ} {T : preTheory L m} {p : formula L m} (b : T ⊢ p)
-  (generalize : ∀ {m} {T : preTheory L m} {p} (b : T.mlift ⊢ p), C T.mlift p b → C T (∀'p.pull) (generalize b))
-  (mdp : ∀ {m} {T : preTheory L m} {p q} (b₁ : T ⊢ p ⟶ q) (b₂ : T ⊢ p), C T (p ⟶ q) b₁ → C T p b₂ → C T q (b₁ ⨀ b₂))
-  (by_axiom : ∀ {m} {T : preTheory L m} {p} (h : p ∈ T), C T p (by_axiom h))
-  (verum : ∀ {m} {T : preTheory L m}, C T ⊤ axiomatic_classical_logic'.provable_top)
-  (imply₁ : ∀ {m} {T : preTheory L m} {p q}, C T (p ⟶ q ⟶ p) (axiomatic_classical_logic'.imply₁ p q))
-  (imply₂ : ∀ {m} {T : preTheory L m} {p q r}, C T ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r) (axiomatic_classical_logic'.imply₂ p q r))
-  (contra : ∀ {m} {T : preTheory L m} {p q}, C T ((∼p ⟶ ∼q) ⟶ q ⟶ p) (axiomatic_classical_logic'.contraposition p q)) 
-  (specialize : ∀ {m} {T : preTheory L m} {p} {t}, C T (∀'p ⟶ subst t p) (specialize T p t))
-  (dummy_univ : ∀ {m} {T : preTheory L m} {p q}, C T (∀'(dummy p ⟶ q) ⟶ p ⟶ ∀'q) (dummy_univ T p q)) :
+theorem rec_on {C : Π {m} (T : bounded_preTheory L m) (p : bounded_subformula L m 0), T ⊢ p → Prop}
+  {m : ℕ} {T : bounded_preTheory L m} {p : bounded_formula L m} (b : T ⊢ p)
+  (generalize : ∀ {m} {T : bounded_preTheory L m} {p} (b : T.mlift ⊢ p), C T.mlift p b → C T (∀'p.pull) (generalize b))
+  (mdp : ∀ {m} {T : bounded_preTheory L m} {p q} (b₁ : T ⊢ p ⟶ q) (b₂ : T ⊢ p), C T (p ⟶ q) b₁ → C T p b₂ → C T q (b₁ ⨀ b₂))
+  (by_axiom : ∀ {m} {T : bounded_preTheory L m} {p} (h : p ∈ T), C T p (by_axiom h))
+  (verum : ∀ {m} {T : bounded_preTheory L m}, C T ⊤ axiomatic_classical_logic'.provable_top)
+  (imply₁ : ∀ {m} {T : bounded_preTheory L m} {p q}, C T (p ⟶ q ⟶ p) (axiomatic_classical_logic'.imply₁ p q))
+  (imply₂ : ∀ {m} {T : bounded_preTheory L m} {p q r}, C T ((p ⟶ q ⟶ r) ⟶ (p ⟶ q) ⟶ p ⟶ r) (axiomatic_classical_logic'.imply₂ p q r))
+  (contra : ∀ {m} {T : bounded_preTheory L m} {p q}, C T ((∼p ⟶ ∼q) ⟶ q ⟶ p) (axiomatic_classical_logic'.contraposition p q)) 
+  (specialize : ∀ {m} {T : bounded_preTheory L m} {p} {t}, C T (∀'p ⟶ subst t p) (specialize T p t))
+  (dummy_univ : ∀ {m} {T : bounded_preTheory L m} {p q}, C T (∀'(dummy p ⟶ q) ⟶ p ⟶ ∀'q) (dummy_univ T p q)) :
   C T p b :=
 begin
   rcases b with ⟨b⟩,
@@ -123,7 +123,7 @@ begin
   case dummy_univ : m T p q { exact dummy_univ }
 end
 
-noncomputable def provable.proof {T : preTheory L m} {p : formula L m} (b : T ⊢ p) : T ⟹ p := nonempty.some b
+noncomputable def provable.proof {T : bounded_preTheory L m} {p : bounded_formula L m} (b : T ⊢ p) : T ⟹ p := nonempty.some b
 
 def weakening_aux {p} (h : T ⊢ p) : ∀ {U}, T ⊆ U → U ⊢ p :=
 begin
@@ -143,7 +143,7 @@ lemma deduction_aux {q} (h : T ⊢ q) : ∀ (U) (p) (hT : T = insert p U), U ⊢
 begin
   apply rec_on h,
   { rintros m T q b IH U p rfl,
-    have : U.mlift ⊢ p.mlift ⟶ q, from IH U.mlift p.mlift (by simp[preTheory.mlift_insert]),
+    have : U.mlift ⊢ p.mlift ⟶ q, from IH U.mlift p.mlift (by simp[bounded_preTheory.mlift_insert]),
     have IH : U ⊢ ∀'(p.dummy ⟶ q.pull), from generalize this,
     have : U ⊢ ∀'(p.dummy ⟶ q.pull) ⟶ p ⟶ ∀'q.pull, by simp,
     show U ⊢ p ⟶ ∀'q.pull, from this ⨀ IH },
@@ -159,32 +159,32 @@ begin
   { rintros m T p q U r rfl, refine hyp_right (dummy_univ _ p q) _ }
 end
 
-instance : axiomatic_classical_logic (formula L m) :=
+instance : axiomatic_classical_logic (bounded_formula L m) :=
 { deduction' := λ T p q h, deduction_aux h T p rfl,
   weakening := λ T U p ss b, weakening_aux b ss }
 
-lemma empty_axiom_generalize {p : formula L (m + 1)} (hp : ⬝⊢ p) : ⬝⊢ ∀'p.pull :=
-by { have : preTheory.mlift ∅ ⊢ p, by simpa[preTheory.mlift] using hp, exact generalize this }
+lemma empty_axiom_generalize {p : bounded_formula L (m + 1)} (hp : ⬝⊢ p) : ⬝⊢ ∀'p.pull :=
+by { have : bounded_preTheory.mlift ∅ ⊢ p, by simpa[bounded_preTheory.mlift] using hp, exact generalize this }
 
-private lemma mlift_list_conjunction (P₀ : list (formula L $ m + 1)) : (∀ p, p ∈ P₀ → p ∈ T.mlift) →
-  ∃ P : list (formula L m), P.conjunction.mlift = P₀.conjunction ∧ (∀ p, p ∈ P → p ∈ T) :=
+private lemma mlift_list_conjunction (P₀ : list (bounded_formula L $ m + 1)) : (∀ p, p ∈ P₀ → p ∈ T.mlift) →
+  ∃ P : list (bounded_formula L m), P.conjunction.mlift = P₀.conjunction ∧ (∀ p, p ∈ P → p ∈ T) :=
 begin
   induction P₀ with p₀ P₀ IH,
   { intros _, refine ⟨[], by simp⟩ },
   { intros h,
-    have : ∃ P : list (formula L m), P.conjunction.mlift = P₀.conjunction ∧ (∀ p, p ∈ P → p ∈ T),
+    have : ∃ P : list (bounded_formula L m), P.conjunction.mlift = P₀.conjunction ∧ (∀ p, p ∈ P → p ∈ T),
     from IH (λ p hp, h p (by simp[hp])),
     rcases this with ⟨P, eq, hP⟩,
     have : p₀ ∈ T.mlift, from h p₀ (by simp), rcases this with ⟨p, hp, rfl⟩,
     refine ⟨p :: P, by simpa using eq, by { rintros q (rfl | hq), { exact hp }, { exact hP q hq } }⟩ }
 end
 
-theorem finite_character_aux {m} {T : preTheory L m} {p} :
-  T ⊢ p → ∃ P : list (formula L m), (∀ p, p ∈ P → p ∈ T) ∧ ⬝⊢ P.conjunction ⟶ p := λ h,
+theorem finite_character_aux {m} {T : bounded_preTheory L m} {p} :
+  T ⊢ p → ∃ P : list (bounded_formula L m), (∀ p, p ∈ P → p ∈ T) ∧ ⬝⊢ P.conjunction ⟶ p := λ h,
 begin
   apply rec_on h,
   { rintros m T p b ⟨P₀, IH, IHb⟩,
-    have : ∃ P : list (formula L m), P.conjunction.mlift = P₀.conjunction ∧ ∀ p, p ∈ P → p ∈ T,
+    have : ∃ P : list (bounded_formula L m), P.conjunction.mlift = P₀.conjunction ∧ ∀ p, p ∈ P → p ∈ T,
     from mlift_list_conjunction P₀ IH,
     rcases this with ⟨P, eqP, hP⟩,
     refine ⟨P, hP, _⟩,
@@ -208,8 +208,8 @@ begin
   { rintros m T p q, refine ⟨[], by simp, by simp[empty_axiom]⟩ }
 end
 
-instance : has_finite_character (formula L m) :=
-finite_character_of_finite_provable (formula L m) (λ T p, finite_character_aux)
+instance : has_finite_character (bounded_formula L m) :=
+finite_character_of_finite_provable (bounded_formula L m) (λ T p, finite_character_aux)
 
 def extend_of (h : ∀ p ∈ T, U ⊢ p) : extend T U :=
 ⟨begin
@@ -219,15 +219,15 @@ def extend_of (h : ∀ p ∈ T, U ⊢ p) : extend T U :=
   exact of_empty_axiom _ b ⨀ this
 end⟩
 
-lemma exists_of_subst (p : subformula L m 1) (t) : T ⊢ subst t p ⟶ ∃'p :=
+lemma exists_of_subst (p : bounded_subformula L m 1) (t) : T ⊢ subst t p ⟶ ∃'p :=
 contrapose.mp (imply_of_equiv
   (show T ⊢ p.neg.fal ⟶ ∼subst t p, by simpa using specialize T (∼p) t)
   (iff_dn_refl_right $ ∀'∼p) (equiv_refl _))
 
-lemma specialize' {T} (p : subformula L m 1) : T ⊢ ∀' 𝗟 p ⟶ 𝗠 p :=
+lemma specialize' {T} (p : bounded_subformula L m 1) : T ⊢ ∀' 𝗟 p ⟶ 𝗠 p :=
 by { have : T ⊢ ∀' 𝗟 p ⟶ subst &(fin.last _) p.mlift, from specialize T p.mlift &(fin.last _), simpa using this }
 
-lemma use {p : subformula L m 1} (t) (h : T ⊢ subst t p) : T ⊢ ∃'p :=
+lemma use {p : bounded_subformula L m 1} (t) (h : T ⊢ subst t p) : T ⊢ ∃'p :=
 exists_of_subst p t ⨀ h
 
 @[simp] lemma forall_top : T ⊢ ∀'⊤ :=
@@ -238,7 +238,7 @@ begin
   have lmm₁ : T ⊢ ∀'(p ⟶ q) ⟶ ∀'(𝗗 (∀' p) ⟶ q),
   { have : 𝗟'T +{ ∀'(𝗟 p ⟶ 𝗟 q) } ⊢ 𝗠 p ⟶ 𝗠 q, from deduction.mpr (by simpa using specialize' (p ⟶ q)),
     have : 𝗟'T +{ ∀'(𝗟 p ⟶ 𝗟 q) } ⊢ ∀'𝗟 p ⟶ 𝗠 q, from imply_trans (specialize' _) this, 
-    refine deduction.mp (gen _), simp[preTheory.mlift_insert], exact this },
+    refine deduction.mp (gen _), simp[bounded_preTheory.mlift_insert], exact this },
   have lmm₂ : T ⊢ ∀'(𝗗 (∀'p) ⟶ q) ⟶ ∀'p ⟶ ∀'q, from dummy_univ T (∀'p) q,
   exact imply_trans lmm₁ lmm₂
 end
@@ -263,21 +263,21 @@ by simp[ex_def]; refine equiv_neg_of_equiv (equiv_forall_of_equiv (by simpa usin
 lemma equiv_exists_of_equiv' {p₁ p₂} (hp : 𝗟'T ⊢ p₁ ⟷ p₂) : T ⊢ ∃' 𝗡 p₁ ⟷ ∃' 𝗡 p₂ :=
 @equiv_exists_of_equiv _ _ T (𝗡 p₁) (𝗡 p₂) (by simpa using hp)
 
-lemma univ_imply_dummy (p : subformula L m 1) (q : subformula L m 0) :
+lemma univ_imply_dummy (p : bounded_subformula L m 1) (q : bounded_subformula L m 0) :
   T ⊢ ∀'(p ⟶ 𝗗 q) ⟶ ∃'p ⟶ q :=
 begin
   have : T ⊢ ∀'(∼𝗗 q ⟶ ∼p) ⟶ ∼q ⟶ ∀'∼p, by simpa using dummy_univ T (∼q) (∼p),
   refine imply_of_equiv this (equiv_forall_of_equiv (by simp)) (by simp[ex_def])
 end
 
-lemma exists_intro (p : subformula L m 1) (q : subformula L m 0)
+lemma exists_intro (p : bounded_subformula L m 1) (q : bounded_subformula L m 0)
   (h : 𝗟'T ⊢ 𝗠 p ⟶ 𝗟 q) : T ⊢ ∃'p ⟶ q :=
 by { have : T ⊢ ∀'(p ⟶ 𝗗 q), by simpa using generalize h,
      exact univ_imply_dummy p q ⨀ this }
 
-def Nonempty : preTheory L m := { ∃'⊤, }
+def Nonempty : bounded_preTheory L m := { ∃'⊤, }
 
-instance preTheory_Nonempty (T : preTheory L (m + 1)) : Nonempty.extend T :=
+instance preTheory_Nonempty (T : bounded_preTheory L (m + 1)) : Nonempty.extend T :=
 extend_of (by simp[Nonempty]; refine use &0 (by simp))
 
 instance preTheory_of_inhabited [inhabited (L.fn 0)] : Nonempty.extend T :=
@@ -292,7 +292,7 @@ by { simp[iff_equiv],
      refine of_equiv (neg_of_equiv this (equiv_forall_of_equiv (by simp)))
      (neg_iff (∀'⊥)) }
 
-@[simp] lemma forall_dummy [Nonempty.extend T] (p : formula L m) : T ⊢ ∀'𝗗 p ⟷ p :=
+@[simp] lemma forall_dummy [Nonempty.extend T] (p : bounded_formula L m) : T ⊢ ∀'𝗗 p ⟷ p :=
 begin
   simp[iff_equiv], split,
   { have : T ⊢ ∀'(⊤ ⟶ 𝗗 p) ⟶ ∃'⊤ ⟶ p, from univ_imply_dummy ⊤ p,
@@ -305,10 +305,11 @@ section prenex_normal_form
 lemma neg_forall_pnf (p) : T ⊢ ∼∀'p ⟷ ∃'∼p :=
 equiv_neg_of_equiv (equiv_forall_of_equiv (by simp[neg_eq]))
 
-lemma neg_univ_closure_pnf {n} (p : subformula L m n) : T ⊢ ∼∀'*p ⟷ ∃'*∼p :=
+/-
+lemma neg_univ_closure_pnf {n} (p : bounded_subformula L m n) : T ⊢ ∼∀'*p ⟷ ∃'*∼p :=
 begin
   induction n with n IH generalizing m, { simp },
-  { simp[forall_comm, subformula.exists_comm],
+  { simp[forall_comm, bounded_subformula.exists_comm],
     have lmm₁ : T ⊢ ∼∀'𝗡 (∀'* 𝗠 p) ⟷ ∃'∼𝗡 (∀'* 𝗠 p), from neg_forall_pnf _,
     have : 𝗟'T ⊢ ∼∀'* (𝗠 p) ⟷ ∃'* (∼𝗠 p), from IH (𝗠 p),
     have lmm₂ : T ⊢ ∃'∼𝗡 (∀'* 𝗠 p) ⟷ ∃'𝗡 (∃'* ∼𝗠 p), by simpa using equiv_exists_of_equiv' this,
@@ -317,16 +318,16 @@ end
 
 lemma neg_exists_pnf (p) : T ⊢ ∼∃'p ⟷ ∀'∼p := by simp[ex_def]
 
-lemma neg_exists_closure_pnf {n} (p : subformula L m n) : T ⊢ ∼∃'*p ⟷ ∀'*∼p :=
+lemma neg_exists_closure_pnf {n} (p : bounded_subformula L m n) : T ⊢ ∼∃'*p ⟷ ∀'*∼p :=
 begin
   induction n with n IH generalizing m, { simp },
-  { simp[forall_comm, subformula.exists_comm],
+  { simp[forall_comm, bounded_subformula.exists_comm],
     have lmm₁ : T ⊢ ∼∃'𝗡 (∃'* 𝗠 p) ⟷ ∀'∼𝗡 (∃'* 𝗠 p), from neg_exists_pnf _,
     have : 𝗟'T ⊢ ∼∃'* (𝗠 p) ⟷ ∀'* (∼𝗠 p), from IH (𝗠 p),
     have lmm₂ : T ⊢ ∀'∼𝗡 (∃'* 𝗠 p) ⟷ ∀'𝗡 (∀'* ∼𝗠 p), by simpa using equiv_forall_of_equiv' this,
     exact equiv_trans lmm₁ lmm₂ }
 end
-
+-/
 @[simp] lemma or_forall_pnf (p q) : T ⊢ (∀'p) ⊔ q ⟷ ∀'(p ⊔ 𝗗 q) :=
 begin
   have lmm₁ : T ⊢ (∀'p) ⊔ q ⟶ ∀'(p ⊔ 𝗗 q),
@@ -448,8 +449,8 @@ end prenex_normal_form
 
 section quantifier
 variables {m} {n : ℕ}
-
-lemma specialize_foralls (p : subformula L m n) (w : fin n → subterm L m 0) : T ⊢ ∀'*p ⟶ substs w p :=
+/-
+lemma specialize_foralls (p : bounded_subformula L m n) (w : fin n → subterm L m 0) : T ⊢ ∀'*p ⟶ substs w p :=
 begin
   induction n with n IH generalizing m,
   { simp },
@@ -464,54 +465,54 @@ begin
     exact imply_trans lmm₁ lmm₂ }
 end
 
-lemma foralls_substs {p : subformula L m n} (h : T ⊢ ∀'*p) (w) : T ⊢ substs w p :=
+lemma foralls_substs {p : bounded_subformula L m n} (h : T ⊢ ∀'*p) (w) : T ⊢ substs w p :=
 specialize_foralls p w ⨀ h
 
-@[simp] lemma exists_dn (p : subformula L m n) : T ⊢ ∃'*∼∼p ⟷ ∃'*p :=
+@[simp] lemma exists_dn (p : bounded_subformula L m n) : T ⊢ ∃'*∼∼p ⟷ ∃'*p :=
 begin
-  induction n with n IH generalizing m; simp[subformula.exists_comm],
+  induction n with n IH generalizing m; simp[bounded_subformula.exists_comm],
   refine equiv_exists_of_equiv (by simpa using IH (𝗠 p))
 end
 
-@[simp] lemma neg_univ_closure_neg (p : subformula L m n) : T ⊢ ∼∀'*(∼p) ⟷ ∃'*p :=
+@[simp] lemma neg_univ_closure_neg (p : bounded_subformula L m n) : T ⊢ ∼∀'*(∼p) ⟷ ∃'*p :=
 begin
   have : T ⊢ ∼∀'*(∼p) ⟷ ∃'*(∼∼p), from neg_univ_closure_pnf (∼p),
   refine equiv_trans this (by simp)
 end
 
-@[simp] lemma exists_substs (p : subformula L m n) (w : fin n → subterm L m 0) : T ⊢ substs w p ⟶ ∃'*p :=
+@[simp] lemma exists_substs (p : bounded_subformula L m n) (w : fin n → subterm L m 0) : T ⊢ substs w p ⟶ ∃'*p :=
 begin
   have : T ⊢ ∼∼substs w p ⟶ ∼∀'* (∼p), by simpa using contrapose.mpr (specialize_foralls (∼p) w),
   refine imply_of_equiv this (by simp) (by simp)
 end
 
-lemma exists_of_substs {p : subformula L m n} (w) (h : T ⊢ substs w p) : T ⊢ ∃'*p :=
+lemma exists_of_substs {p : bounded_subformula L m n} (w) (h : T ⊢ substs w p) : T ⊢ ∃'*p :=
 exists_substs p w ⨀ h
-
+-/
 end quantifier
 
 end provable
 
-namespace preTheory
-variables {L m} (T U : preTheory L m)
+namespace bounded_preTheory
+variables {L m} (T U : bounded_preTheory L m)
 
 --instance [T.extend U] : logic.Theory.extend T.mlift U.mlift := ⟨by { intros p h, sorry }⟩
 
-end preTheory
+end bounded_preTheory
 
 section equal
 
-def eq_axiom_schema_funext [L.has_equal] {m k} (f : L.fn k) : subformula L m 0 :=
+def eq_axiom_schema_funext [L.has_equal] {m k} (f : L.fn k) : bounded_subformula L m 0 :=
 ∀'*((⋀ i, #(fin.cast_add k i) =' #(fin.nat_add k i)) ⟶
-  (function f (var ∘ fin.cast_add k) =' function f (var ∘ fin.nat_add k)) : subformula L m (k + k))
+  (function f (var ∘ fin.cast_add k) =' function f (var ∘ fin.nat_add k)) : bounded_subformula L m (k + k))
 
-def eq_axiom_schema_relext [L.has_equal] {m k} (r : L.pr k) : subformula L m 0 :=
+def eq_axiom_schema_relext [L.has_equal] {m k} (r : L.pr k) : bounded_subformula L m 0 :=
 ∀'*((⋀ i : fin k, #(fin.cast_add k i) =' #(fin.nat_add k i)) ⟶
   (relation r (var ∘ fin.cast_add k) ⟷ relation r (var ∘ fin.nat_add k)))
 
 variables {L m} [language.has_equal L]
 
-inductive Eq : preTheory L m
+inductive Eq : bounded_preTheory L m
 | eq_refl : Eq (∀'(#0 =' #0))
 | eq_symm : Eq (∀' ∀'((#0 =' #1) ⟶ (#1 =' #0)))
 | eq_trans : Eq (∀' ∀' ∀'((#0 =' #1) ⟶ (#1 =' #2) ⟶ (#0 =' #2)))
@@ -520,9 +521,10 @@ inductive Eq : preTheory L m
 
 attribute [simp] Eq.eq_refl Eq.eq_symm Eq.eq_trans Eq.funext Eq.relext
 
-@[simp] lemma mlift_Eq : (Eq : preTheory L m).mlift = Eq :=
+/-
+@[simp] lemma mlift_Eq : (Eq : bounded_preTheory L m).mlift = Eq :=
 begin
-  ext p, simp[preTheory.mlift], split,
+  ext p, simp[bounded_preTheory.mlift], split,
   { rintros ⟨p, hp, rfl⟩,
     cases hp; simp[fal_eq],
     { exact Eq.eq_refl },
@@ -537,8 +539,8 @@ begin
     { refine ⟨_, Eq.funext _, by simp[eq_axiom_schema_funext]⟩ },
     { refine ⟨_, Eq.relext _, by simp[eq_axiom_schema_relext, (∘)]⟩ } }
 end
-
---def eq_extend {T : preTheory L m} [extend Eq T] : extend Eq 𝗟'T :=
+-/
+--def eq_extend {T : bounded_preTheory L m} [extend Eq T] : extend Eq 𝗟'T :=
 
 end equal
 

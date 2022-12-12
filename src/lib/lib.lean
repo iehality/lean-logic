@@ -788,6 +788,7 @@ lemma subset_union_iff_exists {s t u : set α} : s ⊆ t ∪ u ↔ ∃ (t' ⊆ t
 end set
 
 namespace option
+variables {α : Type*} {β : Type*}
 
 @[simp] lemma to_list_to_finset_eq {α} (a : option α) : a.to_list.to_finset = a.to_finset :=
 by { rcases a; simp[], ext x, simp, exact comm }

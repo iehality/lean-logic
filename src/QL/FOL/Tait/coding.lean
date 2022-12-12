@@ -8,26 +8,26 @@ variables {L : language.{u}} {m n : ℕ}
 
 namespace Tait
 
-namespace uniform_subformula
+namespace subformula
 variables {L n}
 
 section encode
 open encodable nat
 variables {L n} [∀ k, encodable (L.pr k)] [∀ k, encodable (L.fn k)]
 
-@[simp] def to_nat : Π {n}, uniform_subformula L n → ℕ
-| n verum                     := 0
-| n falsum                    := 1
-| n (@relation L _ k r v)     := (bit0 $ bit0 $ mkpair k $ mkpair (encode r) (encode v)) + 2
-| n (@neg_relation L _ k r v) := (bit0 $ bit1 $ mkpair k $ mkpair (encode r) (encode v)) + 2
-| n (and p q)                 := (bit1 $ bit0 $ bit0 $ mkpair p.to_nat q.to_nat) + 2
-| n (or p q)                  := (bit1 $ bit0 $ bit1 $ mkpair p.to_nat q.to_nat) + 2
-| n (fal p)                   := (bit1 $ bit1 $ bit0 p.to_nat) + 2
-| n (ex p)                    := (bit1 $ bit1 $ bit1 p.to_nat) + 2
+@[simp] def to_nat : Π {n}, subformula L ℕ n → ℕ
+| n verum                       := 0
+| n falsum                      := 1
+| n (@relation L _ _ k r v)     := (bit0 $ bit0 $ mkpair k $ mkpair (encode r) (encode v)) + 2
+| n (@neg_relation L _ _ k r v) := (bit0 $ bit1 $ mkpair k $ mkpair (encode r) (encode v)) + 2
+| n (and p q)                   := (bit1 $ bit0 $ bit0 $ mkpair p.to_nat q.to_nat) + 2
+| n (or p q)                    := (bit1 $ bit0 $ bit1 $ mkpair p.to_nat q.to_nat) + 2
+| n (fal p)                     := (bit1 $ bit1 $ bit0 p.to_nat) + 2
+| n (ex p)                      := (bit1 $ bit1 $ bit1 p.to_nat) + 2
 
 variables (L n)
 
-@[simp] def of_nat : Π n, ℕ → option (uniform_subformula L n)
+@[simp] def of_nat : Π n, ℕ → option (subformula L ℕ n)
 | n 0 := some verum
 | n 1 := some falsum
 | n (e + 2) :=
@@ -44,13 +44,13 @@ variables (L n)
         let x := e.div2.div2,
             k := x.unpair.1,
             r := decode₂ (L.pr k) x.unpair.2.unpair.1,
-            v := decode₂ (fin k → uniform_subterm L n) x.unpair.2.unpair.2 in
+            v := decode₂ (fin k → subterm L ℕ n) x.unpair.2.unpair.2 in
         r.bind (λ r, v.map (relation r))
       | tt :=
         let x := e.div2.div2,
             k := x.unpair.1,
             r := decode₂ (L.pr k) x.unpair.2.unpair.1,
-            v := decode₂ (fin k → uniform_subterm L n) x.unpair.2.unpair.2 in
+            v := decode₂ (fin k → subterm L ℕ n) x.unpair.2.unpair.2 in
         r.bind (λ r, v.map (neg_relation r))
       end
     | tt :=
@@ -63,105 +63,68 @@ variables (L n)
     end
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2)⟩]}
 
-@[simp] lemma of_nat_to_nat : ∀ {n} (p : uniform_subformula L n), of_nat L n p.to_nat = some p
-| n verum                     := by simp
-| n falsum                    := by simp
-| n (@relation L _ k r v)     :=
+@[simp] lemma of_nat_to_nat : ∀ {n} (p : subformula L ℕ n), of_nat L n p.to_nat = some p
+| n verum                       := by simp
+| n falsum                      := by simp
+| n (@relation L _ _ k r v)     :=
     begin
       simp only [to_nat, of_nat, nat.bodd_bit0, nat.div2_bit0, nat.unpair_mkpair],
       rw[show (unpair (bit0 (bit0 (mkpair k (mkpair (encode r) (encode v))))).div2.div2).fst = k, by simp],
       simp only [decode₂_encode, option.some_bind', option.map_some', heq.refl], simp
     end
-| n (@neg_relation L _ k r v) :=
+| n (@neg_relation L _ _ k r v) :=
     begin
       simp only [to_nat, of_nat, nat.bodd_bit0, nat.bodd_bit1, nat.div2_bit0, nat.div2_bit1, nat.unpair_mkpair],
       rw[show (unpair (bit0 (bit1 (mkpair k (mkpair (encode r) (encode v))))).div2.div2).fst = k, by simp],
       simp only [decode₂_encode, option.some_bind', option.map_some', heq.refl], simp
     end
-| n (and p q)                 := by simp; refine ⟨of_nat_to_nat p, of_nat_to_nat q⟩
-| n (or p q)                  := by simp; refine ⟨of_nat_to_nat p, of_nat_to_nat q⟩
-| n (fal p)                   := by simp; refine (of_nat_to_nat p)
-| n (ex p)                    := by simp; refine (of_nat_to_nat p)
+| n (and p q)                   := by simp; refine ⟨of_nat_to_nat p, of_nat_to_nat q⟩
+| n (or p q)                    := by simp; refine ⟨of_nat_to_nat p, of_nat_to_nat q⟩
+| n (fal p)                     := by simp; refine (of_nat_to_nat p)
+| n (ex p)                      := by simp; refine (of_nat_to_nat p)
 
-instance (n) : encodable (uniform_subformula L n) :=
+instance (n) : encodable (subformula L ℕ n) :=
 { encode := to_nat,
   decode := of_nat L n,
   encodek := by simp }
 
-end encode
-
-end uniform_subformula
-
-namespace subformula
-open uniform_subformula
 variables {L m n}
 
-section encode
-
-variables [∀ k, encodable (L.fn k)] [∀ k, encodable (L.pr k)]
-
-def to_nat : subformula L m n → ℕ := λ p, encodable.encode p.uniform
+def index : bounded_subformula L m n → ℕ := λ p, encodable.encode p.uniform
 
 variables (L m n)
 
-def of_nat : ℕ → option (subformula L m n) := λ i,
-  let p := encodable.decode₂ (uniform_subformula L n) i in
-  p.bind (λ p, if h : p.arity ≤ m then some (p.to_subformula h) else none)
+def of_index : ℕ → option (bounded_subformula L m n) := λ i,
+  let p := encodable.decode₂ (subformula L ℕ n) i in
+  p.bind (λ p, if h : p.arity ≤ m then some (p.to_bform h) else none)
 
 variables {L m n}
 
-@[simp] lemma to_nat_of_nat (p : subformula L m n) : of_nat L m n p.to_nat = some p :=
-by simp[to_nat, of_nat]
+@[simp] lemma of_index_index (p : bounded_subformula L m n) : of_index L m n p.index = some p :=
+by simp[index, of_index]
 
-@[simp] lemma of_nat_to_nat (p : subformula L m n) : to_nat p.mlift = to_nat p :=
-by simp[to_nat]
+@[simp] lemma mlift_index (p : bounded_subformula L m n) : p.mlift.index = p.index :=
+by simp[index]
 
-@[simp] lemma of_nat_uniform (p : subformula L m n) : encodable.decode₂ (uniform_subformula L n) p.to_nat = p.uniform :=
-by simp[to_nat]; refl
+@[simp] lemma of_nat_uniform (p : bounded_subformula L m n) : encodable.decode₂ (subformula L ℕ n) p.index = p.uniform :=
+by simp[index]; refl
 
-lemma of_nat_eq_some {e} {p : subformula L m n} : of_nat L m n e = some p ↔ p.to_nat = e :=
-by { simp[of_nat, to_nat, encodable.decode₂_eq_some, dite_eq_iff], split,
+@[simp] lemma index_eq_some {e} {p : bounded_subformula L m n} : of_index L m n e = some p ↔ p.index = e :=
+by { simp[of_index, index, encodable.decode₂_eq_some, dite_eq_iff], split,
   { simp, rintros _ rfl h rfl, simp },
   { rintros rfl, refine ⟨p.uniform, rfl, by simp⟩ } }
 
-lemma of_nat_eq_som {m₁ m₂} {p : subformula L m₁ n} {q : subformula L m₂ n} : p.to_nat = q.to_nat ↔ p.uniform = q.uniform :=
-by simp[to_nat]
+lemma of_index_eq_some {m₁ m₂} {p : bounded_subformula L m₁ n} {q : bounded_subformula L m₂ n} :
+  p.index = q.index ↔ p.uniform = q.uniform :=
+by simp[index]
 
-@[simp] lemma to_nat_inj {p q : subformula L m n} : p.to_nat = q.to_nat ↔ p = q :=
-by { have : q = p ↔ p.to_nat = q.to_nat, by simpa using @of_nat_eq_some _ _ _ _ _ q.to_nat p,
-     simp[←this], exact comm }
+@[simp] lemma to_nat_inj {p q : bounded_subformula L m n} : p.index = q.index ↔ p = q :=
+by simp[index]
 
 end encode
 
-section subst
-
-@[simp] lemma uniform_subst : ∀ {n} (u : subterm L m n) (p : Tait.subformula L m (n + 1)),
-  (subst u p).uniform = Tait.uniform_subformula.subst u.uniform p.uniform
-| n u verum              := by simp[verum_eq, uniform_subformula.verum_eq]
-| n u falsum             := by simp[falsum_eq, uniform_subformula.falsum_eq]
-| n u (relation r v)     := by simp[(∘)]
-| n u (neg_relation r v) := by simp[(∘)]
-| n u (and p q)          := by simp[and_eq, uniform_subformula.and_eq]; exact ⟨uniform_subst u p, uniform_subst u q⟩
-| n u (or p q)           := by simp[or_eq, uniform_subformula.or_eq]; exact ⟨uniform_subst u p, uniform_subst u q⟩
-| n u (fal p)            := by simp[fal_eq, uniform_subformula.fal_eq, ←subterm.uniform_lift]; exact uniform_subst u.lift p
-| n u (ex p)             := by simp[ex_eq, uniform_subformula.ex_eq, ←subterm.uniform_lift]; exact uniform_subst u.lift p
-using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.complexity)⟩]}
-
-@[simp] lemma uniform_push : ∀ {n} (p : Tait.subformula L m (n + 1)),
-  (push p).uniform = Tait.uniform_subformula.subst (&&m) p.uniform
-| n verum              := by simp[verum_eq, uniform_subformula.verum_eq]
-| n falsum             := by simp[falsum_eq, uniform_subformula.falsum_eq]
-| n (relation r v)     := by simp[(∘)]
-| n (neg_relation r v) := by simp[(∘)]
-| n (and p q)          := by simp[and_eq, uniform_subformula.and_eq]; exact ⟨uniform_push p, uniform_push q⟩
-| n (or p q)           := by simp[or_eq, uniform_subformula.or_eq]; exact ⟨uniform_push p, uniform_push q⟩
-| n (fal p)            := by simp[fal_eq, uniform_subformula.fal_eq, ←subterm.uniform_lift]; exact uniform_push p
-| n (ex p)             := by simp[ex_eq, uniform_subformula.ex_eq, ←subterm.uniform_lift]; exact uniform_push p
-using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.complexity)⟩]}
-
-end subst
-/- -/
 end subformula
 
 end Tait
+
 end fol

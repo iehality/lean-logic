@@ -1,6 +1,6 @@
 import lib.lib tactic data.set_like.basic logic translation
 
-universe u
+universes u v
 
 namespace fol
 open_locale logic_symbol
@@ -27,75 +27,65 @@ class has_equal (L : language) := (eq : L.pr 2)
 
 end language
 
-variables (L : language.{u})
+variables (L : language.{u}) (μ : Type v)
 
-inductive subterm (m n : ℕ) : Type u
-| metavar {} : fin m → subterm
+inductive subterm (n : ℕ) : Type (max u v)
+| metavar {} : μ → subterm
 | var     {} : fin n → subterm
-| function   : ∀ {p}, L.fn p → (fin p → subterm) → subterm
+| function   : ∀ {k}, L.fn k → (fin k → subterm) → subterm
 
-@[reducible] def term (m) := subterm L m 0
+@[reducible] def term := subterm L μ 0
 
-variables {L}
+@[reducible] def bounded_subterm (m n : ℕ) := subterm L (fin m) n
+
+@[reducible] def bounded_term (m : ℕ) := bounded_subterm L m 0
+
+variables {L μ}
 
 namespace subterm
-variables {m n : ℕ}
+variables {n : ℕ}
 
 prefix `#`:max := subterm.var
 prefix `&`:max := subterm.metavar
 
-def term.const (f : L.fn 0) : subterm L m n := function f finitary.nil
+def term.const (f : L.fn 0) : subterm L μ n := function f finitary.nil
 
-instance [inhabited (fin m)] : inhabited (subterm L m n) := ⟨&default⟩
+instance [inhabited μ] : inhabited (subterm L μ n) := ⟨&default⟩
 
-variables (L) (m n)
+variables (L μ n)
 
-def to_string [∀ n, has_to_string (L.fn n)] : subterm L m n → string
-| &n                            := "&" ++ has_to_string.to_string n
-| #n                            := "#" ++ has_to_string.to_string n
-| (@function _ _ _ 0 c v)       := "⟨" ++ has_to_string.to_string c ++ "⟩"
-| (@function _ _ _ (n + 1) c v) :=
-    "⟨" ++ has_to_string.to_string c ++ "⟩" ++ @has_to_string.to_string (finitary _ _) _ (λ i, to_string (v i))
-
-instance [∀ n, has_to_string (L.fn n)] : has_to_string (subterm L m n) := ⟨to_string L m n⟩
-
-instance inhabited_of_inhabited [inhabited (L.fn 0)] : inhabited (subterm L m n) := ⟨function default fin.nil⟩
+instance inhabited_of_inhabited [inhabited (L.fn 0)] : inhabited (subterm L μ n) := ⟨function default fin.nil⟩
 
 end subterm
 
-variables (L)
-inductive subformula (m) : ℕ → Type u
+variables (L μ)
+inductive subformula : ℕ → Type (max u v)
 | verum    {n} : subformula n
-| relation {n} : ∀ {p}, L.pr p → (fin p → subterm L m n) → subformula n
+| relation {n} : ∀ {k}, L.pr k → (fin k → subterm L μ n) → subformula n
 | imply    {n} : subformula n → subformula n → subformula n
 | neg      {n} : subformula n → subformula n
 | fal      {n} : subformula (n + 1) → subformula n
 
 attribute [pattern]  has_negation.neg has_arrow.arrow has_univ_quantifier.univ has_exists_quantifier.ex
 
-@[reducible] def formula (m) := subformula L m 0
+@[reducible] def formula := subformula L μ 0
 
-@[reducible] def sentence := formula L 0
+@[reducible] def bounded_subformula (m n : ℕ) := subformula L (fin m) n
+
+@[reducible] def bounded_formula (m : ℕ) := bounded_subformula L m 0
+
+@[reducible] def sentence := bounded_formula L 0
 
 namespace subformula
-variables {L} {m m₁ m₂ n : ℕ}
+variables {L μ} {n : ℕ}
 
-def to_str [∀ n, has_to_string (L.fn n)] [∀ n, has_to_string (L.pr n)] : Π {n}, subformula L m n → string
-| n verum          := "⊤"
-| n (relation p v) := has_to_string.to_string p
-| n (imply p q)    := "(" ++ to_str p ++ " → " ++ to_str q ++ ")"
-| n (neg p)        := "¬" ++ to_str p
-| n (fal p)        := "∀" ++ to_str p
+def and (p : subformula L μ n) (q : subformula L μ n) : subformula L μ n := (p.imply q.neg).neg
 
-instance [∀ n, has_to_string (L.fn n)] [∀ n, has_to_string (L.pr n)] : has_to_string (subformula L m n) := ⟨to_str⟩
+def or (p : subformula L μ n) (q : subformula L μ n) : subformula L μ n := p.neg.imply q
 
-def and (p : subformula L m n) (q : subformula L m n) : subformula L m n := (p.imply q.neg).neg
+def ex (p : subformula L μ (n + 1)) : subformula L μ n := p.neg.fal.neg
 
-def or (p : subformula L m n) (q : subformula L m n) : subformula L m n := p.neg.imply q
-
-def ex (p : subformula L m (n + 1)) : subformula L m n := p.neg.fal.neg
-
-instance : has_logic_symbol (subformula L m n) :=
+instance : has_logic_symbol (subformula L μ n) :=
 { bot := verum.neg,
   top := verum,
   sup := or,
@@ -103,49 +93,49 @@ instance : has_logic_symbol (subformula L m n) :=
   arrow := imply,
   neg := neg }
 
-instance : inhabited (subformula L m n) := ⟨⊤⟩
+instance : inhabited (subformula L μ n) := ⟨⊤⟩
 
-def equal [L.has_equal] (t u : subterm L m n) : subformula L m n := relation language.has_equal.eq (t *> u *> fin.nil) 
+def equal [L.has_equal] (t u : subterm L μ n) : subformula L μ n := relation language.has_equal.eq (t *> u *> fin.nil) 
 
-instance [L.has_equal] : has_eq (subterm L m n) (subformula L m n) := ⟨equal⟩
+instance [L.has_equal] : has_eq (subterm L μ n) (subformula L μ n) := ⟨equal⟩
 
-instance : has_univ_quantifier' (subformula L m) := ⟨@fal L m⟩
+instance : has_univ_quantifier' (subformula L μ) := ⟨@fal L μ⟩
 
-instance : has_exists_quantifier' (subformula L m) := ⟨@ex L m⟩
+instance : has_exists_quantifier' (subformula L μ) := ⟨@ex L μ⟩
 
-lemma top_eq : @subformula.verum L m n = (⊤) := rfl
-lemma imply_eq : @subformula.imply L m n = (⟶) := rfl
-lemma equal_eq [L.has_equal] : @equal L m n _ = (=') := rfl
-lemma neg_eq : @subformula.neg L m n = has_negation.neg := rfl
-lemma fal_eq : @subformula.fal L m n = has_univ_quantifier'.univ := rfl
-lemma ex_eq : @subformula.ex L m n = has_exists_quantifier'.ex := rfl
+lemma top_eq : @subformula.verum L μ n = (⊤) := rfl
+lemma imply_eq : @subformula.imply L μ n = (⟶) := rfl
+lemma equal_eq [L.has_equal] : @equal L μ n _ = (=') := rfl
+lemma neg_eq : @subformula.neg L μ n = has_negation.neg := rfl
+lemma fal_eq : @subformula.fal L μ n = has_univ_quantifier'.univ := rfl
+lemma ex_eq : @subformula.ex L μ n = has_exists_quantifier'.ex := rfl
 
-lemma ex_def (p : subformula L m (n + 1)) : ∃'p = ∼∀'∼p := rfl
+lemma ex_def (p : subformula L μ (n + 1)) : ∃'p = ∼∀'∼p := rfl
 
-lemma bot_def : (⊥ : subformula L m n) = ∼⊤ := rfl
+lemma bot_def : (⊥ : subformula L μ n) = ∼⊤ := rfl
 
-@[simp] lemma equal.inj' [L.has_equal] (t₁ u₁ t₂ u₂ : subterm L m n) : (t₁ =' t₂ : subformula L m n) = (u₁ =' u₂) ↔ t₁ = u₁ ∧ t₂ = u₂ :=
+@[simp] lemma equal.inj' [L.has_equal] (t₁ u₁ t₂ u₂ : subterm L μ n) : (t₁ =' t₂ : subformula L μ n) = (u₁ =' u₂) ↔ t₁ = u₁ ∧ t₂ = u₂ :=
 ⟨by simp[←equal_eq, equal]; intros h₁ h₂; exact ⟨h₁, h₂⟩, by simp; exact congr_arg2 (=')⟩
 
-@[simp] lemma imply.inj' (p₁ q₁ p₂ q₂ : subformula L m n) : p₁ ⟶ p₂ = q₁ ⟶ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
+@[simp] lemma imply.inj' (p₁ q₁ p₂ q₂ : subformula L μ n) : p₁ ⟶ p₂ = q₁ ⟶ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
 ⟨imply.inj, by simp; exact congr_arg2 (⟶)⟩
 
-@[simp] lemma neg.inj' (p q : subformula L m n) : ∼p = ∼q ↔ p = q := ⟨neg.inj, congr_arg _⟩
+@[simp] lemma neg.inj' (p q : subformula L μ n) : ∼p = ∼q ↔ p = q := ⟨neg.inj, congr_arg _⟩
 
-@[simp] lemma and.inj' (p₁ q₁ p₂ q₂ : subformula L m n) : p₁ ⊓ p₂ = q₁ ⊓ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
+@[simp] lemma and.inj' (p₁ q₁ p₂ q₂ : subformula L μ n) : p₁ ⊓ p₂ = q₁ ⊓ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
 by simp[has_inf.inf, and]
 
-@[simp] lemma or.inj' (p₁ q₁ p₂ q₂ : subformula L m n) : p₁ ⊔ p₂ = q₁ ⊔ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
+@[simp] lemma or.inj' (p₁ q₁ p₂ q₂ : subformula L μ n) : p₁ ⊔ p₂ = q₁ ⊔ q₂ ↔ p₁ = q₁ ∧ p₂ = q₂ :=
 by simp[has_sup.sup, or]
 
-@[simp] lemma fal.inj' (p q : subformula L m (n + 1)) : (∀'p : subformula L m n) = ∀'q ↔ p = q := ⟨fal.inj, congr_arg _⟩
+@[simp] lemma fal.inj' (p q : subformula L μ (n + 1)) : (∀'p : subformula L μ n) = ∀'q ↔ p = q := ⟨fal.inj, congr_arg _⟩
 
-@[simp] lemma ex.inj' (p q : subformula L m (n + 1)) : (∃'p : subformula L m n) = ∃'q ↔ p = q := 
+@[simp] lemma ex.inj' (p q : subformula L μ (n + 1)) : (∃'p : subformula L μ n) = ∃'q ↔ p = q := 
 by simp[has_exists_quantifier'.ex, ex]
 
 section ne
-variables {k : ℕ} (r : L.pr k) (v : finitary (subterm L m n) k) (t u : subterm L m n)
-  (p p₁ p₂ : subformula L m n) (q : subformula L m (n + 1))
+variables {k : ℕ} (r : L.pr k) (v : finitary (subterm L μ n) k) (t u : subterm L μ n)
+  (p p₁ p₂ : subformula L μ n) (q : subformula L μ (n + 1))
 
 @[simp] lemma verum_ne_predicate : ⊤ ≠ relation r v.
 @[simp] lemma verum_ne_imply : ⊤ ≠ (p₁ ⟶ p₂).
@@ -170,110 +160,241 @@ variables {k : ℕ} (r : L.pr k) (v : finitary (subterm L m n) k) (t u : subterm
 
 end ne
 
+@[simp] def complexity : Π {n}, subformula L μ n → ℕ
+| n verum          := 0
+| n (relation p v) := 0
+| n (imply p q)    := max p.complexity q.complexity + 1
+| n (neg p)        := p.complexity + 1
+| n (fal p)        := p.complexity + 1
+
+@[simp] lemma complexity_top : (⊤ : subformula L μ n).complexity = 0 := by refl
+
+@[simp] lemma complexity_neg (p : subformula L μ n) : (∼p).complexity = p.complexity + 1 := by refl
+
+@[simp] lemma complexity_fal (p : subformula L μ (n + 1)) : (∀'p).complexity = p.complexity + 1 := by refl
+
+@[simp] lemma imply_complexity (p q : subformula L μ n) : (p ⟶ q).complexity = max p.complexity q.complexity + 1 := by refl
+
+def ind {C : Π n, subformula L μ n → Sort*}
+  (hverum : Π {n : ℕ}, C n ⊤)
+  (hrelation : Π {n l : ℕ} (r : L.pr l) (v : fin l → subterm L μ n), C n (relation r v))
+  (himply : Π {n : ℕ} (p q : subformula L μ n), C n p → C n q → C n (p ⟶ q))
+  (hneg : Π {n : ℕ} (p : subformula L μ n), C n p → C n ∼p)
+  (hfal : Π {n : ℕ} (p : subformula L μ (n + 1)), C (n + 1) p → C n (∀'p)) :
+  Π {n : ℕ} (p : subformula L μ n), C n p
+| n verum := hverum
+| n (relation r v) := hrelation r v
+| n (imply p q)    := himply p q (ind p) (ind q)
+| n (neg p)        := hneg p (ind p)
+| n (fal p)        := hfal p (ind p)
+
+--普通に帰納法をすると論理記号で表示されないから
+@[elab_as_eliminator]
+protected def ind_on {C : Π n, subformula L μ n → Sort*}
+  {n : ℕ} (p : subformula L μ n)
+  (verum : Π {n : ℕ}, C n ⊤)
+  (relation : Π {n l : ℕ} (r : L.pr l) (v : fin l → subterm L μ n), C n (relation r v))
+  (imply : Π {n : ℕ} (p q : subformula L μ n), C n p → C n q → C n (p ⟶ q))
+  (neg : Π {n : ℕ} (p : subformula L μ n), C n p → C n ∼p)
+  (fal : Π {n : ℕ} (p : subformula L μ (n + 1)), C (n + 1) p → C n (∀'p)) :
+  C n p :=
+ind @verum @relation @imply @neg @fal p
+
+def ind_succ {C : Π n, subformula L μ (n + 1) → Sort*}
+  (hverum : Π {n : ℕ}, C n ⊤)
+  (hrelation : Π {n l : ℕ} (r : L.pr l) (v : fin l → subterm L μ (n + 1)), C n (relation r v))
+  (himply : Π {n : ℕ} (p q : subformula L μ (n + 1)), C n p → C n q → C n (p ⟶ q))
+  (hneg : Π {n : ℕ} (p : subformula L μ (n + 1)), C n p → C n ∼p)
+  (hfal : Π {n : ℕ} (p : subformula L μ (n + 1 + 1)), C (n + 1) p → C n (∀'p)) :
+  Π {n : ℕ} (p : subformula L μ (n + 1)), C n p
+| n verum := hverum
+| n (relation r v) := hrelation r v
+| n (imply p q)    := himply p q (ind_succ p) (ind_succ q)
+| n (neg p)        := hneg p (ind_succ p)
+| n (fal p)        := hfal p (ind_succ p)
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.complexity)⟩]}
+
+@[elab_as_eliminator]
+def ind_succ_on {C : Π n, subformula L μ (n + 1) → Sort*}
+  {n : ℕ} (p : subformula L μ (n + 1))
+  (verum : Π {n : ℕ}, C n ⊤)
+  (relation : Π {n l : ℕ} (r : L.pr l) (v : fin l → subterm L μ (n + 1)), C n (relation r v))
+  (imply : Π {n : ℕ} (p q : subformula L μ (n + 1)), C n p → C n q → C n (p ⟶ q))
+  (neg : Π {n : ℕ} (p : subformula L μ (n + 1)), C n p → C n ∼p)
+  (fal : Π {n : ℕ} (p : subformula L μ (n + 1 + 1)), C (n + 1) p → C n (∀'p)) :
+  C n p :=
+ind_succ @verum @relation @imply @neg @fal p
+
 end subformula
 
-@[reducible] def preTheory (L : language.{u}) (m : ℕ) := logic.Theory (subformula L m 0)
+@[reducible] def preTheory (L : language.{u}) (μ) := logic.Theory (subformula L μ 0)
 
-@[reducible] def Theory (L : language.{u}) := logic.Theory (subformula L 0 0)
+@[reducible] def bounded_preTheory (L : language.{u}) (m : ℕ) := logic.Theory (subformula L (fin m) 0)
+
+@[reducible] def Theory (L : language.{u}) := logic.Theory (subformula L (fin 0) 0)
 
 namespace subterm
 
-def const {m n} (c : L.fn 0) : subterm L m n := function c fin.nil
+def const {n} (c : L.fn 0) : subterm L μ n := function c fin.nil
 
-section rew
-variables {L} {m m₁ m₂ m₃ n : ℕ} {s : finitary (subterm L m₂ n) m₁}
+variables {L μ} {μ₁ : Type*} {μ₂ : Type*} {n : ℕ}
 
-@[simp] def rew (s : finitary (subterm L m₂ n) m₁) : subterm L m₁ n → subterm L m₂ n
+@[simp] def rew (s : μ₁ → subterm L μ₂ n) : subterm L μ₁ n → subterm L μ₂ n
 | (&x)           := s x
 | (#x)           := #x
 | (function f v) := function f (λ i, (v i).rew)
 
-section rew
+def map (f : μ₁ → μ₂) : subterm L μ₁ n → subterm L μ₂ n := rew (λ x, &(f x))
 
-lemma eq_rew_of_eq {t : subterm L m₁ n} {s₁ s₂ : finitary (subterm L m₂ n) m₁} (h : s₁ = s₂) :
+section rew
+variables {s : μ₁ → subterm L μ₂ n}
+
+@[simp] lemma map_metavar (f : μ₁ → μ₂) (x) : map f (&x : subterm L μ₁ n) = &(f x) := rfl
+
+@[simp] lemma map_var (f : μ₁ → μ₂) (x) : map f (#x : subterm L μ₁ n) = #x := rfl
+
+@[simp] lemma map_function (f : μ₁ → μ₂) {k} (g : L.fn k) (v : fin k → subterm L μ₁ n) :
+  map f (function g v) = function g (λ i, map f (v i)) := rfl
+
+lemma eq_rew_of_eq {t : subterm L μ₁ n} {s₁ s₂ : μ₁ → subterm L μ₂ n} (h : s₁ = s₂) :
   rew s₁ t = rew s₂ t := by rw[h]
 
-lemma nested_rew {m₁ m₂ m₃} (s₀ : finitary (subterm L m₂ n) m₁) (s₁ : finitary (subterm L m₃ n) m₂) :
-  ∀ t, rew s₁ (rew s₀ t) = rew (rew s₁ ∘ s₀) t
+lemma rew_rew {μ₁ μ₂ μ₃} (s₀ : μ₁ → subterm L μ₂ n) (s₁ : μ₂ → subterm L μ₃ n) :
+  ∀ t, rew s₁ (rew s₀ t) = rew (λ i, rew s₁ (s₀ i)) t
 | (&x)           := by simp
 | (#x)           := by simp
-| (function f v) := by simp; funext i; exact nested_rew (v i)
+| (function f v) := by simp; funext i; exact rew_rew (v i)
 
-@[simp] lemma rew_metavar (t : subterm L m n) : rew metavar t = t :=
+@[simp] lemma map_map {μ₁ μ₂ μ₃} (f₁ : μ₁ → μ₂) (f₂ : μ₂ → μ₃) (t : subterm L μ₁ n) :
+  map f₂ (map f₁ t) = map (f₂ ∘ f₁) t :=
+by simp[map, rew_rew]
+
+@[simp] lemma rew_metavar (t : subterm L μ n) : rew metavar t = t :=
 by induction t; simp*
 
-lemma rew_metavar_inj (f : fin m₁ → fin m₂) (I : function.injective f) : function.injective (rew (@metavar L m₂ n ∘ f))
-| (&x)             (&y)             := by simp; exact λ h, I h
-| (&x)             (#y)             := by simp
-| (&x)             (function f v)   := by simp
-| (#x)             (&y)             := by simp
-| (#x)             (#y)             := by simp
-| (#x)             (function f v)   := by simp
-| (function f₁ v₁) (&y)             := by simp
-| (function f₁ v₁) (#y)             := by simp
+@[simp] lemma map_id (t : subterm L μ n) : map id t = t := by simp[map]
+
+lemma map_inj_of_inj (f : μ₁ → μ₂) (I : function.injective f) :
+  function.injective (map f : subterm L μ₁ n → subterm L μ₂ n)
+| &x               &y               := by simp[map]; exact λ h, I h
+| &x               #y               := by simp[map]
+| &x               (function f v)   := by simp[map]
+| #x               &y               := by simp[map]
+| #x               #y               := by simp[map]
+| #x               (function f v)   := by simp[map]
+| (function f₁ v₁) &y               := by simp[map]
+| (function f₁ v₁) #y               := by simp[map]
 | (function f₁ v₁) (function f₂ v₂) :=
-  by { simp, rintros rfl rfl,
-       simp, intros h, funext i, exact @rew_metavar_inj (v₁ i) (v₂ i) (congr_fun h i) }
+  by { simp[map], rintros rfl rfl,
+       simp, intros h, funext i, exact @map_inj_of_inj (v₁ i) (v₂ i) (congr_fun h i) }
 
 end rew
 
-@[simp] def lift : subterm L m n → subterm L m (n + 1)
-| (#x)           := #x.succ
-| (&x)           := &x
+@[simp] def lift : subterm L μ n → subterm L μ (n + 1)
+| #x             := #x.succ
+| &x             := &x
 | (function f v) := function f (λ i, (v i).lift)
 
 section lift
 
-lemma lift_rew (s : finitary (subterm L m₂ n) m₁) (t : subterm L m₁ n) : (t.rew s).lift = t.lift.rew (lift ∘ s) :=
+lemma lift_rew (s : μ₁ → subterm L μ₂ n) (t : subterm L μ₁ n) : (t.rew s).lift = t.lift.rew (λ i, lift (s i)) :=
 by induction t with x x p f v IH; simp; exact funext IH
 
-@[simp] lemma lift_metavar : lift ∘ (metavar : fin m → subterm L m n) = metavar :=
+@[simp] lemma lift_metavar : lift ∘ (metavar : μ → subterm L μ n) = metavar :=
 funext (by simp)
+
+variables {μ₁ μ₂} {f : μ₁ → μ₂}
+
+lemma map_lift (t : subterm L μ₁ n) : map f t.lift = (map f t).lift :=
+by induction t; simp*
 
 end lift
 
-@[simp] def mlift : subterm L m n → subterm L (m + 1) n
-| (&x)           := &x.cast_succ
-| (#x)           := #x
-| (function f v) := function f (λ i, (v i).mlift)
+section subst
+
+/-
+  #0 #1 ... #(n-1) #n &x ...
+            ↓subst u
+  #0 #1 ... #(n-1) u  &x ...
+-/
+
+def subst (u : subterm L μ n) : subterm L μ (n + 1) → subterm L μ n
+| &x             := &x
+| #x             := (var <* u) x
+| (function f v) := function f (λ i, subst $ v i)
+
+variables (u : subterm L μ n)
+
+@[simp] lemma subst_metavar (x) : subst u (&x : subterm L μ (n + 1)) = &x := rfl
+
+@[simp] lemma subst_var_last : subst u (#(fin.last n) : subterm L μ (n + 1)) = u := by simp[subst]
+
+@[simp] lemma subst_var_cast (x : fin n) : subst u (#(x.cast_succ) : subterm L μ (n + 1)) = #x := by simp[subst]
+
+@[simp] lemma subst_var_function {k} (f : L.fn k) (v : fin k → subterm L μ (n + 1)) :
+  subst u (function f v) = function f (λ i, subst u $ v i) := by simp[subst]
+
+variables {μ₁ μ₂} (f : μ₁ → μ₂)
+
+lemma map_subst (u : subterm L μ₁ n) (t : subterm L μ₁ (n + 1)) :
+  (subst u t).map f = subst (u.map f) (t.map f) :=
+by { induction t; simp*, case var : x { refine fin.last_cases _ _ x; simp } }
+
+end subst
+
+section bounded_subterm
+variables {L} {m m₁ m₂ : ℕ} {n}
+
+def mlift : bounded_subterm L m n → bounded_subterm L (m + 1) n := map fin.cast_succ
 
 section mlift
 
-lemma mlift_eq_rew : @mlift L m n = rew (metavar ∘ fin.cast_succ) :=
-funext (λ t, by induction t; simp*)
+@[simp] lemma mlift_metavar (x : fin m) : (&x : bounded_subterm L m n).mlift = &x.cast_succ := rfl
 
-lemma mlift_rew (s : finitary (subterm L m₂ n) m₁) (t : subterm L m₁ n) : (t.rew s).mlift = t.rew (mlift ∘ s) :=
+@[simp] lemma mlift_var (x : fin n) : (#x : bounded_subterm L m n).mlift = #x := rfl
+
+@[simp] lemma mlift_function {k} (f : L.fn k) (v : fin k → bounded_subterm L m n) :
+  (function f v).mlift = function f (λ i, (v i).mlift) := rfl
+
+lemma mlift_rew (s : fin m₁ → bounded_subterm L m₂ n) (t : bounded_subterm L m₁ n) : (t.rew s).mlift = t.rew (mlift ∘ s) :=
 by induction t with x x p f v IH; simp; exact funext IH
 
-lemma mlift_lift (t : subterm L m n) : t.mlift.lift = t.lift.mlift :=
+lemma mlift_lift (t : bounded_subterm L m n) : t.mlift.lift = t.lift.mlift :=
 by induction t; simp*
 
-lemma mlift_inj : function.injective (@mlift L m n) :=
-by rw mlift_eq_rew; refine rew_metavar_inj _ (rel_embedding.injective _)
+lemma mlift_inj : function.injective (@mlift L m n) := map_inj_of_inj _ (rel_embedding.injective _)
 
-def cast_le (h : m₁ ≤ m₂) : subterm L m₁ n → subterm L m₂ n :=
-rew (metavar ∘ fin.cast_le h)
+@[simp] lemma mlift_subst (u : bounded_subterm L m n) (t : bounded_subterm L m (n + 1)) :
+  (subst u t).mlift = subst u.mlift t.mlift :=
+by { induction t; simp*, case var : x { refine fin.last_cases _ _ x; simp } }
+
+def cast_le (h : m₁ ≤ m₂) : bounded_subterm L m₁ n → bounded_subterm L m₂ n := map (fin.cast_le h)
 
 variables {m₁ m₂} (h : m₁ ≤ m₂)
 
-@[simp] lemma cast_le_of_eq (t : subterm L m n) {h} : t.cast_le h = t := 
-by simp[cast_le, show ⇑(fin.cast_le h) = id, by ext; simp]
-
-@[simp] lemma cast_le_metavar (x : fin m₁) : (&x : subterm L m₁ n).cast_le h = &(fin.cast_le h x) :=
+@[simp] lemma cast_le_metavar (x : fin m₁) : cast_le h (&x : bounded_subterm L m₁ n) = &(fin.cast_le h x) :=
 by simp[cast_le]
 
-@[simp] lemma cast_le_var (x : fin n) : (#x : subterm L m₁ n).cast_le h = #x :=
+@[simp] lemma cast_le_var (x : fin n) : cast_le h (#x : bounded_subterm L m₁ n) = #x :=
 by simp[cast_le]
 
-@[simp] lemma cast_le_function {k} (f : L.fn k) (v : fin k → subterm L m₁ n) :
-  (function f v).cast_le h = function f (cast_le h ∘ v) :=
+@[simp] lemma cast_le_function {k} (f : L.fn k) (v : fin k → bounded_subterm L m₁ n) :
+  cast_le h (function f v) = function f (λ i, cast_le h (v i)) :=
 by simp[cast_le]
 
-lemma cast_le_inj : function.injective (@cast_le L m₁ m₂ n h) :=
-rew_metavar_inj _ (rel_embedding.injective _)
+@[simp] lemma cast_le_inj (p q : bounded_subterm L m₁ n) : cast_le h p = cast_le h q ↔ p = q :=
+⟨λ h, map_inj_of_inj _ (rel_embedding.injective _) h, λ h, by simp[h]⟩
 
-@[simp] lemma case_le_lift (h : m₁ ≤ m₂) (t : subterm L m₁ n) : (cast_le h t).lift = cast_le h t.lift :=
+@[simp] lemma case_le_lift (t : bounded_subterm L m₁ n) : (cast_le h t).lift = cast_le h t.lift :=
 by induction t; simp*
+
+@[simp] lemma cast_le_mlift (t : bounded_subterm L m₁ n) (h : m₁ + 1 ≤ m₂) :
+  cast_le h (mlift t) = cast_le (nat.le_of_succ_le h) t :=
+by { induction t; simp*, case metavar : x { ext; simp } }
+
+@[simp] lemma mlift_cast_le (t : bounded_subterm L m₁ n) (h : m₁ ≤ m₂) :
+  mlift (cast_le h t) = cast_le (le_add_right h) t :=
+by { induction t; simp*, case metavar : x { ext; simp } }
 
 end mlift
 
@@ -283,239 +404,113 @@ end mlift
   #0 #1 #2 #3 #4 ... #(n - 1) &m &(m - 1) ... &3 &2 &1 &0 
 -/
 
-def push : subterm L m (n + 1) → subterm L (m + 1) n
+def push : bounded_subterm L m (n + 1) → bounded_subterm L (m + 1) n
 | (&x)           := &x.cast_succ
 | (#x)           := (var <* &(fin.last m)) x
 | (function f v) := function f (λ i, (v i).push)
 
 section push
 
-@[simp] lemma push_metavar (x) : (&x : subterm L m (n + 1)).push = &x.cast_succ := rfl
+@[simp] lemma push_metavar (x) : (&x : bounded_subterm L m (n + 1)).push = &x.cast_succ := rfl
 
-@[simp] lemma push_var_last : (#(fin.last n) : subterm L m (n + 1)).push = &(fin.last m) := by simp[push]
+@[simp] lemma push_var_last : (#(fin.last n) : bounded_subterm L m (n + 1)).push = &(fin.last m) := by simp[push]
 
-@[simp] lemma push_var_cast (x) : (#(fin.cast_succ x) : subterm L m (n + 1)).push = #x := by simp[push]
+@[simp] lemma push_var_cast (x) : (#(fin.cast_succ x) : bounded_subterm L m (n + 1)).push = #x := by simp[push]
 
-@[simp] lemma push_function {p} (f : L.fn p) (v : fin p → subterm L m (n + 1)) :
-  (function f v : subterm L m (n + 1)).push = function f (push ∘ v) := by simp[push]
+@[simp] lemma push_function {k} (f : L.fn k) (v : fin k → bounded_subterm L m (n + 1)) :
+  (function f v).push = function f (push ∘ v) := by simp[push]
 
-lemma push_lift_comm (t : subterm L m (n + 1)) : t.lift.push = t.push.lift :=
+lemma push_lift_comm (t : bounded_subterm L m (n + 1)) : t.lift.push = t.push.lift :=
 by { induction t; simp*,
      case var : x { refine fin.last_cases _ _ x; simp[fin.succ_cast_succ], },
      case function : k f v IH
      { funext i, exact IH i } }
 
+@[simp] lemma subst_mlift (t : bounded_subterm L m (n + 1)) : subst &(fin.last m) (mlift t) = push t :=
+by { induction t; simp*, case var : x { refine fin.last_cases _ _ x; simp } }
+
 end push
 
-def pull : subterm L (m + 1) n → subterm L m (n + 1)
+def pull : bounded_subterm L (m + 1) n → bounded_subterm L m (n + 1)
 | (&x)           := (metavar <* #(fin.last n)) x
 | (#x)           := #x.cast_succ
 | (function f v) := function f (λ i, (v i).pull)
 
 section pull
 
-@[simp] lemma pull_metavar_zero : (&(fin.last m) : subterm L (m + 1) n).pull = #(fin.last n) := by simp[pull]
+@[simp] lemma pull_metavar_zero : (&(fin.last m) : bounded_subterm L (m + 1) n).pull = #(fin.last n) := by simp[pull]
 
-@[simp] lemma pull_metavar_succ (x : fin m) : (&x.cast_succ : subterm L (m + 1) n).pull = &x := by simp[pull]
+@[simp] lemma pull_metavar_succ (x : fin m) : (&x.cast_succ : bounded_subterm L (m + 1) n).pull = &x := by simp[pull]
 
-@[simp] lemma pull_var (x) : (#x : subterm L (m + 1) n).pull = #x.cast_succ := by simp[pull]
+@[simp] lemma pull_var (x) : (#x : bounded_subterm L (m + 1) n).pull = #x.cast_succ := by simp[pull]
 
-@[simp] lemma pull_function {p} (f : L.fn p) (v : fin p → subterm L (m + 1) n) :
-  (function f v : subterm L (m + 1) n).pull = function f (pull ∘ v) := by simp[pull]
+@[simp] lemma pull_function {k} (f : L.fn k) (v : fin k → bounded_subterm L (m + 1) n) :
+  (function f v).pull = function f (λ i, (v i).pull) := by simp[pull]
 
-@[simp] lemma pull_push (t : subterm L m (n + 1)) : t.push.pull = t :=
+@[simp] lemma pull_push (t : bounded_subterm L m (n + 1)) : t.push.pull = t :=
 by{ induction t, 
     case metavar : x { simp, },
     case var : x { refine fin.last_cases _ _ x; simp },
     case function : p f v IH { simp, funext x, simp[IH] } }
 
-@[simp] lemma push_pull (t : subterm L (m + 1) n) : t.pull.push = t :=
+@[simp] lemma push_pull (t : bounded_subterm L (m + 1) n) : t.pull.push = t :=
 by{ induction t,
     case metavar : x { refine fin.last_cases _ _ x; simp },
     case var : x { simp },
     case function : p f v IH { simp, funext x, simp[IH] } }
 
-lemma push_rew_pull (t : subterm L (m₁ + 1) n) (s : fin m₁ → subterm L m₂ (n + 1)) :
+lemma push_rew_pull (t : bounded_subterm L (m₁ + 1) n) (s : fin m₁ → bounded_subterm L m₂ (n + 1)) :
   (rew s t.pull).push = rew (push ∘ s <* &(fin.last m₂)) t :=
 by { induction t; simp*,
       case metavar : x { refine fin.last_cases _ _ x; simp },
       case function : k f v IH
       { funext i, exact IH i } }
 
-lemma pull_lift_comm (t : subterm L (m + 1) n) : t.lift.pull = t.pull.lift :=
+lemma pull_lift_comm (t : bounded_subterm L (m + 1) n) : t.lift.pull = t.pull.lift :=
 by { induction t; simp[*, fin.succ_cast_succ],
-     case metavar : x { refine fin.last_cases _ _ x; simp },
-     case function : k f v IH
-     { funext i, exact IH i } }
+     case metavar : x { refine fin.last_cases _ _ x; simp } }
 
 end pull
 
-/-
-  #0 #1 ... #(n-1) &m &(m - 1) ... &0
-            ↓msubst u
-  #0 #1 ... #(n-1) u  &(m - 1) ... &0
--/
-
-def msubst (t : subterm L m n) : subterm L (m + 1) n → subterm L m n := rew (metavar <* t)
-
-section msubst
-
-@[simp] lemma msubst_var (u : subterm L m n) (x) : msubst u #x = #x := by simp[msubst]
-
-@[simp] lemma msubst_metavar_zero (u : subterm L m n) : msubst u &(fin.last m) = u := by simp[msubst]
-
-@[simp] lemma msubst_metavar_succ (u : subterm L m n) (x : fin m) : msubst u &x.cast_succ = &x := by simp[msubst]
-
-@[simp] lemma msubst_function (u : subterm L m n) {p} (f : L.fn p) (v) :
-  msubst u (function f v) = function f (msubst u ∘ v) := by simp[msubst]
-
-@[simp] lemma msubst_mlift (t u : subterm L m n) : msubst u t.mlift = t :=
-by { induction t; simp*, case function : k f v IH { funext i, simp, exact IH i } }
-
-end msubst
-
-/-
-  #0 #1 ... #(n-1) #n &(m - 1) ... &1 &0
-            ↓subst u
-  #0 #1 ... #(n-1) u  &(m - 1) ... &0 &1
--/
-
-def subst (t : subterm L m n) : subterm L m (n + 1) → subterm L m n := msubst t ∘ push
-
-section subst
-
-@[simp] lemma subst_var_cast_succ (u : subterm L m n) (x : fin n) : subst u #x.cast_succ = #x := by simp[subst]
-
-@[simp] lemma subst_var_last (u : subterm L m n) : subst u #(fin.last n) = u := by simp[subst]
-
-@[simp] lemma subst_var_last_zero (u : subterm L m 0) : subst u #0 = u :=
-by rw[show 0 = fin.last 0, by simp]; exact subst_var_last u
-
-@[simp] lemma subst_metavar (u : subterm L m n) (x) : subst u &x = &x := by simp[subst]
-
-@[simp] lemma subst_function (u : subterm L m n) {p} (f : L.fn p) (v) :
-  subst u (function f v) = function f (subst u ∘ v) := by simp[subst]
-
-@[simp] lemma mlift_subst (u : subterm L m n) (t : subterm L m (n + 1)) :
-  (subst u t).mlift = subst u.mlift t.mlift :=
-by { induction t; simp*, case var : x { refine fin.last_cases _ _ x; simp } }
-
-lemma msubst_push (u : subterm L m n) (t : subterm L m (n + 1)) : msubst u (push t) = subst u t := rfl
-
-@[simp] lemma subst_zero (u : subterm L m 0) (t : subterm L m 0) : subst u t.lift = t :=
-by { induction t; simp*,
-     case var : i { exact fin_zero_elim i },
-     case function : k f v IH { funext i, simp[IH] } }
-
-@[simp] lemma subst_lift_lift (u : subterm L m n) (t : subterm L m (n + 1)) : subst u.lift t.lift = (subst u t).lift :=
-by { induction t; simp*,
-     case var : i { refine fin.last_cases _ _ i; simp[fin.succ_cast_succ], },
-     case function : k f v IH { funext i, simp[IH] } }
-
-@[simp] lemma cast_le_subst (h : m₁ ≤ m₂) (u : subterm L m₁ n) (t : subterm L m₁ (n + 1)) :
-  cast_le h (subst u t) = subst (u.cast_le h) (cast_le h t) :=
-by { induction t; simp[(∘), *], case var : x { refine fin.last_cases _ _ x; simp } }
-
-end subst
-
-def dummy : subterm L m n → subterm L m (n + 1) := pull ∘ mlift
+def dummy : bounded_subterm L m n → bounded_subterm L m (n + 1) := pull ∘ mlift
 
 section dummy
 
-@[simp] lemma dummy_metavar (x) : dummy (&x : subterm L m n) = &x := by simp[dummy]
+@[simp] lemma dummy_metavar (x) : dummy (&x : bounded_subterm L m n) = &x := by simp[dummy]
 
-@[simp] lemma dummy_var (x) : dummy (#x : subterm L m n) = #x.cast_succ := by simp[dummy]
+@[simp] lemma dummy_var (x) : dummy (#x : bounded_subterm L m n) = #x.cast_succ := by simp[dummy]
 
-@[simp] lemma dummy_function {p} (f : L.fn p) (v : finitary (subterm L m n) p) :
-  dummy (function f v) = function f (dummy ∘ v) := by simp[dummy]
+@[simp] lemma dummy_function {k} (f : L.fn k) (v : fin k → bounded_subterm L m n) :
+  dummy (function f v) = function f (λ i, dummy (v i)) := by simp[dummy]
 
-end dummy
-
-@[simp] lemma pull_msubst_push_mlift (t : subterm L m (n + 1)) : (pull $ msubst &(fin.last m) $ push $ mlift t) = t :=
-begin
-  induction t; simp, 
-  case var : x { refine fin.last_cases _ _ x; simp },
-  case function : k f v IH
-  { funext i, simpa using IH i }
-end
-
-@[simp] lemma pull_mlift (t : subterm L m n) (u) : (subst u $ pull $ mlift t) = t :=
-by simp[subst]
-
-@[simp] lemma dummy_subst (u : subterm L m n) (t : subterm L m n) :
+@[simp] lemma dummy_subst (u : bounded_subterm L m n) (t : bounded_subterm L m n) :
   subst u t.dummy = t :=
-by simp[dummy]
+by induction t; simp*
 
-lemma dummy_lift_comm (t : subterm L m n) :
+lemma dummy_lift_comm (t : bounded_subterm L m n) :
   t.lift.dummy = t.dummy.lift :=
 by simp[dummy, ←mlift_lift, pull_lift_comm]
 
---@[simp] def dummys : subterm L m 0 → Π {n}, subterm L m n 
---| t 0 := t
---| t (n + 1) := dummy (dummys t)
+end dummy
 
-def substs : Π {m n}, (fin n → subterm L m 0) → subterm L m n → subterm L m 0
-| m 0       w t := t
-| m (n + 1) w t := subst (w $ fin.last n) (substs (mlift ∘ w ∘ fin.cast_succ) t.push).pull
-
-@[simp] lemma substs_zero (w : fin 0 → subterm L m 0) : substs w = id := by funext i; simp[substs]
-
-@[simp] lemma substs_function (w : fin n → subterm L m 0) {k} (f : L.fn k) (v) :
-  substs w (function f v) = function f (substs w ∘ v) :=
-by { induction n with n IH generalizing m, { simp },
-     { simp[substs, IH], funext i, { simp, refl } } }
-
-@[simp] lemma substs_metavar (w : fin n → subterm L m 0) (x) :
-  substs w &x = &x :=
-by induction n with n IH generalizing m; simp[substs, *]
-
-@[simp] lemma substs_var (w : fin n → subterm L m 0) (x) :
-  substs w #x = w x :=
-by { induction n with n IH generalizing m; simp[substs],
-     { exfalso, exact fin_zero_elim x },
-     { refine fin.last_cases _ _ x; simp* } }
-
-end rew
-
-section symbol
-variables {m n : ℕ}
-
-def symbol : subterm L m n → set (Σ k, L.fn k)
-| &x             := ∅
-| #x             := ∅
-| (function f v) := insert ⟨_, f⟩ (⋃ i, symbol (v i))
-
-end symbol
+end bounded_subterm
 
 end subterm
 
 namespace subformula
 open subterm finitary
-variables {L} {m m₁ m₂ m₃ n : ℕ}
+variables {L μ} {μ₁ : Type*} {μ₂ : Type*} {n : ℕ}
 
-@[simp] def complexity : Π {n}, subformula L m n → ℕ
-| n verum          := 0
-| n (relation p v) := 0
-| n (imply p q)    := max p.complexity q.complexity + 1
-| n (neg p)        := p.complexity + 1
-| n (fal p)        := p.complexity + 1
+section rew
 
-@[simp] lemma complexity_top : (⊤ : subformula L m n).complexity = 0 := by refl
-
-@[simp] lemma complexity_neg (p : subformula L m n) : (∼p).complexity = p.complexity + 1 := by refl
-
-@[simp] lemma complexity_fal (p : subformula L m (n + 1)) : (∀'p).complexity = p.complexity + 1 := by refl
-
-@[simp] lemma imply_complexity (p q : subformula L m n) : (p ⟶ q).complexity = max p.complexity q.complexity + 1 := by refl
-
-def rew' {m₁ m₂} : Π {n}, finitary (subterm L m₂ n) m₁ → subformula L m₁ n → subformula L m₂ n
+def rew' {μ₁ μ₂} : Π {n}, (μ₁ → subterm L μ₂ n) → subformula L μ₁ n → subformula L μ₂ n
 | n s verum          := ⊤
 | n s (relation p v) := relation p (λ i, (v i).rew s)
 | n s (imply p q)    := p.rew' s ⟶ q.rew' s
 | n s (neg p)        := ∼p.rew' s
 | n s (fal p)        := ∀'p.rew' (subterm.lift ∘ s)
 
-def rew (s : finitary (subterm L m₂ n) m₁) : subformula L m₁ n →ₗ subformula L m₂ n :=
+def rew (s : μ₁ → subterm L μ₂ n) : subformula L μ₁ n →ₗ subformula L μ₂ n :=
 { to_fun := rew' s,
   map_neg' := λ p, by refl,
   map_imply' := λ p q, by refl,
@@ -524,57 +519,66 @@ def rew (s : finitary (subterm L m₂ n) m₁) : subformula L m₁ n →ₗ subf
   map_top' := by refl,
   map_bot' := by refl }
 
-section rew
-variables (s : finitary (subterm L m₂ n) m₁)
+def map (f : μ₁ → μ₂) : subformula L μ₁ n →ₗ subformula L μ₂ n := rew (λ x, &(f x))
 
-lemma rew_def (p : subformula L m₁ n) : rew s p = rew' s p := rfl
+variables (s : μ₁ → subterm L μ₂ n) (f : μ₁ → μ₂)
+
+lemma rew_def (p : subformula L μ₁ n) : rew s p = rew' s p := rfl
 
 variables {s}
 
-@[simp] lemma rew_relation {p} (r : L.pr p) (v) :
-  rew s (relation r v) = relation r (subterm.rew s ∘ v) := rfl
+@[simp] lemma rew_relation {k} (r : L.pr k) (v) :
+  rew s (relation r v) = relation r (λ x, subterm.rew s (v x)) := rfl
 
-@[simp] lemma rew_equal [L.has_equal] (t u : subterm L m₁ n) :
-  rew s (t =' u) = (t.rew s =' u.rew s) := by simp[←equal_eq, equal, fin.comp_left_concat]
+@[simp] lemma rew_fal (p : subformula L μ₁ (n + 1)) :
+  rew s (∀'p) = ∀'rew (λ x, (s x).lift) p := rfl
 
-@[simp] lemma rew_fal (p : subformula L m₁ (n + 1)) :
-  rew s (∀'p) = ∀'rew (subterm.lift ∘ s) p := rfl
+@[simp] lemma rew_ex (p : subformula L μ₁ (n + 1)) :
+  rew s (∃'p) = ∃'rew (λ x, (s x).lift) p := by simp[ex_def]
 
-@[simp] lemma rew_ex (p : subformula L m₁ (n + 1)) :
-  rew s (∃'p) = ∃'rew (subterm.lift ∘ s) p := by simp[ex_def]
+@[simp] lemma map_relation {k} (r : L.pr k) (v : fin k → subterm L μ₁ n) :
+  map f (relation r v) = relation r (λ x, subterm.map f (v x)) := rfl
 
-lemma rew_eq_self_of_eq {s : finitary (subterm L m n) m} (h : s = metavar) (p : subformula L m n) : rew s p = p :=
-by { induction p; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq, subterm.mlift_rew, *],
-     case relation : n p r v { funext x; simp } }
+@[simp] lemma map_fal (p : subformula L μ₁ (n + 1)) :
+  map f (∀'p) = ∀'map f p := rfl
 
-@[simp] lemma rew_metavar (p : subformula L m n) : rew metavar p = p := rew_eq_self_of_eq rfl p
+@[simp] lemma map_ex (p : subformula L μ₁ (n + 1)) :
+  map f (∃'p) = ∃'map f p := by simp[ex_def]
 
-lemma nested_rew {m₁ m₂ m₃} : ∀ {n} (p : subformula L m₁ n) (s₀ : finitary (subterm L m₂ n) m₁) (s₁ : finitary (subterm L m₃ n) m₂),
-  rew s₁ (rew s₀ p) = rew (subterm.rew s₁ ∘ s₀) p
-| n verum          s₀ s₁ := by simp[top_eq]
-| n (relation p v) s₀ s₁ := by simp; funext; simp[subterm.nested_rew]
-| n (imply p q)    s₀ s₁ := by simp[imply_eq, nested_rew p, nested_rew q]
-| n (neg p)        s₀ s₁ := by simp[neg_eq, nested_rew p]
-| n (fal p)        s₀ s₁ := by simp[fal_eq, nested_rew p]; { 
-  have : subterm.rew (subterm.lift ∘ s₁) ∘ subterm.lift ∘ s₀ = subterm.lift ∘ subterm.rew s₁ ∘ s₀,
-  { funext i; simp[lift_rew] },
-  rw this }
+lemma rew_eq_self_of_eq {s : μ → subterm L μ n} (h : s = metavar) (p : subformula L μ n) : rew s p = p :=
+by induction p using fol.subformula.ind_on; simp[subterm.mlift_rew, *]
 
-lemma eq_rew_of_eq {p : subformula L m₁ n} {s₁ s₂ : finitary (subterm L m₂ n) m₁} (h : s₁ = s₂) :
+@[simp] lemma rew_metavar (p : subformula L μ n) : rew metavar p = p := rew_eq_self_of_eq rfl p
+
+@[simp] lemma map_id (p : subformula L μ n) : map id p = p := rew_eq_self_of_eq rfl p
+
+lemma eq_rew_of_eq {p : subformula L μ₁ n} {s₁ s₂ : μ₁ → subterm L μ₂ n} (h : s₁ = s₂) :
   rew s₁ p = rew s₂ p := by rw[h]
 
-@[simp] lemma complexity_rew (p : subformula L m₁ n) : complexity (rew s p) = complexity p :=
-by induction p; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq, *]
+lemma rew_rew {μ₁ μ₂ μ₃} : ∀ {n} (p : subformula L μ₁ n) (s₀ : μ₁ → subterm L μ₂ n) (s₁ : μ₂ → subterm L μ₃ n),
+  rew s₁ (rew s₀ p) = rew (λ x, subterm.rew s₁ (s₀ x)) p
+| n verum          s₀ s₁ := by simp[top_eq]
+| n (relation p v) s₀ s₁ := by simp; funext; simp[subterm.rew_rew]
+| n (imply p q)    s₀ s₁ := by simp[imply_eq, rew_rew p, rew_rew q]
+| n (neg p)        s₀ s₁ := by simp[neg_eq, rew_rew p]
+| n (fal p)        s₀ s₁ := by simp[fal_eq, rew_rew p]; refine eq_rew_of_eq (by funext x; simp[subterm.lift_rew])
 
-lemma rew_metavar_inj (f : fin m₁ → fin m₂) (I : function.injective f) :
-  function.injective (rew (@metavar L m₂ n ∘ f)) := λ p q,
+@[simp] lemma map_map {μ₁ μ₂ μ₃} (f₁ : μ₁ → μ₂) (f₂ : μ₂ → μ₃) (p : subformula L μ₁ n) :
+  map f₂ (map f₁ p) = map (f₂ ∘ f₁) p :=
+by simp[map, rew_rew]
+
+@[simp] lemma complexity_rew (p : subformula L μ₁ n) : complexity (rew s p) = complexity p :=
+by induction p using fol.subformula.ind_on; simp*
+
+lemma map_inj_of_inj (f : μ₁ → μ₂) (I : function.injective f) :
+  function.injective (map f : subformula L μ₁ n → subformula L μ₂ n) := λ p q,
 begin
-  induction p,
-  case verum { cases q; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq] },
+  induction p using fol.subformula.ind_on,
+  case verum { cases q; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq], },
   case relation : n k r v₁
   { cases q; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq];
     case relation : _ _ r₂ v₂
-    { rintros rfl rfl, simp, intros h, funext i, exact subterm.rew_metavar_inj f I (congr_fun h i) } },
+    { rintros rfl rfl, simp, intros h, funext i, exact subterm.map_inj_of_inj f I (congr_fun h i) } },
   case imply : _ p₁ p₂ IH₁ IH₂
   { cases q; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq],
       case imply : _ q₁ q₂ { intros h₁ h₂, exact ⟨IH₁ _ h₁, IH₂ _ h₂⟩ } },
@@ -588,107 +592,96 @@ end
 
 end rew
 
-def mlift' {m} : Π {n}, subformula L m n → subformula L (m + 1) n
-| n verum          := ⊤
-| n (relation p v) := relation p (mlift ∘ v)
-| n (imply p q)    := p.mlift' ⟶ q.mlift'
-| n (neg p)        := ∼p.mlift'
-| n (fal p)        := ∀'p.mlift'
+section subst
 
-def mlift : subformula L m n →ₗ subformula L (m + 1) n :=
-{ to_fun := mlift',
-  map_neg' := λ p, by refl,
-  map_imply' := λ p q, by refl,
-  map_and' := λ p q, by refl,
-  map_or' := λ p q, by refl,
-  map_top' := by refl,
-  map_bot' := by refl }
+@[simp] def subst' : Π {n}, subterm L μ n → subformula L μ (n + 1) → subformula L μ n
+| n u verum          := ⊤
+| n u (relation r v) := relation r (λ i, subterm.subst u $ v i)
+| n u (imply p q)    := subst' u p ⟶ subst' u q
+| n u (neg p)        := ∼subst' u p
+| n u (fal p)        := ∀' (subst' u.lift p)
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.complexity)⟩]}
+
+def subst (u : subterm L μ n) : subformula L μ (n + 1) →ₗ subformula L μ n :=
+{ to_fun := subst' u,
+  map_neg' := λ p, by unfold has_negation.neg; simp; refl,
+  map_imply' := λ p q, by unfold has_arrow.arrow; simp; refl,
+  map_and' := λ p q, by unfold has_inf.inf; simp[and]; refl,
+  map_or' := λ p q, by unfold has_sup.sup; simp[or]; refl,
+  map_top' := by unfold has_top.top; simp; refl,
+  map_bot' := by unfold has_bot.bot; simp; refl }
+
+variables (u : subterm L μ n)
+
+@[simp] lemma subst_relation {k} (r : L.pr k) (v : fin k → subterm L μ (n + 1)) :
+  subst u (relation r v) = relation r (λ i, u.subst (v i)) := by simp[subst]
+
+@[simp] lemma subst_fal (p : subformula L μ (n + 1 + 1)) :
+  subst u (∀'p) = ∀'subst u.lift p := by simp[←fal_eq, subst]
+
+@[simp] lemma subst_ex (p : subformula L μ (n + 1 + 1)) :
+  subst u (∃'p) = ∃'subst u.lift p := by simp[ex_def]
+
+variables {μ₁ μ₂} (f : μ₁ → μ₂)
+
+lemma map_subst (p : subformula L μ₁ (n + 1)) : ∀ (u : subterm L μ₁ n),
+  map f (subst u p) = subst (u.map f) (map f p) :=
+by apply ind_succ_on p; intros; simp[*, subterm.map_subst, subterm.map_lift]
+
+end subst
+
+section bounded_formula
+variables {m : ℕ}
+
+def mlift {m n} : bounded_subformula L m n →ₗ bounded_subformula L (m + 1) n := map fin.cast_succ
 
 section mlift
 
-@[simp] lemma mlift_relation {p} (r : L.pr p) (v : finitary (subterm L m n) p) :
-  mlift (relation r v) = relation r (subterm.mlift ∘ v) := rfl
+@[simp] lemma mlift_relation {k} (r : L.pr k) (v : fin k → bounded_subterm L m n) :
+  mlift (relation r v) = relation r (λ i, subterm.mlift (v i)) := rfl
 
-@[simp] lemma mlift_equal [L.has_equal] (t u : subterm L m n) :
-  mlift (t =' u : subformula L m n) = (t.mlift =' u.mlift) :=
-by simp[←equal_eq, equal, fin.comp_left_concat]
-
-@[simp] lemma mlift_fal (p : subformula L m (n + 1)) :
+@[simp] lemma mlift_fal (p : bounded_subformula L m (n + 1)) :
   mlift (∀'p) = ∀'mlift p := rfl
 
-@[simp] lemma mlift_ex (p : subformula L m₁ (n + 1)) :
+@[simp] lemma mlift_ex (p : bounded_subformula L m (n + 1)) :
   mlift (∃'p) = ∃'mlift p := by simp[ex_def]
 
-@[simp] lemma mlift_univ_closure (p : subformula L m n) :
-  mlift (∀'*p) = ∀'* (mlift p) :=
-by induction n; simp*
+variables {m₁ m₂ : ℕ} (s : fin m₁ → bounded_subterm L m₂ n)
 
-@[simp] lemma mlift_ex_closure (p : subformula L m n) :
-  mlift (∃'*p) = ∃'*(mlift p) :=
-by induction n; simp*
+lemma mlift_rew (p : bounded_subformula L m₁ n) : mlift (rew s p) = rew (λ x, (s x).mlift) p :=
+by induction p using fol.subformula.ind_on; simp[subterm.mlift_rew, subterm.mlift_lift, *]
 
-variables (s : finitary (subterm L m₂ n) m₁)
-
-lemma mlift_rew (p : subformula L m₁ n) : mlift (rew s p) = rew (subterm.mlift ∘ s) p :=
-begin
-  induction p; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq, subterm.mlift_rew, *],
-  case relation : n p r v { funext x; simp[subterm.mlift_rew] },
-  case fal : n p IH {
-    have : subterm.mlift ∘ subterm.lift ∘ s = subterm.lift ∘ subterm.mlift ∘ s,
-    { funext x; simp[subterm.mlift_lift] },
-    rw[this] }
-end
-
-lemma mlift_eq_rew : @mlift L m n = rew (metavar ∘ fin.cast_succ) :=
-by { ext p, induction p; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq, subterm.mlift_eq_rew, *],
-     exact eq_rew_of_eq (funext $ λ x, by simp) }
-
-@[simp] lemma complexity_mlift (p : subformula L m n) : p.mlift.complexity = p.complexity :=
-by induction p; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq, *]
+@[simp] lemma complexity_mlift (p : bounded_subformula L m n) : p.mlift.complexity = p.complexity :=
+by induction p using fol.subformula.ind_on; simp*
 
 lemma mlift_inj : function.injective (@mlift L m n) :=
-by rw mlift_eq_rew; refine rew_metavar_inj _ (rel_embedding.injective _)
+map_inj_of_inj _ (rel_embedding.injective _)
 
-def cast_le (h : m₁ ≤ m₂) : subformula L m₁ n →ₗ subformula L m₂ n :=
-rew (metavar ∘ fin.cast_le h)
+def cast_le {n} (h : m₁ ≤ m₂) : bounded_subformula L m₁ n →ₗ bounded_subformula L m₂ n := map (fin.cast_le h)
 
-variables {m₁ m₂} (h : m₁ ≤ m₂)
+variables (h : m₁ ≤ m₂)
 
-@[simp] lemma cast_le_of_eq (p : subformula L m n) {h} : cast_le h p = p := 
+@[simp] lemma cast_le_of_eq (p : bounded_subformula L m n) {h} : cast_le h p = p := 
 by simp[cast_le, show ⇑(fin.cast_le h) = id, by ext; simp]
 
-@[simp] lemma cast_le_function {k} (r : L.pr k) (v : fin k → subterm L m₁ n) :
+@[simp] lemma cast_le_function {k} (r : L.pr k) (v : fin k → bounded_subterm L m₁ n) :
   cast_le h (relation r v) = relation r (subterm.cast_le h ∘ v) :=
 by simp[cast_le]; refl
 
-@[simp] lemma cast_le_fal (p : subformula L m₁ (n + 1)) :
+@[simp] lemma cast_le_fal (p : bounded_subformula L m₁ (n + 1)) :
   cast_le h (∀'p) = ∀'(cast_le h p) :=
 by simp[cast_le]; refl
 
-@[simp] lemma cast_le_ex (p : subformula L m₁ (n + 1)) :
+@[simp] lemma cast_le_ex (p : bounded_subformula L m₁ (n + 1)) :
   cast_le h (∃'p) = ∃'(cast_le h p) :=
 by simp[cast_le]; refl
 
 lemma cast_le_inj : function.injective (@cast_le L m₁ m₂ n h) :=
-rew_metavar_inj _ (rel_embedding.injective _)
+map_inj_of_inj _ (rel_embedding.injective _)
 
 end mlift
 
-def succ_rec {C : Π n, subformula L m (n + 1) → Sort*}
-  (hverum : Π {n : ℕ}, C n ⊤)
-  (hrelation : Π {n l : ℕ} (r : L.pr l) (v : fin l → subterm L m (n + 1)), C n (relation r v))
-  (himply : Π {n : ℕ} (p q : subformula L m (n + 1)), C n p → C n q → C n (p ⟶ q))
-  (hneg : Π {n : ℕ} (p : subformula L m (n + 1)), C n p → C n ∼p)
-  (hfal : Π {n : ℕ} (p : subformula L m (n + 1 + 1)), C (n + 1) p → C n (∀'p)) :
-  Π {n : ℕ} (p : subformula L m (n + 1)), C n p
-| n verum := hverum
-| n (relation r v) := hrelation r v
-| n (imply p q)    := himply p q (succ_rec p) (succ_rec q)
-| n (neg p)        := hneg p (succ_rec p)
-| n (fal p)        := hfal p (succ_rec p)
-using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.complexity)⟩]}
-
-def push' {m} : Π {n}, subformula L m (n + 1) → subformula L (m + 1) n
+def push' {m} : Π {n}, bounded_subformula L m (n + 1) → bounded_subformula L (m + 1) n
 | n verum          := ⊤
 | n (relation p v) := relation p (subterm.push ∘ v)
 | n (imply p q)    := p.push' ⟶ q.push'
@@ -696,7 +689,7 @@ def push' {m} : Π {n}, subformula L m (n + 1) → subformula L (m + 1) n
 | n (fal p)        := ∀'p.push'
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.complexity)⟩]}
 
-def push : subformula L m (n + 1) →ₗ subformula L (m + 1) n :=
+def push : bounded_subformula L m (n + 1) →ₗ bounded_subformula L (m + 1) n :=
 { to_fun := push',
   map_neg' := λ p, by unfold has_negation.neg; simp[push']; refl,
   map_imply' := λ p q, by unfold has_arrow.arrow; simp[push']; refl,
@@ -707,33 +700,32 @@ def push : subformula L m (n + 1) →ₗ subformula L (m + 1) n :=
 
 section push
 
-lemma push_def (p : subformula L m (n + 1)) : push p = push' p := rfl
+lemma push_def (p : bounded_subformula L m (n + 1)) : push p = push' p := rfl
 
-@[simp] lemma push_relation {p} (r : L.pr p) (v : finitary (subterm L m (n + 1)) p) :
-  push (relation r v) = relation r (subterm.push ∘ v) := by simp[push_def, push']
+@[simp] lemma push_relation {k} (r : L.pr k) (v : fin k → bounded_subterm L m (n + 1)) :
+  push (relation r v) = relation r (λ i, subterm.push (v i)) := by simp[push_def, push']
 
-@[simp] lemma push_equal [L.has_equal] (t u : subterm L m (n + 1)) :
-  push (t =' u : subformula L m (n + 1)) = (t.push =' u.push) := by simp[←equal_eq, equal, fin.comp_left_concat]
-
-@[simp] lemma push_fal (p : subformula L m (n + 1 + 1)) :
+@[simp] lemma push_fal (p : bounded_subformula L m (n + 1 + 1)) :
   push (∀'p) = ∀'push p := by unfold has_univ_quantifier'.univ; simp[push_def, push']; refl
 
-@[simp] lemma push_ex (p : subformula L m₁ (n + 1 + 1)) :
+@[simp] lemma push_ex (p : bounded_subformula L m (n + 1 + 1)) :
   push (∃'p) = ∃'push p := by simp[ex_def]
 
-@[simp] lemma complexity_push : ∀ {n} (p : subformula L m (n + 1)), p.push.complexity = p.complexity :=
-by apply succ_rec; intros; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq, *]
+@[simp] lemma complexity_push {n} (p : bounded_subformula L m (n + 1)) : p.push.complexity = p.complexity :=
+by apply ind_succ_on p; intros; simp*
+
+variables {m₁ m₂ : ℕ} (f : fin m₁ → fin m₂)
 
 end push
 
-def pull' {m} : Π {n}, subformula L (m + 1) n → subformula L m (n + 1)
+def pull' {m} : Π {n}, bounded_subformula L (m + 1) n → bounded_subformula L m (n + 1)
 | n verum          := ⊤
 | n (relation p v) := relation p (subterm.pull ∘ v)
 | n (imply p q)    := p.pull' ⟶ q.pull'
 | n (neg p)        := ∼p.pull'
 | n (fal p)        := ∀'p.pull'
 
-def pull : subformula L (m + 1) n →ₗ subformula L m (n + 1) :=
+def pull : bounded_subformula L (m + 1) n →ₗ bounded_subformula L m (n + 1) :=
 { to_fun := pull',
   map_neg' := λ p, by refl,
   map_imply' := λ p q, by refl,
@@ -744,21 +736,18 @@ def pull : subformula L (m + 1) n →ₗ subformula L m (n + 1) :=
 
 section pull
 
-lemma pull_def (p : subformula L (m + 1) n) : pull p = pull' p := rfl
+lemma pull_def (p : bounded_subformula L (m + 1) n) : pull p = pull' p := rfl
 
-@[simp] lemma pull_relation {p} (r : L.pr p) (v : finitary (subterm L (m + 1) n) p) :
-  pull (relation r v) = relation r (subterm.pull ∘ v) := by refl
+@[simp] lemma pull_relation {k} (r : L.pr k) (v : fin k → bounded_subterm L (m + 1) n) :
+  pull (relation r v) = relation r (λ i, subterm.pull (v i)) := by refl
 
-@[simp] lemma pull_equal [L.has_equal] (t u : subterm L (m + 1) n) :
-  pull (t =' u : subformula L (m + 1) n) = (t.pull =' u.pull) := by simp[←equal_eq, equal, fin.comp_left_concat]
-
-@[simp] lemma pull_fal (p : subformula L (m + 1) (n + 1)) :
+@[simp] lemma pull_fal (p : bounded_subformula L (m + 1) (n + 1)) :
   pull (∀'p) = ∀'pull p := by refl
 
-@[simp] lemma pull_ex (p : subformula L (m + 1) (n + 1)) :
+@[simp] lemma pull_ex (p : bounded_subformula L (m + 1) (n + 1)) :
   pull (∃'p) = ∃'pull p := by simp[ex_def]
 
-@[simp] lemma pull_push : ∀ {n} (p : subformula L m (n + 1)), p.push.pull = p
+@[simp] lemma pull_push : ∀ {n} (p : bounded_subformula L m (n + 1)), p.push.pull = p
 | n verum          := by simp[top_eq]
 | n (relation p v) := by simp; funext x; simp
 | n (imply p q)    := by simp[imply_eq]; exact ⟨pull_push p, pull_push q⟩
@@ -766,7 +755,7 @@ lemma pull_def (p : subformula L (m + 1) n) : pull p = pull' p := rfl
 | n (fal p)        := by simp[fal_eq]; exact pull_push p
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.complexity)⟩]}
 
-@[simp] lemma push_pull : ∀ {n} (p : subformula L (m + 1) n), p.pull.push = p
+@[simp] lemma push_pull : ∀ {n} (p : bounded_subformula L (m + 1) n), p.pull.push = p
 | n verum          := by simp[top_eq]
 | n (relation p v) := by simp; funext x; simp
 | n (imply p q)    := by simp[imply_eq]; exact ⟨push_pull p, push_pull q⟩
@@ -779,202 +768,90 @@ lemma push_inj : function.injective (@push L m n) :=
 lemma pull_inj : function.injective (@pull L m n) :=
 @function.left_inverse.injective _ _ (@push L m n) _ push_pull
 
-lemma push_rew_pull : ∀ {n} (p : subformula L (m₁ + 1) n) (s : fin m₁ → subterm L m₂ (n + 1)),
+lemma push_rew_pull {m₁ m₂} : ∀ {n} (p : bounded_subformula L (m₁ + 1) n) (s : fin m₁ → bounded_subterm L m₂ (n + 1)),
   (rew s p.pull).push = rew (subterm.push ∘ s <* &(fin.last m₂)) p
 | n verum          s := by simp[top_eq]
 | n (relation p v) s := by simp; funext x; simp[subterm.push_rew_pull]
 | n (imply p q)    s := by simp[imply_eq]; exact ⟨push_rew_pull p s, push_rew_pull q s⟩
 | n (neg p)        s := by simp[neg_eq]; exact push_rew_pull p s
 | n (fal p)        s := by simp[fal_eq]; {
-    have : subterm.lift ∘ subterm.push ∘ s = subterm.push ∘ subterm.lift ∘ s,
-    { funext i; simp[subterm.push_lift_comm] },
-    rw [fin.comp_right_concat, this],
-    simpa using push_rew_pull p (subterm.lift ∘ s) }
+    simp[push_rew_pull p (subterm.lift ∘ s)],
+    refine eq_rew_of_eq (by { funext x, refine fin.last_cases _ _ x; simp[subterm.push_lift_comm] }) }
 
-@[simp] lemma complexity_pull (p : subformula L (m + 1) n) : p.pull.complexity = p.complexity :=
-by induction p; intros; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq, *]
+@[simp] lemma complexity_pull (p : bounded_subformula L (m + 1) n) : p.pull.complexity = p.complexity :=
+by induction p using fol.subformula.ind_on; intros; simp*
 
 end pull
 
-lemma forall_comm (p : subformula L m (n + 1)) : ∀'*(∀'p) = ∀'(pull $ ∀'* (push p)) :=
-by induction n with n IH; simp*
+@[simp] lemma subst_mlift {n} (p : bounded_subformula L m (n + 1)) : subst &(fin.last m) (mlift p) = push p :=
+by apply ind_succ_on p; intros; simp*
 
-lemma exists_comm (p : subformula L m (n + 1)) : ∃'*(∃'p) = ∃'(pull $ ∃'* (push p)) :=
-by induction n with n IH; simp*
-
-def msubst (t : subterm L m n) : subformula L (m + 1) n →ₗ subformula L m n :=
-rew (metavar <* t)
-
-section msubst
-variables (u : subterm L m n)
-
-@[simp] lemma msubst_relation {p} (r : L.pr p) (v) :
-  msubst u (relation r v) = relation r (subterm.msubst u ∘ v) := by simp[msubst, subterm.msubst]
-
-@[simp] lemma msubst_equal [L.has_equal] (t₁ t₂ : subterm L (m + 1) n) :
-  msubst u (t₁ =' t₂) = (u.msubst t₁ =' u.msubst t₂) := by simp[←equal_eq, equal, fin.comp_left_concat]
-
-@[simp] lemma msubst_fal (p : subformula L (m + 1) (n + 1)) :
-  msubst u (∀'p) = ∀'msubst u.lift p :=
-by simp[msubst]; refine eq_rew_of_eq (funext $ λ x, by refine fin.last_cases _ _ x; simp)
-
-@[simp] lemma msubst_ex (p : subformula L (m + 1) (n + 1)) :
-  msubst u (∃'p) = ∃'msubst u.lift p := by simp[ex_def]
-
-@[simp] lemma msubst_mlift (u : subterm L m n) (p : subformula L m n) :
-  msubst u p.mlift = p :=
-by simp[mlift_eq_rew, msubst, nested_rew]; refine rew_eq_self_of_eq (funext $ by simp) _
-
-lemma mlift_msubst (u : subterm L m n) (p : subformula L (m + 1) n) :
-  mlift (msubst u p) = rew ((subterm.mlift ∘ metavar) <* u.mlift) p :=
-by simp[msubst, mlift_rew]; refine eq_rew_of_eq (funext $ λ x, by refine fin.last_cases _ _ x; simp)
-
-@[simp] lemma complexity_msubst (p : subformula L (m + 1) n) : (msubst u p).complexity = p.complexity :=
-by simp[msubst]
-
-end msubst
-
-def subst (u : subterm L m n) : subformula L m (n + 1) →ₗ subformula L m n := (msubst u).comp push
-
-section subst
-variables (u : subterm L m n)
-
-@[simp] lemma subst_relation {p} (r : L.pr p) (v) :
-  subst u (relation r v) = relation r (subterm.subst u ∘ v) := by simp[subst, subterm.subst, subterm.msubst]
-
-@[simp] lemma subst_equal [L.has_equal] (t₁ t₂ : subterm L m (n + 1)) :
-  subst u (t₁ =' t₂) = (u.subst t₁ =' u.subst t₂) := by simp[subst, subterm.subst, subterm.msubst]
-
-@[simp] lemma subst_fal (p : subformula L m n.succ.succ) :
-  subst u (∀'p) = ∀'subst u.lift p :=
-by simp[subst]
-
-@[simp] lemma subst_ex (p : subformula L m n.succ.succ) :
-  subst u (∃'p) = ∃'subst u.lift p := by simp[ex_def]
-
-lemma mlift_subst : ∀ {m n} (u : subterm L m n) (p : subformula L m (n + 1)),
-  (subst u p).mlift = subst u.mlift p.mlift
-| m n u verum          := by simp[top_eq]
-| m n u (relation p v) := by simp; funext x; simp[subterm.mlift_subst]
-| m n u (imply p q)    := by simp[imply_eq]; exact ⟨mlift_subst u p, mlift_subst u q⟩
-| m n u (neg p)        := by simp[neg_eq]; exact mlift_subst u p
-| m n u (fal p)        := by simp[fal_eq, subterm.mlift_lift]; exact mlift_subst u.lift p
-using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.2.2.complexity)⟩]}
-
-@[simp] lemma subst_pull_mlift (p : subformula L m n) (u) : (subst u $ pull $ mlift p) = p :=
-by simp[subst]
-
-@[simp] lemma complexity_subst (p : subformula L m (n + 1)) : (subst u p).complexity = p.complexity :=
-by simp[subst]
-
-def substs : Π {m n}, (fin n → subterm L m 0) → subformula L m n →ₗ subformula L m 0
-| m 0       w := logic.homomorphism.id
-| m (n + 1) w := (subst (w $ fin.last n)).comp (pull.comp ((substs (subterm.mlift ∘ w ∘ fin.cast_succ)).comp push))
-
-/-
-def substs : Π {m n}, (fin n → subterm L m 0) → subterm L m n → subterm L m 0
-| m 0       w t := t
-| m (n + 1) w t := msubst (w $ fin.last n) (substs (mlift ∘ w ∘ fin.cast_succ) t.push)
-
--/
-
-@[simp] lemma substs_zero (v : fin 0 → subterm L m 0) (p : subformula L m 0) : substs v p = p := rfl
-
-@[simp] lemma substs_relation (w : fin n → subterm L m 0) {k} (r : L.pr k) (v : fin k → subterm L m n) :
-  substs w (relation r v) = relation r (subterm.substs w ∘ v) :=
-by induction n with n IH generalizing m; simp[substs, *]; funext i; refl
-
-@[simp] lemma substs_equal [L.has_equal] (w : fin n → subterm L m 0) (t u : subterm L m n) :
-  substs w (t =' u) = (subterm.substs w t =' subterm.substs w u) :=
-by simp[←equal_eq, equal, fin.comp_left_concat]
-
-end subst
-
-lemma pull_msubst_push_mlift : ∀ {n} (p : subformula L m (n + 1)), (pull $ msubst &(fin.last m) $ push $ mlift p) = p
-| n verum          := by simp[top_eq]
-| n (relation r v) := by simp; funext i; exact subterm.pull_msubst_push_mlift _
-| n (imply p q)    := by simp[imply_eq]; exact ⟨pull_msubst_push_mlift p, pull_msubst_push_mlift q⟩
-| n (neg p)        := by simp[neg_eq]; exact pull_msubst_push_mlift p
-| n (fal p)        := by simp[fal_eq]; exact pull_msubst_push_mlift p
-using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.complexity)⟩]}
-
--- lemma subst_inj (u) : function.injective (@subst L m n u)
-
-@[simp] lemma subst_mlift (p : subformula L m (n + 1)) : subst &(fin.last m) (mlift p) = push p :=
-by { suffices : (subst &(fin.last m) $ mlift p) = (push $ pull $ msubst &(fin.last m) $ push $ mlift p),
-     by simpa[pull_msubst_push_mlift] using this,
-     simp only [push_pull], refl }
-
-def dummy : subformula L m n →ₗ subformula L m (n + 1) := pull.comp mlift
+def dummy : bounded_subformula L m n →ₗ bounded_subformula L m (n + 1) := pull.comp mlift
 
 section dummy
 
-@[simp] lemma dummy_relation {p} (r : L.pr p) (v : finitary (subterm L m n) p) :
-  dummy (relation r v) = relation r (subterm.dummy ∘ v) := by simp[dummy, subterm.dummy]
+@[simp] lemma dummy_relation {k} (r : L.pr k) (v : fin k → bounded_subterm L m n) :
+  dummy (relation r v) = relation r (λ i, (v i).dummy) := by simp[dummy, subterm.dummy]
 
-@[simp] lemma dummy_equal [L.has_equal] (t u : subterm L m n) :
-  dummy (t =' u : subformula L m n) = (t.dummy =' u.dummy) := by simp[dummy, subterm.dummy]
+@[simp] lemma dummy_fal (p : bounded_subformula L m (n + 1)) : dummy (∀'p) = ∀'(dummy p) := by simp[dummy]
 
-@[simp] lemma dummy_fal (p : subformula L m (n + 1)) : dummy (∀'p) = ∀'(dummy p) := by simp[dummy]
+@[simp] lemma dummy_ex (p : bounded_subformula L m (n + 1)) : dummy (∃'p) = ∃'(dummy p) := by simp[dummy]
 
-@[simp] lemma dummy_ex (p : subformula L m (n + 1)) : dummy (∃'p) = ∃'(dummy p) := by simp[dummy]
+@[simp] lemma push_dummy  (p : bounded_subformula L m n) : push (dummy p) = mlift p := by simp[dummy]
 
-@[simp] lemma push_dummy  (p : subformula L m n) : push (dummy p) = mlift p := by simp[dummy]
+@[simp] lemma dummy_subst (p : bounded_subformula L m n) (t) : (subst t $ dummy p) = p :=
+by induction p; intros; simp[top_eq, equal_eq, imply_eq, neg_eq, fal_eq, *]
 
-@[simp] lemma dummy_subst (p : subformula L m n) (t) : (subst t $ dummy p) = p :=
-by simp[dummy, subst]
-
-@[simp] lemma complexity_dummy (p : subformula L m n) : p.dummy.complexity = p.complexity :=
+@[simp] lemma complexity_dummy (p : bounded_subformula L m n) : p.dummy.complexity = p.complexity :=
 by simp[dummy]
 
 end dummy
 
-def qr {m} : Π {n}, subformula L m n → ℕ
+end bounded_formula
+
+def qr : Π {n}, subformula L μ n → ℕ
 | n verum          := 0
 | n (relation r v) := 0
 | n (imply p q)    := max p.qr q.qr
 | n (neg p)        := p.qr
 | n (fal p)        := p.qr + 1
 
-def is_open {m n} (p : subformula L m n) : Prop := p.qr = 0
+def is_open (p : subformula L μ n) : Prop := p.qr = 0
 
 section qr
 open subformula
-variables {m n}
+variables {n}
 
-@[simp] lemma qr_top : (⊤ : subformula L m n).qr = 0 := rfl
+@[simp] lemma qr_top : (⊤ : subformula L μ n).qr = 0 := rfl
 
-@[simp] lemma qr_bot : (⊥ : subformula L m n).qr = 0 := rfl
+@[simp] lemma qr_bot : (⊥ : subformula L μ n).qr = 0 := rfl
 
-@[simp] lemma qr_relation {p} (r : L.pr p) (v : finitary (subterm L m n) p) : (relation r v).qr = 0 := rfl
+@[simp] lemma qr_relation {p} (r : L.pr p) (v : finitary (subterm L μ n) p) : (relation r v).qr = 0 := rfl
 
-@[simp] lemma qr_equal [L.has_equal] (t u : subterm L m n) : (t =' u : subformula L m n).qr = 0 := rfl
+@[simp] lemma qr_equal [L.has_equal] (t u : subterm L μ n) : (t =' u : subformula L μ n).qr = 0 := rfl
 
-@[simp] lemma qr_imply (p q : subformula L m n) : (p ⟶ q : subformula L m n).qr = max p.qr q.qr := rfl
+@[simp] lemma qr_imply (p q : subformula L μ n) : (p ⟶ q : subformula L μ n).qr = max p.qr q.qr := rfl
 
-@[simp] lemma qr_and (p q : subformula L m n) : (p ⊓ q : subformula L m n).qr = max p.qr q.qr := rfl
+@[simp] lemma qr_and (p q : subformula L μ n) : (p ⊓ q : subformula L μ n).qr = max p.qr q.qr := rfl
 
-@[simp] lemma qr_or (p q : subformula L m n) : (p ⊔ q : subformula L m n).qr = max p.qr q.qr := rfl
+@[simp] lemma qr_or (p q : subformula L μ n) : (p ⊔ q : subformula L μ n).qr = max p.qr q.qr := rfl
 
-@[simp] lemma qr_iff (p q : subformula L m n) : (p ⟷ q : subformula L m n).qr = max p.qr q.qr := by simp[lrarrow_def, max_comm]
+@[simp] lemma qr_iff (p q : subformula L μ n) : (p ⟷ q : subformula L μ n).qr = max p.qr q.qr := by simp[lrarrow_def, max_comm]
 
-@[simp] lemma qr_neg (p : subformula L m n) : (∼p).qr = p.qr := rfl
+@[simp] lemma qr_neg (p : subformula L μ n) : (∼p).qr = p.qr := rfl
 
-@[simp] lemma qr_fal (p : subformula L m (n + 1)) : (∀'p).qr = p.qr + 1 := rfl
+@[simp] lemma qr_fal (p : subformula L μ (n + 1)) : (∀'p).qr = p.qr + 1 := rfl
 
-@[simp] lemma qr_ex (p : subformula L m (n + 1)) : (∃'p).qr = p.qr + 1 := rfl
+@[simp] lemma qr_ex (p : subformula L μ (n + 1)) : (∃'p).qr = p.qr + 1 := rfl
 
-@[simp] lemma qr_rew {m₁ m₂} : Π {n} (p : subformula L m₁ n) (s : fin m₁ → subterm L m₂ n), (rew s p).qr = p.qr
+@[simp] lemma qr_rew {μ₁ μ₂} : Π {n} (p : subformula L μ₁ n) (s : μ₁ → subterm L μ₂ n), (rew s p).qr = p.qr
 | n verum          := by simp[top_eq]
 | n (relation p v) := by simp
 | n (imply p q)    := by simp[imply_eq, qr_rew p, qr_rew q]
 | n (neg p)        := by simp[neg_eq, qr_rew p]
 | n (fal p)        := by simp[fal_eq, qr_rew p]
 
-@[simp] lemma qr_msubst (u : subterm L m n) (p : subformula L (m + 1) n) : (msubst u p).qr = p.qr :=
-by simp[msubst]
-
-@[simp] def qr_push {m} : Π {n} (p : subformula L m (n + 1)), p.push.qr = p.qr
+@[simp] def qr_push {m} : Π {n} (p : bounded_subformula L m (n + 1)), p.push.qr = p.qr
 | n verum          := by simp[top_eq]
 | n (relation p v) := by simp
 | n (imply p q)    := by simp[imply_eq, qr_push p, qr_push q]
@@ -982,81 +859,81 @@ by simp[msubst]
 | n (fal p)        := by simp[fal_eq, qr_push p]
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.complexity)⟩]}
 
-@[simp] def qr_pull {m} : Π {n} (p : subformula L (m + 1) n), p.pull.qr = p.qr
+@[simp] def qr_pull {m} : Π {n} (p : bounded_subformula L (m + 1) n), p.pull.qr = p.qr
 | n verum          := by simp[top_eq]
 | n (relation p v) := by simp
 | n (imply p q)    := by simp[imply_eq, qr_pull p, qr_pull q]
 | n (neg p)        := by simp[neg_eq, qr_pull p]
 | n (fal p)        := by simp[fal_eq, qr_pull p]
 
-@[simp] def qr_mlift {m} : Π {n} (p : subformula L m n), p.mlift.qr = p.qr
+@[simp] def qr_mlift {m} : Π {n} (p : bounded_subformula L m n), p.mlift.qr = p.qr
 | n verum          := by simp[top_eq]
 | n (relation p v) := by simp
 | n (imply p q)    := by simp[imply_eq, qr_mlift p, qr_mlift q]
 | n (neg p)        := by simp[neg_eq, qr_mlift p]
 | n (fal p)        := by simp[fal_eq, qr_mlift p]
 
-@[simp] lemma qr_subst (u : subterm L m n) (p : subformula L m (n + 1)) : (subst u p).qr = p.qr :=
-by simp[subst]
+@[simp] lemma qr_subst (p : subformula L μ (n + 1)) : ∀ (u : subterm L μ n), (subst u p).qr = p.qr :=
+by apply ind_succ_on p ; intros; simp*
 
-@[simp] lemma top_open : (⊤ : subformula L m n).is_open := by simp[is_open] 
+@[simp] lemma top_open : (⊤ : subformula L μ n).is_open := by simp[is_open] 
 
-@[simp] lemma relation_open {k} (r : L.pr k) (v) : (relation r v : subformula L m n).is_open := by simp[is_open]
+@[simp] lemma relation_open {k} (r : L.pr k) (v) : (relation r v : subformula L μ n).is_open := by simp[is_open]
 
-@[simp] lemma equal_open [L.has_equal] {t u : subterm L m n} : (t =' u : subformula L m n).is_open := by simp[is_open] 
+@[simp] lemma equal_open [L.has_equal] {t u : subterm L μ n} : (t =' u : subformula L μ n).is_open := by simp[is_open] 
 
-@[simp] lemma bot_open : (⊥ : subformula L m n).is_open := by simp[is_open]
+@[simp] lemma bot_open : (⊥ : subformula L μ n).is_open := by simp[is_open]
 
-@[simp] lemma imply_open {p q : subformula L m n} : (p ⟶ q).is_open ↔ p.is_open ∧ q.is_open := by simp[is_open] 
+@[simp] lemma imply_open {p q : subformula L μ n} : (p ⟶ q).is_open ↔ p.is_open ∧ q.is_open := by simp[is_open] 
 
-@[simp] lemma and_open {p q : subformula L m n} : (p ⊓ q).is_open ↔ p.is_open ∧ q.is_open := by simp[is_open]
+@[simp] lemma and_open {p q : subformula L μ n} : (p ⊓ q).is_open ↔ p.is_open ∧ q.is_open := by simp[is_open]
 
-@[simp] lemma iff_open {p q : subformula L m n} : (p ⟷ q).is_open ↔ p.is_open ∧ q.is_open := by simp[is_open]
+@[simp] lemma iff_open {p q : subformula L μ n} : (p ⟷ q).is_open ↔ p.is_open ∧ q.is_open := by simp[is_open]
 
-@[simp] lemma finitary_conjunction_open {k} {p : fin k → subformula L m n} :
+@[simp] lemma finitary_conjunction_open {k} {p : fin k → subformula L μ n} :
   (⋀ i, p i).is_open ↔ ∀ i, (p i).is_open :=
 by { induction k with k IH; simp*,
   { refine ⟨by { rintros ⟨hlast, hcast⟩, refine fin.last_cases _ _, exact hlast, exact hcast },
     by { intros h, simp[h] }⟩ } }
 
-@[simp] lemma or_open {p q : subformula L m n} : (p ⊔ q).is_open ↔ p.is_open ∧ q.is_open := by simp[is_open] 
+@[simp] lemma or_open {p q : subformula L μ n} : (p ⊔ q).is_open ↔ p.is_open ∧ q.is_open := by simp[is_open] 
 
-@[simp] lemma finitary_disjunction_open {k} {p : fin k → subformula L m n} :
+@[simp] lemma finitary_disjunction_open {k} {p : fin k → subformula L μ n} :
   (⋁ i, p i).is_open ↔ ∀ i, (p i).is_open :=
 by { induction k with k IH; simp*,
   { refine ⟨by { rintros ⟨hcast, hlast⟩, refine fin.last_cases _ _, exact hlast, exact hcast },
     by { intros h, simp[h] }⟩ } }
 
-@[simp] lemma neg_open {p : subformula L m n} : (∼p).is_open ↔ p.is_open := by simp[is_open] 
+@[simp] lemma neg_open {p : subformula L μ n} : (∼p).is_open ↔ p.is_open := by simp[is_open] 
 
-@[simp] lemma fal_not_open {p : subformula L m (n + 1)} : ¬(∀'p).is_open := by simp[is_open] 
+@[simp] lemma fal_not_open {p : subformula L μ (n + 1)} : ¬(∀'p).is_open := by simp[is_open] 
 
-@[simp] lemma ex_not_open {p : subformula L m (n + 1)} : ¬(∃'p).is_open := by simp[is_open] 
+@[simp] lemma ex_not_open {p : subformula L μ (n + 1)} : ¬(∃'p).is_open := by simp[is_open] 
 
-@[simp] lemma rew_open {m₁ m₂} {p : subformula L m₁ n} {s : fin m₁ → subterm L m₂ n} :
+@[simp] lemma rew_open {μ₁ μ₂} {p : subformula L μ₁ n} {s : μ₁ → subterm L μ₂ n} :
   (rew s p).is_open ↔ p.is_open := by simp[is_open]
 
-@[simp] lemma mlift_open {p : subformula L m n} : (mlift p).is_open ↔ p.is_open := by simp[is_open]
+@[simp] lemma subst_open {u} {p : subformula L μ (n + 1)} : (subst u p).is_open ↔ p.is_open := by simp[is_open]
 
-@[simp] lemma msubst_open {u} {p : subformula L (m + 1) n} : (msubst u p).is_open ↔ p.is_open := by simp[is_open]
+section bounded_formula
+variables {m : ℕ}
 
-@[simp] lemma push_open {p : subformula L m (n + 1)} : (push p).is_open ↔ p.is_open := by simp[is_open]
+@[simp] lemma mlift_open {p : bounded_subformula L m n} : (mlift p).is_open ↔ p.is_open := by simp[is_open]
 
-@[simp] lemma pull_open {p : subformula L (m + 1) n} : (pull p).is_open ↔ p.is_open := by simp[is_open]
+@[simp] lemma push_open {p : bounded_subformula L m (n + 1)} : (push p).is_open ↔ p.is_open := by simp[is_open]
 
-@[simp] lemma subst_open {u} {p : subformula L m (n + 1)} : (subst u p).is_open ↔ p.is_open := by simp[is_open]
+@[simp] lemma pull_open {p : bounded_subformula L (m + 1) n} : (pull p).is_open ↔ p.is_open := by simp[is_open]
 
-@[simp] lemma dummy_open {p : subformula L m n} : (dummy p).is_open ↔ p.is_open := by simp[dummy]
+@[simp] lemma dummy_open {p : bounded_subformula L m n} : (dummy p).is_open ↔ p.is_open := by simp[dummy]
 
-@[simp] lemma substs_open {p : subformula L m n} {v} : (substs v p).is_open ↔ p.is_open :=
-by induction n with n IH generalizing m; simp[substs, *]
+end bounded_formula
 
-def open_rec {C : Π p : subformula L m n, p.is_open → Sort*}
+def open_rec {C : Π p : subformula L μ n, p.is_open → Sort*}
   (hverum : C ⊤ top_open)
-  (hrel : Π (k) (r : L.pr k) (v : fin k → subterm L m n), C (subformula.relation r v) (relation_open r v))
-  (himply : Π (p q : subformula L m n) (hp hq), C p hp → C q hq → C (p ⟶ q) (by simp[hp, hq]))
-  (hneg : Π (p : subformula L m n) (hp), C p hp → C (∼p) (by simp[hp])) :
-  Π (p : subformula L m n) (h : p.is_open), C p h
+  (hrel : Π (k) (r : L.pr k) (v : fin k → subterm L μ n), C (subformula.relation r v) (relation_open r v))
+  (himply : Π (p q : subformula L μ n) (hp hq), C p hp → C q hq → C (p ⟶ q) (by simp[hp, hq]))
+  (hneg : Π (p : subformula L μ n) (hp), C p hp → C (∼p) (by simp[hp])) :
+  Π (p : subformula L μ n) (h : p.is_open), C p h
 | ⊤                         _ := hverum
 | (subformula.relation r v) _ := hrel _ r v
 | (p ⟶ q)                   h := have p.is_open ∧ q.is_open, by simpa using h,
@@ -1064,31 +941,31 @@ def open_rec {C : Π p : subformula L m n, p.is_open → Sort*}
 | (∼p)                      h := have p.is_open, by simpa using h, hneg p this (open_rec p this)
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.1.complexity)⟩]}
 
-def open_rec_on (p : subformula L m n) (h : p.is_open) {C : Π p : subformula L m n, p.is_open → Sort*}
+def open_rec_on (p : subformula L μ n) (h : p.is_open) {C : Π p : subformula L μ n, p.is_open → Sort*}
   (hverum : C ⊤ top_open)
-  (hrel : Π (k) (r : L.pr k) (v : fin k → subterm L m n), C (subformula.relation r v) (relation_open r v))
-  (himply : Π (p q : subformula L m n) (hp hq), C p hp → C q hq → C (p ⟶ q) (by simp[hp, hq]))
-  (hneg : Π (p : subformula L m n) (hp), C p hp → C (∼p) (by simp[hp])) :
+  (hrel : Π (k) (r : L.pr k) (v : fin k → subterm L μ n), C (subformula.relation r v) (relation_open r v))
+  (himply : Π (p q : subformula L μ n) (hp hq), C p hp → C q hq → C (p ⟶ q) (by simp[hp, hq]))
+  (hneg : Π (p : subformula L μ n) (hp), C p hp → C (∼p) (by simp[hp])) :
   C p h := open_rec hverum hrel himply hneg p h
 
 section open_rec
-variables {C : Π p : subformula L m n, p.is_open → Sort*}
+variables {C : Π p : subformula L μ n, p.is_open → Sort*}
 
-@[simp] lemma rec_app_top {hverum hrel himply hneg h} : @open_rec L m n C hverum hrel himply hneg ⊤ h = hverum :=
+@[simp] lemma rec_app_top {hverum hrel himply hneg h} : @open_rec L μ n C hverum hrel himply hneg ⊤ h = hverum :=
 by simp[open_rec]
 
-@[simp] lemma rec_app_rel {hverum hrel himply hneg} {k} (r : L.pr k) (v : fin k → subterm L m n) {h} :
-  @open_rec L m n C hverum hrel himply hneg (subformula.relation r v) h = hrel k r v := by simp[open_rec]
+@[simp] lemma rec_app_rel {hverum hrel himply hneg} {k} (r : L.pr k) (v : fin k → subterm L μ n) {h} :
+  @open_rec L μ n C hverum hrel himply hneg (subformula.relation r v) h = hrel k r v := by simp[open_rec]
 
-@[simp] lemma rec_app_imply {hverum hrel himply hneg} (p q : subformula L m n) {h} :
-  @open_rec L m n C hverum hrel himply hneg (p ⟶ q) h =
+@[simp] lemma rec_app_imply {hverum hrel himply hneg} (p q : subformula L μ n) {h} :
+  @open_rec L μ n C hverum hrel himply hneg (p ⟶ q) h =
   himply p q (by simp at h; exact h.1) (by simp at h; exact h.2)
     (open_rec hverum hrel himply hneg p (by simp at h; exact h.1))
     (open_rec hverum hrel himply hneg q (by simp at h; exact h.2)) :=
 by simp[open_rec]
 
-@[simp] lemma rec_app_neg {hverum hrel himply hneg} (p : subformula L m n) {h} :
-  @open_rec L m n C hverum hrel himply hneg (∼p) h =
+@[simp] lemma rec_app_neg {hverum hrel himply hneg} (p : subformula L μ n) {h} :
+  @open_rec L μ n C hverum hrel himply hneg (∼p) h =
   hneg p (by simpa using h) (open_rec hverum hrel himply hneg p (by simpa using h)) :=
 by simp[open_rec]
 
@@ -1098,28 +975,19 @@ end qr
 
 end subformula
 
-section
-variables (L) (m n : ℕ)
+namespace bounded_preTheory
+variables {L} {m : ℕ} (T U : bounded_preTheory L m)
 
-def open_subformula := {p : subformula L m n // p.is_open}
+def mlift : bounded_preTheory L (m + 1) := subformula.mlift '' T
 
-@[reducible] def open_formula := open_subformula L m 0
-
-@[reducible] def open_sentence := open_formula L 0
-
-end
-
-namespace preTheory
-variables {L} {m : ℕ} (T U : preTheory L m)
-
-def mlift : preTheory L (m + 1) := subformula.mlift '' T
+instance : has_coe (bounded_preTheory L m) (bounded_preTheory L (m + 1)) := ⟨mlift⟩
 
 variables {T U}
 
-@[simp] lemma mlift_insert (p : formula L m) : (insert p T).mlift = insert p.mlift T.mlift :=
+@[simp] lemma mlift_insert (p : bounded_formula L m) : mlift (insert p T) = insert p.mlift (mlift T) :=
 by simp[mlift, set.image_insert_eq]
 
-@[simp] lemma mlift_mem_mlift_iff {p : formula L m} : p.mlift ∈ T.mlift ↔ p ∈ T :=
+@[simp] lemma mlift_mem_mlift_iff {p : bounded_formula L m} : p.mlift ∈ T.mlift ↔ p ∈ T :=
 function.injective.mem_set_image subformula.mlift_inj
 
 lemma mem_mlift_iff {p} :
@@ -1128,6 +996,6 @@ by simp[mlift]
 
 def is_open : Prop := ∀ p ∈ T, subformula.is_open p
 
-end preTheory
+end bounded_preTheory
 
 end fol

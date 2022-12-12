@@ -44,7 +44,6 @@ localized "prefix (name := has_univ_quantifier.univ) `∀.`:64 := has_univ_quant
 localized "prefix (name := has_exists_quantifier.ex) `∃.`:64 := has_exists_quantifier.ex" in logic_symbol
 localized "prefix (name := has_univ_quantifier'.univ) `∀'`:64 := has_univ_quantifier'.univ" in logic_symbol
 localized "prefix (name := has_exists_quantifier'.ex) `∃'`:64 := has_exists_quantifier'.ex" in logic_symbol
-
 open_locale logic_symbol
 
 section has_univ_quantifier'
