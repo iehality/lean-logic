@@ -11,47 +11,49 @@ variables {L : language.{u}} {m n : ℕ}
 
 open subformula
 
-def is_terminal (Δ : list (subformula L m 0)) : Prop := ∃ {k} (r : L.pr k) (v), relation r v ∈ Δ ∧ neg_relation r v ∈ Δ
+def is_terminal (Δ : finset (bounded_subformula L m 0)) : Prop := ∃ {k} (r : L.pr k) (v), relation r v ∈ Δ ∧ neg_relation r v ∈ Δ
 
 variables {L} [∀ k, encodable (L.fn k)] [∀ k, encodable (L.pr k)]
 open encodable
 
-@[simp] def instance_enum (p : subformula L m 1) : ℕ → list (formula L m)
-| 0       := []
-| (s + 1) := instance_enum s ++ (option.map (λ t, subst t p) $ fol.subterm.of_nat L m 0 s).to_list
+@[simp] noncomputable def instance_enum (p : bounded_subformula L m 1) : ℕ → finset (bounded_formula L m)
+| 0       := ∅
+| (s + 1) := instance_enum s ∪ (option.map (λ t, subst t p) $ fol.subterm.of_index L m 0 s).to_finset
 
-lemma mem_instance_enum_of_lt (t : subterm L m 0) (p : subformula L m 1) (i) :
-  t.to_nat < i → subst t p ∈ instance_enum p i :=
+lemma mem_instance_enum_of_lt (t : bounded_subterm L m 0) (p : bounded_subformula L m 1) (i) :
+  t.index < i → subst t p ∈ instance_enum p i :=
 begin
   induction i with i IH,
   { simp },
   { simp, 
     intros h,
-    have : t.to_nat < i ∨ t.to_nat = i, from nat.lt_succ_iff_lt_or_eq.mp h,
+    have : t.index < i ∨ t.index = i, from nat.lt_succ_iff_lt_or_eq.mp h,
     rcases this with (lt | rfl),
     { refine or.inl (IH lt) },
     { refine or.inr ⟨t, by simp, rfl⟩ } }
 end
 
-def decomp : ℕ → list (subformula L m 0) → set (Σ m, list (subformula L m 0))
-| i []                      := { ⟨m, []⟩}
-| i (relation r v :: Γ)     := { ⟨m, Γ ++ [relation r v]⟩, }
-| i (neg_relation r v :: Γ) := { ⟨m, Γ ++ [neg_relation r v]⟩, }
-| i (⊤ :: Γ)                := ∅
-| i (⊥ :: Γ)                := { ⟨m, Γ ++ [⊥]⟩, }
-| i (p ⊓ q :: Γ)            := { ⟨m, Γ ++ [p]⟩, ⟨m, Γ ++ [q]⟩, }
-| i (p ⊔ q :: Γ)            := { ⟨m, Γ ++ [p, q]⟩, }
-| i ((fal p) :: Γ)          := { ⟨m + 1, Γ.map mlift ++ [push p]⟩, }
-| i ((ex p) :: Γ)           := { ⟨m, Γ ++ instance_enum p i ++ [∃'p]⟩, }
+--lemma cast_le_instance_enum {m₁ m₂} (h : m₁ ≤ m₂) (p : bounded_subformula L m₁ 1) (i) :
+--  (instance_enum p i).image (cast_le h) = instance_enum (cast_le h p) i :=
+--by { induction i with i IH, { simp }, { simp[finset.image_union, IH], } }
+
 
 variables {L}
 
-lemma decomp_tail_prefix {m₁ m₂} {Γ₁ : list (subformula L m₁ 0)} {Γ₂ : list (subformula L m₂ 0)} {i} :
-  sigma.mk m₂ Γ₂ ∈ decomp i Γ₁ → Γ₁.tail.map uniform <+: Γ₂.map uniform :=
+def decomp : ℕ → bounded_subformula L m 0 → finset (bounded_formula L m) → set (Σ m, finset (bounded_formula L m))
+| i (relation r v)     Γ := { ⟨m, Γ⟩, }
+| i (neg_relation r v) Γ := { ⟨m, Γ⟩, }
+| i (⊤)                Γ := ∅
+| i (⊥)                Γ := { ⟨m, Γ⟩, }
+| i (p ⊓ q)            Γ := { ⟨m, insert p Γ⟩, ⟨m, insert q Γ⟩, }
+| i (p ⊔ q)            Γ := { ⟨m, insert q (insert p Γ)⟩, }
+| i (∀'p)              Γ := { ⟨m + 1, insert (push p) (finset_mlift Γ)⟩, }
+| i (∃'p)              Γ := { ⟨m, instance_enum p i ∪ Γ⟩, }
+
+lemma decomp_le {m₁ m₂} {p : bounded_subformula L m₁ 0} {Γ₁ : finset (bounded_formula L m₁)} {Γ₂ : finset (bounded_formula L m₂)} {i} :
+  sigma.mk m₂ Γ₂ ∈ decomp i p Γ₁ → m₁ ≤ m₂ :=
 begin
-  cases Γ₁ with p Γ₁; simp[decomp],
-  { simp[list.nil_prefix] },
-  { rcases p; simp[decomp, verum_eq, falsum_eq, and_eq, or_eq],
+  { rcases p; simp[decomp, verum_eq, falsum_eq, and_eq, or_eq, fal_eq, ex_eq],
     { rintros rfl rfl, simp },
     { rintros rfl rfl, simp },
     { rintros rfl rfl, simp },
@@ -61,292 +63,256 @@ begin
     { rintros rfl rfl, simp } }
 end
 
-lemma decomp_le {m₁ m₂} {Γ₁ : list (subformula L m₁ 0)} {Γ₂ : list (subformula L m₂ 0)} {i} :
-  sigma.mk m₂ Γ₂ ∈ decomp i Γ₁ → m₁ ≤ m₂ :=
-begin
-  cases Γ₁ with p Γ₁,
-  {  simp[decomp], rintros rfl rfl, simp },
-  { rcases p; simp[decomp, verum_eq, falsum_eq, and_eq, or_eq],
-    { rintros rfl rfl, simp },
-    { rintros rfl rfl, simp },
-    { rintros rfl rfl, simp },
-    { rintros (⟨rfl, rfl⟩ | ⟨rfl, rfl⟩); simp },
-    { rintros rfl rfl, simp },
-    { rintros rfl rfl, simp[(∘)] },
-    { rintros rfl rfl, simp } }
-end
+noncomputable def index_of_set (T : set (sentence L)) (i : ℕ) : option (sentence L) :=
+(option.guard (λ i, i ∈ index '' T) i).bind (subformula.of_index L 0 0)
 
-@[reducible] def search_label (L : language) := ℕ × Σ m, list (subformula L m 0)
+lemma index_of_neg_set_eq_some {T : set (sentence L)} {i : ℕ} {σ : sentence L} :
+  index_of_set T i = some σ ↔ i = index σ ∧ σ ∈ T :=
+⟨λ h, by { simp[index_of_set] at h, rcases h with ⟨rfl, τ, hτ, e⟩, simp at e, rcases e with rfl, refine ⟨by simp, hτ⟩ },
+  by rintros ⟨rfl, hτ⟩; simp[index_of_set, hτ]⟩
 
-noncomputable def index_of_set (M : set (sentence L)) (i : ℕ) : option (formula L m) :=
-(option.guard (λ i, i ∈ to_nat '' M) i).bind (subformula.of_nat L m 0)
+@[simp] lemma index_of_neg_set_index {T : set (sentence L)} {σ : sentence L} (h : σ ∈ T) :
+  index_of_set T σ.index = some σ :=
+by simp[index_of_neg_set_eq_some, h]
 
-noncomputable def uniform_index_of_set (M : set (sentence L)) (i : ℕ) : option (uniform_formula L) :=
-(option.guard (λ i, i ∈ to_nat '' M) i).bind (encodable.decode₂ _)
-
-lemma uniform_index_of_set_of_nat (M : set (sentence L)) {p : sentence L} (hp : p ∈ M) :
-  uniform_index_of_set M p.to_nat = some p.uniform :=
-by simp[uniform_index_of_set, hp]; refl
-
-@[simp] lemma index_of_set_uniform (M : set (sentence L)) (i : ℕ) :
-  (index_of_set M i : option (formula L m)).map uniform = uniform_index_of_set M i :=
-begin
-  simp[index_of_set, uniform_index_of_set, option.map_bind'], ext p, simp, split,
-  { rintros ⟨i, ⟨rfl, q, hq, rfl⟩, r, hr, rfl⟩,
-    refine ⟨q.to_nat, ⟨rfl, q, hq, rfl⟩, _⟩,
-    simp[←of_nat_eq_some.mp hr], refl },
-  { rintros ⟨i, ⟨rfl, q, hq, rfl⟩, hp⟩,
-    refine ⟨q.to_nat, ⟨rfl, q, hq, rfl⟩, _⟩, 
-    have : p = q.uniform, { simp at hp, exact (option.some_inj.mp hp).symm },
-    refine ⟨uniform_subformula.to_subformula p (by show p.arity ≤ m; simp[this]), 
-      by simp[of_nat_eq_some, this, of_nat_eq_som], by simp⟩ }
-end
-
-@[simp] lemma mlift_index_of_set (M : set (sentence L)) (i : ℕ) :
-  (index_of_set M i : option (formula L m)).map mlift = index_of_set M i :=
-begin
-  ext p, simp[index_of_set], split,
-  { rintros ⟨q, ⟨i, ⟨rfl, σ, hσ, rfl⟩, h⟩, rfl⟩,
-    refine ⟨σ.to_nat, ⟨rfl, σ, hσ, rfl⟩, _⟩,
-    refine of_nat_eq_some.mpr (by simpa using subformula.of_nat_eq_some.mp h) },
-  { rintros ⟨i, ⟨rfl, σ, hσ, rfl⟩, h⟩,
-    let p' : formula L m := σ.uniform.to_subformula (le_trans (subformula_arity σ) (by simp)),
-    have hp' : to_nat p' = σ.to_nat, by simp[p', to_nat],
-    refine ⟨p', ⟨σ.to_nat, ⟨rfl, σ, hσ, rfl⟩, of_nat_eq_some.mpr hp'⟩, _⟩,
-    refine to_nat_inj.mp (by { simp, symmetry, refine of_nat_eq_some.mp (by simpa[hp'] using h) }) }
-end
-
-lemma index_of_neg_set_eq_some {M : set (sentence L)} {i : ℕ} {p : formula L m} :
-  index_of_set M i = some p → ∃ σ ∈ M, to_nat σ = to_nat p := λ h,
-by { simp[index_of_set] at h, rcases h with ⟨_, ⟨rfl, σ, hσ, rfl⟩, h⟩, 
-     refine ⟨σ, hσ, (subformula.of_nat_eq_some.mp h).symm⟩ } 
-
-@[simp] noncomputable def indices_of_neg_set (M : set (sentence L)) (m) : ℕ → list (formula L m)
+@[simp] noncomputable def indices_of_neg_set (T : set (sentence L)) (m) : ℕ → list (bounded_formula L m)
 | 0       := []
-| (i + 1) := (index_of_set M i).to_list ++ indices_of_neg_set i
+| (i + 1) := ((index_of_set T i).map coe).to_list ++ indices_of_neg_set i
 
-inductive search_tree (M : set (sentence L)) : search_label L → search_label L → Prop
-| intro : ∀ {m₁ m₂} (Γ₁ : list (subformula L m₁ 0)) (Γ₂ : list (subformula L m₂ 0)) (i : ℕ),
+@[reducible] def search_label (L : language) := ℕ × Σ m, finset (bounded_subformula L m 0)
+
+inductive search_tree_decomp (T : set (sentence L)) (i : ℕ) :
+  ∀ {m₁ m₂}, finset (bounded_subformula L m₁ 0) → finset (bounded_subformula L m₂ 0) → Prop
+| decomp : ∀ {m₁ m₂} (Γ₁ : finset (bounded_formula L m₁)) (Γ₂ : finset (bounded_formula L m₂))
+    (p : bounded_formula L m₁) (hp : p ∈ Γ₁) (hi : p.index = i.unpair.fst),
+    sigma.mk m₂ Γ₂ ∈ decomp i.unpair.snd p Γ₁ → search_tree_decomp Γ₂ Γ₁
+| none : ∀ {m} (Γ : finset (bounded_formula L m)) 
+    (hi : ∀ p ∈ Γ, subformula.index p ≠ i.unpair.fst),
+    search_tree_decomp Γ Γ
+
+notation Γ₂ ` ≺[` :50 i : 50 `; ` T `] ` Γ₁ :50 := search_tree_decomp T i Γ₂ Γ₁
+
+inductive search_tree (T : set (sentence L)) : search_label L → search_label L → Prop
+| intro : ∀ (i : ℕ) {m₁ m₂} (Γ₁ : finset (bounded_formula L m₁)) (Γ₂ : finset (bounded_formula L m₂)),
     ¬is_terminal Γ₁ → 
-    sigma.mk m₂ Γ₂ ∈ decomp i Γ₁ →
-    search_tree ⟨i + 1, m₂, Γ₂ ++ (index_of_set M i).to_list⟩ ⟨i, m₁, Γ₁⟩
-
-notation l₁ ` ≺[` :50 M `] ` l₂ :50 := search_tree M l₁ l₂
+    Γ₂ ≺[i; T] Γ₁ →
+    search_tree (i + 1, ⟨m₂, Γ₂ ∪ ((index_of_set T i).map coe).to_finset⟩) (i, ⟨m₁, Γ₁⟩)
 
 namespace search_tree
-variables {M : set (sentence L)} {Δ : list (sentence L)}
+variables {T : set (sentence L)} {Δ : finset (sentence L)}
 
-lemma search_tree_iff {l₁ l₂ : search_label L} : 
-  l₂ ≺[M] l₁ ↔
-  ∃ {m₁ m₂} (Γ₁ : list (subformula L m₁ 0)) (Γ₂ : list (subformula L m₂ 0)) (i : ℕ),
-    ¬is_terminal Γ₁ ∧
-    sigma.mk m₂ Γ₂ ∈ decomp i Γ₁ ∧
-    l₁ = ⟨i, m₁, Γ₁⟩ ∧
-    l₂ = ⟨i + 1, m₂, Γ₂ ++ (index_of_set M i).to_list⟩ :=
-⟨by { rintros ⟨Γ₁, Γ₂, i, T, h⟩, refine ⟨_, _, Γ₁, Γ₂, i, T, h, rfl, rfl⟩ },
- by { rintros ⟨m₁, m₂, Γ₁, Γ₂, i, T, h, rfl, rfl⟩, exact search_tree.intro Γ₁ Γ₂ i T h }⟩
+lemma le_of_decomp (i) {m₁ m₂} {Γ₁ : finset (bounded_subformula L m₁ 0)} {Γ₂ : finset (bounded_subformula L m₂ 0)}
+  (h : Γ₂ ≺[i; T] Γ₁) : m₁ ≤ m₂ :=
+begin
+  cases h,
+  case decomp : _ _ _ _ p hi hp hdecomp
+  { cases p; simp[decomp, verum_eq, falsum_eq, and_eq, or_eq, fal_eq, ex_eq] at hdecomp; try { simp[hdecomp] },
+    { contradiction }, { cases hdecomp; simp[hdecomp] } },
+  case none : _ _ hi { refl }
+end
 
-variables (M Δ)
+lemma ss_of_decomp (i) {m₁ m₂} {Γ₁ : finset (bounded_subformula L m₁ 0)} {Γ₂ : finset (bounded_subformula L m₂ 0)}
+  (h : Γ₂ ≺[i; T] Γ₁) {p} (hp : p ∈ Γ₁) : cast_le (le_of_decomp i h) p ∈ Γ₂ :=
+begin
+  cases h,
+  case decomp : _ _ _ _ p hi hp hdecomp
+  { cases p; simp[decomp, verum_eq, falsum_eq, and_eq, or_eq, fal_eq, ex_eq] at hdecomp,
+    { contradiction },
+    { rcases hdecomp with ⟨rfl, rfl⟩, simp* },
+    { rcases hdecomp with ⟨rfl, rfl⟩, simp* },
+    { rcases hdecomp with ⟨rfl, rfl⟩, simp* },
+    { rcases hdecomp with (⟨rfl, rfl⟩ | ⟨rfl, rfl⟩); simp* },
+    { rcases hdecomp with ⟨rfl, rfl⟩; simp* },
+    { rcases hdecomp with ⟨rfl, rfl⟩; simp[*, cast_le_eq_mlift] },
+    { rcases hdecomp with ⟨rfl, rfl⟩; simp* } },
+  { simp* }
+end
+
+lemma decomp_iff_of_mem {m₁ m₂} {Γ₁ : finset (bounded_subformula L m₁ 0)} {Γ₂ : finset (bounded_subformula L m₂ 0)}
+  {p : bounded_formula L m₁} (hp : p ∈ Γ₁) {j} :
+  Γ₂ ≺[p.index.mkpair j; T] Γ₁ ↔ sigma.mk m₂ Γ₂ ∈ decomp j p Γ₁ :=
+⟨by { rintros (⟨_, _, p', hp', hi, hdecomp⟩ | ⟨_, hi⟩),
+      { simp at hdecomp hi, rcases hi with rfl, exact hdecomp },
+      { have := hi p hp, simp at this, contradiction } },
+ by { intros hdecomp, refine search_tree_decomp.decomp Γ₁ Γ₂ p hp (by simp) (by simpa using hdecomp) }⟩
+
+lemma search_tree_iff {l₁ l₂ : search_label L} :
+  search_tree T l₂ l₁ ↔
+  ∃ (i : ℕ) {m₁ m₂} (Γ₁ : finset (bounded_formula L m₁)) (Γ₂ : finset (bounded_formula L m₂)),
+  l₂ = (i + 1, ⟨m₂, Γ₂ ∪ ((index_of_set T i).map coe).to_finset⟩) ∧
+  l₁ = (i, ⟨m₁, Γ₁⟩) ∧ 
+  ¬is_terminal Γ₁ ∧ Γ₂ ≺[i; T] Γ₁ :=
+⟨by { rintros ⟨i, Γ₁, Γ₂, hΓ₁, hdecomp⟩, refine ⟨i, _, _, Γ₁, Γ₂, rfl, rfl, hΓ₁, hdecomp⟩ },
+ by { rintros ⟨i, _, _, Γ₁, Γ₂, rfl, rfl, hΓ₁, hdecomp⟩,
+      exact search_tree.intro i Γ₁ Γ₂ hΓ₁ hdecomp }⟩
+
+lemma search_tree_iff' {i : ℕ} {m₁ m₂} {Γ₁ : finset (bounded_formula L m₁)} {Γ₂ : finset (bounded_formula L m₂)} :
+  search_tree T (i + 1, ⟨m₂, Γ₂⟩) (i, ⟨m₁, Γ₁⟩) ↔
+  ∃ (Γ : finset (bounded_formula L m₂)),
+  Γ₂ = Γ ∪ ((index_of_set T i).map coe).to_finset ∧
+  ¬is_terminal Γ₁ ∧ Γ ≺[i; T] Γ₁ :=
+⟨by { rintros ⟨i, Γ₁, Γ₂, hΓ₁, hdecomp⟩, refine ⟨Γ₂, by refl, hΓ₁, hdecomp⟩ },
+ by { rintros ⟨Γ, rfl, hΓ₁, hdecomp⟩,
+      exact search_tree.intro i Γ₁ Γ hΓ₁ hdecomp }⟩
+
+variables (T Δ)
 
 @[reducible] def search_label.top : search_label L := ⟨0, sigma.mk 0 Δ⟩
 
-inductive accessible (Δ : list (sentence L)) : search_label L → Prop
+inductive accessible (Δ : finset (sentence L)) : search_label L → Prop
 | top : accessible (search_label.top Δ)
-| lt : ∀ {l₁ l₂}, l₁ ≺[M] l₂ → accessible l₂ → accessible l₁
+| lt : ∀ {l₁ l₂}, search_tree T l₁ l₂ → accessible l₂ → accessible l₁
 
-def accessible_label := { l // accessible M Δ l }
+def accessible_label := { l // accessible T Δ l }
 
-def accessible_search_tree : accessible_label M Δ → accessible_label M Δ → Prop :=
-λ l₁ l₂, l₁.val ≺[M] l₂.val 
+def accessible_search_tree : accessible_label T Δ → accessible_label T Δ → Prop :=
+λ l₁ l₂, search_tree T l₁.val l₂.val 
 
-local infix ` ≺ `:50 := accessible_search_tree M Δ
+local infix ` ≺ `:50 := accessible_search_tree T Δ
 
-@[simp] lemma Axl_bot (l) (Γ : list (formula L m)) (h : is_terminal Γ) {i} : ¬search_tree M l ⟨i, m, Γ⟩ :=
+@[simp] lemma Axl_bot (l) (Γ : finset (bounded_formula L m)) (h : is_terminal Γ) {i} : ¬search_tree T l ⟨i, m, Γ⟩ :=
 by rintros ⟨⟩; contradiction
 
 section well_founded
-variables {M Δ} (wf : well_founded (accessible_search_tree M Δ))
+variables {T Δ} (wf : well_founded (accessible_search_tree T Δ))
 
-def accessible_search_tree.recursion {C : accessible_label M Δ → Sort*} 
+def accessible_search_tree.recursion {C : accessible_label T Δ → Sort*} 
   (l) (h : Π l₁, (Π l₂, l₂ ≺ l₁ → C l₂) → C l₁) : C l :=
 well_founded.recursion wf l h
 
-lemma search_tree_nil (i) {m} : ⟨i + 1, m, (index_of_set M i).to_list⟩ ≺[M] ⟨i, m, []⟩ := 
-by { refine search_tree.intro [] [] i _ (by simp[decomp]), { simp[is_terminal] } }
+variables {m} {Γ : finset (bounded_formula L m)} (hΓ : ¬is_terminal Γ) (i : ℕ)
 
-lemma search_tree_falsum (i) {m} (Γ : list (formula L m)) (h : ¬is_terminal (⊥ :: Γ)) :
-  ⟨i + 1, m, Γ ++ [⊥] ++ (index_of_set M i).to_list⟩ ≺[M] ⟨i, m, ⊥ :: Γ⟩ := 
-search_tree.intro _ _ _ h (by simp[decomp])
-
-lemma search_tree_relation (i) {m} (Γ : list (formula L m)) {k} (r : L.pr k) (v : fin k → subterm L m 0)
-  (h : ¬is_terminal (relation r v :: Γ)) :
-  ⟨i + 1, m, Γ ++ [relation r v] ++ (index_of_set M i).to_list⟩ ≺[M] ⟨i, m, relation r v :: Γ⟩ := 
-search_tree.intro _ _ _ h (by simp[decomp])
-
-lemma search_tree_neg_relation (i) {m} (Γ : list (formula L m)) {k} (r : L.pr k) (v : fin k → subterm L m 0)
-  (h : ¬is_terminal (neg_relation r v :: Γ)) :
-  ⟨i + 1, m, Γ ++ [neg_relation r v] ++ (index_of_set M i).to_list⟩ ≺[M] ⟨i, m, neg_relation r v :: Γ⟩ := 
-search_tree.intro _ _ _ h (by simp[decomp])
-
-lemma search_tree_and_left (i) {m} (Γ : list (formula L m)) (p q : formula L m)
-  (h : ¬is_terminal (p ⊓ q :: Γ)) :
-  ⟨i + 1, m, Γ ++ [p] ++ (index_of_set M i).to_list⟩ ≺[M] ⟨i, m, p ⊓ q :: Γ⟩ := 
-search_tree.intro _ _ _ h (by simp[decomp])
-
-lemma search_tree_and_right (i) {m} (Γ : list (formula L m)) (p q : formula L m)
-  (h : ¬is_terminal (p ⊓ q :: Γ)) :
-  ⟨i + 1, m, Γ ++ [q] ++ (index_of_set M i).to_list⟩ ≺[M] ⟨i, m, p ⊓ q :: Γ⟩ := 
-search_tree.intro _ _ _ h (by simp[decomp])
-
-lemma search_tree_or (i) {m} (Γ : list (formula L m)) (p q : formula L m)
-  (h : ¬is_terminal (p ⊔ q :: Γ)) :
-  ⟨i + 1, m, Γ ++ [p, q] ++ (index_of_set M i).to_list⟩ ≺[M] ⟨i, m, p ⊔ q :: Γ⟩ := 
-search_tree.intro _ _ _ h (by simp[decomp])
-
-lemma search_tree_fal (i) {m} (Γ : list (formula L m)) (p : subformula L m 1)
-  (h : ¬is_terminal ((∀'p) :: Γ)) :
-  ⟨i + 1, m + 1, Γ.map mlift ++ [p.push] ++ (index_of_set M i).to_list⟩ ≺[M] ⟨i, m, (∀'p) :: Γ⟩ := 
-search_tree.intro _ _ _ h (by simp[decomp, ←fal_eq])
-
-lemma search_tree_ex (i) {m} (Γ : list (formula L m)) (p : subformula L m 1)
-  (h : ¬is_terminal ((∃'p) :: Γ)) :
-  ⟨i + 1, m, Γ ++ instance_enum p i ++ [∃'p] ++ (index_of_set M i).to_list⟩ ≺[M] ⟨i, m, (∃'p) :: Γ⟩ := 
-search_tree.intro ((∃'p) :: Γ) _ i h (by simp[decomp, ←ex_eq])
-
-private lemma synthetic_main_lemma_aux_and {Γ : list (formula L m)} {p q : formula L m} {i} {I₁ I₂ : list ℕ}
-  (d₁ : ⊢ᵀ (Γ ++ [p] ++ (index_of_set M i).to_list).to_finset ∪ (I₁.bind (λ i, (index_of_set M i).to_list)).to_finset)
-  (d₂ : ⊢ᵀ (Γ ++ [q] ++ (index_of_set M i).to_list).to_finset ∪ (I₂.bind (λ i, (index_of_set M i).to_list)).to_finset) : 
-  ⊢ᵀ (p ⊓ q :: Γ).to_finset ∪ ((i :: I₁ ++ I₂).bind (λ i, (index_of_set M i).to_list)).to_finset :=
+private lemma synthetic_main_lemma_aux_and {Γ : finset (bounded_formula L m)}
+  (IH : ∀ {m'} (Γ' : finset (bounded_formula L m')),
+    Γ' ≺[i; T] Γ → ∃ I : finset ℕ, ⊢ᵀ Γ' ∪ I.bind (λ i, (option.map coe (index_of_set T i)).to_finset))
+  {p q : bounded_formula L m}
+  (hp : p ⊓ q ∈ Γ)
+  (hi : index (p ⊓ q) = (nat.unpair i).fst) : 
+  ∃ (I : finset ℕ), ⊢ᵀ Γ ∪ I.bind (λ i, (option.map coe (index_of_set T i)).to_finset) :=
 begin
-simp at d₁,
-  have d₁ : ⊢ᵀ insert p (Γ.to_finset ∪ ((index_of_set M i).to_finset ∪ ((i :: I₁ ++ I₂).bind (λ i, (index_of_set M i).to_list)).to_finset)),
-    from derivable.weakening d₁ (by intros p; simp[-list.mem_map, -list.mem_bind]; tauto),
-  have d₂ : ⊢ᵀ insert q (Γ.to_finset ∪ ((index_of_set M i).to_finset ∪ ((i :: I₁ ++ I₂).bind (λ i, (index_of_set M i).to_list)).to_finset)),
-    from derivable.weakening d₂ (by intros p; simp[-list.mem_map, -list.mem_bind]; tauto),
-  have : ⊢ᵀ insert (p ⊓ q) (Γ.to_finset ∪ ((index_of_set M i).to_finset ∪ ((i :: I₁ ++ I₂).bind (λ i, (index_of_set M i).to_list)).to_finset)),
-    from derivable.and p q d₁ d₂,
-  exact derivable.cast this (by ext; simp[and_eq])
+  rcases IH (insert p Γ) (search_tree_decomp.decomp _ _ _ hp hi (by simp[and_eq, decomp])) with ⟨I₁, hI₁⟩,
+      rcases IH (insert q Γ) (search_tree_decomp.decomp _ _ _ hp hi (by simp[and_eq, decomp])) with ⟨I₂, hI₂⟩,
+      simp at hI₁ hI₂,
+      have : ⊢ᵀ insert (p ⊓ q) (Γ ∪ (
+        I₁.sup (λ i, ((index_of_set T i).map coe).to_finset) ∪
+        I₂.sup (λ i, ((index_of_set T i).map coe).to_finset))),
+      by simpa[←finset.union_union_distrib_left] using derivable.and' hI₁ hI₂,
+      refine ⟨I₁ ∪ I₂, derivable.cast this (by simp[finset.bind, finset.sup_union, hp])⟩ 
 end
 
-private lemma synthetic_main_lemma_aux_or {Γ : list (formula L m)} {p q : formula L m} {i} {I : list ℕ}
-  (d : ⊢ᵀ (Γ ++ [p, q] ++ (index_of_set M i).to_list).to_finset ∪ (I.bind (λ i, (index_of_set M i).to_list)).to_finset) : 
-  ⊢ᵀ (p ⊔ q :: Γ).to_finset ∪ ((i :: I).bind (λ i, (index_of_set M i).to_list)).to_finset :=
+private lemma synthetic_main_lemma_aux_or {Γ : finset (bounded_formula L m)}
+  (IH : ∀ {m'} (Γ' : finset (bounded_formula L m')),
+    Γ' ≺[i; T] Γ → ∃ I : finset ℕ, ⊢ᵀ Γ' ∪ I.bind (λ i, (option.map coe (index_of_set T i)).to_finset))
+  {p q : bounded_formula L m}
+  (hp : p ⊔ q ∈ Γ)
+  (hi : index (p ⊔ q) = (nat.unpair i).fst) : 
+  ∃ (I : finset ℕ), ⊢ᵀ Γ ∪ I.bind (λ i, (option.map coe (index_of_set T i)).to_finset) :=
 begin
-  have : ⊢ᵀ (insert p $ insert q $ Γ.to_finset ∪ ((i :: I).bind (λ i, (index_of_set M i).to_list)).to_finset),
-  by simpa using d,
-  have : ⊢ᵀ (insert q $ insert (p ⊔ q) $ Γ.to_finset ∪ ((i :: I).bind (λ i, (index_of_set M i).to_list)).to_finset),
-    from derivable.cast (derivable.or_left p q this) (finset.insert.comm _ _ _),
-  have : ⊢ᵀ (insert (p ⊔ q) $ Γ.to_finset ∪ ((i :: I).bind (λ i, (index_of_set M i).to_list)).to_finset),
-  from derivable.cast (derivable.or_right p q this) (finset.insert_idem _ _),
-  exact derivable.cast this (by ext x; simp[-list.mem_map, -list.mem_bind])
+  rcases IH (insert q (insert p Γ)) (search_tree_decomp.decomp _ _ _ hp hi (by simp[and_eq, decomp])) with ⟨I, hI⟩,
+  simp at hI,
+  have : ⊢ᵀ (insert p $ insert (p ⊔ q) $ Γ ∪ I.bind (λ i, (option.map coe (index_of_set T i)).to_finset)),
+  from derivable.cast (derivable.or_right p q hI) (finset.insert.comm _ _ _),
+  refine ⟨I, derivable.cast (derivable.or_left p q this) (by simp[hp])⟩,
 end
 
-private lemma synthetic_main_lemma_aux_all {Γ : list (formula L m)} {p : subformula L m 1} {i} {I : list ℕ}
-  (d : ⊢ᵀ (Γ.map mlift ++ [p.push] ++ (index_of_set M i).to_list).to_finset ∪ (I.bind (λ i, (index_of_set M i).to_list)).to_finset) : 
-  ⊢ᵀ ((∀'p) :: Γ).to_finset ∪ ((i :: I).bind (λ i, (index_of_set M i).to_list)).to_finset :=
+private lemma synthetic_main_lemma_aux_all {Γ : finset (bounded_formula L m)}
+  (IH : ∀ {m'} (Γ' : finset (bounded_formula L m')),
+    Γ' ≺[i; T] Γ → ∃ I : finset ℕ, ⊢ᵀ Γ' ∪ I.bind (λ i, (option.map coe (index_of_set T i)).to_finset))
+  {p : bounded_subformula L m 1}
+  (hp : ∀'p ∈ Γ)
+  (hi : index (∀'p) = (nat.unpair i).fst) : 
+  ∃ (I : finset ℕ), ⊢ᵀ Γ ∪ I.bind (λ i, (option.map coe (index_of_set T i)).to_finset) :=
 begin
-  have : ⊢ᵀ insert p.push (finset_mlift $ Γ.to_finset ∪ ((i :: I).bind (λ i, (index_of_set M i).to_list)).to_finset),
-  { refine derivable.cast d (by { ext p,
-    simp[-list.mem_map, -list.mem_bind, -finset.mem_image, finset_mlift, finset.image_union, 
-      finset.image_to_finset_list, finset.image_to_finset_option, list.bind_map, list.map_to_list_option] }) },
-  have : ⊢ᵀ insert (∀'p) (Γ.to_finset ∪ ((i :: I).bind (λ i, (index_of_set M i).to_list)).to_finset),
-    from derivable.all p this,
-  exact derivable.cast this (by ext x; simp)
+  rcases IH (insert (push p) (finset_mlift Γ)) (search_tree_decomp.decomp _ _ _ hp hi (by simp[decomp])) with ⟨I, hI⟩,
+  simp at hI,
+  have : ⊢ᵀ insert (∀'p) (Γ ∪ I.bind (λ (i : ℕ), (option.map coe (index_of_set T i)).to_finset)),
+  from @derivable.all L _ (Γ ∪ I.bind (λ (i : ℕ), (option.map coe (index_of_set T i)).to_finset)) p
+    (derivable.cast hI $ by simp[finset_mlift, finset.image_union, finset.image_bind, finset.image_to_finset_option, (∘)]),
+  refine ⟨I, derivable.cast this $ by simp[hp]⟩
 end
 
-lemma exists_of_instances (p : subformula L m 1) {Γ} (i) : ⊢ᵀ (instance_enum p i).to_finset ∪ Γ → ⊢ᵀ insert (∃'p) Γ :=
+lemma exists_of_instances {p : bounded_subformula L m 1} {i Γ} : ⊢ᵀ instance_enum p i ∪ Γ → ⊢ᵀ insert (∃'p) Γ :=
 begin
   induction i with i IH generalizing Γ; simp,
   { assume h, exact derivable.weakening h (finset.subset_insert _ _) },
-  { cases subterm.of_nat L m 0 i with t; simp; assume h,
+  { cases subterm.of_index L m 0 i with t; simp; assume h,
     { exact IH h },
     { have : ⊢ᵀ insert (subst t p) (insert (∃'p) Γ), from derivable.cast (IH h) (by ext; simp; tauto),
-      exact derivable.cast (derivable.ex t p this) (by ext; simp) } }
+      exact derivable.cast (derivable.ex this) (by ext; simp) } }
 end
 
-private lemma synthetic_main_lemma_aux_ex {Γ : list (formula L m)} {p : subformula L m 1} {i} {I : list ℕ}
-  (d : ⊢ᵀ (Γ ++ instance_enum p i ++ [(∃'p : subformula _ _ _)] ++ (index_of_set M i).to_list).to_finset ∪
-    (I.bind (λ i, (index_of_set M i).to_list)).to_finset) : 
-  ⊢ᵀ ((∃'p) :: Γ).to_finset ∪ ((i :: I).bind (λ i, (index_of_set M i).to_list)).to_finset :=
+private lemma synthetic_main_lemma_aux_ex {Γ : finset (bounded_formula L m)}
+  (IH : ∀ {m'} (Γ' : finset (bounded_formula L m')),
+    Γ' ≺[i; T] Γ → ∃ I : finset ℕ, ⊢ᵀ Γ' ∪ I.bind (λ i, (option.map coe (index_of_set T i)).to_finset))
+  {p : bounded_subformula L m 1}
+  (hp : ∃'p ∈ Γ)
+  (hi : index (∃'p) = (nat.unpair i).fst) : 
+  ∃ (I : finset ℕ), ⊢ᵀ Γ ∪ I.bind (λ i, (option.map coe (index_of_set T i)).to_finset) :=
 begin
-  simp at d,
-  have : ⊢ᵀ (instance_enum p i).to_finset ∪
-    insert (∃'p : subformula _ _ _) (Γ.to_finset ∪ ((i :: I).bind (λ (i : ℕ), (index_of_set M i).to_list)).to_finset),
-  from derivable.cast d (by ext; simp[-list.mem_map, -list.mem_bind]; tauto),
-  exact derivable.cast (exists_of_instances p i this) (by ext; simp)
+  rcases IH (instance_enum p i.unpair.snd ∪ Γ) (search_tree_decomp.decomp _ _ _ hp hi (by {simp[decomp], })) with ⟨I, hI⟩,
+  simp at hI,
+  refine ⟨I, derivable.cast (exists_of_instances hI) $ by simp[hp]⟩
 end
 
 include wf
 
-lemma synthetic_main_lemma_aux (l : accessible_label M Δ) : ∃ I : list ℕ,
-  ⊢ᵀ l.val.2.2.to_finset ∪ list.to_finset (I.bind (λ i, (index_of_set M i).to_list)) :=
+lemma synthetic_main_lemma_aux (l : accessible_label T Δ) : ∃ I : finset ℕ,
+  ⊢ᵀ l.val.2.2 ∪ (I.bind (λ i, ((index_of_set T i).map coe).to_finset)) :=
 begin
   apply accessible_search_tree.recursion wf l,
-  rintros ⟨⟨i, m, Γ⟩, accΓ⟩ IH,
-  have IH : ∀ (i₂) {m₂} (Γ₂ : list (subformula L m₂ 0)),
-    ⟨i₂, m₂, Γ₂⟩ ≺[M] ⟨i, m, Γ⟩ →
-    ∃ I : list ℕ, ⊢ᵀ Γ₂.to_finset ∪ list.to_finset (I.bind (λ i, (index_of_set M i).to_list)),
-  { intros i₂ m₂ Γ₂ h, 
-    have : accessible M Δ ⟨i₂, m₂, Γ₂⟩, from accessible.lt h accΓ,
-    simpa using IH ⟨⟨i₂, m₂, Γ₂⟩, this⟩ h },
-  show ∃ (I : list ℕ), ⊢ᵀ Γ.to_finset ∪ (I.bind (λ i, (index_of_set M i).to_list)).to_finset,
+  rintros ⟨⟨i, m, Γ⟩, accΓ⟩ IH, simp,
+  show ∃ I : finset ℕ, ⊢ᵀ Γ ∪ I.bind (λ i, (option.map coe (index_of_set T i)).to_finset),
   by_cases hΓ : is_terminal Γ,
   { rcases hΓ with ⟨k, r, v, hΓ, hΓ_neg⟩,
-    refine ⟨[], by simp; exact derivable.AxL r v (by simp; refine hΓ) (by simp; refine hΓ_neg)⟩ },
-  cases Γ with p Γ,
-  { rcases IH _ _ (search_tree_nil _) with ⟨I, d⟩,
-    refine ⟨i :: I, derivable.cast d (by ext; simp)⟩ },
-  cases p,
-  case verum { refine ⟨[], derivable.verum (by simp[verum_eq])⟩ },
-  case falsum
-  { rcases IH _ _ (search_tree_falsum _ _ hΓ) with ⟨I, d⟩,
-    refine ⟨i :: I, derivable.cast d (by ext; simp[falsum_eq])⟩ },  
-  case relation : k r v
-  { rcases IH _ _ (search_tree_relation _ _ r v hΓ) with ⟨I, d⟩,
-    refine ⟨i :: I, derivable.cast d (by ext; simp)⟩ },
-  case neg_relation : k r v
-  { rcases IH _ _ (search_tree_neg_relation _ _ r v hΓ) with ⟨I, d⟩,
-    refine ⟨i :: I, derivable.cast d (by ext; simp)⟩ },
-  case and : p q
-  { rcases IH _ _ (search_tree_and_left _ _ p q hΓ) with ⟨I₁, d₁⟩,
-    rcases IH _ _ (search_tree_and_right _ _ p q hΓ) with ⟨I₂, d₂⟩,
-    refine ⟨i :: I₁ ++ I₂, synthetic_main_lemma_aux_and d₁ d₂⟩ },      
-  case or : p q
-  { rcases IH _ _ (search_tree_or _ _ p q hΓ) with ⟨I, d⟩,
-    refine ⟨i :: I, synthetic_main_lemma_aux_or d⟩ },  
-  case fal : p
-  { rcases IH _ _ (search_tree_fal _ _ p hΓ) with ⟨I, d⟩,
-    refine ⟨i :: I, synthetic_main_lemma_aux_all d⟩ },
-  case ex : p
-  { rcases IH _ _ (search_tree_ex _ _ p hΓ) with ⟨I, d⟩,
-    refine ⟨i :: I, synthetic_main_lemma_aux_ex d⟩ }
+    refine ⟨∅, by simp[finset.bind]; exact derivable.AxL r v hΓ hΓ_neg⟩ },
+  have IH : ∀ {m'} (Γ' : finset (bounded_subformula L m' 0)),
+    Γ' ≺[i; T] Γ → ∃ I : finset ℕ, ⊢ᵀ Γ' ∪ I.bind (λ i, (option.map coe (index_of_set T i)).to_finset),
+  { intros m' Γ' h,
+    have hs := search_tree.intro i Γ Γ' hΓ h,
+    have : accessible T Δ (i + 1, ⟨m', Γ' ∪ (option.map coe (index_of_set T i)).to_finset⟩),
+      from accessible.lt hs accΓ,
+    rcases IH ⟨_, this⟩ (by simpa[accessible_search_tree] using hs) with ⟨I, hI⟩,
+    refine ⟨insert i I, by simpa[finset.bind] using hI⟩ },
+    by_cases hp : ∀ p ∈ Γ, subformula.index p ≠ i.unpair.fst,
+    { exact IH Γ (search_tree_decomp.none Γ hp) },
+    simp at hp, rcases hp with ⟨p, hp, hi⟩,
+    cases p,
+    case verum { refine ⟨∅, by simpa[finset.bind] using derivable.verum hp⟩ },
+    case falsum { refine IH Γ (search_tree_decomp.decomp _ _ _ hp hi (by simp[falsum_eq, decomp])) },
+    case relation : k r v { refine IH Γ (search_tree_decomp.decomp _ _ _ hp hi (by simp[decomp])) },
+    case neg_relation : k r v { refine IH Γ (search_tree_decomp.decomp _ _ _ hp hi (by simp[decomp])) },
+    case and : { exact synthetic_main_lemma_aux_and i @IH hp hi },
+    case or : { exact synthetic_main_lemma_aux_or i @IH hp hi },
+    case fal : { exact synthetic_main_lemma_aux_all i @IH hp hi },
+    case ex : { exact synthetic_main_lemma_aux_ex i @IH hp hi }
 end
 
-lemma synthetic_main_lemma (Γ : list (subformula L m 0)) {i}
-  (h : accessible M Δ ⟨i, m, Γ⟩) : 
-  ∃ (I : list ℕ), ⊢ᵀ Γ.to_finset ∪ (I.bind (λ i, (index_of_set M i).to_list)).to_finset :=
+lemma synthetic_main_lemma (Γ : finset (bounded_subformula L m 0)) {i}
+  (h : accessible T Δ ⟨i, m, Γ⟩) : 
+  ∃ (I : finset ℕ), ⊢ᵀ Γ ∪ I.bind (λ i, ((index_of_set T i).map coe).to_finset) :=
 by simpa using synthetic_main_lemma_aux wf ⟨_, h⟩
 
-lemma synthetic_main_lemma' : ∃ Γ : finset (sentence L), ↑Γ ⊆ M ∧ ⊢ᵀ Δ.to_finset ∪ Γ :=
+variables (T Δ wf)
+
+lemma synthetic_main_lemma' : ∃ Γ : finset (sentence L), ↑Γ ⊆ T ∧ ⊢ᵀ Δ ∪ Γ :=
 begin
-  have : ∃ (I : list ℕ), ⊢ᵀ Δ.to_finset ∪ (I.bind (λ i, (index_of_set M i).to_list)).to_finset,
+  have : ∃ I : finset ℕ, ⊢ᵀ Δ ∪ I.bind (λ i, ((index_of_set T i).map coe).to_finset),
   from synthetic_main_lemma wf Δ accessible.top,
   rcases this with ⟨I, h⟩,
-  refine ⟨(I.bind (λ i, (index_of_set M i).to_list)).to_finset,
-    by { intros x, simp, intros i hi hx, simpa using index_of_neg_set_eq_some hx}, h⟩
+  refine ⟨I.bind (λ i, ((index_of_set T i).map coe).to_finset), by intros x; simp[index_of_neg_set_eq_some, finset.mem_bind], h⟩
 end
 
 end well_founded
 
 section non_well_founded
-variables {M Δ} (wf : ¬well_founded (accessible_search_tree M Δ))
+variables {T Δ} (wf : ¬well_founded (accessible_search_tree T Δ))
 
 include wf
 
-lemma top_inaccessible : ¬acc (accessible_search_tree M Δ) ⟨search_label.top Δ, accessible.top⟩ :=
+lemma top_inaccessible : ¬acc (accessible_search_tree T Δ) ⟨search_label.top Δ, accessible.top⟩ :=
 begin
   assume A,
-  suffices : well_founded (accessible_search_tree M Δ), by contradiction,
+  suffices : well_founded (accessible_search_tree T Δ), by contradiction,
   refine ⟨_⟩,
   rintros ⟨l, hl⟩, induction hl,
   case top { exact A },
@@ -354,293 +320,322 @@ begin
 end
 
 noncomputable def chain : ℕ → search_label L :=
-  λ i, (descending_chain (accessible_search_tree M Δ) ⟨search_label.top Δ, accessible.top⟩ i).val
+  λ i, (descending_chain (accessible_search_tree T Δ) ⟨search_label.top Δ, accessible.top⟩ i).val
+
+@[reducible] noncomputable def rank (i : ℕ) : ℕ := (chain wf i).2.1
 
 def var_domain : set ℕ := set.range (λ i, (chain wf i).2.1)
 
-def term_domain := {t : uniform_term L // ∃ s ∈ var_domain wf, t.arity ≤ s}
+def domain := {n : ℕ // ∃ i, n < rank wf i}
 
-noncomputable def uniform_chain : ℕ → list (uniform_formula L) :=
-λ i, (chain wf i).2.2.map uniform
+noncomputable def uniform (i : ℕ) : fin (rank wf i) → domain wf := by { rintros ⟨n, hn⟩, refine ⟨n, i, hn⟩ }
+
+lemma subterm_uniform_inj {i} {t u : bounded_subterm L (rank wf i) n} :
+  subterm.map (uniform wf i) t = subterm.map (uniform wf i) u → t = u := λ h,
+subterm.map_inj_of_inj (uniform wf i) (by rintros ⟨x, hx⟩ ⟨y, hy⟩; simp[uniform]) h
+
+@[simp] lemma uniform_comp_cast_le {i j} (h) : uniform wf j ∘ fin.cast_le h = uniform wf i :=
+by { ext x; cases x; simp[uniform], rw[fin.cast_le_mk], simp }
+
+@[simp] lemma uniform_cast_le_term {i j} (h : rank wf i ≤ rank wf j) (t : bounded_subterm L (rank wf i) n) :
+  (subterm.cast_le h t).map (uniform wf j) = t.map (uniform wf i) :=
+by simp[subterm.cast_le]
+
+@[simp] lemma uniform_cast_le {i j} (h : rank wf i ≤ rank wf j) (p : bounded_subformula L (rank wf i) n) :
+  map (uniform wf j) (cast_le h p) = map (uniform wf i) p :=
+by simp[cast_le]
+
+@[reducible] noncomputable def Gamma (i : ℕ) : finset (bounded_formula L (rank wf i)) := (chain wf i).2.2
+
+local notation `Γ`:80 := Gamma wf
+
+@[reducible] noncomputable def uniform_Gamma (i : ℕ) : finset (formula L (domain wf)) := (Γ i).image (map $ uniform wf i)
+
+def chain_union : set (formula L (domain wf)) := {p | ∃ i (p' ∈ Γ i), p = subformula.map (uniform wf i) p'}
+
+local notation `⛓️`:= chain_union wf 
+
+lemma mem_chain_union_iff {p : formula L (domain wf)} : p ∈ ⛓️ ↔ ∃ i, p ∈ (Γ i).image (map $ uniform wf i) :=
+by simp[chain_union, eq_comm]
 
 @[simp] lemma chain_zero : chain wf 0 = ⟨0, 0, Δ⟩ := by refl
 
-@[simp] lemma uniform_chain_zero : uniform_chain wf 0 = Δ.map uniform := by refl
+@[simp] lemma chain_zero' : Γ 0 = Δ := by refl
 
-@[simp] lemma chain_lt (i) : chain wf (i + 1) ≺[M] chain wf i :=
-infinite_descending_chain_of_non_acc (accessible_search_tree M Δ) ⟨search_label.top Δ, accessible.top⟩ (top_inaccessible wf) i
+@[simp] lemma chain_lt (i) : search_tree T (chain wf (i + 1)) (chain wf i) :=
+infinite_descending_chain_of_non_acc (accessible_search_tree T Δ) ⟨search_label.top Δ, accessible.top⟩ (top_inaccessible wf) i
 
 @[simp] lemma chain_fst (i) : (chain wf i).1 = i :=
 begin
   induction i with i IH,
   { simp },
-  { rcases search_tree_iff.mp (chain_lt wf i) with ⟨m₁', m₂, Γ₁', Γ₂, i', T, h, e₁, e₂⟩,
-    have : i = i', by simpa[IH] using congr_arg prod.fst e₁,
+  { rcases search_tree_iff.mp (chain_lt wf i) with ⟨i', m₁, m₂, Γ₁, Γ₂, his, hi, hterminal, hdecomp⟩,
+    have : i = i', by simpa[IH] using congr_arg prod.fst hi,
     rcases this with rfl,
-    simpa using congr_arg prod.fst e₂ }
+    simpa using congr_arg prod.fst his }
 end
 
-lemma chain_fst' (i) : (i, (chain wf i).snd) = chain wf i :=
+lemma chain_eq (i) : chain wf i = (i, ⟨_, Γ i⟩) :=
 by ext; simp
 
-lemma chain_succ (i : ℕ) {m₁} (Γ₁ : list (subformula L m₁ 0)) (hΓ₁ : chain wf i = (i, sigma.mk m₁ Γ₁)) :
-  ∃ {m₂} (Γ₂ : list (subformula L m₂ 0)),
-    sigma.mk m₂ Γ₂ ∈ decomp i Γ₁ ∧ chain wf (i + 1) = (i + 1, sigma.mk m₂ (Γ₂ ++ (index_of_set M i).to_list)) :=
-begin
-  rcases search_tree_iff.mp (chain_lt wf i) with ⟨m₁', m₂, Γ₁', Γ₂, i', T, h, e₁, e₂⟩,
-  have : i = i' ∧ m₁ = m₁',
-  { refine ⟨by simpa using congr_arg prod.fst e₁,
-      by simpa[hΓ₁] using congr_arg sigma.fst (congr_arg prod.snd e₁)⟩ },
-  rcases this with ⟨rfl, rfl⟩,
-  have : Γ₁ = Γ₁', by simpa[hΓ₁] using congr_arg prod.snd e₁,
-  rcases this with rfl,
-  refine ⟨m₂, Γ₂, h, e₂⟩
+lemma Γ_is_not_terminal (i) : ¬is_terminal (Γ i) :=
+by { rcases search_tree_iff.mp (chain_lt wf i) with ⟨i', m₁, m₂, Γ₁, Γ₂, his, hi, hterminal, hdecomp⟩,
+     simp only [chain_eq, prod.mk.inj_iff] at hi, rcases hi with ⟨rfl, rfl, rfl⟩,
+     assumption }
+
+@[simp] lemma Γ_lt (i) : ∃ Γ', Γ (i + 1) = Γ' ∪ ((index_of_set T i).map coe).to_finset ∧ Γ' ≺[i; T] Γ i :=
+begin  
+  have : search_tree T (i + 1, ⟨_, Γ (i + 1)⟩) (i, ⟨_, Γ i⟩),
+  { have := chain_lt wf i, rw[chain_eq, chain_eq] at this, exact this },
+  rcases search_tree_iff'.mp this with ⟨Γ', hΓ', hterminal, hdecomp⟩,
+  refine ⟨Γ', hΓ', hdecomp⟩
 end
 
-@[simp] lemma chain_uvar_mono : ∀ {i j}, i ≤ j → (chain wf i).2.1 ≤ (chain wf j).2.1 :=
+@[simp] lemma Γ_lt' (i) : ∃ {m'} (Γ' : finset (bounded_formula L m')) (hm' : m' = rank wf (i + 1)),
+   Γ (i + 1) = Γ'.image (cast_le (eq.symm hm').ge) ∪ ((index_of_set T i).map coe).to_finset ∧ Γ' ≺[i; T] Γ i :=
 begin
-  suffices : ∀ {i j}, (chain wf i).2.1 ≤ (chain wf (i + j)).2.1,
-  { intros i j hij, have := @this i (j - i),
-    simpa[nat.add_sub_of_le hij] using this },
-  intros i j, induction j with j IH,
-  { simp },
-  { rcases chain_succ wf (i + j) (chain wf (i + j)).2.2 (by { ext, simp, refl }) with ⟨m, Γ, hdecomp, hc⟩,
-    have : (chain wf (i + j.succ)).snd.fst = m, by simp[←nat.add_one, ←add_assoc, hc],
-    simp[this], exact le_trans IH (decomp_le hdecomp) }
+  rcases Γ_lt wf i with ⟨Γ', h⟩,
+  refine ⟨rank wf (i + 1), Γ', rfl, by simpa using h⟩,
 end
 
-lemma uniform_chain_succ (i : ℕ) : ∃ {m₁ m₂} (Γ₁ : list (subformula L m₁ 0)) (Γ₂ : list (subformula L m₂ 0)),
-    uniform_chain wf i = Γ₁.map uniform ∧ sigma.mk m₂ Γ₂ ∈ decomp i Γ₁ ∧
-    uniform_chain wf (i + 1) = Γ₂.map uniform ++ (uniform_index_of_set M i).to_list :=
+@[simp] lemma rank_mono {i j} (h : i ≤ j) : rank wf i ≤ rank wf j :=
 begin
-  rcases chain_succ wf i (chain wf i).2.2 (by simp[chain_fst']) with ⟨m₂, Γ₂, h, c⟩,
-  refine ⟨(chain wf i).2.1, m₂, (chain wf i).2.2, Γ₂, rfl, h, _⟩,
-  simp[uniform_chain],
-  rw [c, show (i + 1, sigma.mk m₂ (Γ₂ ++ (index_of_set M i).to_list)).snd.snd = Γ₂ ++ (index_of_set M i).to_list, by refl],
-  simp[list.map_to_list_option]
+  induction j with j IH,
+  { have : i = 0, from le_zero_iff.mp h,
+    simp[this] },
+  { have : i ≤ j ∨ i = j.succ, from nat.of_le_succ h,
+    rcases this with (le | eq),
+    { rcases Γ_lt wf j with ⟨Γ', _, hdecomp⟩,
+      exact le_trans (IH le) (le_of_decomp j hdecomp) },
+    { simp[eq] } }
 end
 
-lemma eq_head_of_mem_uniform_chain {i} {p} (hp : p ∈ uniform_chain wf i) : ∃ z Γ, uniform_chain wf (i + z) = p :: Γ :=
+lemma cast_mem {i j} (hj : i ≤ j) {p} (h : p ∈ Γ i) : cast_le (rank_mono wf hj) p ∈ Γ j :=
 begin
-  haveI : inhabited (uniform_formula L), from ⟨p⟩,
-  suffices : ∀ (z i) (hz : z < (uniform_chain wf i).length), ∃ Γ,
-    uniform_chain wf (i + z) = (uniform_chain wf i).nth_le z hz :: Γ,
-  { rcases list.mem_iff_nth_le.mp hp with ⟨z, hz, rfl⟩,
-    rcases this z i hz with ⟨Γ, hΓ⟩,
-    refine ⟨z, Γ, hΓ⟩ },
-  intros z, induction z with z IH,
-  { intros i hz, simp[list.nth_le_zero], 
-    refine ⟨(uniform_chain wf i).tail,
-      by {symmetry, refine list.cons_head_tail (by { intros A, simp[A] at hz, contradiction })  }⟩ },
-  { intros i hz,
-    rcases uniform_chain_succ wf i with ⟨m₁, m₂, Γ₁, Γ₂, hi, hdecomp, hisucc⟩,
-    have hprefix : Γ₁.tail.map uniform <+: Γ₂.map uniform, from decomp_tail_prefix hdecomp,
-    have : Γ₁.length ≤ Γ₂.length + 1, by simpa using list.is_prefix.length_le hprefix,
-    have hz₁ : z + 1 < Γ₁.length, by simpa[hi] using hz,
-    have hz₂ : z < Γ₂.length, from nat.succ_lt_succ_iff.mp (lt_of_lt_of_le hz₁ this),
-    rcases IH (i + 1) (by simpa[hisucc] using nat.lt_add_right z _ _ hz₂) with ⟨Γ, hΓ⟩,    
-    have e₁ : (Γ₂.nth_le z _).uniform = (uniform_chain wf (i + 1)).nth_le z _,
-      by simpa using list.prefix_nth_le (list.map uniform Γ₂) (uniform_chain wf (i + 1)) z (by simpa using hz₂) (by simp[hisucc]),
-    have e₂ : (Γ₁.nth_le (z + 1) hz₁).uniform = (Γ₂.nth_le z hz₂).uniform,
-    { have : (list.map uniform Γ₁.tail).nth_le z _ = (list.map uniform Γ₂).nth_le z _,
-      from list.prefix_nth_le _ _ z (by simp; exact lt_tsub_iff_right.mpr hz₁) hprefix,
-      have : (list.map uniform Γ₁).nth_le (z + 1) (by simpa using hz₁) = (list.map uniform Γ₂).nth_le z _,
-      from eq.trans (by { symmetry, simp, rw list.nth_le_tail, simp, }) this,
-      simpa using this },
-    simp[show i + z.succ = i + 1 + z, by simp[←nat.add_one, add_comm z, add_assoc]],
-    refine ⟨Γ, by { simp[hΓ, hi], exact eq.trans e₁.symm e₂.symm }⟩ }
+  induction j with j IH,
+  { have : i = 0, from le_zero_iff.mp hj, rcases this with rfl,
+    simpa using h },
+  { have : i ≤ j ∨ i = j.succ, from nat.of_le_succ hj,
+    rcases this with (le | eq),
+    { rcases Γ_lt wf j with ⟨Γ', his, hdecomp⟩,
+      have : cast_le _ p ∈ Γ', by simpa using ss_of_decomp j hdecomp (IH le),
+      simp[his, this] },
+    { rcases eq with rfl, simp[h] } }
 end
 
-lemma eq_head_of_mem_chain {i} {m} {Γ} (hi : chain wf i = (i, sigma.mk m Γ)) {p} (hp : p ∈ Γ) :
-  ∃ z {m'} (Γ' : list (subformula L m' 0)) p', chain wf (i + z) = (i + z, sigma.mk m' (p' :: Γ')) ∧ p'.uniform = p.uniform :=
-begin
-  have : uniform_chain wf i = Γ.map uniform,
-  { simp[uniform_chain], rw hi },
-  have : p.uniform ∈ uniform_chain wf i, { simp[this], refine ⟨p, hp, by simp⟩ },
-  rcases eq_head_of_mem_uniform_chain wf this with ⟨z, Γ₂, hΓ₂⟩,
-  simp[uniform_chain] at hΓ₂,
-  rcases C : (chain wf (i + z)).2.2 with (_ | ⟨p', Γ'⟩),
-  { simp[C] at hΓ₂, contradiction },
-  { refine ⟨z, (chain wf (i + z)).2.1, Γ', p', by ext; simp[C], by simp[C] at hΓ₂; exact hΓ₂.1⟩ }
-end
+lemma cast_mem' {i} {p} (h : p ∈ Γ i) :
+  cast_le (rank_mono wf $ nat.right_le_mkpair _ _) p ∈ Γ (p.index.mkpair i) :=
+cast_mem wf _ h
 
-lemma eq_head_of_mem_chain' {i} {p} (hp : p ∈ uniform_chain wf i) :
-  ∃ z {m'} (Γ' : list (subformula L m' 0)) p', chain wf (i + z) = (i + z, sigma.mk m' (p' :: Γ')) ∧ p'.uniform = p :=
-begin
-  rcases eq_head_of_mem_uniform_chain wf hp with ⟨z, Γ₂, hΓ₂⟩,
-  simp[uniform_chain] at hΓ₂,
-  rcases C : (chain wf (i + z)).2.2 with (_ | ⟨p', Γ'⟩),
-  { simp[C] at hΓ₂, contradiction },
-  { refine ⟨z, (chain wf (i + z)).2.1, Γ', p', by ext; simp[C], by simp[C] at hΓ₂; exact hΓ₂.1⟩ }
-end
+lemma cast_mem'' {i j} {p} (h : p ∈ Γ i) (hj : i ≤ j) :
+  cast_le (rank_mono wf $ le_trans hj (nat.right_le_mkpair _ _)) p ∈ Γ (p.index.mkpair j) :=
+cast_mem wf _ h
 
-def chain_union : set (uniform_formula L) := {p | ∃ i, p ∈ uniform_chain wf i}
-
-local notation `⛓️`:= chain_union wf 
-
-lemma root_mem {p : sentence L} (hp : p ∈ M) : p.uniform ∈ ⛓️ :=
-⟨p.to_nat + 1,
+lemma T_mem {σ : sentence L} (h : σ ∈ T) : ↑σ ∈ ⛓️ :=
+⟨σ.index + 1,
   begin
-    rcases uniform_chain_succ wf p.to_nat with ⟨m₁, m₂, Γ₁, Γ₂, _, _, h⟩,
-    have : uniform_index_of_set M (to_nat p) = some (uniform p), from uniform_index_of_set_of_nat M hp,
-    simp[h, this]
+    refine ⟨↑σ, _⟩,
+    rcases Γ_lt wf σ.index with ⟨Γ', hΓ', hdecomp⟩,
+    have : Gamma wf (index σ + 1) = Γ' ∪ {↑σ}, by simpa[h] using hΓ',
+    refine ⟨by simp[this], by simp[uniform]⟩
   end⟩
 
-lemma top_nonmem : ⊤ ∉ ⛓️:=
+lemma domian_inv (t : subterm L (domain wf) 0) : ∃ {i} (t' : bounded_term L (rank wf i)), t'.map (uniform wf i) = t :=
+by { induction t,
+  case metavar : x { rcases x with ⟨x, i, hx⟩, refine ⟨i, &⟨x, hx⟩, by simp[uniform]⟩ },
+  case var : x { refine fin.nil x },
+  case function : k f v IH { rcases classical.skolem.mp IH with ⟨I, hI⟩,
+    let isup := ⨆ᶠ i, I i,
+    have : ∀ x, ∃ (t' : bounded_term L (rank wf isup)), subterm.map (uniform wf isup) t' = v x,
+    { intros x, rcases hI x with ⟨t, ht⟩,
+      refine ⟨subterm.cast_le (rank_mono wf (by simp)) t, by simp[ht]⟩ },
+    rcases classical.skolem.mp this with ⟨v', hv'⟩,
+    refine ⟨isup, subterm.function f v', by simp[hv']⟩ } } 
+
+lemma relation_decomp {k} {r : L.pr k} {v} : relation r v ∈ ⛓️ → neg_relation r v ∉ ⛓️ :=
 begin
-  rintros ⟨i, A⟩,
-  rcases eq_head_of_mem_chain' wf A with ⟨z, m, Γ, p, hc, hverum⟩,
-  have : p = ⊤,
-  { cases p; simp at hverum; try { contradiction },
-    { refl } },
+  rintros ⟨i, p, hp, eq_rel⟩ ⟨i', p', hp', eq_nrel⟩,
+  have : ∃ v', p = relation r v' ∧ v = (λ j, subterm.map (uniform wf i) (v' j)),
+  { cases p; simp[map, rew] at eq_rel; try { contradiction },
+    case relation : k r v' { rcases eq_rel with ⟨rfl, rfl, rfl⟩, refine ⟨v', rfl, by refl⟩, } },
+  rcases this with ⟨v, rfl, rfl⟩,
+  have : ∃ v', p' = neg_relation r v' ∧ ∀ j, subterm.map (uniform wf i) (v j) = subterm.map (uniform wf i') (v' j),
+  { cases p'; simp[map, rew] at eq_nrel; try { contradiction },
+    case neg_relation : k r v { rcases eq_nrel with ⟨rfl, rfl, e⟩,
+      refine ⟨v, rfl, by { simp at e, simpa using congr_fun (e) }⟩ } },
+  rcases this with ⟨v', rfl, hv⟩,
+  let I := max i i',
+  let V : fin k → bounded_term L (rank wf I) := λ (j : fin k), subterm.cast_le (rank_mono wf (by simp)) (v j),
+  let V' : fin k → bounded_term L (rank wf I) := λ (j : fin k), subterm.cast_le (rank_mono wf (by simp)) (v' j),
+  have V_eq : V = V', { ext j, simp[V, V'], refine subterm_uniform_inj wf (by simpa using hv j) },
+  have hr : relation r V ∈ Γ I, by simpa using cast_mem wf (show i ≤ max i i', by simp) hp, 
+  have hnr : neg_relation r V ∈ Γ I, by simpa[V_eq] using cast_mem wf (show i' ≤ max i i', by simp) hp',
+  have : is_terminal (Γ I), from ⟨k, r, V, hr, hnr⟩,
+  have : ¬is_terminal (Γ I), from Γ_is_not_terminal wf I,
+  contradiction
+end
+
+lemma verum_decomp : ⊤ ∉ ⛓️ :=
+begin
+  rintros ⟨i, p, hp, eq_top⟩,
+  have : p = ⊤, { cases p; simp[map, rew, ←verum_eq] at eq_top; try {contradiction}, { refl } },
   rcases this with rfl,
-  rcases chain_succ wf _ _ hc with ⟨m₂, Γ₂, hdecomp, hcsucc⟩,
-  simp[decomp] at hdecomp, contradiction
+  let k := (index (⊤ : bounded_subformula L (rank wf i) 0)).mkpair i,
+  have mem_Γ : ⊤ ∈ Γ k, from cast_mem' wf hp,
+  rcases Γ_lt wf k with ⟨Γ', hΓ', hdecomp⟩,
+  have := (decomp_iff_of_mem mem_Γ).mp hdecomp,
+  simp[decomp] at this, contradiction
 end
 
-lemma or_mem (p q : uniform_formula L) : p ⊔ q ∈ ⛓️ → p ∈ ⛓️ ∧ q ∈ ⛓️ :=
+lemma and_decomp {p q : formula L (domain wf)} : p ⊓ q ∈ ⛓️ → p ∈ ⛓️ ∨ q ∈ ⛓️ :=
 begin
-  rintros ⟨i, A⟩,
-  rcases eq_head_of_mem_chain' wf A with ⟨z, m, Γ, r, hc, hr⟩,
-  have : ∃ p' q' : subformula L m 0, r = p' ⊔ q' ∧ p'.uniform = p ∧ q'.uniform = q,
-  { cases r; simp[←uniform_subformula.or_eq] at hr; try { contradiction },
-    case or : p' q' { exact ⟨p', q', rfl, hr⟩ } },
-  rcases this with ⟨p, q, rfl, rfl, rfl⟩,
-  rcases chain_succ wf _ _ hc with ⟨m₂, Γ₂, hdecomp, hcsucc⟩,
-  simp[decomp] at hdecomp,
-  rcases hdecomp with ⟨rfl, rfl⟩,
-  refine ⟨⟨i + z + 1, by { simp[uniform_chain, -list.mem_map], rw hcsucc, simp }⟩,
-    ⟨i + z + 1, by { simp[uniform_chain, -list.mem_map], rw hcsucc, simp }⟩⟩
+  rintros ⟨i, r, hr, eq_and⟩,
+  have : ∃ p' q', r = p' ⊓ q' ∧ p = map (uniform wf i) p' ∧ q = map (uniform wf i) q',
+  { cases r; simp[map, rew, ←and_eq] at eq_and; try { contradiction },
+    case and : p' q' { refine ⟨p', q', rfl, eq_and⟩ } },
+  rcases this with ⟨p, q, rfl, rfl, rfl⟩, 
+  let k := (index (p ⊓ q)).mkpair i,
+  have mem_Γ : cast_le _ (p ⊓ q) ∈ Γ k, from cast_mem' wf hr,  
+  rcases Γ_lt' wf k with ⟨m', Γ', hm', hΓ', hdecomp⟩,
+  have : sigma.mk m' Γ' ∈ decomp i (cast_le _ (p ⊓ q)) (Gamma wf k), 
+    from (decomp_iff_of_mem mem_Γ).mp (by simp only [cast_le_index]; exact hdecomp),
+  simp[decomp] at this, rcases this with (⟨rfl, rfl⟩ | ⟨rfl, rfl⟩),
+  { refine or.inl ((mem_chain_union_iff wf).mpr (⟨k + 1, by simp[hΓ']⟩)) },
+  { refine or.inr ((mem_chain_union_iff wf).mpr (⟨k + 1, by simp[hΓ']⟩)) }
 end
 
-lemma and_mem (p q : uniform_formula L) : p ⊓ q ∈ ⛓️ → p ∈ ⛓️ ∨ q ∈ ⛓️ :=
+lemma or_decomp {p q : formula L (domain wf)} : p ⊔ q ∈ ⛓️ → p ∈ ⛓️ ∧ q ∈ ⛓️ :=
 begin
-  rintros ⟨i, A⟩,
-  rcases eq_head_of_mem_chain' wf A with ⟨z, m, Γ, r, hc, hr⟩,
-  have : ∃ p' q' : subformula L m 0, r = p' ⊓ q' ∧ p'.uniform = p ∧ q'.uniform = q,
-  { cases r; simp[←uniform_subformula.and_eq] at hr; try { contradiction },
-    case and : p' q' { exact ⟨p', q', rfl, hr⟩ } },
-  rcases this with ⟨p, q, rfl, rfl, rfl⟩,
-  rcases chain_succ wf _ _ hc with ⟨m₂, Γ₂, hdecomp, hcsucc⟩,
-  simp[decomp] at hdecomp,
-  rcases hdecomp with (⟨rfl, rfl⟩ | ⟨rfl, rfl⟩),
-  refine or.inl ⟨i + z + 1, by { simp[uniform_chain, -list.mem_map], rw hcsucc, simp }⟩,
-  refine or.inr ⟨i + z + 1, by { simp[uniform_chain, -list.mem_map], rw hcsucc, simp }⟩
+  rintros ⟨i, r, hr, eq_or⟩,
+  have : ∃ p' q', r = p' ⊔ q' ∧ p = map (uniform wf i) p' ∧ q = map (uniform wf i) q',
+  { cases r; simp[map, rew, ←or_eq] at eq_or; try { contradiction },
+    case or : p' q' { refine ⟨p', q', rfl, eq_or⟩ } },
+  rcases this with ⟨p, q, rfl, rfl, rfl⟩, 
+  let k := (index (p ⊔ q)).mkpair i,
+  have mem_Γ : cast_le _ (p ⊔ q) ∈ Γ k, from cast_mem' wf hr,  
+  rcases Γ_lt' wf k with ⟨m', Γ', hm', hΓ', hdecomp⟩,
+  have : sigma.mk m' Γ' ∈ decomp i (cast_le _ (p ⊔ q)) (Gamma wf k), 
+    from (decomp_iff_of_mem mem_Γ).mp (by simp only [cast_le_index]; exact hdecomp),
+  simp[decomp] at this, rcases this with ⟨rfl, rfl⟩,
+  refine ⟨(mem_chain_union_iff wf).mpr ⟨k + 1, by simp[hΓ']⟩, (mem_chain_union_iff wf).mpr ⟨k + 1, by simp[hΓ']⟩⟩
 end
 
-lemma forall_mem (p : uniform_subformula L 1) :
-  ∀'p ∈ ⛓️ → ∃ t : term_domain wf, uniform_subformula.subst t.val p ∈ ⛓️ :=
+lemma all_decomp {p : subformula L (domain wf) 1} : ∀'p ∈ ⛓️ → ∃ t, subst t p ∈ ⛓️ :=
 begin
-  rintros ⟨i, A⟩,
-  rcases eq_head_of_mem_chain' wf A with ⟨z, m, Γ, r, hc, hr⟩,
-  have : ∃ p' : subformula L m 1, r = ∀' p' ∧ p'.uniform = p,
-  { cases r; simp[←uniform_subformula.fal_eq] at hr; try { contradiction },
-    case fal : p' { exact ⟨p', rfl, hr⟩ } },
+  rintros ⟨i, r, hr, eq_fal⟩,
+  have : ∃ p', r = ∀' p' ∧ p = map (uniform wf i) p',
+  { cases r; simp[map, rew, ←fal_eq, ←eq_fal] at eq_fal; try { contradiction },
+    case fal : p' { refine ⟨p', rfl, eq_fal⟩ } },
   rcases this with ⟨p, rfl, rfl⟩,
-  rcases chain_succ wf _ _ hc with ⟨m₂, Γ₂, hdecomp, hcsucc⟩,
-  simp[←fal_eq, decomp] at hdecomp,
-  rcases hdecomp with ⟨rfl, rfl⟩,
-  refine ⟨⟨&&m, m + 1, ⟨i + z + 1, by simp[hcsucc]⟩, by simp⟩,
-    i + z + 1, by { simp[uniform_chain, -list.mem_map], rw hcsucc, simp }⟩
+  let k := (index (∀'p)).mkpair i,
+  have mem_Γ : cast_le _ (∀'p) ∈ Γ k, from cast_mem' wf hr,  
+  rcases Γ_lt' wf k with ⟨m', Γ', hm', hΓ', hdecomp⟩,
+  have : sigma.mk m' Γ' ∈ decomp i (cast_le _ (∀'p)) (Gamma wf k), 
+    from (decomp_iff_of_mem mem_Γ).mp (by simp only [cast_le_index]; exact hdecomp),
+  simp[decomp] at this, rcases this with ⟨rfl, rfl⟩,
+  let t : bounded_term L (rank wf (k + 1)) :=
+    subterm.cast_le (by simp[hm']) (&(fin.last _) : bounded_term L (rank wf k + 1)),
+  refine ⟨t.map (uniform wf _), (mem_chain_union_iff wf).mpr ⟨k + 1, by simp[hΓ', map_subst, t]⟩⟩
 end
 
-lemma ex_infinitely_mem (p : uniform_subformula L 1) :
-  ∃'p ∈ ⛓️ → ∀ i, ∃ j ≥ i, ∃'p ∈ uniform_chain wf j :=
+lemma ex_decomp {p : subformula L (domain wf) 1} : ∃'p ∈ ⛓️ → ∀ t, subst t p ∈ ⛓️ :=
 begin
-  intros h i,
-  induction i with i IH,
-  { rcases h with ⟨j, h⟩, refine ⟨j, by simp, h⟩ },
-  { rcases IH with ⟨j, hj, h⟩,
-    rcases eq_head_of_mem_chain' wf h with ⟨z, m, Γ, r, hc, hr⟩,
-  have : ∃ p' : subformula L m 1, r = ∃' p' ∧ p'.uniform = p,
-  { cases r; simp[←uniform_subformula.ex_eq] at hr; try { contradiction },
-    case ex : p' { exact ⟨p', rfl, hr⟩ } },
+  rintros ⟨i, r, hr, eq_ex⟩ t,
+  have : ∃ p', r = ∃' p' ∧ p = map (uniform wf i) p',
+  { cases r; simp[map, rew, ←ex_eq, ←eq_ex] at eq_ex; try { contradiction },
+    case ex : p' { refine ⟨p', rfl, eq_ex⟩ } },
   rcases this with ⟨p, rfl, rfl⟩,
-  rcases chain_succ wf _ _ hc with ⟨m₂, Γ₂, hdecomp, hcsucc⟩,
-  simp[←ex_eq, decomp] at hdecomp,
-  rcases hdecomp with ⟨rfl, rfl⟩,
-  refine ⟨j + z + 1, by { simp[←nat.add_one], from le_add_right hj},
-    by { simp[uniform_chain, -list.mem_map], rw hcsucc,
-         simp[←uniform_subformula.ex_eq] }⟩ }
+  rcases domian_inv wf t with ⟨it, t, rfl⟩,
+  let j := (max (max i it) (t.index + 1)),
+  let k := (∃'p).index.mkpair j,
+  have i_le_k : i ≤ k, { simp[k], refine le_trans (by simp) (nat.right_le_mkpair _ _) },
+  have it_le_k : it ≤ k, { simp[k], refine le_trans (by simp) (nat.right_le_mkpair _ _) },
+  have mem_Γ : cast_le _ ∃'p ∈ Γ k := cast_mem'' wf hr (by simp),  
+  rcases Γ_lt' wf k with ⟨m', Γ', hm', hΓ', hdecomp⟩,
+  have : sigma.mk m' Γ' ∈ decomp j (cast_le _ (∃'p)) (Γ k), 
+    from (decomp_iff_of_mem mem_Γ).mp (by simp only [cast_le_index]; exact hdecomp),
+  simp[decomp] at this, rcases this with ⟨rfl, rfl⟩,
+  have : subst (subterm.cast_le _ t) (cast_le _ p) ∈ instance_enum (cast_le _ p) j, 
+    from mem_instance_enum_of_lt (subterm.cast_le (rank_mono wf it_le_k) t) (cast_le (rank_mono wf i_le_k) p) j (by simp),
+  have : subst (subterm.map (uniform wf it) t) (map (uniform wf i) p) ∈ finset.image (map (uniform wf k)) (instance_enum (cast_le _ p) j),
+  by simpa[map_subst, -finset.mem_image] using finset.mem_image_of_mem (map $ uniform wf k) this,
+  refine (mem_chain_union_iff wf).mpr ⟨k + 1,
+    by simp [hΓ', -finset.mem_image, finset.image_union, finset.mem_union, finset.image_image, (∘), this]⟩
 end
 
-lemma ex_mem (p : uniform_subformula L 1) :
-  ∃'p ∈ ⛓️ → ∀ t : term_domain wf, uniform_subformula.subst t.val p ∈ ⛓️ :=
-begin
-  rintros h ⟨t, s, ⟨i', rfl⟩, ht⟩, simp at ht,
-  let i := max i' (encode t + 1),
-  have : ∃ j ≥ i, p.ex ∈ uniform_chain wf j, from ex_infinitely_mem wf p h i,
-  rcases this with ⟨j, hj, h⟩,
-  rcases eq_head_of_mem_chain' wf h with ⟨z, m, Γ, r, hc, hr⟩,
-  have : ∃ p' : subformula L m 1, r = ∃' p' ∧ p'.uniform = p,
-  { cases r; simp at hr; try { contradiction },
-    case ex : p' { exact ⟨p', rfl, hr⟩ } },
-  rcases this with ⟨p, rfl, rfl⟩,
-  rcases chain_succ wf _ _ hc with ⟨m', Γ', hdecomp, hcsucc⟩,
-  simp[←ex_eq, decomp] at hdecomp,
-  rcases hdecomp with ⟨rfl, rfl⟩,
-  have : i' ≤ j + z + 1, from le_trans (show i' ≤ i, by simp[i]) (by simp only [add_assoc]; exact le_add_right hj),
-  have : t.arity ≤ m', from le_trans ht (by simpa[hcsucc] using chain_uvar_mono wf this),
-  let u : subterm L m' 0 := t.to_subterm this,
-  have : subst u p ∈ instance_enum p (j + z),
-    from mem_instance_enum_of_lt u p (j + z) 
-      (by { simp[u], refine lt_of_lt_of_le (show encode t < i, by simp[i]) (le_add_right hj) }),
-  have : uniform_subformula.subst t p.uniform ∈ list.map uniform (instance_enum p (j + z)),
-  by simpa[-list.mem_map] using list.mem_map_of_mem uniform this,
-  refine ⟨j + z + 1, by { simp[uniform_chain, -list.mem_map], rw hcsucc,
-    simp[-list.mem_map, this] }⟩
-end
-
-def model_fn {k} (f : L.fn k) (v : fin k → term_domain wf) : term_domain wf :=
-⟨uniform_subterm.function f (λ i, (v i).val),
-  begin
-    cases k,
-    { refine ⟨0, ⟨0, by simp⟩, by simp⟩ },
-    { rcases classical.skolem.mp (λ i, (v i).property) with ⟨f, h⟩,
-      simp,
-      refine ⟨⨆ᶠ i, f i,
-      by { rcases fintype_sup.exists_sup_index f with ⟨i, hi⟩,
-           simp[←hi], rcases h i with ⟨h, _⟩, exact h },
-      by { intros i, rcases h i with ⟨hi, lei⟩,
-           refine le_trans lei (by simp) }⟩ }
-  end⟩
-
-def model_pr {k} (r : L.pr k) (v : fin k → term_domain wf) : Prop :=
-uniform_subformula.neg_relation r (λ i, (v i).val) ∈ ⛓️
+def model_pr {k} (r : L.pr k) (v : fin k → term L (domain wf)) : Prop :=
+subformula.neg_relation r v ∈ ⛓️
 
 @[reducible] def model : Structure L :=
-{ dom := term_domain wf,
-  fn := λ k f, model_fn wf f,
+{ dom := term L (domain wf),
+  fn := λ k f, subterm.function f,
   pr := λ k r, model_pr wf r }
 
-def assignment : ℕ → ↥(model wf)
+@[simp] lemma model_val (t) : subterm.val (model wf) subterm.metavar fin.nil t = t :=
+by { induction t; simp*, case var : x { exact fin.nil x } }
 
-lemma model.val_term (e) (t : uniform_term L) : (uniform_subterm.val (model wf) e fin.nil t).val = t :=
-by { induction t; simp*, }
-
-lemma semantic_main_lemma : ∀ p ∈ ⛓️, model wf ⊧ᵀᵤ ∼p
-| ⊤ h := by { have : ⊤ ∉ ⛓️, from top_nonmem wf, contradiction }
-| ⊥ h := by simp[uniform_models]
-| (p ⊓ q) h :=
+lemma semantic_main_lemma : ∀ p ∈ ⛓️, model wf ⊧ᵀ[subterm.metavar] ∼p
+| ⊤                  h  := by { have : ⊤ ∉ ⛓️, from verum_decomp wf, contradiction }
+| ⊥                  h  := by simp
+| (relation r v)     h  := by simpa[model_pr, (∘)] using relation_decomp wf h
+| (neg_relation r v) h := by simp[model_pr, (∘), h]
+| (p ⊓ q)            h :=
     begin
-      have : p ∈ ⛓️ ∨ q ∈ ⛓️, from and_mem wf _ _ h,
+      have : p ∈ ⛓️ ∨ q ∈ ⛓️, from and_decomp wf h,
       rcases this with (h | h),
-      { intros e, simp, refine or.inl (by simpa using semantic_main_lemma p h e) },
-      { intros e, simp, refine or.inr (by simpa using semantic_main_lemma q h e) }
+      { simp, refine or.inl (by simpa using semantic_main_lemma p h) },
+      { simp, refine or.inr (by simpa using semantic_main_lemma q h) }
     end
-| (p ⊔ q) h :=
+| (p ⊔ q)            h :=
     begin
-      have : p ∈ ⛓️ ∧ q ∈ ⛓️, from or_mem wf _ _ h,
+      have : p ∈ ⛓️ ∧ q ∈ ⛓️, from or_decomp wf h,
       rcases this with ⟨h₁, h₂⟩,
-      intros e, simp,
-      refine ⟨by simpa using semantic_main_lemma p h₁ e, 
-        by simpa using semantic_main_lemma q h₂ e⟩
+      simp,
+      refine ⟨by simpa using semantic_main_lemma p h₁, by simpa using semantic_main_lemma q h₂⟩
     end
-| (uniform_subformula.relation r v) h := by { intros e,  simp[uniform_formula.val, model_pr], }
+| (∀'p)              h :=
+    begin
+      simp, rcases all_decomp wf h with ⟨t, h⟩,
+      refine ⟨t, by simpa[val, subval_subst, fin.concat_zero] using semantic_main_lemma (subst t p) h⟩
+    end
+| (∃'p)              h :=
+    begin
+      simp, intros t,
+      by simpa[val, subval_subst, fin.concat_zero] using semantic_main_lemma (subst t p) (ex_decomp wf h t)
+    end
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.1.complexity)⟩]}
+
+variables (T Δ wf)
+
+lemma semantic_main_lemma' : ∀ σ ∈ T, ¬model wf ⊧ σ :=
+by intros σ hσ; simpa using semantic_main_lemma wf ↑σ (T_mem wf hσ)
+
+lemma semantic_main_lemma'_root : ∀ σ ∈ Δ, ¬model wf ⊧ σ := λ σ hσ,
+by simpa using semantic_main_lemma wf σ ⟨0,↑σ, by simp[hσ]⟩
 
 end non_well_founded
 
 end search_tree
+
+variables (T : set (sentence L)) (Δ : finset (sentence L))
+
+theorem completeness (h : ∀ S : Structure L, S ⊧ T → ∃ σ ∈ Δ, S ⊧ σ) :
+  ∃ Γ : finset (sentence L), ↑Γ ⊆ not '' T ∧ ⊢ᵀ Δ ∪ Γ :=
+begin
+  by_contradiction A, simp at A,
+  by_cases wf : well_founded (search_tree.accessible_search_tree (not '' T) Δ),
+  { have : ∃ (Γ : finset (sentence L)), ↑Γ ⊆ not '' T ∧ ⊢ᵀ Δ ∪ Γ,
+      from search_tree.synthetic_main_lemma' (not '' T) Δ wf,
+    rcases this with ⟨Γ, hΓ, b⟩,
+    have := A Γ hΓ, contradiction },
+  { have : search_tree.model wf ⊧ T,
+    { intros σ hσ,
+      simpa[sentence_models_def] using search_tree.semantic_main_lemma' (not '' T) Δ wf (∼σ)
+        (set.mem_image_of_mem subformula.not hσ) },
+    have : ∃ σ ∈ Δ, search_tree.model wf ⊧ σ, from h (search_tree.model wf) this,
+    have : ¬∃ σ ∈ Δ, search_tree.model wf ⊧ σ, by simpa using search_tree.semantic_main_lemma'_root (not '' T) Δ wf,
+    contradiction }
+end
 
 end Tait
 

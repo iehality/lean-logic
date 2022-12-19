@@ -66,7 +66,7 @@ inductive subformula : ℕ → Type (max u v)
 | neg      {n} : subformula n → subformula n
 | fal      {n} : subformula (n + 1) → subformula n
 
-attribute [pattern]  has_negation.neg has_arrow.arrow has_univ_quantifier.univ has_exists_quantifier.ex
+attribute [pattern]  has_negation.neg has_arrow.arrow has_univ_quantifier'.univ has_exists_quantifier'.ex
 
 @[reducible] def formula := subformula L μ 0
 

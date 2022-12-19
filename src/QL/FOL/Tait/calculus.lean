@@ -13,6 +13,13 @@ open subformula
 noncomputable def finset_mlift (Δ : finset (bounded_subformula L m n)) :
   finset (bounded_subformula L (m + 1) n) := Δ.image mlift
 
+@[simp] lemma finset_mlift_union (Δ Γ : finset (bounded_subformula L m n)) : finset_mlift (Δ ∪ Γ) = finset_mlift Δ ∪ finset_mlift Γ :=
+by simp[finset_mlift, finset.image_union]
+
+@[simp] lemma mem_finset_mlift_iff (p : bounded_subformula L m n) (Δ : finset (bounded_subformula L m n)) :
+  mlift p ∈ finset_mlift Δ ↔ p ∈ Δ :=
+by simp[finset_mlift]
+
 -- Tate caluculus
 inductive derivation : Π {m}, finset (bounded_formula L m) → Type u
 | AxL {m} : ∀ (Δ : finset (bounded_formula L m)) {k} (r : L.pr k) (v : fin k → bounded_term L m),
@@ -47,11 +54,11 @@ lemma or_left (p q : bounded_formula L m) : ⊢ᵀ insert p Δ → ⊢ᵀ insert
 
 lemma or_right (p q : bounded_formula L m) : ⊢ᵀ insert q Δ → ⊢ᵀ insert (p ⊔ q) Δ := λ ⟨d⟩, ⟨derivation.or_right Δ p q d⟩
 
-lemma and (p q : bounded_formula L m) : ⊢ᵀ insert p Δ → ⊢ᵀ insert q Δ → ⊢ᵀ insert (p ⊓ q) Δ := λ ⟨d₁⟩ ⟨d₂⟩, ⟨derivation.and Δ p q d₁ d₂⟩
+lemma and {p q : bounded_formula L m} : ⊢ᵀ insert p Δ → ⊢ᵀ insert q Δ → ⊢ᵀ insert (p ⊓ q) Δ := λ ⟨d₁⟩ ⟨d₂⟩, ⟨derivation.and Δ p q d₁ d₂⟩
 
-lemma all (p : bounded_subformula L m 1) : ⊢ᵀ insert p.push (finset_mlift Δ) → ⊢ᵀ insert (∀'p) Δ := λ ⟨d⟩, ⟨derivation.all Δ p d⟩
+lemma all {p : bounded_subformula L m 1} : ⊢ᵀ insert p.push (finset_mlift Δ) → ⊢ᵀ insert (∀'p) Δ := λ ⟨d⟩, ⟨derivation.all Δ p d⟩
 
-lemma ex (t) (p : bounded_subformula L m 1) : ⊢ᵀ insert (subst t p) Δ → ⊢ᵀ insert (∃'p) Δ := λ ⟨d⟩, ⟨derivation.ex Δ t p d⟩
+lemma ex {t} {p : bounded_subformula L m 1} : ⊢ᵀ insert (subst t p) Δ → ⊢ᵀ insert (∃'p) Δ := λ ⟨d⟩, ⟨derivation.ex Δ t p d⟩
 
 protected lemma cast (h : ⊢ᵀ Δ) (e : Δ = Γ) : ⊢ᵀ Γ := cast (by rw e) h
 
@@ -66,11 +73,11 @@ theorem rec_on {C : Π {m} (Δ : finset (bounded_formula L m)), ⊢ᵀ Δ → Pr
   (hor_right : ∀ {m} (Δ : finset (bounded_formula L m)) (p q : bounded_formula L m) (d : ⊢ᵀ insert q Δ),
     C (insert q Δ) d → C (insert (p ⊔ q) Δ) (or_right p q d))
   (hand : ∀ {m} (Δ : finset (bounded_formula L m)) (p q : bounded_formula L m) (d₁ : ⊢ᵀ insert p Δ) (d₂ : ⊢ᵀ insert q Δ),
-    C (insert p Δ) d₁ → C (insert q Δ) d₂ → C (insert (p ⊓ q) Δ) (and p q d₁ d₂))
+    C (insert p Δ) d₁ → C (insert q Δ) d₂ → C (insert (p ⊓ q) Δ) (and d₁ d₂))
   (hall : ∀ {m} (Δ : finset (bounded_formula L m)) (p : bounded_subformula L m 1) (d : ⊢ᵀ insert p.push (finset_mlift Δ)),
-    C (insert p.push (finset_mlift Δ)) d → C (insert (∀'p) Δ) (all p d))
+    C (insert p.push (finset_mlift Δ)) d → C (insert (∀'p) Δ) (all d))
   (hex : ∀ {m} (Δ : finset (bounded_formula L m)) (t) (p : bounded_subformula L m 1) (d : ⊢ᵀ insert (subst t p) Δ),
-    C (insert (subst t p) Δ) d → C (insert (∃'p) Δ) (ex t p d)) : C Δ d :=
+    C (insert (subst t p) Δ) d → C (insert (∃'p) Δ) (ex d)) : C Δ d :=
  by unfreezingI {
   begin
     cases d,
@@ -100,24 +107,35 @@ begin
   { intros m Δ p q h₁ h₂ IH₁ IH₂ Γ ss,
     have l₁ : ⊢ᵀ insert p Γ, from IH₁ (finset.insert_subset_insert _ $ (finset.insert_subset.mp ss).2),
     have l₂ : ⊢ᵀ insert q Γ, from IH₂ (finset.insert_subset_insert _ $ (finset.insert_subset.mp ss).2),
-    have : ⊢ᵀ insert (p ⊓ q) Γ, from and p q l₁ l₂,
+    have : ⊢ᵀ insert (p ⊓ q) Γ, from and l₁ l₂,
     refine derivable.cast this (by { simp, exact (finset.insert_subset.mp ss).1}) },
   { intros m Δ p h IH Γ ss,
     have : ⊢ᵀ insert p.push (finset_mlift Γ),
       from IH (finset.insert_subset_insert _ $ finset.image_subset_image (finset.insert_subset.mp ss).2),
-    have : ⊢ᵀ insert (∀'p) Γ := all p this,
+    have : ⊢ᵀ insert (∀'p) Γ := all this,
     refine derivable.cast this (by { simp, exact (finset.insert_subset.mp ss).1}) },
   { intros m Δ t p h IH Γ ss,
     have : ⊢ᵀ insert (subst t p) Γ, from IH (finset.insert_subset_insert _ (finset.insert_subset.mp ss).2),
-    have : ⊢ᵀ insert (∃'p) Γ := ex t p this,
+    have : ⊢ᵀ insert (∃'p) Γ := ex this,
     refine derivable.cast this (by { simp, exact (finset.insert_subset.mp ss).1}) }
 end
+
+
+lemma and' {p q : bounded_formula L m} (hp : ⊢ᵀ insert p Δ) (hq : ⊢ᵀ insert q Γ) : ⊢ᵀ insert (p ⊓ q) (Δ ∪ Γ) :=
+by { have hp' : ⊢ᵀ insert p (Δ ∪ Γ), from derivable.weakening hp (by intros x; simp; tauto),
+     have hq' : ⊢ᵀ insert q (Δ ∪ Γ), from derivable.weakening hq (by intros x; simp; tauto),
+     exact derivable.and hp' hq' }
 
 end derivable
 
 section
 variables {Δ : finset (bounded_formula L m)}
+
+
+
 open axiomatic_classical_logic' axiomatic_classical_logic
+
+
 
 lemma provable_of_derivation : derivation Δ → ∅ ⊢ (Δ.image to_fol).disjunction := λ h,
 begin

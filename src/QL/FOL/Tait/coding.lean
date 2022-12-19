@@ -106,6 +106,10 @@ by simp[index, of_index]
 @[simp] lemma mlift_index (p : bounded_subformula L m n) : p.mlift.index = p.index :=
 by simp[index]
 
+@[simp] lemma cast_le_index {m₁ m₂ : ℕ} (h : m₁ ≤ m₂) (p : bounded_subformula L m₁ n) :
+  (cast_le h p).index = p.index :=
+by simp[index]
+
 @[simp] lemma of_nat_uniform (p : bounded_subformula L m n) : encodable.decode₂ (subformula L ℕ n) p.index = p.uniform :=
 by simp[index]; refl
 
@@ -118,7 +122,7 @@ lemma of_index_eq_some {m₁ m₂} {p : bounded_subformula L m₁ n} {q : bounde
   p.index = q.index ↔ p.uniform = q.uniform :=
 by simp[index]
 
-@[simp] lemma to_nat_inj {p q : bounded_subformula L m n} : p.index = q.index ↔ p = q :=
+@[simp] lemma index_inj {p q : bounded_subformula L m n} : p.index = q.index ↔ p = q :=
 by simp[index]
 
 end encode

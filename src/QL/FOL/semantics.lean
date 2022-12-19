@@ -48,7 +48,7 @@ variables {m : ℕ} {Ψ : fin m → S}
 
 lemma val_mlift (x : S) (t : bounded_subterm L m n) :
   t.mlift.val S (Ψ <* x) e = t.val S Ψ e :=
-by simp[mlift, val_rew]; congr; ext x; simp
+by simp[mlift, val_rew, val_map]
 
 lemma val_push (x : S) (e : fin n → S) (t : bounded_subterm L m (n + 1)) :
   val S (Ψ <* x) e t.push = val S Ψ (e <* x) t :=
