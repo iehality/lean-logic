@@ -305,6 +305,8 @@ section prenex_normal_form
 lemma neg_forall_pnf (p) : T ⊢ ∼∀'p ⟷ ∃'∼p :=
 equiv_neg_of_equiv (equiv_forall_of_equiv (by simp[neg_eq]))
 
+lemma neg_exists_pnf (p) : T ⊢ ∼∃'p ⟷ ∀'∼p := by simp[ex_def]
+
 /-
 lemma neg_univ_closure_pnf {n} (p : bounded_subformula L m n) : T ⊢ ∼∀'*p ⟷ ∃'*∼p :=
 begin
@@ -316,7 +318,7 @@ begin
     exact equiv_trans lmm₁ lmm₂ }
 end
 
-lemma neg_exists_pnf (p) : T ⊢ ∼∃'p ⟷ ∀'∼p := by simp[ex_def]
+
 
 lemma neg_exists_closure_pnf {n} (p : bounded_subformula L m n) : T ⊢ ∼∃'*p ⟷ ∀'*∼p :=
 begin
@@ -328,6 +330,7 @@ begin
     exact equiv_trans lmm₁ lmm₂ }
 end
 -/
+
 @[simp] lemma or_forall_pnf (p q) : T ⊢ (∀'p) ⊔ q ⟷ ∀'(p ⊔ 𝗗 q) :=
 begin
   have lmm₁ : T ⊢ (∀'p) ⊔ q ⟶ ∀'(p ⊔ 𝗗 q),
