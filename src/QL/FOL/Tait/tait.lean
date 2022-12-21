@@ -1,4 +1,4 @@
-import QL.FOL.coding
+import QL.FOL.coding QL.FOL.deduction
 
 universes u v
 
@@ -321,11 +321,11 @@ by simpa [sentence_coe_def] using @eq_map_of_eq _ _ _ _ σ fin.nil id (by ext x;
 
 @[simp] lemma map_sentence_coe (f : fin 0 → μ₂) (σ : bounded_subformula L 0 n) :
   map f σ = σ :=
-by simp[sentence_coe_def]; refine eq_map_of_eq (by { ext x, exact fin_zero_elim x })
+by simp[sentence_coe_def]; refine eq_map_of_eq (by ext x; exact fin_zero_elim x)
 
 @[simp] lemma map_sentence_coe' (f : μ₁ → μ₂) (σ : bounded_subformula L 0 n) :
   map f (↑σ : subformula L μ₁ n) = σ :=
-by simp[sentence_coe_def]; refine eq_map_of_eq (by { ext x, exact fin_zero_elim x })
+by simp only [sentence_coe_def, map_map]; refine eq_map_of_eq (by ext x; exact fin_zero_elim x)
 
 @[simp] lemma complexity_rew (p : subformula L μ₁ n) : complexity (rew s p) = complexity p :=
 by induction p using fol.Tait.subformula.ind_on; simp*
@@ -382,6 +382,35 @@ by apply ind_succ_on p; intros; simp[*, subterm.map_subst, subterm.map_lift]
 
 end subst
 
+@[simp] def of_tait : Π {n}, subformula L μ n → fol.subformula L μ n
+| n verum              := ⊤
+| n falsum             := ⊥
+| n (relation r v)     := fol.subformula.relation r v
+| n (neg_relation r v) := ∼fol.subformula.relation r v
+| n (and p q)          := p.of_tait ⊓ q.of_tait
+| n (or p q)           := p.of_tait ⊔ q.of_tait
+| n (fal p)            := ∀'p.of_tait
+| n (ex p)             := ∃'p.of_tait
+
+section of_tait
+
+@[simp] lemma of_tait_verum : (of_tait (⊤ : Tait.subformula L μ n)) = ⊤ := rfl
+
+@[simp] lemma of_tait_falsum : (of_tait (⊥ : Tait.subformula L μ n)) = ⊥ := rfl
+
+@[simp] lemma of_tait_and (p q : subformula L μ n) : of_tait (p ⊓ q) = of_tait p ⊓ of_tait q := rfl
+
+@[simp] lemma of_tait_or (p q : subformula L μ n) : of_tait (p ⊔ q) = of_tait p ⊔ of_tait q := rfl
+
+@[simp] lemma of_tait_fal (p : subformula L μ (n + 1)) : of_tait (∀'p) = ∀'of_tait p := rfl
+
+@[simp] lemma of_tait_ex (p : subformula L μ (n + 1)) : of_tait (∃'p) = ∃'of_tait p := rfl
+
+lemma of_tait_subst (p : bounded_subformula L m (n + 1)) : ∀ t, of_tait (subst t p) = fol.subformula.subst t (of_tait p) :=
+by apply ind_succ_on p; intros ; simp*
+
+end of_tait
+
 section bounded
 variables {m}
 
@@ -390,10 +419,10 @@ section mlift
 def mlift {m n} : bounded_subformula L m n →ₗ bounded_subformula L (m + 1) n := map fin.cast_succ
 
 @[simp] lemma mlift_relation {k} (r : L.pr k) (v : fin k → bounded_subterm L m n) :
-  mlift (relation r v) = relation r (subterm.mlift ∘ v) := rfl
+  mlift (relation r v) = relation r (λ i, (v i).mlift) := rfl
 
 @[simp] lemma mlift_neg_relation {k} (r : L.pr k) (v : fin k → bounded_subterm L m n) :
-  mlift (neg_relation r v) = neg_relation r (subterm.mlift ∘ v) := rfl
+  mlift (neg_relation r v) = neg_relation r (λ i, (v i).mlift) := rfl
 
 @[simp] lemma mlift_fal (p : bounded_subformula L m (n + 1)) :
   mlift (∀'p) = ∀'mlift p := rfl
@@ -402,7 +431,7 @@ def mlift {m n} : bounded_subformula L m n →ₗ bounded_subformula L (m + 1) n
   mlift (∃'p) = ∃'mlift p := rfl
 
 @[simp] lemma mlift_coe (σ : bounded_subformula L 0 n) : mlift (σ : bounded_subformula L m n) = σ :=
-by { simp[sentence_coe_def, mlift], congr, ext x, exact fin_zero_elim x }
+by { simp only [sentence_coe_def, mlift, map_map], refine eq_map_of_eq (by ext x; exact fin_zero_elim x) }
 
 lemma mlift_inj : function.injective (@mlift L m n) := map_inj_of_inj _ (rel_embedding.injective _)
 
@@ -417,8 +446,8 @@ section push
 @[simp] def push' {m} : Π {n}, bounded_subformula L m (n + 1) → bounded_subformula L (m + 1) n
 | n verum              := ⊤
 | n falsum             := ⊥
-| n (relation p v)     := relation p (subterm.push ∘ v)
-| n (neg_relation p v) := neg_relation p (subterm.push ∘ v)
+| n (relation p v)     := relation p (λ i, (v i).push)
+| n (neg_relation p v) := neg_relation p (λ i, (v i).push)
 | n (and p q)          := p.push' ⊓ q.push'
 | n (or p q)           := p.push' ⊔ q.push'
 | n (fal p)            := ∀'p.push'
@@ -446,16 +475,19 @@ def push : bounded_subformula L m (n + 1) →ₗ bounded_subformula L (m + 1) n 
   map_bot' := by simp[←falsum_eq] }
 
 @[simp] lemma push_relation {k} (r : L.pr k) (v : fin k → bounded_subterm L m (n + 1)) :
-  push (relation r v) = relation r (subterm.push ∘ v) := by simp[push]
+  push (relation r v) = relation r (λ i, (v i).push) := by simp[push]
 
 @[simp] lemma push_neg_relation {k} (r : L.pr k) (v : fin k → bounded_subterm L m (n + 1)) :
-  push (neg_relation r v) = neg_relation r (subterm.push ∘ v) := by simp[push]
+  push (neg_relation r v) = neg_relation r (λ i, (v i).push) := by simp[push]
 
 @[simp] lemma push_fal (p : bounded_subformula L m (n + 1 + 1)) :
   push (∀'p) = ∀'push p := by simp[push]; unfold has_univ_quantifier'.univ; simp; refl
 
 @[simp] lemma push_ex (p : bounded_subformula L m (n + 1 + 1)) :
   push (∃'p) = ∃'push p := by simp[push]; unfold has_exists_quantifier'.ex; simp; refl
+
+@[simp] lemma complexity_push {n} (p : bounded_subformula L m (n + 1)) : p.push.complexity = p.complexity :=
+by apply ind_succ_on p; intros; simp*
 
 end push
 
@@ -464,8 +496,8 @@ section pull
 @[simp] def pull' {m} : Π {n}, bounded_subformula L (m + 1) n → bounded_subformula L m (n + 1)
 | n verum              := ⊤
 | n falsum             := ⊥
-| n (relation p v)     := relation p (subterm.pull ∘ v)
-| n (neg_relation p v) := neg_relation p (subterm.pull ∘ v)
+| n (relation p v)     := relation p (λ i, (v i).pull)
+| n (neg_relation p v) := neg_relation p (λ i, (v i).pull)
 | n (and p q)          := p.pull' ⊓ q.pull'
 | n (or p q)           := p.pull' ⊔ q.pull'
 | n (fal p)            := ∀'p.pull'
@@ -484,10 +516,10 @@ def pull : bounded_subformula L (m + 1) n →ₗ bounded_subformula L m (n + 1) 
   map_bot' := by refl }
 
 @[simp] lemma pull_relation {k} (r : L.pr k) (v : fin k → bounded_subterm L (m + 1) n) :
-  pull (relation r v) = relation r (subterm.pull ∘ v) := rfl
+  pull (relation r v) = relation r (λ i, (v i).pull) := rfl
 
 @[simp] lemma pull_neg_relation {k} (r : L.pr k) (v : fin k → bounded_subterm L (m + 1) n) :
-  pull (neg_relation r v) = neg_relation r (subterm.pull ∘ v) := rfl
+  pull (neg_relation r v) = neg_relation r (λ i, (v i).pull) := rfl
 
 @[simp] lemma pull_fal (p : bounded_subformula L (m + 1) (n + 1)) :
   pull (∀'p) = ∀'pull p := by simp[pull]; unfold has_univ_quantifier'.univ; simp; refl
@@ -495,10 +527,12 @@ def pull : bounded_subformula L (m + 1) n →ₗ bounded_subformula L m (n + 1) 
 @[simp] lemma pull_ex (p : bounded_subformula L (m + 1) (n + 1)) :
   pull (∃'p) = ∃'pull p := by simp[pull]; unfold has_exists_quantifier'.ex; simp; refl
 
+@[simp] lemma pull_push (p : bounded_subformula L m (n + 1)) : p.push.pull = p :=
+by apply ind_succ_on p; intros; simp[*, (∘)]
+
 end pull
 
 section cast_le
-
 variables {m₁ m₂} (h : m₁ ≤ m₂)
 
 def cast_le (h : m₁ ≤ m₂) : bounded_subformula L m₁ n →ₗ bounded_subformula L m₂ n :=
@@ -559,27 +593,18 @@ by simp[push_eq_subst_mlift]
 
 end cast_le
 
-@[simp] def to_fol : Π {n}, subformula L μ n → fol.subformula L μ n
-| n verum              := ⊤
-| n falsum             := ⊥
-| n (relation r v)     := fol.subformula.relation r v
-| n (neg_relation r v) := ∼fol.subformula.relation r v
-| n (and p q)          := p.to_fol ⊓ q.to_fol
-| n (or p q)           := p.to_fol ⊔ q.to_fol
-| n (fal p)            := ∀'p.to_fol
-| n (ex p)             := ∃'p.to_fol
+section of_tait
 
-@[simp] lemma to_fol_verum : to_fol (⊤ : subformula L μ n) = ⊤ := rfl
+lemma of_tait_mlift (p : bounded_subformula L m n) : of_tait (mlift p) = fol.subformula.mlift (of_tait p) :=
+by induction p using fol.Tait.subformula.ind_on; simp*
 
-@[simp] lemma to_fol_falsum : to_fol (⊥ : subformula L μ n) = ⊥ := rfl
+lemma of_tait_push (p : bounded_subformula L m (n + 1)) : of_tait (push p) = fol.subformula.push (of_tait p) :=
+by apply ind_succ_on p; intros; simp*
 
-@[simp] lemma to_fol_and (p q : subformula L μ n) : to_fol (p ⊓ q) = to_fol p ⊓ to_fol q := rfl
+lemma of_tait_pull (p : bounded_subformula L (m + 1) n) : of_tait (pull p) = fol.subformula.pull (of_tait p) :=
+by induction p using fol.Tait.subformula.ind_on; simp*
 
-@[simp] lemma to_fol_or (p q : subformula L μ n) : to_fol (p ⊔ q) = to_fol p ⊔ to_fol q := rfl
-
-@[simp] lemma to_fol_fal (p : subformula L μ (n + 1)) : to_fol (∀'p) = ∀'to_fol p := rfl
-
-@[simp] lemma to_fol_ex (p : subformula L μ (n + 1)) : to_fol (∃'p) = ∃'to_fol p := rfl
+end of_tait
 
 end bounded
 
@@ -635,65 +660,86 @@ by { simp[←not_eq], induction p; simp[*],
 
 end nat
 
+variables (T : bounded_preTheory L m)
+
+open axiomatic_classical_logic' axiomatic_classical_logic
+
+lemma to_tait_not_equiv : ∀ {m} (p : Tait.bounded_formula L m), ∅ ⊢ (∼p).of_tait ⟷ ∼p.of_tait
+| m verum := by simp[verum_eq]
+| m falsum := by apply equiv_symm; simp[falsum_eq]
+| m (relation r v) := by simp
+| m (neg_relation r v) := by simp
+| m (and p q) := by { simp[and_eq],
+    have : ∅ ⊢ (∼p).of_tait ⊔ (∼q).of_tait ⟷ ∼p.of_tait ⊔ ∼q.of_tait,
+    from equiv_or_of_equiv (to_tait_not_equiv p) (to_tait_not_equiv q),
+    refine equiv_trans this (equiv_symm (neg_and_equiv_or_neg _ _)) }
+| m (or p q) := by { simp[or_eq],
+    have : ∅ ⊢ (∼p).of_tait ⊓ (∼q).of_tait ⟷ ∼p.of_tait ⊓ ∼q.of_tait,
+    from equiv_and_of_equiv (to_tait_not_equiv p) (to_tait_not_equiv q),
+    refine equiv_trans this (equiv_symm (neg_or_equiv_and_neg _ _)) }
+| m (fal p) :=
+    begin
+      simp[fal_eq],
+      have : ∅ ⊢ ∃'(∼p).of_tait ⟷ ∃'∼p.of_tait,
+      from provable.equiv_exists_of_equiv (by simpa[←of_tait_push] using to_tait_not_equiv (push p)),
+      refine equiv_trans this (equiv_symm $ provable.neg_forall_pnf p.of_tait)
+    end
+| m (ex p) :=
+    begin
+      simp[ex_eq],
+      have : ∅ ⊢ ∀'(∼p).of_tait ⟷ ∀'∼p.of_tait,
+      from provable.equiv_forall_of_equiv (by simpa[←of_tait_push] using to_tait_not_equiv (push p)),
+      refine equiv_trans this (equiv_symm $ provable.neg_exists_pnf p.of_tait)
+    end
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.complexity)⟩]}
+
 end subformula
 
 end Tait
 
 namespace subformula
-variables {L μ n}
+variables {L μ m n}
 
-@[simp] def to_Tait : Π {n}, subformula L μ n → Tait.subformula L μ n
-| n verum          := ⊤
+@[simp] def to_tait : Π {n}, subformula L μ n → Tait.subformula L μ n
+| n verum          := Tait.subformula.verum
 | n (relation r v) := Tait.subformula.relation r v
-| n (imply p q)    := p.to_Tait ⟶ q.to_Tait
-| n (neg p)        := ∼p.to_Tait
-| n (fal p)        := ∀'p.to_Tait
+| n (imply p q)    := p.to_tait.imply q.to_tait
+| n (neg p)        := p.to_tait.not
+| n (fal p)        := p.to_tait.fal
 
-@[simp] lemma to_Tait_verum : to_Tait (⊤ : subformula L μ n) = ⊤ := rfl
+@[simp] lemma to_tait_verum : to_tait (⊤ : subformula L μ n) = ⊤ := rfl
+@[simp] lemma to_tait_imply (p q : subformula L μ n) : to_tait (p ⟶ q) = to_tait p ⟶ to_tait q := rfl
+@[simp] lemma to_tait_neg (p : subformula L μ n) : to_tait (∼p) = ∼to_tait p := rfl
+@[simp] lemma to_tait_fal (p : subformula L μ (n + 1)) : to_tait (∀'p) = ∀'to_tait p := rfl
 
-end subformula
+variables (T : bounded_preTheory L m)
 
-namespace Tait
+lemma to_tait_push (p : bounded_subformula L m (n + 1)) : to_tait (push p) = Tait.subformula.push (to_tait p) :=
+by apply ind_succ_on p; intros; simp*
 
-namespace subformula
-variables {L m n}
+open axiomatic_classical_logic' axiomatic_classical_logic
 
-def uniform : bounded_subformula L m n →ₗ subformula L ℕ n := map coe
+lemma to_tait_of_tait_aux : ∀ {m} (p : bounded_formula L m), ∅ ⊢ p.to_tait.of_tait ⟷ p
+| m verum := by simp[top_eq]
+| m (relation r v) := by simp
+| m (imply p q) :=
+    begin
+      simp[imply_eq, Tait.subformula.imply_def],
+      have : ∅ ⊢ ∼p ⊔ q ⟷ p ⟶ q, from equiv_symm impl_iff_or,
+      refine equiv_of_equiv this _ (by simp),
+      refine equiv_or_of_equiv
+      (equiv_symm $ equiv_trans (Tait.subformula.to_tait_not_equiv p.to_tait) (equiv_neg_of_equiv $ to_tait_of_tait_aux p))
+      (equiv_symm $ to_tait_of_tait_aux q),
+    end
+| m (neg p) :=
+    by simp[neg_eq]; refine equiv_trans (Tait.subformula.to_tait_not_equiv p.to_tait) (equiv_neg_of_equiv $ to_tait_of_tait_aux p)
+| m (fal p) := by { simp[fal_eq], refine provable.equiv_forall_of_equiv
+    (by { simpa[←Tait.subformula.of_tait_push, to_tait_push] using to_tait_of_tait_aux (push p) }) }
+using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.complexity)⟩]}
 
-@[simp] lemma uniform_inj (p q : bounded_subformula L m n) :
-  p.uniform = q.uniform ↔ p = q :=
-⟨λ h, map_inj_of_inj coe fin.coe_injective h, λ e, by simp[e]⟩
-
-@[simp] lemma uniform_relation {k} (r : L.pr k) (v : fin k → bounded_subterm L m n) :
-  uniform (relation r v) = relation r (λ i, subterm.uniform (v i)) := by simp[uniform, subterm.uniform]
-
-@[simp] lemma uniform_neg_relation {k} (r : L.pr k) (v : fin k → bounded_subterm L m n) :
-  uniform (neg_relation r v) = neg_relation r (λ i, subterm.uniform (v i)) := by simp[uniform, subterm.uniform]
-
-@[simp] lemma uniform_fal (p : bounded_subformula L m (n + 1)) :
-  uniform (∀'p) = ∀'uniform p := by simp[uniform]; unfold has_univ_quantifier'.univ; simp; refl
-
-@[simp] lemma uniform_ex (p : bounded_subformula L m (n + 1)) :
-  uniform (∃'p) = ∃'uniform p := by simp[uniform]; unfold has_exists_quantifier'.ex; simp; refl
-
-@[simp] lemma uniform_mlift (p : bounded_subformula L m n) : p.mlift.uniform = p.uniform :=
-by simp[mlift, uniform]; congr
-
-@[simp] lemma uniform_cast_le {m₁ m₂ : ℕ} (h : m₁ ≤ m₂) (p : bounded_subformula L m₁ n) :
-  (cast_le h p).uniform = p.uniform :=
-by simp[cast_le, uniform]; congr
-
-@[simp] lemma uniform_to_subterm (p : bounded_subformula L m n) (h) : to_bform p.uniform h = p :=
-by induction p using fol.Tait.subformula.ind_on; simp*
-
-@[simp] lemma to_subterm_uniform (p : subformula L ℕ n) (h : p.arity ≤ m) : (p.to_bform h).uniform = p :=
-by induction p using fol.Tait.subformula.ind_on; simp*
-
-@[simp] lemma subformula_arity (p : bounded_subformula L m n) : p.uniform.arity ≤ m :=
-by induction p using fol.Tait.subformula.ind_on; simp*
+lemma to_tait_of_tait  {T : bounded_preTheory L m} (p : bounded_formula L m) : T ⊢ p.to_tait.of_tait ⟷ p :=
+weakening (by simp) (to_tait_of_tait_aux p)
 
 end subformula
-
-end Tait
 
 end fol

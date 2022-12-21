@@ -9,7 +9,41 @@ variables {L : language.{u}} {m n : ℕ}
 namespace Tait
 
 namespace subformula
-variables {L n}
+variables {L m n}
+
+def uniform : bounded_subformula L m n →ₗ subformula L ℕ n := map coe
+
+@[simp] lemma uniform_inj (p q : bounded_subformula L m n) :
+  p.uniform = q.uniform ↔ p = q :=
+⟨λ h, map_inj_of_inj coe fin.coe_injective h, λ e, by simp[e]⟩
+
+@[simp] lemma uniform_relation {k} (r : L.pr k) (v : fin k → bounded_subterm L m n) :
+  uniform (relation r v) = relation r (λ i, subterm.uniform (v i)) := by simp[uniform, subterm.uniform]
+
+@[simp] lemma uniform_neg_relation {k} (r : L.pr k) (v : fin k → bounded_subterm L m n) :
+  uniform (neg_relation r v) = neg_relation r (λ i, subterm.uniform (v i)) := by simp[uniform, subterm.uniform]
+
+@[simp] lemma uniform_fal (p : bounded_subformula L m (n + 1)) :
+  uniform (∀'p) = ∀'uniform p := by simp[uniform]; unfold has_univ_quantifier'.univ; simp; refl
+
+@[simp] lemma uniform_ex (p : bounded_subformula L m (n + 1)) :
+  uniform (∃'p) = ∃'uniform p := by simp[uniform]; unfold has_exists_quantifier'.ex; simp; refl
+
+@[simp] lemma uniform_mlift (p : bounded_subformula L m n) : p.mlift.uniform = p.uniform :=
+by simp[mlift, uniform]; congr
+
+@[simp] lemma uniform_cast_le {m₁ m₂ : ℕ} (h : m₁ ≤ m₂) (p : bounded_subformula L m₁ n) :
+  (cast_le h p).uniform = p.uniform :=
+by simp[cast_le, uniform]; congr
+
+@[simp] lemma uniform_to_subterm (p : bounded_subformula L m n) (h) : to_bform p.uniform h = p :=
+by induction p using fol.Tait.subformula.ind_on; simp*
+
+@[simp] lemma to_subterm_uniform (p : subformula L ℕ n) (h : p.arity ≤ m) : (p.to_bform h).uniform = p :=
+by induction p using fol.Tait.subformula.ind_on; simp*
+
+@[simp] lemma subformula_arity (p : bounded_subformula L m n) : p.uniform.arity ≤ m :=
+by induction p using fol.Tait.subformula.ind_on; simp*
 
 section encode
 open encodable nat
