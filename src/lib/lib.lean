@@ -551,14 +551,18 @@ notation `⋁` binders `, ` r:(scoped p, finitary.disjunction _ p) := r
 | []        := ⊥
 | (a :: as) := as.disjunction ⊔ a
 
-noncomputable def finset.disjunction {α : Type*} [has_bot α] [has_sup α] (s : finset α) : α := s.to_list.disjunction
+namespace finset
+variables {α : Type*}
 
-section finset_disjunction
-variables {α : Type*} [has_bot α] [has_sup α] (s : finset α)
+noncomputable def disjunction {α : Type*} [has_bot α] [has_sup α] (s : finset α) : α := s.to_list.disjunction
 
-@[simp] lemma finset.disjunction_empty : (∅ : finset α).disjunction = ⊥ := by simp[finset.disjunction]
+noncomputable def conjunction {α : Type*} [has_top α] [has_inf α] (s : finset α) : α := s.to_list.conjunction
 
-end finset_disjunction
+@[simp] lemma disjunction_empty [has_bot α] [has_sup α] : (∅ : finset α).disjunction = ⊥ := by simp[finset.disjunction]
+
+@[simp] lemma conjunction_empty [has_top α] [has_inf α] : (∅ : finset α).conjunction = ⊤ := by simp[finset.conjunction]
+
+end finset
 
 def fintype_sup {ι : Type*} [fintype ι] {α : Type*} [semilattice_sup α] [order_bot α] (f : ι → α) : α :=
   (finset.univ : finset ι).sup f
@@ -796,7 +800,7 @@ by { rcases a; simp[], ext x, simp, exact comm }
 end option
 
 namespace finset
-variables {α : Type*} {β : Type*}
+variables {α : Type*} {β : Type*} {γ : Type*}
 
 theorem image_to_finset_list (l : list α) (f : α → β) :
   l.to_finset.image f = (l.map f).to_finset := ext (by simp)
@@ -804,7 +808,33 @@ theorem image_to_finset_list (l : list α) (f : α → β) :
 theorem image_to_finset_option (o : option α) (f : α → β) :
   o.to_finset.image f = (o.map f).to_finset := ext (by simp)
 
+noncomputable def bind := @sup (finset α) β _ _
+
+lemma mem_bind (x : β) (s : finset α) (f : α → finset β) : x ∈ s.bind f ↔ ∃ y ∈ s, x ∈ f y :=
+by simp[bind, finset.mem_sup]
+
+lemma image_bind (s : finset α) (f : α → finset β) (g : β → γ) : (s.bind f).image g = s.bind (λ x, (f x).image g) :=
+by { ext x, simp[mem_bind], split,
+  { rintros ⟨y, ⟨a, ha, hy⟩, rfl⟩, refine ⟨a, ha, y, hy, rfl⟩ },
+  { rintros ⟨x, hx, a, ha, rfl⟩, refine ⟨a, ⟨x, hx, ha⟩, rfl⟩ } }
+
 end finset
+
+section heyting_algebra 
+variables {α : Type u} {x : α} [heyting_algebra  α] 
+
+@[simp] lemma compl_finset_sup {ι : Type*} {s : finset ι} {f : ι → α} : (s.sup f)ᶜ = s.inf (compl ∘ f) :=
+by induction s using finset.induction with i s hs IH; simp*
+
+end heyting_algebra 
+
+section boolean_algebra
+variables {α : Type u} {x : α} [boolean_algebra  α] 
+
+@[simp] lemma compl_finset_inf {ι : Type*} {s : finset ι} {f : ι → α} : (s.inf f)ᶜ = s.sup (compl ∘ f) :=
+by induction s using finset.induction with i s hs IH; simp[*, compl_inf]
+
+end boolean_algebra
 
 section classical
 attribute [instance, priority 0] classical.prop_decidable
