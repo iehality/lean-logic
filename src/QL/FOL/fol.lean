@@ -984,6 +984,9 @@ instance : has_coe (bounded_preTheory L m) (bounded_preTheory L (m + 1)) := ⟨m
 
 variables {T U}
 
+@[simp] lemma mlift_empty : mlift (∅ : bounded_preTheory L m) = ∅ :=
+by simp[bounded_preTheory.mlift]
+
 @[simp] lemma mlift_insert (p : bounded_formula L m) : mlift (insert p T) = insert p.mlift (mlift T) :=
 by simp[mlift, set.image_insert_eq]
 

@@ -42,6 +42,20 @@ def derivable {m} (Δ : finset (bounded_formula L m)) : Prop := nonempty (deriva
 
 prefix `⊢ᵀ `:45 := derivable
 
+@[reducible] def preTheory (L : language.{u}) (μ) := logic.Theory (subformula L μ 0)
+
+@[reducible] def bounded_preTheory (L : language.{u}) (m : ℕ) := logic.Theory (subformula L (fin m) 0)
+
+@[reducible] def Theory (L : language.{u}) := logic.Theory (subformula L (fin 0) 0)
+
+def provable (T : bounded_preTheory L m) (p : bounded_formula L m) : Prop :=
+∃ Δ : finset (bounded_formula L m), ↑Δ ⊆ subformula.not '' T ∧ ⊢ᵀ insert p Δ
+
+instance : has_turnstile (bounded_formula L m) := ⟨provable⟩
+
+def provable_def {T : set (bounded_formula L m)} {p : bounded_formula L m} :
+  T ⊢ p ↔ ∃ Δ : finset (bounded_formula L m), ↑Δ ⊆ subformula.not '' T ∧ ⊢ᵀ insert p Δ := by refl
+
 namespace derivable
 variables {m} {Δ Γ : finset (bounded_formula L m)}
 
@@ -126,44 +140,67 @@ by { have hp' : ⊢ᵀ insert p (Δ ∪ Γ), from derivable.weakening hp (by int
      have hq' : ⊢ᵀ insert q (Δ ∪ Γ), from derivable.weakening hq (by intros x; simp; tauto),
      exact derivable.and hp' hq' }
 
-end derivable
-
 section
-variables {Δ : finset (bounded_formula L m)}
-
-
+variables {Δ}
 
 open axiomatic_classical_logic' axiomatic_classical_logic
 
-
-
-lemma provable_of_derivation : derivation Δ → ∅ ⊢ (Δ.image to_fol).disjunction := λ h,
+lemma provable_of_derivation (h : ⊢ᵀ Δ) : ∅ ⊢ (Δ.image of_tait).disjunction :=
 begin
-  induction h,
-  case AxL : m Δ k r v h nh
-  { suffices : ∅ ⊢ fol.subformula.relation r v ⊔ ∼fol.subformula.relation r v ⟶ (finset.image to_fol Δ).disjunction,
+  apply derivable.rec_on h,
+  { intros m Δ k r v h nh,
+    suffices : ∅ ⊢ fol.subformula.relation r v ⊔ ∼fol.subformula.relation r v ⟶ (finset.image of_tait Δ).disjunction,
     from this ⨀ excluded_middle,
     refine or_imply _ _ _ ⨀ _ ⨀ _,
     { refine imply_fdisj (by { simp, refine ⟨_, h, by simp⟩ }) },
     { refine imply_fdisj (by { simp, refine ⟨_, nh, by simp⟩ }) } },
-  case or_left : m Δ p q b IH
-  { refine fdisj_imply_of _ ⨀ IH,
-    { simp, split,
-      { refine imply_trans (imply_or_left p.to_fol q.to_fol) (imply_fdisj (by simp)) },
-      { intros p hp, refine (imply_fdisj
-          (finset.mem_insert_of_mem (finset.mem_image_of_mem to_fol hp))) } } },
-  case or_right : m Δ p q b IH
-  { refine fdisj_imply_of _ ⨀ IH,
-    { simp, split,
-      { refine imply_trans (imply_or_right p.to_fol q.to_fol) (imply_fdisj (by simp)) },
-      { intros p hp, refine (imply_fdisj
-          (finset.mem_insert_of_mem (finset.mem_image_of_mem to_fol hp))) } } },
-  sorry
+  { intros m Δ hΔ, exact (imply_fdisj
+      (by { show of_tait ⊤ ∈ Δ.image of_tait, exact finset.mem_image_of_mem of_tait hΔ })) ⨀ (by simp) },
+  { intros m Δ p q b IH, simp[fdisj_insert] at IH ⊢, exact imply_or_left _ _ ⨀ IH },
+  { intros m Δ p q b IH, simp[fdisj_insert] at IH ⊢, exact imply_or_right _ _ ⨀ IH },
+  { intros m Δ p q _ _ IH₁ IH₂, simp[fdisj_insert] at IH₁ IH₂ ⊢,
+    exact ⟨IH₁, IH₂⟩ },
+  { intros m Δ p b IH, simp[fdisj_insert] at IH ⊢,
+    have e : has_negation.neg '' (of_tait '' (↑(finset_mlift Δ) : set (bounded_formula L (m + 1)))) =
+      𝗟' (has_negation.neg '' (of_tait '' ↑Δ)),
+    { ext q, simp[finset_mlift, bounded_preTheory.mlift, of_tait_mlift] },
+    have : 𝗟'(has_negation.neg '' (of_tait '' ↑Δ)) ⊢ of_tait (push p),
+    { simpa[←e] using IH },
+    by simpa[←of_tait_pull] using provable.generalize this },
+  { intros m Δ t p b IH, simp[fdisj_insert, of_tait_subst] at IH ⊢,
+    refine provable.use t IH }
 end
 
 end
 
+end derivable
 
 end Tait
+
+open subformula
+
+namespace provable
+open axiomatic_classical_logic' axiomatic_classical_logic
+
+def of_Tait_provable {T : bounded_preTheory L m} {p : bounded_formula L m} :
+  to_tait '' T ⊢ p.to_tait → T ⊢ p :=
+begin
+  simp[Tait.provable_def],
+  intros Δ ss b,
+  have le : has_negation.neg '' (Tait.subformula.of_tait '' ↑Δ) ≤ T,
+  from @le_of _ _ (has_negation.neg '' (Tait.subformula.of_tait '' ↑Δ)) T
+    (by { simp, intros p hp,
+      have := ss (by simpa using hp), simp at this, rcases this with ⟨q, hq, rfl⟩,
+      have l₁ : T ⊢ ∼Tait.subformula.of_tait (∼q.to_tait) ⟷ ∼∼q.to_tait.of_tait,
+      from equiv_neg_of_equiv (Tait.subformula.to_tait_not_equiv q.to_tait),
+      have l₂ : T ⊢ ∼∼q.to_tait.of_tait ⟷ q, from equiv_trans (by simp) (to_tait_of_tait q),
+      refine of_equiv (by_axiom hq) (equiv_symm $ equiv_trans l₁ l₂) }),
+  have : has_negation.neg '' (Tait.subformula.of_tait '' ↑Δ) ⊢ (to_tait p).of_tait, 
+  by simpa[fdisj_insert] using b.provable_of_derivation,
+  have := le this,
+  exact of_equiv this (to_tait_of_tait p)
+end
+
+end provable
 
 end fol

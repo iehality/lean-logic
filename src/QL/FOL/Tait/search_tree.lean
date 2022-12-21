@@ -617,9 +617,9 @@ end non_well_founded
 
 end search_tree
 
-variables (T : set (sentence L)) (Δ : finset (sentence L))
+variables (T : Theory L) (Δ : finset (sentence L))
 
-theorem completeness (h : ∀ S : Structure L, S ⊧ T → ∃ σ ∈ Δ, S ⊧ σ) :
+theorem completeness' (h : ∀ S : Structure L, S ⊧ T → ∃ σ ∈ Δ, S ⊧ σ) :
   ∃ Γ : finset (sentence L), ↑Γ ⊆ not '' T ∧ ⊢ᵀ Δ ∪ Γ :=
 begin
   by_contradiction A, simp at A,
@@ -636,6 +636,11 @@ begin
     have : ¬∃ σ ∈ Δ, search_tree.model wf ⊧ σ, by simpa using search_tree.semantic_main_lemma'_root (not '' T) Δ wf,
     contradiction }
 end
+
+variables {T} {σ : sentence L}
+
+theorem completeness : T ⊧ σ → T ⊢ σ := λ h,
+completeness' T (singleton σ) (by { simp, intros S hS, exact h hS })
 
 end Tait
 

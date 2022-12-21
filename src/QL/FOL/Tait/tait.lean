@@ -660,38 +660,41 @@ by { simp[←not_eq], induction p; simp[*],
 
 end nat
 
-variables (T : bounded_preTheory L m)
+variables {T : bounded_preTheory L m} {m}
 
 open axiomatic_classical_logic' axiomatic_classical_logic
 
-lemma to_tait_not_equiv : ∀ {m} (p : Tait.bounded_formula L m), ∅ ⊢ (∼p).of_tait ⟷ ∼p.of_tait
+lemma to_tait_not_equiv_aux : ∀ {m} (p : Tait.bounded_formula L m), ∅ ⊢ (∼p).of_tait ⟷ ∼p.of_tait
 | m verum := by simp[verum_eq]
 | m falsum := by apply equiv_symm; simp[falsum_eq]
 | m (relation r v) := by simp
 | m (neg_relation r v) := by simp
 | m (and p q) := by { simp[and_eq],
     have : ∅ ⊢ (∼p).of_tait ⊔ (∼q).of_tait ⟷ ∼p.of_tait ⊔ ∼q.of_tait,
-    from equiv_or_of_equiv (to_tait_not_equiv p) (to_tait_not_equiv q),
+    from equiv_or_of_equiv (to_tait_not_equiv_aux p) (to_tait_not_equiv_aux q),
     refine equiv_trans this (equiv_symm (neg_and_equiv_or_neg _ _)) }
 | m (or p q) := by { simp[or_eq],
     have : ∅ ⊢ (∼p).of_tait ⊓ (∼q).of_tait ⟷ ∼p.of_tait ⊓ ∼q.of_tait,
-    from equiv_and_of_equiv (to_tait_not_equiv p) (to_tait_not_equiv q),
+    from equiv_and_of_equiv (to_tait_not_equiv_aux p) (to_tait_not_equiv_aux q),
     refine equiv_trans this (equiv_symm (neg_or_equiv_and_neg _ _)) }
 | m (fal p) :=
     begin
       simp[fal_eq],
       have : ∅ ⊢ ∃'(∼p).of_tait ⟷ ∃'∼p.of_tait,
-      from provable.equiv_exists_of_equiv (by simpa[←of_tait_push] using to_tait_not_equiv (push p)),
+      from provable.equiv_exists_of_equiv (by simpa[←of_tait_push] using to_tait_not_equiv_aux (push p)),
       refine equiv_trans this (equiv_symm $ provable.neg_forall_pnf p.of_tait)
     end
 | m (ex p) :=
     begin
       simp[ex_eq],
       have : ∅ ⊢ ∀'(∼p).of_tait ⟷ ∀'∼p.of_tait,
-      from provable.equiv_forall_of_equiv (by simpa[←of_tait_push] using to_tait_not_equiv (push p)),
+      from provable.equiv_forall_of_equiv (by simpa[←of_tait_push] using to_tait_not_equiv_aux (push p)),
       refine equiv_trans this (equiv_symm $ provable.neg_exists_pnf p.of_tait)
     end
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.complexity)⟩]}
+
+lemma to_tait_not_equiv (p : Tait.bounded_formula L m) : T ⊢ (∼p).of_tait ⟷ ∼p.of_tait :=
+weakening (by simp) (to_tait_not_equiv_aux p)
 
 end subformula
 
@@ -728,11 +731,11 @@ lemma to_tait_of_tait_aux : ∀ {m} (p : bounded_formula L m), ∅ ⊢ p.to_tait
       have : ∅ ⊢ ∼p ⊔ q ⟷ p ⟶ q, from equiv_symm impl_iff_or,
       refine equiv_of_equiv this _ (by simp),
       refine equiv_or_of_equiv
-      (equiv_symm $ equiv_trans (Tait.subformula.to_tait_not_equiv p.to_tait) (equiv_neg_of_equiv $ to_tait_of_tait_aux p))
+      (equiv_symm $ equiv_trans (Tait.subformula.to_tait_not_equiv_aux p.to_tait) (equiv_neg_of_equiv $ to_tait_of_tait_aux p))
       (equiv_symm $ to_tait_of_tait_aux q),
     end
 | m (neg p) :=
-    by simp[neg_eq]; refine equiv_trans (Tait.subformula.to_tait_not_equiv p.to_tait) (equiv_neg_of_equiv $ to_tait_of_tait_aux p)
+    by simp[neg_eq]; refine equiv_trans (Tait.subformula.to_tait_not_equiv_aux p.to_tait) (equiv_neg_of_equiv $ to_tait_of_tait_aux p)
 | m (fal p) := by { simp[fal_eq], refine provable.equiv_forall_of_equiv
     (by { simpa[←Tait.subformula.of_tait_push, to_tait_push] using to_tait_of_tait_aux (push p) }) }
 using_well_founded {rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ x, x.2.complexity)⟩]}

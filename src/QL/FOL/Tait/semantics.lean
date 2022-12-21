@@ -84,8 +84,31 @@ lemma sentence_models_def {S : Structure L} {σ : sentence L} : S ⊧ σ ↔ S �
 --  S ⊧ ∼σ ↔ ¬S ⊧ σ := by simp[sentence_models_def]
 
 @[simp] lemma models_coe {S : Structure L} {σ : sentence L} {e : μ → S} : S ⊧ᵀ[e] ↑σ ↔ S ⊧ σ :=
-by { simp[subformula.sentence_coe_def, sentence_models_def, subformula.val, subformula.subval_map,
+by { rw [subformula.sentence_coe_def], 
+     simp[sentence_models_def, -subformula.map_sentence_coe, subformula.val, subformula.subval_map,
        show e ∘ fin.nil = fin.nil, by ext x; exact fin.nil x] }
+
+instance : has_double_turnstile (Tait.preTheory L μ) (formula L μ) := ⟨logic.semantics.consequence (Structure L)⟩
+
+lemma consequence_def {T : preTheory L μ} {p : formula L μ} :
+  T ⊧ p ↔ (∀ S : Structure L, S ⊧ T → S ⊧ p) := by refl
+
+namespace subformula
+variables (S) {Φ : μ → S} {e : fin n → S}
+
+@[simp] lemma subval_to_tait {p : fol.subformula L μ n} : subval S Φ e p.to_tait ↔ fol.subformula.subval S Φ e p :=
+by induction p using fol.subformula.ind_on; simp*
+
+@[simp] lemma subval_of_tait {p : Tait.subformula L μ n} : fol.subformula.subval S Φ e p.of_tait ↔ subval S Φ e p :=
+by induction p using fol.Tait.subformula.ind_on; simp*
+
+end subformula
+
+@[simp] lemma models_to_tait {p : fol.formula L μ} : S ⊧ p.to_tait ↔ S ⊧ p :=
+by simp[models_def, fol.models_def]
+
+@[simp] lemma models_of_tait {p : Tait.formula L μ} : S ⊧ p.of_tait ↔ S ⊧ p :=
+by simp[models_def, fol.models_def]
 
 end Tait
 

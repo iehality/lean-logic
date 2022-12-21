@@ -211,13 +211,13 @@ end
 instance : has_finite_character (bounded_formula L m) :=
 finite_character_of_finite_provable (bounded_formula L m) (λ T p, finite_character_aux)
 
-def extend_of (h : ∀ p ∈ T, U ⊢ p) : extend T U :=
-⟨begin
+def le_of (h : ∀ p ∈ T, U ⊢ p) : T ≤ U :=
+begin
   intros p b,
   rcases finite_character_aux b with ⟨P, hP, b⟩,
   have : U ⊢ P.conjunction, from list_conjunction_provable (λ p hp, h _ (hP p hp)),
   exact of_empty_axiom _ b ⨀ this
-end⟩
+end
 
 lemma exists_of_subst (p : bounded_subformula L m 1) (t) : T ⊢ subst t p ⟶ ∃'p :=
 contrapose.mp (imply_of_equiv
@@ -278,10 +278,10 @@ by { have : T ⊢ ∀'(p ⟶ 𝗗 q), by simpa using generalize h,
 def Nonempty : bounded_preTheory L m := { ∃'⊤, }
 
 instance preTheory_Nonempty (T : bounded_preTheory L (m + 1)) : Nonempty.extend T :=
-extend_of (by simp[Nonempty]; refine use &0 (by simp))
+⟨le_of (by simp[Nonempty]; refine use &0 (by simp))⟩
 
 instance preTheory_of_inhabited [inhabited (L.fn 0)] : Nonempty.extend T :=
-extend_of (by simp[Nonempty]; refine use default (by simp))
+⟨le_of (by simp[Nonempty]; refine use default (by simp))⟩
 
 @[simp] lemma non_empty [Nonempty.extend T] : T ⊢ ∃'⊤ :=
 logic.Theory.extend.by_axiom Nonempty T (by simp[Nonempty])
