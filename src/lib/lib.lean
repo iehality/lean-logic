@@ -207,6 +207,9 @@ funext (λ i, by refine last_cases _ _ i; simp)
 
 protected def nil : fin 0 → C := fin_zero_elim
 
+lemma eq_nil {α : fin 0 → Sort*} (f : Π x : fin 0, α x) : f = fin_zero_elim :=
+by ext x; exact x.nil
+
 lemma concat_zero {α} {x : α} : x *> fin.nil = fin.nil <* x :=
 by funext; simp
 

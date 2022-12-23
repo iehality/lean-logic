@@ -141,8 +141,19 @@ end bounded_subformula
 end subformula
 
 namespace nonempty_Structure
+variables (M : nonempty_Structure L)
 
-lemma coe_def (A : nonempty_Structure L) : (A : Structure L) = A.to_Structure := rfl
+lemma coe_def : (M : Structure L) = M.to_Structure := rfl
+
+@[simp] lemma fn_coe : @Structure.fn L (M : Structure L) = @Structure.fn L M.to_Structure := rfl
+
+@[simp] lemma pr_coe : @Structure.pr L (M : Structure L) = @Structure.pr L M.to_Structure := rfl
+
+instance : inhabited (nonempty_Structure L) :=
+⟨{ dom := punit,
+   fn := λ k f v, punit.star,
+   pr := λ k r v, false,
+   dom_inhabited := punit.inhabited }⟩
 
 end nonempty_Structure
 
@@ -172,6 +183,9 @@ variables (S : Structure L) [inhabited S]
 @[simp] lemma coe_nonempty : (S.nonempty : Type*) = S := rfl
 
 @[simp] lemma to_Structure_nonempty : (S.nonempty : Structure L) = S := by simp[nonempty, nonempty_Structure.coe_def, eta]
+
+instance : inhabited (Structure L) :=
+⟨(default : nonempty_Structure L)⟩
 
 end Structure
 
@@ -213,12 +227,34 @@ instance : semantics (formula L μ) (Structure L) := ⟨models⟩
 
 instance : semantics (formula L μ) (nonempty_Structure L) := ⟨λ S p, (S : Structure L) ⊧ p⟩
 
-lemma models_def {S : Structure L} {p : formula L μ} : S ⊧ p ↔ (∀ e, S ⊧[e] p) := by refl
+namespace Structure
 
-lemma nonempty_models_def {S : nonempty_Structure L} {p : formula L μ} :
-  S ⊧ p ↔ (∀ e, ↑S ⊧[e] p) := by refl
+variables {S : Structure L} {σ τ : sentence L}
 
-lemma sentence_models_def {S : Structure L} {σ : sentence L} : S ⊧ σ ↔ S ⊧[fin.nil] σ := by simp[models_def, fin.nil]
+lemma models_def {p : formula L μ} : S ⊧ p ↔ (∀ e, S ⊧[e] p) := by refl
+
+lemma sentence_models_def :
+  S ⊧ σ ↔ S ⊧[fin.nil] σ := by simp[models_def, fin.nil]
+
+@[simp] lemma formula_verum : S ⊧ (⊤ : formula L μ) := by simp[models_def]
+
+@[simp] lemma sentence_falsum : ¬S ⊧ (⊥ : sentence L) := by simp[models_def]
+
+@[simp] lemma sentence_relation {k} (r : L.pr k) (v : fin k → bounded_subterm L 0 0) :
+  S ⊧ (relation r v) ↔ S.pr r (subterm.val S fin.nil fin.nil ∘ v) := by simp[sentence_models_def]
+
+@[simp] lemma sentence_imply : S ⊧ σ ⟶ τ ↔ (S ⊧ σ → S ⊧ τ) := by simp[sentence_models_def]
+
+@[simp] lemma sentence_neg : S ⊧ ∼σ ↔ ¬S ⊧ σ := by simp[sentence_models_def]
+
+@[simp] lemma sentence_and : S ⊧ σ ⊓ τ ↔ S ⊧ σ ∧ S ⊧ τ := by simp[sentence_models_def]
+
+@[simp] lemma sentence_or : S ⊧ σ ⊔ τ ↔ S ⊧ σ ∨ S ⊧ τ := by simp[sentence_models_def]
+
+@[simp] lemma sentence_equiv : S ⊧ σ ⟷ τ ↔ (S ⊧ σ ↔ S ⊧ τ) := by simp[sentence_models_def]
+
+instance : semantics.nontrivial (sentence L) (Structure L) :=
+⟨by simp[models_def], by simp[models_def]⟩
 
 abbreviation valid (p : formula L μ) : Prop := semantics.valid (Structure L) p
 
@@ -230,14 +266,10 @@ lemma satisfiable_def (p : formula L μ) : satisfiable p ↔ ∃ S : Structure L
 
 abbreviation Satisfiable (T : preTheory L μ) : Prop := semantics.Satisfiable (Structure L) T
 
-lemma Satisfiable_def (T : preTheory L μ) : Satisfiable T ↔ ∃ S : Structure L, S ⊧ T := by refl
+lemma Satisfiable_def (T : preTheory L μ) : Satisfiable T ↔ ∃ S: Structure L, S ⊧ T := by refl
 
-namespace subformula
-variables {S : Structure L} {M : nonempty_Structure L}
-
-lemma coe_models_iff (p : formula L μ) : (M : Structure L) ⊧ p ↔ M ⊧ p := by refl
-
-lemma nonempty_models_iff [inhabited S] (p : formula L μ) : S.nonempty ⊧ p ↔ S ⊧ p := by simp[←coe_models_iff]
+@[simp] lemma sentence_not_valid_iff_satisfiable (σ : sentence L) : ¬valid σ ↔ satisfiable (∼σ) :=
+by simp[valid_def, satisfiable_def]
 
 @[simp] lemma models_mlift [inhabited S] {m} {p : bounded_formula L m} : S ⊧ p.mlift ↔ S ⊧ p :=
 by{ simp[models_def], split,
@@ -246,43 +278,73 @@ by{ simp[models_def], split,
       simpa using this },
     { intros h e, rw ←fin.right_concat_eq e, simpa using h (e ∘ fin.cast_succ)} }
 
-@[simp] lemma nonempty_models_mlift {m} {p : bounded_formula L m} : M ⊧ p.mlift ↔ M ⊧ p :=
-by simp[←coe_models_iff]
+end Structure
 
-variables {S} {σ τ : sentence L}
+namespace nonempty_Structure
 
-@[simp] lemma sentence_models_verum : S ⊧ (⊤ : sentence L) := by simp[sentence_models_def]
+variables {M : nonempty_Structure L} {σ τ : sentence L} {m : ℕ} {T : bounded_preTheory L m}
 
-@[simp] lemma sentence_models_relation {k} (r : L.pr k) (v : fin k → bounded_subterm L 0 0) :
-  S ⊧ (relation r v) ↔ S.pr r (subterm.val S fin.nil fin.nil ∘ v) := by simp[sentence_models_def]
+lemma models_def {p : formula L μ} :
+  M ⊧ p ↔ (∀ e, ↑M ⊧[e] p) := by refl
 
-@[simp] lemma sentence_models_imply : S ⊧ σ ⟶ τ ↔ (S ⊧ σ → S ⊧ τ) := by simp[sentence_models_def]
+lemma sentence_models_def {σ : sentence L} :
+  M ⊧ σ ↔ ↑M ⊧[fin.nil] σ := by simp[models_def, fin.nil]
 
-@[simp] lemma sentence_models_neg : S ⊧ ∼σ ↔ ¬S ⊧ σ := by simp[sentence_models_def]
+@[simp] lemma formula_verum : M ⊧ (⊤ : formula L μ) := by simp[models_def]
 
-@[simp] lemma sentence_models_and : S ⊧ σ ⊓ τ ↔ S ⊧ σ ∧ S ⊧ τ := by simp[sentence_models_def]
+@[simp] lemma formula_falsum : ¬M ⊧ (⊥ : formula L μ) := by simp[models_def]
 
-@[simp] lemma sentence_models_or : S ⊧ σ ⊔ τ ↔ S ⊧ σ ∨ S ⊧ τ := by simp[sentence_models_def]
+@[simp] lemma sentence_relation {k} {r : L.pr k} {v : fin k → bounded_subterm L 0 0} :
+  M ⊧ (relation r v) ↔ M.pr r (subterm.val M fin.nil fin.nil ∘ v) := by simp[sentence_models_def]
 
-@[simp] lemma sentence_models_iff : S ⊧ σ ⟷ τ ↔ (S ⊧ σ ↔ S ⊧ τ) := by simp[sentence_models_def]
+@[simp] lemma sentence_imply : M ⊧ σ ⟶ τ ↔ (M ⊧ σ → M ⊧ τ) := by simp[sentence_models_def]
+
+@[simp] lemma sentence_neg : M ⊧ ∼σ ↔ ¬M ⊧ σ := by simp[sentence_models_def]
+
+@[simp] lemma sentence_and : M ⊧ σ ⊓ τ ↔ M ⊧ σ ∧ M ⊧ τ := by simp[sentence_models_def]
+
+@[simp] lemma sentence_or : M ⊧ σ ⊔ τ ↔ M ⊧ σ ∨ M ⊧ τ := by simp[sentence_models_def]
+
+@[simp] lemma sentence_equiv : M ⊧ σ ⟷ τ ↔ (M ⊧ σ ↔ M ⊧ τ) := by simp[sentence_models_def]
+
+instance : semantics.nontrivial (formula L μ) (nonempty_Structure L) :=
+⟨by simp[models_def], by simp[models_def]⟩
+
+abbreviation valid (p : formula L μ) : Prop := semantics.valid (nonempty_Structure L) p
+
+abbreviation satisfiable (p : formula L μ) : Prop := semantics.satisfiable (nonempty_Structure L) p
+
+lemma valid_def (p : formula L μ) : valid p ↔ ∀ M : nonempty_Structure L, M ⊧ p := by refl
+
+lemma satisfiable_def (p : formula L μ) : satisfiable p ↔ ∃ M : nonempty_Structure L, M ⊧ p := by refl
+
+abbreviation Satisfiable (T : preTheory L μ) : Prop := semantics.Satisfiable (nonempty_Structure L) T
+
+lemma Satisfiable_def (T : preTheory L μ) : Satisfiable T ↔ ∃ M : nonempty_Structure L, M ⊧ T := by refl
 
 @[simp] lemma sentence_not_valid_iff_satisfiable (σ : sentence L) : ¬valid σ ↔ satisfiable (∼σ) :=
 by simp[valid_def, satisfiable_def]
 
-instance : semantics.nontrivial (sentence L) (Structure L) :=
-⟨by simp[models_def], by simp[models_def]⟩
+lemma coe_models_iff (p : formula L μ) : (M : Structure L) ⊧ p ↔ M ⊧ p := by refl
 
-end subformula
-
-namespace bounded_preTheory
-open subformula
-variables {S : Structure L} {M : nonempty_Structure L} {m : ℕ} {T : bounded_preTheory L m}
+@[simp] lemma models_mlift {m} {p : bounded_formula L m} : M ⊧ p.mlift ↔ M ⊧ p :=
+by simp[←coe_models_iff]
 
 lemma coe_models_Theory_iff (T : preTheory L μ) : (M : Structure L) ⊧ T ↔ M ⊧ T := by refl
 
-lemma nonempty_models_Theory_iff [inhabited S] (T : preTheory L μ) : S.nonempty ⊧ T ↔ S ⊧ T := by simp[←coe_models_Theory_iff]
+end nonempty_Structure
 
-@[simp] lemma models_mlift [inhabited S] : S ⊧ T.mlift ↔ S ⊧ T :=
+namespace Structure
+open bounded_preTheory
+variables {S : Structure L} {σ τ : sentence L} {m : ℕ} {T : bounded_preTheory L m}
+
+lemma nonempty_models_iff [inhabited S] (p : formula L μ) : S.nonempty ⊧ p ↔ S ⊧ p :=
+by simp[←nonempty_Structure.coe_models_iff]
+
+lemma nonempty_models_Theory_iff [inhabited S] (T : preTheory L μ) : S.nonempty ⊧ T ↔ S ⊧ T :=
+by simp[←nonempty_Structure.coe_models_Theory_iff]
+
+@[simp] lemma models_Theory_mlift [inhabited S] : S ⊧ T.mlift ↔ S ⊧ T :=
 ⟨by { intros h p hp,
       have : S ⊧ p.mlift, from @h p.mlift (by simpa using hp),
       exact models_mlift.mp this },
@@ -290,22 +352,28 @@ lemma nonempty_models_Theory_iff [inhabited S] (T : preTheory L μ) : S.nonempty
       rcases mem_mlift_iff.mp hp with ⟨q, hq, rfl⟩,
       exact models_mlift.mpr (h hq) }⟩
 
-@[simp] lemma nonempty_models_mlift : M ⊧ T.mlift ↔ M ⊧ T :=
-by simp[←coe_models_Theory_iff]
-
-end bounded_preTheory
-
-instance : has_double_turnstile (preTheory L μ) (formula L μ) := ⟨semantics.consequence (nonempty_Structure L)⟩
-
-lemma nonempty_consequence_def {T : preTheory L μ} {p : formula L μ} :
-  T ⊧ p ↔ (∀ M : nonempty_Structure L, M ⊧ T → M ⊧ p) := by refl
-
 def consequence : preTheory L μ → formula L μ → Prop := semantics.consequence (Structure L)
 
 infix ` ⊧₀ ` :55 := consequence
 
 lemma consequence_def {T : preTheory L μ} {p : formula L μ} :
   T ⊧₀ p ↔ (∀ S : Structure L, S ⊧ T → S ⊧ p) := by refl
+
+end Structure
+
+namespace nonempty_Structure
+open bounded_preTheory
+variables {M : nonempty_Structure L} {σ τ : sentence L} {m : ℕ} {T : bounded_preTheory L m}
+
+@[simp] lemma models_Theory_mlift : M ⊧ T.mlift ↔ M ⊧ T :=
+by simp[←coe_models_Theory_iff]
+
+instance : has_double_turnstile (preTheory L μ) (formula L μ) := ⟨semantics.consequence (nonempty_Structure L)⟩
+
+lemma consequence_def {T : preTheory L μ} {p : formula L μ} :
+  T ⊧ p ↔ (∀ M : nonempty_Structure L, M ⊧ T → M ⊧ p) := by refl
+
+end nonempty_Structure
 
 variables {S : Structure L}
 open subformula

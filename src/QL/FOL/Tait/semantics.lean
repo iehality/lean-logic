@@ -7,7 +7,6 @@ open_locale logic_symbol aclogic
 variables {L : language.{u}} {μ : Type v} {μ₁ : Type*} {μ₂ : Type*} {m n : ℕ} {S : Structure L}
 
 namespace Tait
-
 namespace subformula
 
 variables (S) {n} {Φ : μ → S} {e : fin n → S}
@@ -105,10 +104,10 @@ by induction p using fol.Tait.subformula.ind_on; simp*
 end subformula
 
 @[simp] lemma models_to_tait {p : fol.formula L μ} : S ⊧ p.to_tait ↔ S ⊧ p :=
-by simp[models_def, fol.models_def]
+by simp[models_def, fol.Structure.models_def]
 
 @[simp] lemma models_of_tait {p : Tait.formula L μ} : S ⊧ p.of_tait ↔ S ⊧ p :=
-by simp[models_def, fol.models_def]
+by simp[models_def, fol.Structure.models_def]
 
 end Tait
 
