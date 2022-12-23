@@ -80,7 +80,7 @@ instance : has_double_turnstile 𝓢 (Theory F) := ⟨λ S T, ∀ ⦃p⦄, p ∈
 
 variables {S}
 
-def Models_def {T : Theory F} : S ⊧ T ↔ ∀ p ∈ T, S ⊧ p := by refl
+lemma Models_def {T : Theory F} : S ⊧ T ↔ ∀ p ∈ T, S ⊧ p := by refl
 
 variables (𝓢)
 
@@ -116,6 +116,14 @@ by simp[Models_def]; refine ⟨λ h i p, h p i, λ h p i, h i p⟩
 lemma Satisfiable_of_ss {T U : Theory F} (ss : T ⊆ U) : Satisfiable 𝓢 U → Satisfiable 𝓢 T :=
 by rintros ⟨S, hS⟩; refine ⟨S, by { intros p hp,refine hS (ss hp) }⟩
 
+variables (F 𝓢)
+
+class nontrivial :=
+(verum : ∀ S : 𝓢, S ⊧ (⊤ : F))
+(falsum : ∀ S : 𝓢, ¬S ⊧ (⊥ : F))
+
+attribute [simp] nontrivial.verum nontrivial.falsum
+
 end semantics
 
 variables (F) [axiomatic_classical_logic F]
@@ -126,15 +134,14 @@ class sound (𝓢 : Type*) [semantics F 𝓢] :=
 namespace sound
 variables {F} {𝓢 : Type*} [semantics F 𝓢] [sound F 𝓢] {S : 𝓢}
 
-/-
-theorem consistent_of_Satisfiable {T : Theory F} : semantics.Satisfiable 𝓢 T → Theory.consistent T :=
+
+theorem consistent_of_Satisfiable [semantics.nontrivial F 𝓢] {T : Theory F} : semantics.Satisfiable 𝓢 T → Theory.consistent T :=
 begin
-  rintros ⟨S, hS⟩, revert hS, contrapose,
-  simp[Theory.consistent], intros p hp₁ hp₂ hyp,
-  have : T ⊢ (⊥ : F), from axiomatic_classical_logic'.explosion hp₁ hp₂,
-  exact semantics.models_falsum S (soundness this hyp)
+  rintros ⟨S, hS⟩,
+  by_contradiction A,
+  have : T ⊢ ⊥, from Theory.not_consistent_iff_bot.mp A,
+  exact semantics.nontrivial.falsum S (soundness this hS)
 end
--/
 
 variables (S)
 
@@ -152,13 +159,12 @@ variables {F} {𝓢 : Type*} [semantics F 𝓢] [complete F 𝓢] {S : 𝓢}
 theorem completeness {T : Theory F} {p} : T ⊢ p ↔ semantics.consequence 𝓢 T p :=
 ⟨sound.soundness, completeness'⟩
 
-/-
-theorem consistent_iff_Satisfiable {T : Theory F} : Theory.consistent T ↔ semantics.Satisfiable 𝓢 T :=
+theorem consistent_iff_Satisfiable [semantics.nontrivial F 𝓢] {T : Theory F} : Theory.consistent T ↔ semantics.Satisfiable 𝓢 T :=
 ⟨by { contrapose, intros h,
   have : semantics.consequence 𝓢 T ⊥, { intros S hS, exfalso, exact h ⟨S, hS⟩ },
   have : T ⊢ ⊥, from completeness.mpr this,
   exact Theory.not_consistent_iff_bot.mpr this }, sound.consistent_of_Satisfiable⟩
--/
+
 end complete
 
 end logic

@@ -35,7 +35,13 @@ end formula
 
 open formula
 
-instance : semantics (formula A) (Structure A) := ⟨λ S p, val S p, by simp, by simp⟩
+instance : semantics (formula A) (Structure A) := ⟨λ S p, val S p⟩
+
+lemma models_def (S : Structure A) (p : formula A) : S ⊧ p ↔ formula.val S p :=
+by refl
+
+instance : semantics.nontrivial (formula A) (Structure A) :=
+⟨by simp[models_def], by simp[models_def]⟩
 
 abbreviation tautology (p : formula A) : Prop := semantics.valid (Structure A) p
 
@@ -45,9 +51,6 @@ abbreviation tautology_iff (p : formula A) :
 abbreviation satisfiable (p : formula A) : Prop := semantics.satisfiable (Structure A) p
 
 abbreviation Satisfiable (T : Theory A) : Prop := semantics.Satisfiable (Structure A) T
-
-lemma models_def (S : Structure A) (p : formula A) : S ⊧ p ↔ formula.val S p :=
-by refl 
 
 instance : has_double_turnstile (Theory A) (formula A) := ⟨semantics.consequence (Structure A)⟩
 
@@ -104,9 +107,15 @@ lemma model_models (consis : T.consistent) : model T ⊧ T := λ p hp,
 
 end completeness
 
+
 theorem consistent_iff_satisfiable : Theory.consistent T ↔ Satisfiable T :=
 ⟨λ consis,  ⟨_, completeness.model_models consis⟩,
- by { rintros ⟨M, hM⟩, by { exact sound.consistent_of_Satisfiable ⟨M, hM⟩ }}⟩
+  begin
+    rintros ⟨S, hS⟩, by_contradiction A,
+    have : T ⊢ ⊥, from logic.Theory.not_consistent_iff_bot.mp A,
+    simpa using soundness this hS
+  end⟩
+
 
 theorem completeness {p : formula A} : T ⊢ p ↔ T ⊧ p :=
 ⟨soundness, by {
