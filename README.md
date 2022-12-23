@@ -74,8 +74,9 @@ Lean3で論理学を形式化する
 
 ## 参考文献
   - mathlib https://github.com/leanprover-community/mathlib
+  - flypitch https://flypitch.github.io/
   - ケネス・キューネン, 藤田 博司 訳, キューネン数学基礎論講義
   - 田中 一之, 数学基礎論序説: 数の体系への論理的アプローチ
   - 田中 一之, 計算理論と数理論理学
   - Petr Hajek, Metamathematics of First-Order Arithmetic
-  - flypitch https://flypitch.github.io/
+  - Wolfram Pohlers, Proof Theory: The First Step into Impredicativity
