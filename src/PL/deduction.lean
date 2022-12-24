@@ -112,6 +112,19 @@ end
 instance : Theory.has_finite_character (formula A) :=
 Theory.finite_character_of_finite_provable (formula A) (λ T p, proof_conjunction)
 
+def homomorphism {F : Type*} [has_logic_symbol F] [axiomatic_classical_logic F] (f : formula A →ₗ F) {p} :
+  T ⊢ p → f '' T ⊢ f p :=
+begin
+  intros b,
+  apply rec'_on b,
+  { simp, intros p q h₁ h₂ IH₁ IH₂, exact IH₁ ⨀ IH₂ },
+  { intros p hp, exact by_axiom (set.mem_image_of_mem f hp) },
+  { simp },
+  { simp },
+  { simp },
+  { simp }
+end
+
 end provable
 
 end pl

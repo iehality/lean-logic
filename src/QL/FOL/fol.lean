@@ -235,9 +235,9 @@ end subformula
 
 namespace subterm
 
-def const {n} (c : L.fn 0) : subterm L μ n := function c fin.nil
-
 variables {L μ} {μ₁ : Type*} {μ₂ : Type*} {n : ℕ}
+
+def const {n} (c : L.fn 0) : subterm L μ n := function c fin.nil
 
 @[simp] def rew (s : μ₁ → subterm L μ₂ n) : subterm L μ₁ n → subterm L μ₂ n
 | (&x)           := s x

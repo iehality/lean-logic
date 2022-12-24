@@ -5,7 +5,7 @@ universes u v
 namespace fol
 open_locale logic_symbol aclogic
 open subterm subformula logic logic.Theory
-variables {L R : language.{u}} {L₁ L₂ L₃ : language} {m n : ℕ}
+variables {L R : language.{u}} {L₁ L₂ L₃ : language} {μ : Type v} {m n : ℕ}
 
 namespace language
 
@@ -74,7 +74,7 @@ end padd
 section Constants
 variables {α : Type*}
 
-instance : has_coe α (subterm (Constants α) m n) := ⟨subterm.const (Constants α)⟩
+instance : has_coe α (subterm (Constants α) μ n) := ⟨@subterm.const (Constants α) μ n⟩
 
 end Constants
 
@@ -82,33 +82,31 @@ end language
 
 namespace subterm
 open language
+variables (μ n)
 
 structure hom (L₁ : language) (L₂ : language) :=
-(func {} : Π {k m n}, L₁.fn k → (fin k → subterm L₂ m n) → subterm L₂ m n)
-(to_fun : Π {m n}, subterm L₁ m n → subterm L₂ m n)
-(map_var' : ∀ {m n x}, to_fun (#x : subterm L₁ m n) = #x)
-(map_metavar' : ∀ {m n x}, to_fun (&x : subterm L₁ m n) = &x)
-(map_function' : ∀ {k m n} (f : L₁.fn k) (v : fin k → subterm L₁ m n),
-  to_fun (function f v) = func f (to_fun ∘ v))
-(map_mlift' : ∀ {m n} (t : subterm L₁ m n), to_fun t.mlift = (to_fun t).mlift)
-(map_push' : ∀ {m n} (t : subterm L₁ m (n + 1)), to_fun t.push = (to_fun t).push)
-(map_pull' : ∀ {m n} (t : subterm L₁ (m + 1) n), to_fun t.pull = (to_fun t).pull)
+(func {} : Π {n k}, L₁.fn k → (fin k → subterm L₂ μ n) → subterm L₂ μ n)
+(to_fun : Π {n}, subterm L₁ μ n → subterm L₂ μ n)
+(map_var' : ∀ {n x}, to_fun (#x : subterm L₁ μ n) = #x)
+(map_metavar' : ∀ {n x}, to_fun (&x : subterm L₁ μ n) = &x)
+(map_function' : ∀ {n k} (f : L₁.fn k) (v : fin k → subterm L₁ μ n),
+  to_fun (function f v) = func f (λ i, to_fun (v i)))
 
 instance {L₁ L₂ : language} :
-  has_coe_to_fun (hom L₁ L₂) (λ _, Π {m n}, subterm L₁ m n → subterm L₂ m n) :=
+  has_coe_to_fun (hom μ L₁ L₂) (λ _, Π {n}, subterm L₁ μ n → subterm L₂ μ n) :=
 ⟨hom.to_fun⟩
 
 namespace hom
-variables {L₁ L₂} {m n} (τ : hom L₁ L₂)
+variables {L₁ L₂ μ m n} (τ : hom μ L₁ L₂)
+/--/
+@[simp] lemma map_var {n x} : τ (#x : subterm L₁ μ n) = #x := τ.map_var'
 
-@[simp] lemma map_var {m n x} : τ (#x : subterm L₁ m n) = #x := τ.map_var'
+@[simp] lemma map_metavar {n x} : τ (&x : subterm L₁ μ n) = &x := τ.map_metavar'
 
-@[simp] lemma map_metavar {m n x} : τ (&x : subterm L₁ m n) = &x := τ.map_metavar'
-
-lemma map_function {k m n} (f : L₁.fn k) (v : fin k → subterm L₁ m n) :
+lemma map_function {k n} (f : L₁.fn k) (v : fin k → subterm L₁ μ n) :
   τ (function f v) = func τ f (λ i, τ (v i)) := τ.map_function' f v
 
-@[simp] lemma map_mlift {m n} (t : subterm L₁ m n) : τ t.mlift = (τ t).mlift := τ.map_mlift' t
+@[simp] lemma map_mlift {n} (t : subterm L₁ μ n) : τ t.mlift = (τ t).mlift := τ.map_mlift' t
 
 @[simp] lemma map_push {m n} (t : subterm L₁ m (n + 1)) : τ t.push = (τ t).push := τ.map_push' t
 
